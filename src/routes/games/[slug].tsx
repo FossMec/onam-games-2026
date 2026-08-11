@@ -3,7 +3,7 @@ import { createAsync, useParams } from "@solidjs/router";
 import { Show, createEffect, createSignal, onCleanup } from "solid-js";
 import { Countdown } from "~/components/Countdown";
 import { getMe } from "~/server/auth/actions";
-import { getGame } from "~/server/games/actions";
+import { getGame, getMyAttempt } from "~/server/games/actions";
 import { clearAttempt, getStoredAttempt, storeAttempt } from "~/lib/game-session";
 
 export default function GamePage() {
@@ -11,21 +11,23 @@ export default function GamePage() {
   const slug = () => params.slug ?? "";
   const game = createAsync(() => getGame(slug()));
   const me = createAsync(() => getMe());
+  const myAttempt = createAsync(() => getMyAttempt(slug()));
 
   const [attemptToken, setAttemptToken] = createSignal<string | null>(null);
   const [startedAt, setStartedAt] = createSignal<number | null>(null);
   const [now, setNow] = createSignal(Date.now());
   const [busy, setBusy] = createSignal(false);
+  const [error, setError] = createSignal("");
+  const [finished, setFinished] = createSignal(false);
   const [result, setResult] = createSignal<{
     valid: boolean;
     durationMs: number;
     afterDeadline: boolean;
   } | null>(null);
-  const [error, setError] = createSignal("");
 
   createEffect(() => {
     const stored = getStoredAttempt(slug());
-    if (stored && !result()) {
+    if (stored && !finished()) {
       setAttemptToken(stored.attemptToken);
       setStartedAt(new Date(stored.startedAt).getTime());
     }
@@ -92,6 +94,8 @@ export default function GamePage() {
         return;
       }
       clearAttempt(slug());
+      setAttemptToken(null);
+      setFinished(true);
       setResult({
         valid: data.valid ?? false,
         durationMs: data.durationMs ?? 0,
@@ -103,6 +107,19 @@ export default function GamePage() {
       setBusy(false);
     }
   };
+
+  // Score/details from server state so they survive refresh/revisit.
+  const attempt = () => myAttempt();
+  const submitted = () => finished() || attempt()?.status === "submitted";
+  const score = () =>
+    result() ??
+    (attempt()?.status === "submitted"
+      ? {
+          valid: attempt()!.valid,
+          durationMs: attempt()!.durationMs ?? 0,
+          afterDeadline: attempt()!.afterDeadline,
+        }
+      : null);
 
   const playable = () => game() && (game()!.status === "live" || game()!.status === "tester");
   const isBraindead = () => game()?.gameType === "braindead";
@@ -189,25 +206,36 @@ export default function GamePage() {
             </div>
           </Show>
 
-          <Show when={me()?.onboardingCompleted && !attemptToken() && !result()}>
+          <Show when={me()?.onboardingCompleted && !submitted() && !attemptToken()}>
             <div class="card space-y-4 text-center">
-              <p class="text-muted">
-                {isBraindead()
-                  ? "There is no strategy. There is no skill. There is only the button."
-                  : "Only one attempt per game. The timer starts when you press start."}
-              </p>
+              <Show
+                when={attempt()?.status !== "in_progress"}
+                fallback={<p class="text-muted">You have an attempt in progress.</p>}
+              >
+                <p class="text-muted">
+                  {isBraindead()
+                    ? "There is no strategy. There is no skill. There is only the button."
+                    : "Only one attempt per game. The timer starts when you press start."}
+                </p>
+              </Show>
               <button
                 type="button"
                 onClick={start}
                 disabled={busy()}
                 class="btn-brand px-8 py-3 text-lg"
               >
-                {busy() ? "Starting…" : isBraindead() ? "START THE POINTLESS RITUAL" : "Start game"}
+                {busy()
+                  ? "Starting…"
+                  : attempt()?.status === "in_progress"
+                    ? "Resume"
+                    : isBraindead()
+                      ? "START THE POINTLESS RITUAL"
+                      : "Start game"}
               </button>
             </div>
           </Show>
 
-          <Show when={me()?.onboardingCompleted && attemptToken() && !result()}>
+          <Show when={me()?.onboardingCompleted && attemptToken() && !submitted()}>
             <div class="card space-y-4 text-center">
               <p class="text-3xl font-bold tabular-nums">
                 {Math.floor(elapsed() / 60)}m {elapsed() % 60}s
@@ -238,23 +266,26 @@ export default function GamePage() {
             </div>
           </Show>
 
-          <Show when={result()}>
+          <Show when={submitted() && score()}>
             <div class="card space-y-2 text-center">
               <p class="text-xl font-semibold">
-                {result()!.valid
-                  ? result()!.afterDeadline
+                {score()!.valid
+                  ? score()!.afterDeadline
                     ? "Completed after the deadline"
                     : "Completed!"
                   : "Submission rejected."}
               </p>
-              <Show when={result()!.valid}>
+              <Show when={score()!.valid}>
                 <p class="text-2xl font-bold tabular-nums text-brand">
-                  {(result()!.durationMs / 1000).toFixed(1)}s
+                  {(score()!.durationMs / 1000).toFixed(1)}s
                 </p>
               </Show>
-              <Show when={result()!.afterDeadline}>
+              <Show when={score()!.afterDeadline}>
                 <p class="text-sm text-muted">Counts for the global board only.</p>
               </Show>
+              <a href="/leaderboard" class="btn-ghost">
+                View leaderboard
+              </a>
             </div>
           </Show>
 

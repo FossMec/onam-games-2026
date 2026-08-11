@@ -1,6 +1,7 @@
 "use server";
 
 import { getCurrentUser } from "~/server/auth/service";
+import { getMyAttemptBySlug } from "./attempts";
 import type { ViewerRole } from "./service";
 import { getGameBySlug, getGamesList } from "./service";
 
@@ -17,4 +18,10 @@ export async function getGames() {
 export async function getGame(slug: string) {
   const user = await getCurrentUser();
   return getGameBySlug(slug, viewerRole(user));
+}
+
+export async function getMyAttempt(slug: string) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return getMyAttemptBySlug(slug, user.id);
 }

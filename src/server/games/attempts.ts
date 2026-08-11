@@ -130,6 +130,42 @@ export interface FinishResult {
   reason?: string;
 }
 
+export interface MyAttempt {
+  status: "in_progress" | "submitted" | "expired" | "void";
+  durationMs: number | null;
+  valid: boolean;
+  afterDeadline: boolean;
+  startedAt: string;
+  submittedAt: string | null;
+}
+
+/** The current user's attempt for a game by slug, if any. */
+export async function getMyAttemptBySlug(slug: string, userId: string): Promise<MyAttempt | null> {
+  const db = getDb();
+  const [row] = await db
+    .select({
+      status: gameAttempts.status,
+      durationMs: gameAttempts.durationMs,
+      valid: gameAttempts.serverValid,
+      afterDeadline: gameAttempts.afterDeadline,
+      startedAt: gameAttempts.startedAt,
+      submittedAt: gameAttempts.submittedAt,
+    })
+    .from(gameAttempts)
+    .innerJoin(games, eq(games.id, gameAttempts.gameId))
+    .where(and(eq(games.slug, slug), eq(gameAttempts.userId, userId)))
+    .limit(1);
+  if (!row) return null;
+  return {
+    status: row.status,
+    durationMs: row.durationMs,
+    valid: row.valid,
+    afterDeadline: row.afterDeadline,
+    startedAt: row.startedAt.toISOString(),
+    submittedAt: row.submittedAt?.toISOString() ?? null,
+  };
+}
+
 export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
   const db = getDb();
   const [attempt] = await db
