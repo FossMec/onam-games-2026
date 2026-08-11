@@ -280,6 +280,32 @@ export const globalScores = pgTable("global_scores", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const authSessions = pgTable(
+  "auth_sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    deviceId: uuid("device_id").references(() => devices.id, { onDelete: "set null" }),
+    refreshToken: text("refresh_token").notNull(),
+    accessToken: text("access_token").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    ip: text("ip"),
+    userAgent: text("user_agent"),
+    country: text("country"),
+    city: text("city"),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("auth_sessions_user_idx").on(t.userId),
+    index("auth_sessions_device_idx").on(t.deviceId),
+    index("auth_sessions_revoked_idx").on(t.revokedAt),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Device = typeof devices.$inferSelect;
