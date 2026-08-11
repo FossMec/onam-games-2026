@@ -17,6 +17,12 @@ export const settingsRegistry: SettingDef[] = [
     defaultValue: "19:00",
   },
   {
+    key: "schedule.event_start_date",
+    group: "schedule",
+    description: "Event start date in IST (YYYY-MM-DD); Day 1 releases on this date",
+    defaultValue: "",
+  },
+  {
     key: "schedule.game_duration_hours",
     group: "schedule",
     description: "Hours a game stays live after its release",

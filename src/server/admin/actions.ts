@@ -3,7 +3,10 @@
 import { blockIp, listBlockedIps, unblockIp } from "~/server/anti-cheat/ip";
 import {
   adminAddTester,
+  adminCreateGame,
+  adminDeleteGame,
   adminListActivity,
+  adminListGames,
   adminListSettings,
   adminListSuspicious,
   adminListTesters,
@@ -11,6 +14,7 @@ import {
   adminSetTesterActive,
   adminSetUserBlock,
   adminSetUserRole,
+  adminUpdateGame,
   adminUpdateSetting,
 } from "~/server/admin/service";
 
@@ -90,4 +94,31 @@ export async function blockIpAction(opts: {
 
 export async function unblockIpAction(ip: string) {
   await unblockIp(ip);
+}
+
+export async function listGames() {
+  return adminListGames();
+}
+
+export async function createGame(input: {
+  slug: string;
+  day: number;
+  title: string;
+  hint?: string;
+  gameType: string;
+  difficulty?: string;
+  releaseAt?: string | null;
+  endAt?: string | null;
+  testerEarlyHours?: number;
+  published?: boolean;
+}) {
+  await adminCreateGame(input);
+}
+
+export async function updateGame(id: string, patch: Parameters<typeof adminUpdateGame>[1]) {
+  await adminUpdateGame(id, patch);
+}
+
+export async function deleteGame(id: string) {
+  await adminDeleteGame(id);
 }

@@ -1,8 +1,9 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { asc, desc, eq, sql } from "drizzle-orm";
 import {
   activityLogs,
   appSettings,
   devices,
+  games,
   getDb,
   suspiciousLogs,
   testers,
@@ -152,4 +153,73 @@ export async function adminDeviceCount(userId: string): Promise<number> {
     .from(userDevices)
     .where(eq(userDevices.userId, userId));
   return row?.count ?? 0;
+}
+
+export async function adminListGames() {
+  await requireAdmin();
+  return getDb().select().from(games).orderBy(asc(games.day));
+}
+
+export async function adminCreateGame(input: {
+  slug: string;
+  day: number;
+  title: string;
+  hint?: string;
+  gameType: string;
+  difficulty?: string;
+  releaseAt?: string | null;
+  endAt?: string | null;
+  testerEarlyHours?: number;
+  published?: boolean;
+}) {
+  await requireAdmin();
+  await getDb()
+    .insert(games)
+    .values({
+      slug: input.slug.trim().toLowerCase(),
+      day: input.day,
+      title: input.title,
+      hint: input.hint ?? null,
+      gameType: input.gameType,
+      difficulty: input.difficulty ?? "normal",
+      releaseAt: input.releaseAt ? new Date(input.releaseAt) : null,
+      endAt: input.endAt ? new Date(input.endAt) : null,
+      testerEarlyHours: input.testerEarlyHours ?? 24,
+      published: input.published ?? false,
+    });
+}
+
+export async function adminUpdateGame(
+  id: string,
+  patch: Partial<{
+    slug: string;
+    day: number;
+    title: string;
+    hint: string | null;
+    gameType: string;
+    difficulty: string;
+    releaseAt: string | null;
+    endAt: string | null;
+    testerEarlyHours: number;
+    published: boolean;
+  }>,
+) {
+  await requireAdmin();
+  await getDb()
+    .update(games)
+    .set({
+      ...patch,
+      releaseAt: patch.releaseAt
+        ? new Date(patch.releaseAt)
+        : patch.releaseAt === null
+          ? null
+          : undefined,
+      endAt: patch.endAt ? new Date(patch.endAt) : patch.endAt === null ? null : undefined,
+    })
+    .where(eq(games.id, id));
+}
+
+export async function adminDeleteGame(id: string) {
+  await requireAdmin();
+  await getDb().delete(games).where(eq(games.id, id));
 }
