@@ -13,6 +13,7 @@ export default function App() {
           <nav>
             <a href="/">Home</a>
             <a href="/leaderboard">Leaderboard</a>
+            <a href="/admin">Admin</a>
           </nav>
           <Suspense>{props.children}</Suspense>
         </MetaProvider>

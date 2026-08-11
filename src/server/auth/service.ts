@@ -186,6 +186,13 @@ export async function requireCurrentDevice(): Promise<string> {
   return deviceId;
 }
 
+/** Returns the current user if they are an admin, else throws. */
+export async function requireAdmin(): Promise<PublicUser> {
+  const user = await requireCurrentUser();
+  if (user.role !== "admin") throw new Error("Forbidden");
+  return user;
+}
+
 /** Refresh the stored Supabase access token if it is near expiry. */
 async function refreshSessionIfNeeded(sessionId: string): Promise<void> {
   const db = getDb();
