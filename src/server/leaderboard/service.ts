@@ -1,4 +1,4 @@
-import { and, asc, eq, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, lt, ne, or, sql } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
 import { dailyLeaderboard, users } from "~/server/db/schema";
 import { getRedisOrNull } from "~/server/redis/client";
@@ -266,7 +266,7 @@ export async function getGlobalLeaderboard(
           streakCount: users.streakCount,
         })
         .from(users)
-        .where(sql`${users.id} = any(${userIds})`)
+        .where(inArray(users.id, userIds))
     : [];
 
   const userMap = new Map(userRows.map((u) => [u.id, u]));
