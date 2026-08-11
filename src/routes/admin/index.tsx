@@ -62,9 +62,9 @@ export default function Admin() {
   });
 
   return (
-    <main>
+    <main class="container space-y-6 py-8">
       <Title>Admin — FOSS Onam Games</Title>
-      <h1>Admin</h1>
+      <h1 class="text-3xl font-bold tracking-tight">Admin</h1>
       <Show when={message()}>
         <p>{message()}</p>
       </Show>
@@ -74,8 +74,8 @@ export default function Admin() {
       </Show>
 
       <Show when={me()?.role === "admin" && data()}>
-        <section>
-          <h2>Settings</h2>
+        <section class="card space-y-3">
+          <h2 class="text-lg font-semibold">Settings</h2>
           <table>
             <thead>
               <tr>
@@ -128,8 +128,8 @@ export default function Admin() {
           </table>
         </section>
 
-        <section>
-          <h2>Games</h2>
+        <section class="card space-y-3">
+          <h2 class="text-lg font-semibold">Games</h2>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -232,8 +232,8 @@ export default function Admin() {
           </table>
         </section>
 
-        <section>
-          <h2>Users</h2>
+        <section class="card space-y-3">
+          <h2 class="text-lg font-semibold">Users</h2>
           <table>
             <thead>
               <tr>
@@ -298,8 +298,8 @@ export default function Admin() {
           </table>
         </section>
 
-        <section>
-          <h2>Testers</h2>
+        <section class="card space-y-3">
+          <h2 class="text-lg font-semibold">Testers</h2>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -349,8 +349,8 @@ export default function Admin() {
           </table>
         </section>
 
-        <section>
-          <h2>Blocked IPs</h2>
+        <section class="card space-y-3">
+          <h2 class="text-lg font-semibold">Blocked IPs</h2>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -400,8 +400,8 @@ export default function Admin() {
           </table>
         </section>
 
-        <section>
-          <h2>Suspicious activity</h2>
+        <section class="card space-y-3">
+          <h2 class="text-lg font-semibold">Suspicious activity</h2>
           <table>
             <thead>
               <tr>
@@ -430,8 +430,8 @@ export default function Admin() {
           </table>
         </section>
 
-        <section>
-          <h2>Activity log</h2>
+        <section class="card space-y-3">
+          <h2 class="text-lg font-semibold">Activity log</h2>
           <table>
             <thead>
               <tr>

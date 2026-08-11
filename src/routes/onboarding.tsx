@@ -81,115 +81,170 @@ export default function Onboarding() {
   const fieldError = (field: string) => errors()?.[field]?.[0];
 
   return (
-    <main>
+    <main class="container flex justify-center py-8">
       <Title>Complete your profile — FOSS Onam Games</Title>
-      <h1>Almost there</h1>
-      <p>Tell us a little about yourself.</p>
 
-      <Show when={message()}>
-        <p>{message()}</p>
-      </Show>
+      <div class="w-full max-w-lg space-y-6">
+        <section class="space-y-1">
+          <h1 class="text-3xl font-bold tracking-tight">Almost there</h1>
+          <p class="text-muted">Tell us a little about yourself.</p>
+        </section>
 
-      <form onSubmit={onSubmit}>
-        <fieldset>
-          <legend>Avatar (optional)</legend>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => onAvatarChange(e.currentTarget.files?.[0])}
-          />
-          <Show when={avatar()}>
-            <img src={avatar()!} alt="preview" width="96" height="96" />
-            <button type="button" onClick={uploadAvatar} disabled={uploading()}>
-              {uploading() ? "Uploading…" : "Upload avatar"}
-            </button>
-          </Show>
-        </fieldset>
-
-        <label>
-          College
-          <select value={college()} onChange={(e) => setCollege(e.currentTarget.value)}>
-            <option value="" disabled>
-              Select college
-            </option>
-            <For each={collegeValues}>
-              {(value) => <option value={value}>{value.toUpperCase()}</option>}
-            </For>
-          </select>
-        </label>
-        <Show when={fieldError("college")}>
-          <p role="alert">{fieldError("college")}</p>
+        <Show when={message()}>
+          <p class="rounded border border-ok/30 bg-ok/10 px-3 py-2 text-sm text-ok">{message()}</p>
         </Show>
 
-        <Show when={college() === "mec"}>
-          <label>
-            Branch
-            <select value={branch()} onChange={(e) => setBranch(e.currentTarget.value)}>
+        <form onSubmit={onSubmit} class="card space-y-4">
+          <fieldset class="space-y-2 border-0 p-0">
+            <legend class="font-semibold">Avatar (optional)</legend>
+            <div class="flex items-center gap-3">
+              <Show when={avatar()}>
+                <img
+                  src={avatar()!}
+                  alt="preview"
+                  class="h-16 w-16 rounded-full border border-line"
+                />
+              </Show>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => onAvatarChange(e.currentTarget.files?.[0])}
+                class="text-sm text-muted"
+              />
+              <Show when={avatar()}>
+                <button
+                  type="button"
+                  onClick={uploadAvatar}
+                  disabled={uploading()}
+                  class="btn-ghost text-sm"
+                >
+                  {uploading() ? "Uploading…" : "Upload"}
+                </button>
+              </Show>
+            </div>
+          </fieldset>
+
+          <div>
+            <label for="college" class="text-sm font-medium">
+              College *
+            </label>
+            <select
+              id="college"
+              value={college()}
+              onChange={(e) => setCollege(e.currentTarget.value)}
+              class="input"
+            >
               <option value="" disabled>
-                Select branch
+                Select college
               </option>
-              <For each={branchValues}>
+              <For each={collegeValues}>
                 {(value) => <option value={value}>{value.toUpperCase()}</option>}
               </For>
             </select>
-          </label>
-          <Show when={fieldError("branch")}>
-            <p role="alert">{fieldError("branch")}</p>
+            <Show when={fieldError("college")}>
+              <p class="mt-1 text-sm text-danger">{fieldError("college")}</p>
+            </Show>
+          </div>
+
+          <Show when={college() === "mec"}>
+            <div>
+              <label for="branch" class="text-sm font-medium">
+                Branch *
+              </label>
+              <select
+                id="branch"
+                value={branch()}
+                onChange={(e) => setBranch(e.currentTarget.value)}
+                class="input"
+              >
+                <option value="" disabled>
+                  Select branch
+                </option>
+                <For each={branchValues}>
+                  {(value) => <option value={value}>{value.toUpperCase()}</option>}
+                </For>
+              </select>
+              <Show when={fieldError("branch")}>
+                <p class="mt-1 text-sm text-danger">{fieldError("branch")}</p>
+              </Show>
+            </div>
+
+            <div>
+              <label for="batch" class="text-sm font-medium">
+                Batch *
+              </label>
+              <select
+                id="batch"
+                value={batch()}
+                onChange={(e) => setBatch(e.currentTarget.value)}
+                class="input"
+              >
+                <option value="" disabled>
+                  Select batch
+                </option>
+                <For each={batchValues}>{(value) => <option value={value}>{value}</option>}</For>
+              </select>
+              <Show when={fieldError("batch")}>
+                <p class="mt-1 text-sm text-danger">{fieldError("batch")}</p>
+              </Show>
+            </div>
           </Show>
 
-          <label>
-            Batch
-            <select value={batch()} onChange={(e) => setBatch(e.currentTarget.value)}>
-              <option value="" disabled>
-                Select batch
-              </option>
-              <For each={batchValues}>{(value) => <option value={value}>{value}</option>}</For>
+          <div>
+            <label for="div" class="text-sm font-medium">
+              Division
+            </label>
+            <select
+              id="div"
+              value={div()}
+              onChange={(e) => setDiv(e.currentTarget.value)}
+              class="input"
+            >
+              <For each={divValues}>
+                {(value) => <option value={value}>{value.toUpperCase()}</option>}
+              </For>
             </select>
-          </label>
-          <Show when={fieldError("batch")}>
-            <p role="alert">{fieldError("batch")}</p>
-          </Show>
-        </Show>
+          </div>
 
-        <label>
-          Division
-          <select value={div()} onChange={(e) => setDiv(e.currentTarget.value)}>
-            <For each={divValues}>
-              {(value) => <option value={value}>{value.toUpperCase()}</option>}
-            </For>
-          </select>
-        </label>
+          <div>
+            <label for="instagram" class="text-sm font-medium">
+              Instagram handle <span class="text-muted">(optional, for winner tags)</span>
+            </label>
+            <input
+              id="instagram"
+              type="text"
+              value={instagram()}
+              onChange={(e) => setInstagram(e.currentTarget.value)}
+              placeholder="@username"
+              class="input"
+            />
+            <Show when={fieldError("instagramHandle")}>
+              <p class="mt-1 text-sm text-danger">{fieldError("instagramHandle")}</p>
+            </Show>
+          </div>
 
-        <label>
-          Instagram handle (optional, for winner tags)
-          <input
-            type="text"
-            value={instagram()}
-            onChange={(e) => setInstagram(e.currentTarget.value)}
-            placeholder="@username"
-          />
-        </label>
-        <Show when={fieldError("instagramHandle")}>
-          <p role="alert">{fieldError("instagramHandle")}</p>
-        </Show>
+          <div>
+            <label for="whatsapp" class="text-sm font-medium">
+              WhatsApp number <span class="text-muted">(optional)</span>
+            </label>
+            <input
+              id="whatsapp"
+              type="tel"
+              value={whatsapp()}
+              onChange={(e) => setWhatsapp(e.currentTarget.value)}
+              placeholder="+91 98765 43210"
+              class="input"
+            />
+            <Show when={fieldError("whatsappNumber")}>
+              <p class="mt-1 text-sm text-danger">{fieldError("whatsappNumber")}</p>
+            </Show>
+          </div>
 
-        <label>
-          WhatsApp number (optional)
-          <input
-            type="tel"
-            value={whatsapp()}
-            onChange={(e) => setWhatsapp(e.currentTarget.value)}
-            placeholder="+91 98765 43210"
-          />
-        </label>
-        <Show when={fieldError("whatsappNumber")}>
-          <p role="alert">{fieldError("whatsappNumber")}</p>
-        </Show>
-
-        <button type="submit" disabled={submitting()}>
-          {submitting() ? "Saving…" : "Save & continue"}
-        </button>
-      </form>
+          <button type="submit" disabled={submitting()} class="btn-brand w-full">
+            {submitting() ? "Saving…" : "Save & continue"}
+          </button>
+        </form>
+      </div>
     </main>
   );
 }

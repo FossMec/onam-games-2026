@@ -41,54 +41,6 @@ const games = [
     game_type: "braindead",
     difficulty: "trivial",
   },
-  {
-    day: 2,
-    slug: "minesweeper",
-    title: "Minesweeper MEC",
-    hint: "Boom. Or not. The field decides.",
-    game_type: "minesweeper",
-    difficulty: "normal",
-  },
-  {
-    day: 3,
-    slug: "sudoku",
-    title: "Sudoku Sadhu",
-    hint: "Numbers 1-9. No repeats. Enlightenment follows.",
-    game_type: "sudoku",
-    difficulty: "normal",
-  },
-  {
-    day: 4,
-    slug: "mahjong",
-    title: "Mahjong Maram",
-    hint: "Pairs. Match them. Meditate.",
-    game_type: "mahjong",
-    difficulty: "normal",
-  },
-  {
-    day: 5,
-    slug: "memory",
-    title: "Memory Monsoon",
-    hint: "Cards flip. Remember where. Repeat.",
-    game_type: "memory",
-    difficulty: "normal",
-  },
-  {
-    day: 6,
-    slug: "sequence",
-    title: "Sequence Sudhi",
-    hint: "Order matters more than you think.",
-    game_type: "sequence",
-    difficulty: "normal",
-  },
-  {
-    day: 7,
-    slug: "finale",
-    title: "Grand Finale",
-    hint: "The best for last. Trust the process.",
-    game_type: "puzzle",
-    difficulty: "hard",
-  },
 ];
 
 for (const g of games) {
@@ -103,5 +55,5 @@ for (const g of games) {
   `;
 }
 
-console.log("Seeded settings +", games.length, "games. Day 1 ('button', braindead) is live.");
+console.log("Seeded settings +", games.length, "game ('button', braindead) — the only demo game.");
 await sql.end();

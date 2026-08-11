@@ -15,6 +15,8 @@ function formatDuration(ms: number): string {
   return `${m}m ${Math.round(s % 60)}s`;
 }
 
+const medal = (rank: number) => (rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : "");
+
 export default function Leaderboard() {
   const games = createAsync(() => getGames());
   const [view, setView] = createSignal<string | null>(null);
@@ -58,12 +60,23 @@ export default function Leaderboard() {
     view() === null ? null : (games()?.find((g) => g.id === view()) ?? null);
 
   return (
-    <main>
+    <main class="container space-y-6 py-8">
       <Title>Leaderboard — FOSS Onam Games</Title>
-      <h1>Leaderboard</h1>
 
-      <div>
-        <select value={view() ?? ""} onChange={(e) => setView(e.currentTarget.value || null)}>
+      <section class="space-y-1">
+        <h1 class="text-3xl font-bold tracking-tight">Leaderboard</h1>
+        <p class="text-muted">
+          Daily boards rank by fastest time (ties broken by who started first). Global ranks by
+          games completed, then percentile-weighted time.
+        </p>
+      </section>
+
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <select
+          value={view() ?? ""}
+          onChange={(e) => setView(e.currentTarget.value || null)}
+          class="input sm:w-auto"
+        >
           <option value="">Global</option>
           <For each={games()}>
             {(game) => (
@@ -73,52 +86,76 @@ export default function Leaderboard() {
             )}
           </For>
         </select>
-        <button type="button" onClick={refresh} disabled={cooldownLeft() > 0}>
+        <button type="button" onClick={refresh} disabled={cooldownLeft() > 0} class="btn-ghost">
           {cooldownLeft() > 0 ? `Refresh in ${Math.ceil(cooldownLeft() / 1000)}s` : "Refresh"}
         </button>
       </div>
 
       <Show when={selectedGame()?.status === "closed"}>
-        <p>This game has ended. Late submissions count for the global board only.</p>
+        <p class="rounded border border-warn/30 bg-warn/10 px-3 py-2 text-sm text-warn">
+          This game has ended. Late submissions count for the global board only.
+        </p>
       </Show>
 
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Player</th>
-            <th>College</th>
-            <th>{view() === null ? "Games" : "Time"}</th>
-            <th>{view() === null ? "Score" : ""}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <For each={data()?.entries ?? []}>
-            {(raw) => {
-              const entry = raw as DailyEntry & GlobalEntry;
-              return (
-                <tr style={entry.isMe ? "font-weight: bold" : undefined}>
-                  <td>{entry.rank}</td>
-                  <td>{entry.name}</td>
-                  <td>
-                    {entry.college ?? "-"}
-                    {entry.branch ? ` · ${entry.branch}` : ""}
-                  </td>
-                  <td>
-                    {entry.durationMs != null
-                      ? formatDuration(entry.durationMs)
-                      : entry.gamesCompleted}
-                  </td>
-                  <td>{entry.weightedTotal != null ? entry.weightedTotal.toFixed(3) : ""}</td>
-                </tr>
-              );
-            }}
-          </For>
-        </tbody>
-      </table>
+      <Show when={data()?.entries.length === 0}>
+        <p class="text-muted">No results yet.</p>
+      </Show>
+
+      <div class="card overflow-x-auto">
+        <table>
+          <thead>
+            <tr class="text-left text-xs uppercase tracking-widest text-muted">
+              <th class="py-2">#</th>
+              <th class="py-2">Player</th>
+              <th class="py-2">College</th>
+              <th class="py-2 text-right">{view() === null ? "Games" : "Time"}</th>
+              <Show when={view() === null}>
+                <th class="py-2 text-right">Score</th>
+              </Show>
+            </tr>
+          </thead>
+          <tbody>
+            <For each={data()?.entries ?? []}>
+              {(raw) => {
+                const entry = raw as DailyEntry & GlobalEntry;
+                return (
+                  <tr class={`border-t border-line ${entry.isMe ? "bg-brand-soft" : ""}`}>
+                    <td class="py-2">
+                      <span class="inline-flex min-w-6 items-center gap-1">
+                        {medal(entry.rank)}
+                        {entry.rank}
+                      </span>
+                    </td>
+                    <td class="py-2 font-medium">
+                      {entry.name}
+                      {entry.isMe && <span class="text-xs text-brand"> · you</span>}
+                    </td>
+                    <td class="py-2 text-muted">
+                      {entry.college ?? "-"}
+                      {entry.branch ? ` · ${entry.branch}` : ""}
+                    </td>
+                    <td class="py-2 text-right font-mono tabular-nums">
+                      {entry.durationMs != null
+                        ? formatDuration(entry.durationMs)
+                        : entry.gamesCompleted}
+                    </td>
+                    <Show when={view() === null}>
+                      <td class="py-2 text-right font-mono tabular-nums text-muted">
+                        {entry.weightedTotal != null ? entry.weightedTotal.toFixed(3) : ""}
+                      </td>
+                    </Show>
+                  </tr>
+                );
+              }}
+            </For>
+          </tbody>
+        </table>
+      </div>
 
       <Show when={data()?.myEntry && !data()!.entries.some((e) => e.isMe)}>
-        <p>Your rank: #{data()!.myEntry!.rank}</p>
+        <p class="text-sm text-muted">
+          Your rank: <span class="font-semibold text-ink">#{data()!.myEntry!.rank}</span>
+        </p>
       </Show>
     </main>
   );
