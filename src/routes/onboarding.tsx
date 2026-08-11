@@ -65,8 +65,8 @@ export default function Onboarding() {
           | undefined,
         batch: (batch() || undefined) as "27" | "28" | "29" | "30" | "<=26" | undefined,
         div: (div() || undefined) as "none" | "a" | "b" | "c" | undefined,
-        instagramHandle: instagram() || undefined,
-        whatsappNumber: whatsapp() || undefined,
+        instagramHandle: instagram().trim().replace(/^@+/, "") || undefined,
+        whatsappNumber: whatsapp().replace(/[\s\-()]/g, "") || undefined,
       });
       if (result.ok) {
         navigate("/", { replace: true });

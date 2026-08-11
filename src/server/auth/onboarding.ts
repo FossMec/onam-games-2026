@@ -48,7 +48,12 @@ export type OnboardingInput = z.infer<typeof onboardingSchema>;
 
 export async function completeOnboarding(input: OnboardingInput): Promise<void> {
   const user = await requireCurrentUser();
-  const parsed = onboardingSchema.parse(input);
+  const normalized: OnboardingInput = {
+    ...input,
+    instagramHandle: input.instagramHandle?.trim().replace(/^@+/, "") || undefined,
+    whatsappNumber: input.whatsappNumber?.replace(/[\s\-()]/g, "") || undefined,
+  };
+  const parsed = onboardingSchema.parse(normalized);
   const isMec = parsed.college === "mec";
   await getDb()
     .update(users)
