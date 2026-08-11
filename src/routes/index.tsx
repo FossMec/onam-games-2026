@@ -115,9 +115,13 @@ export default function Home() {
                   <Show
                     when={game.status === "upcoming" && game.releaseAt}
                     fallback={
-                      <span class="text-muted">
-                        {game.status === "live" ? "Play now →" : game.status}
-                      </span>
+                      game.status === "live" ? (
+                        <a href={`/games/${game.slug}`} class="btn-brand">
+                          Play now →
+                        </a>
+                      ) : (
+                        <span class="text-muted">{game.status}</span>
+                      )
                     }
                   >
                     <span class="text-muted">Releases in </span>
