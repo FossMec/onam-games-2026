@@ -29,6 +29,20 @@
       "when": 1786471873823,
       "tag": "0003_known_red_shift",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786481826284,
+      "tag": "0004_damp_blur",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786482422671,
+      "tag": "0005_sticky_thaddeus_ross",
+      "breakpoints": true
     }
   ]
 }

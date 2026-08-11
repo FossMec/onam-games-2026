@@ -15,14 +15,15 @@ export default function AuthCallback() {
     }
     const session = data.session;
     try {
-      const fingerprint = await collectFingerprint();
+      const { signals, visitorId } = await collectFingerprint();
       const result = await completeSignIn(
         {
           access_token: session.access_token,
           refresh_token: session.refresh_token,
           expires_at: session.expires_at ?? undefined,
         },
-        fingerprint,
+        signals,
+        visitorId,
       );
       navigate(result.onboardingCompleted ? "/" : "/onboarding", {
         replace: true,

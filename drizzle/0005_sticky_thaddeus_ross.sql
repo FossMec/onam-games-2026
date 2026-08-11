@@ -1,0 +1,1 @@
+ALTER TABLE "devices" ADD COLUMN "fp_visitor_id" text;

@@ -14,6 +14,7 @@
     "db:seed": "node --env-file=.env scripts/seed.mjs"
   },
   "dependencies": {
+    "@fingerprintjs/fingerprintjs": "^5.2.0",
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^1.0.0",
     "@solidjs/start": "^2.0.0",

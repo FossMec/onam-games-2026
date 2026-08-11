@@ -1,3 +1,5 @@
+import FingerprintJS, { type Agent } from "@fingerprintjs/fingerprintjs";
+
 export interface FingerprintSignals {
   persistentId: string;
   /** How stable the persistent id is: localStorage (persistent) > sessionStorage (session) > in-memory (ephemeral). */
@@ -21,6 +23,28 @@ export interface FingerprintSignals {
   webdriver: boolean;
   audio: string | null;
   storageEstimate: number | null;
+  /** Device capability, browser-independent (mobile/touch vs desktop). */
+  pointer: string;
+  hover: string;
+  colorGamut: string;
+  /** Real local IP leaked via WebRTC (null when mDNS-obfuscated). */
+  localIp: string | null;
+  /** True when the browser obfuscated its ICE host candidate (mDNS). */
+  mdnsProtected: boolean;
+  /** Device model from Client Hints (Android; absent on iOS). */
+  uaModel: string | null;
+  /** Android platform version from Client Hints. */
+  uaPlatformVersion: string | null;
+  /** navigator.vibrate presence (Android yes, iOS no). */
+  vibrate: boolean;
+  /** Current screen.orientation.type, e.g. portrait-primary. */
+  orientation: string;
+}
+
+export interface FingerprintResult {
+  signals: FingerprintSignals;
+  /** FingerprintJS visitor id (stable per browser; null if the lib failed). */
+  visitorId: string | null;
 }
 
 const PERSISTENT_ID_KEY = "og_device_id";
@@ -78,127 +102,111 @@ function persistentId(): { id: string; stability: FingerprintSignals["idStabilit
   return { id: ephemeralId, stability: "ephemeral" };
 }
 
-function canvasFingerprint(): string | null {
-  try {
-    const canvas = document.createElement("canvas");
-    canvas.width = 240;
-    canvas.height = 80;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-    ctx.textBaseline = "top";
-    ctx.font = "14px 'Arial'";
-    ctx.fillStyle = "#f60";
-    ctx.fillRect(125, 1, 62, 20);
-    ctx.fillStyle = "#069";
-    ctx.fillText("FOSS-O", 2, 15);
-    ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
-    ctx.fillText("NAM", 4, 45);
-    return canvas.toDataURL();
-  } catch {
-    return null;
-  }
-}
-
-function webglFingerprint(): string | null {
-  try {
-    const canvas = document.createElement("canvas");
-    const gl = (canvas.getContext("webgl") ??
-      canvas.getContext("experimental-webgl")) as WebGLRenderingContext | null;
-    if (!gl) return null;
-    const info = gl.getExtension("WEBGL_debug_renderer_info");
-    const renderer = info
-      ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL))
-      : String(gl.getParameter(gl.RENDERER));
-    const vendor = info
-      ? String(gl.getParameter(info.UNMASKED_VENDOR_WEBGL))
-      : String(gl.getParameter(gl.VENDOR));
-    return `${vendor}::${renderer}`;
-  } catch {
-    return null;
-  }
-}
-
-function fontFingerprint(): string | null {
-  try {
-    const base = ["monospace", "sans-serif", "serif"];
-    const test = [
-      "Arial",
-      "Verdana",
-      "Tahoma",
-      "Courier New",
-      "Times New Roman",
-      "Georgia",
-      "Impact",
-      "Comic Sans MS",
-      "Trebuchet MS",
-      "Segoe UI",
-      "Roboto",
-    ];
-    const el = document.createElement("span");
-    el.textContent = "mmmmmmmmmmlli";
-    el.style.position = "absolute";
-    el.style.left = "-9999px";
-    el.style.fontSize = "72px";
-    document.body.appendChild(el);
-    const widths = new Map<string, number>();
-    for (const b of base) {
-      el.style.fontFamily = b;
-      widths.set(b, el.offsetWidth);
+function collectLocalIp(): Promise<{ ip: string | null; mdns: boolean }> {
+  return new Promise((resolve) => {
+    const done = (ip: string | null, mdns: boolean) => resolve({ ip, mdns });
+    try {
+      const pc = new RTCPeerConnection({ iceServers: [] });
+      pc.createDataChannel("ip");
+      const timeout = setTimeout(() => {
+        pc.close();
+        done(null, false);
+      }, 1000);
+      pc.onicecandidate = (e) => {
+        if (!e.candidate) return;
+        const mdns = e.candidate.candidate.includes(".local");
+        const match = /(\d+\.\d+\.\d+\.\d+|\[[0-9a-f:]+\])/.exec(e.candidate.candidate);
+        if (match) {
+          clearTimeout(timeout);
+          pc.close();
+          done(match[1], mdns);
+        }
+      };
+      pc.createOffer()
+        .then((offer) => pc.setLocalDescription(offer))
+        .catch(() => undefined);
+    } catch {
+      done(null, false);
     }
-    const found: string[] = [];
-    for (const font of test) {
-      el.style.fontFamily = `'${font}', monospace`;
-      if (el.offsetWidth !== widths.get("monospace")) found.push(font);
-    }
-    el.remove();
-    return found.join(",");
-  } catch {
-    return null;
-  }
+  });
 }
 
-async function audioFingerprint(): Promise<string | null> {
+function capability(query: string, fine: string, coarse: string): string {
   try {
-    // iOS Safari lacks OfflineAudioContext on older versions -> caught here
-    const ctx = new OfflineAudioContext(1, 4410, 44100);
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = "triangle";
-    osc.frequency.value = 10000;
-    gain.gain.value = 1;
-    osc.start(0);
-    osc.stop(0.1);
-    const rendered = await ctx.startRendering();
-    const data = rendered.getChannelData(0);
-    return Array.from(data.slice(0, 32))
-      .map((s) => Math.round(s * 1000))
-      .join(",");
+    if (window.matchMedia(query).matches) return fine;
   } catch {
-    return null;
+    // ignore
   }
+  return coarse;
 }
 
-async function storageEstimate(): Promise<number | null> {
+interface FpComponents {
+  [key: string]: { value: unknown };
+}
+
+function val<T>(components: FpComponents, key: string): T | undefined {
+  return components[key]?.value as T | undefined;
+}
+
+let fpPromise: Promise<Agent | null> | null = null;
+
+/** Loads FingerprintJS once; returns null on failure (never throws). */
+async function loadFingerprintJS(): Promise<Agent | null> {
+  if (!fpPromise) fpPromise = FingerprintJS.load().catch(() => null);
+  return fpPromise;
+}
+
+async function collectWithFingerprintJS(
+  base: FingerprintSignals,
+): Promise<{ signals: FingerprintSignals; visitorId: string | null }> {
+  let visitorId: string | null = null;
   try {
-    const est = await navigator.storage?.estimate?.();
-    return est?.usage ?? null;
+    const fp = await loadFingerprintJS();
+    if (!fp) return { signals: base, visitorId: null };
+    const result = await fp.get();
+    visitorId = result.visitorId;
+    const c = result.components as unknown as FpComponents;
+
+    const screenResolution = val<[number, number]>(c, "screenResolution");
+    const colorDepth = val<number>(c, "colorDepth");
+    const dpr = window.devicePixelRatio ?? 1;
+    const screen = screenResolution
+      ? `${screenResolution[0]}x${screenResolution[1]}x${colorDepth ?? window.screen.colorDepth}@${dpr}`
+      : `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}@${dpr}`;
+
+    const pluginsVal = val<Array<{ name: string }>>(c, "plugins");
+    const fontsVal = val<string | string[]>(c, "fonts");
+
+    return {
+      visitorId,
+      signals: {
+        ...base,
+        canvas: val<{ fingerprint: string }>(c, "canvas")?.fingerprint ?? null,
+        webgl: val<string>(c, "webglVendorAndRenderer") ?? null,
+        audio: val<string>(c, "audio") ?? null,
+        fonts: Array.isArray(fontsVal) ? fontsVal.join(",") : (fontsVal ?? null),
+        plugins: Array.isArray(pluginsVal) ? pluginsVal.map((p) => p.name).join(",") : "",
+        screen,
+        platform: val<string>(c, "platform") ?? base.platform,
+        languages: Array.isArray(val(c, "languages"))
+          ? (val(c, "languages") as string[]).join(",")
+          : base.languages,
+        deviceMemory: val<number>(c, "deviceMemory") ?? base.deviceMemory,
+        hardwareConcurrency: val<number>(c, "hardwareConcurrency") ?? base.hardwareConcurrency,
+        maxTouchPoints:
+          val<{ maxTouchPoints: number }>(c, "touchSupport")?.maxTouchPoints ?? base.maxTouchPoints,
+        timezone: val<string>(c, "timezone") ?? base.timezone,
+        colorGamut: val<string>(c, "colorGamut") ?? base.colorGamut,
+        cookiesEnabled: val<boolean>(c, "cookiesEnabled") ?? base.cookiesEnabled,
+      },
+    };
   } catch {
-    return null;
+    return { signals: base, visitorId: null };
   }
 }
 
-export async function collectFingerprint(): Promise<FingerprintSignals> {
+export async function collectFingerprint(): Promise<FingerprintResult> {
   const nav = navigator;
-  let plugins = "";
-  try {
-    plugins = Array.from(nav.plugins)
-      .map((p) => p.name)
-      .join(",");
-  } catch {
-    plugins = "";
-  }
   const screenStr = `${screen.width}x${screen.height}x${screen.colorDepth}@${window.devicePixelRatio ?? 1}`;
   let tz = "";
   try {
@@ -206,10 +214,53 @@ export async function collectFingerprint(): Promise<FingerprintSignals> {
   } catch {
     tz = "";
   }
-  const [audio, storageUsage] = await Promise.all([audioFingerprint(), storageEstimate()]);
+  const [storageUsage, ipResult] = await Promise.all([
+    (async () => {
+      try {
+        const est = await navigator.storage?.estimate?.();
+        return est?.usage ?? null;
+      } catch {
+        return null;
+      }
+    })(),
+    collectLocalIp(),
+  ]);
   const { id, stability } = persistentId();
 
-  return {
+  let uaModel: string | null = null;
+  let uaPlatformVersion: string | null = null;
+  const uad = (
+    nav as unknown as {
+      userAgentData?: {
+        platform?: string;
+        getHighEntropyValues?: (
+          hints: string[],
+        ) => Promise<{ model?: string; platformVersion?: string }>;
+      };
+    }
+  ).userAgentData;
+  if (uad) {
+    try {
+      if (uad.getHighEntropyValues) {
+        const he = await uad.getHighEntropyValues(["model", "platformVersion"]);
+        uaModel = he.model ?? null;
+        uaPlatformVersion = he.platformVersion ?? null;
+      } else {
+        uaModel = uad.platform ?? null;
+      }
+    } catch {
+      uaModel = uad.platform ?? null;
+    }
+  }
+
+  let orientation = "";
+  try {
+    orientation = screen.orientation?.type ?? "";
+  } catch {
+    orientation = "";
+  }
+
+  const base: FingerprintSignals = {
     persistentId: id,
     idStability: stability,
     userAgent: nav.userAgent,
@@ -222,14 +273,25 @@ export async function collectFingerprint(): Promise<FingerprintSignals> {
     hardwareConcurrency: nav.hardwareConcurrency ?? null,
     deviceMemory: (nav as Navigator & { deviceMemory?: number }).deviceMemory ?? null,
     maxTouchPoints: nav.maxTouchPoints ?? 0,
-    canvas: canvasFingerprint(),
-    webgl: webglFingerprint(),
-    fonts: fontFingerprint(),
-    plugins,
+    canvas: null,
+    webgl: null,
+    fonts: null,
+    plugins: "",
     cookiesEnabled: nav.cookieEnabled,
     doNotTrack: nav.doNotTrack ?? "",
     webdriver: nav.webdriver ?? false,
-    audio,
+    audio: null,
     storageEstimate: storageUsage,
+    pointer: capability("(any-pointer: fine)", "fine", "coarse"),
+    hover: capability("(any-hover: hover)", "hover", "none"),
+    colorGamut: "srgb",
+    localIp: ipResult.ip,
+    mdnsProtected: ipResult.mdns,
+    uaModel,
+    uaPlatformVersion,
+    vibrate: "vibrate" in nav,
+    orientation,
   };
+
+  return collectWithFingerprintJS(base);
 }

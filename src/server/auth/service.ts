@@ -64,6 +64,7 @@ export interface PublicUser {
 export async function completeOAuthSignIn(
   session: OAuthSession,
   signals: FingerprintSignals,
+  fpVisitorId?: string | null,
 ): Promise<{ userId: string; onboardingCompleted: boolean }> {
   const sb = getSupabaseAnon();
   const { data, error } = await sb.auth.getUser(session.access_token);
@@ -116,7 +117,7 @@ export async function completeOAuthSignIn(
   }
 
   // Device binding + one-user-per-device enforcement.
-  const bind = await bindDeviceToUser(userId, signals);
+  const bind = await bindDeviceToUser(userId, signals, fpVisitorId);
   if (!bind.allowed) {
     throw new Error(bind.reason ?? "Device not allowed");
   }

@@ -9,8 +9,12 @@ export async function getMe() {
   return getCurrentUser();
 }
 
-export async function completeSignIn(session: OAuthSession, fingerprint: FingerprintSignals) {
-  return completeOAuthSignIn(session, fingerprint);
+export async function completeSignIn(
+  session: OAuthSession,
+  fingerprint: FingerprintSignals,
+  fpVisitorId?: string | null,
+) {
+  return completeOAuthSignIn(session, fingerprint, fpVisitorId);
 }
 
 export async function signOutAction() {

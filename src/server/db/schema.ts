@@ -53,6 +53,8 @@ export const devices = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     deviceHash: text("device_hash").notNull().unique(),
+    hardwareHash: text("hardware_hash"),
+    fpVisitorId: text("fp_visitor_id"),
     fingerprintJson: jsonb("fingerprint_json"),
     fingerprintVersion: integer("fingerprint_version").notNull().default(1),
     canvasHash: text("canvas_hash"),
@@ -75,7 +77,10 @@ export const devices = pgTable(
     flaggedAt: timestamp("flagged_at", { withTimezone: true }),
     attemptsCount: integer("attempts_count").notNull().default(0),
   },
-  (t) => [index("devices_last_seen_idx").on(t.lastSeenAt)],
+  (t) => [
+    index("devices_last_seen_idx").on(t.lastSeenAt),
+    index("devices_hardware_hash_idx").on(t.hardwareHash),
+  ],
 );
 
 export const userDevices = pgTable(

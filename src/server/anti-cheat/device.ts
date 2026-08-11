@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import type { FingerprintSignals } from "~/lib/fingerprint";
 import { getDb } from "~/server/db/client";
 import { devices, userDevices, users } from "~/server/db/schema";
@@ -18,10 +18,15 @@ export interface BindResult {
  * Upserts a device by its peppered hash and binds it to a user. Enforces
  * "one user per device" only when the device id is persistent, so private-mode
  * (Safari) or storage-blocked browsers never cause false multi-account blocks.
+ *
+ * Also detects cross-browser/same-hardware multi-accounting (log + flag only):
+ * if this new (user, device) link shares a browser-independent hardware
+ * signature with another active account, it is logged as suspicious.
  */
 export async function bindDeviceToUser(
   userId: string,
   signals: FingerprintSignals,
+  fpVisitorId?: string | null,
 ): Promise<BindResult> {
   const identity = computeDeviceIdentity(signals);
   const db = getDb();
@@ -42,6 +47,8 @@ export async function bindDeviceToUser(
       .set({
         lastIp: meta.ip,
         lastSeenAt: new Date(),
+        hardwareHash: identity.hardwareHash ?? existing.hardwareHash,
+        fpVisitorId: fpVisitorId ?? existing.fpVisitorId,
         canvasHash: identity.canvasHash ?? existing.canvasHash,
         webglHash: identity.webglHash ?? existing.webglHash,
         fontHash: identity.fontHash ?? existing.fontHash,
@@ -58,6 +65,8 @@ export async function bindDeviceToUser(
       .insert(devices)
       .values({
         deviceHash: identity.deviceHash,
+        hardwareHash: identity.hardwareHash,
+        fpVisitorId: fpVisitorId ?? null,
         fingerprintJson: signals as never,
         canvasHash: identity.canvasHash,
         webglHash: identity.webglHash,
@@ -74,6 +83,17 @@ export async function bindDeviceToUser(
       })
       .returning({ id: devices.id });
     deviceId = created.id;
+
+    if (identity.isVm) {
+      await logSuspicious({
+        userId,
+        deviceId,
+        ip: meta.ip,
+        eventType: "vm_or_headless",
+        severity: "info",
+        details: { webgl: signals.webgl },
+      });
+    }
   }
 
   const [binding] = await db
@@ -90,6 +110,7 @@ export async function bindDeviceToUser(
     return { deviceId, deviceHash: identity.deviceHash, allowed: true };
   }
 
+  // New (user, device) link.
   if (stable) {
     const enforce = await getSetting<boolean>("enforce_one_user_per_device", true);
     if (enforce) {
@@ -146,5 +167,82 @@ export async function bindDeviceToUser(
     isPrimary: stable,
     usageCount: 1,
   });
+
+  if (identity.hardwareHash) {
+    await detectHardwareCorrelation(
+      db,
+      identity.hardwareHash,
+      identity.deviceHash,
+      userId,
+      deviceId,
+      signals,
+    );
+  }
+
   return { deviceId, deviceHash: identity.deviceHash, allowed: true };
+}
+
+/**
+ * Cross-browser / same-device detection. Different browsers (or cleared-storage
+ * identities) on the same physical device share the browser-independent
+ * hardware signature but have different device_hashes. If another ACTIVE user
+ * is linked to a device with the same hardware signature, log it. Log + flag
+ * only — never blocks (avoids false positives on genuinely shared computers).
+ */
+async function detectHardwareCorrelation(
+  db: ReturnType<typeof getDb>,
+  hardwareHash: string,
+  deviceHash: string,
+  userId: string,
+  deviceId: string,
+  signals: FingerprintSignals,
+): Promise<void> {
+  const shared = await db
+    .select({
+      deviceId: devices.id,
+      linkedUserId: userDevices.userId,
+      userAgent: devices.userAgent,
+    })
+    .from(devices)
+    .innerJoin(userDevices, eq(userDevices.deviceId, devices.id))
+    .where(and(eq(devices.hardwareHash, hardwareHash), ne(devices.deviceHash, deviceHash)));
+
+  const otherUserIds = new Set<string>();
+  for (const row of shared) {
+    if (row.linkedUserId === userId) continue;
+    const [linked] = await db
+      .select({ isBlocked: users.isBlocked })
+      .from(users)
+      .where(eq(users.id, row.linkedUserId))
+      .limit(1);
+    if (linked && !linked.isBlocked) otherUserIds.add(row.linkedUserId);
+  }
+
+  if (otherUserIds.size === 0) return;
+
+  const distinctLinkedUsers = new Set(shared.map((r) => r.linkedUserId));
+  const critical = distinctLinkedUsers.size >= 2;
+  await logSuspicious({
+    userId,
+    deviceId,
+    eventType: "cross_browser_same_device",
+    severity: critical ? "critical" : "warn",
+    actionTaken: critical ? "flag" : "none",
+    details: {
+      hardwareHash,
+      otherUserIds: [...otherUserIds],
+      otherDeviceIds: shared.map((r) => r.deviceId),
+      browsers: shared.map((r) => r.userAgent),
+      localIp: signals.localIp,
+      uaModel: signals.uaModel,
+      mdnsProtected: signals.mdnsProtected,
+    },
+  });
+
+  await db
+    .update(users)
+    .set({
+      trustScore: sql`greatest(0, ${users.trustScore} - ${critical ? 20 : 10})`,
+    })
+    .where(eq(users.id, userId));
 }
