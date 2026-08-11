@@ -5,6 +5,9 @@ import { solidStart } from "@solidjs/start/config";
 import { lazyPlugins } from "vite-plus";
 
 export default defineConfig({
+  server: {
+    port: Number(process.env.PORT ?? 3000),
+  },
   staged: {
     "*": "vp check --fix",
   },

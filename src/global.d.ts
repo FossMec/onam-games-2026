@@ -5,3 +5,5 @@ declare namespace App {
     requestId?: string;
   }
 }
+
+declare module "virtual:uno.css";

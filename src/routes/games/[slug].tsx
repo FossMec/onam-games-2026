@@ -74,8 +74,8 @@ export default function GamePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           attemptToken: token,
-          submittedState: { placeholder: true },
-          movesCount: 0,
+          submittedState: isBraindead() ? { pressed: true } : { placeholder: true },
+          movesCount: isBraindead() ? 1 : 0,
         }),
       });
       const data = (await res.json()) as {
@@ -102,6 +102,7 @@ export default function GamePage() {
   };
 
   const playable = () => game() && (game()!.status === "live" || game()!.status === "tester");
+  const isBraindead = () => game()?.gameType === "braindead";
 
   return (
     <main>
@@ -153,20 +154,40 @@ export default function GamePage() {
           </Show>
 
           <Show when={me()?.onboardingCompleted && !attemptToken() && !result()}>
-            <button type="button" onClick={start} disabled={busy()}>
-              {busy() ? "Starting…" : "Start game"}
+            <button
+              type="button"
+              onClick={start}
+              disabled={busy()}
+              class={isBraindead() ? "btn btn-brand" : undefined}
+            >
+              {busy() ? "Starting…" : isBraindead() ? "START THE POINTLESS RITUAL" : "Start game"}
             </button>
-            <p>Only one attempt per game. The timer starts when you press start.</p>
+            <p>
+              {isBraindead()
+                ? "There is no strategy. There is no skill. There is only the button. Timer starts now."
+                : "Only one attempt per game. The timer starts when you press start."}
+            </p>
           </Show>
 
           <Show when={me()?.onboardingCompleted && attemptToken() && !result()}>
             <p>
               Timer: {Math.floor(elapsed() / 60)}m {elapsed() % 60}s
             </p>
-            <p>Timer is server-side; refreshing does not reset it.</p>
-            <button type="button" onClick={finish} disabled={busy()}>
-              {busy() ? "Submitting…" : "Finish"}
-            </button>
+            <Show
+              when={isBraindead()}
+              fallback={<p>Timer is server-side; refreshing does not reset it.</p>}
+            >
+              <p>Your mission, should you choose to accept it: press the button.</p>
+              <button
+                type="button"
+                onClick={finish}
+                disabled={busy()}
+                class="btn btn-brand"
+                style={isBraindead() ? "font-size: 1.4rem; padding: 1.5rem 3rem" : undefined}
+              >
+                {busy() ? "Submitting…" : "THE BUTTON"}
+              </button>
+            </Show>
           </Show>
 
           <Show when={result()}>
@@ -174,8 +195,12 @@ export default function GamePage() {
               {result()!.valid
                 ? result()!.afterDeadline
                   ? "Completed after the deadline — counts for global only."
-                  : "Completed! Your time: " + (result()!.durationMs / 1000).toFixed(1) + "s"
-                : "Submission rejected."}
+                  : isBraindead()
+                    ? `Wow. Incredible. You pressed a button in ${(result()!.durationMs / 1000).toFixed(1)}s. You are a legend among legends.`
+                    : "Completed! Your time: " + (result()!.durationMs / 1000).toFixed(1) + "s"
+                : isBraindead()
+                  ? "You failed to press the button. Even the button is disappointed."
+                  : "Submission rejected."}
             </p>
           </Show>
 

@@ -1,40 +1,168 @@
+@import "tailwindcss/index.css";
+@source "./**/*.{ts,tsx}";
+
+/*
+ * Design tokens — single place to re-skin the app. `@theme` wires each color
+ * to a runtime CSS variable so `[data-theme]` can override it live, and the
+ * generated utilities (bg-brand, text-muted, border-line, ...) all follow.
+ */
+@theme {
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
+  --color-on-brand: var(--text-on-brand);
+
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+
+  --color-ink: var(--text);
+  --color-muted: var(--text-muted);
+
+  --color-line: var(--border);
+
+  --color-ok: var(--success);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+
+  --radius: var(--radius-base);
+  --radius-lg: var(--radius-lg);
+}
+
+:root {
+  color-scheme: dark;
+
+  /* Brand — FOSS green × Onam yellow */
+  --brand: #4ade80;
+  --brand-strong: #22c55e;
+  --brand-soft: rgb(74 222 128 / 0.12);
+  --text-on-brand: #04110a;
+
+  --accent: #fbbf24;
+  --accent-soft: rgb(251 191 36 / 0.12);
+
+  /* Surfaces — terminal dark */
+  --surface: #0b0f14;
+  --surface-2: #111820;
+  --surface-3: #18222d;
+
+  --text: #e6edf3;
+  --text-muted: #8b98a5;
+
+  --border: #232d39;
+
+  --success: #4ade80;
+  --warn: #fbbf24;
+  --danger: #f87171;
+
+  --radius-base: 0.5rem;
+  --radius-lg: 0.75rem;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --brand: #16a34a;
+  --brand-strong: #15803d;
+  --brand-soft: rgb(22 163 74 / 0.1);
+  --text-on-brand: #ffffff;
+
+  --accent: #d97706;
+  --accent-soft: rgb(217 119 6 / 0.1);
+
+  --surface: #ffffff;
+  --surface-2: #f6f8fa;
+  --surface-3: #eceff3;
+
+  --text: #1f2937;
+  --text-muted: #6b7280;
+
+  --border: #d7dde3;
+
+  --success: #16a34a;
+  --warn: #d97706;
+  --danger: #dc2626;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
 body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--surface);
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
   font-family:
-    Gordita, Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-}
-
-a {
-  margin-right: 1rem;
-}
-
-main {
-  text-align: center;
-  padding: 1em;
-  margin: 0 auto;
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
+    "Helvetica Neue", sans-serif;
 }
 
 h1 {
-  color: #335d92;
-  text-transform: uppercase;
-  font-size: 4rem;
-  font-weight: 100;
-  line-height: 1.1;
-  margin: 4rem auto;
-  max-width: 14rem;
+  font-size: 1.6rem;
 }
 
-p {
-  max-width: 14rem;
-  margin: 2rem auto;
-  line-height: 1.35;
+nav {
+  display: flex;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
 }
 
-@media (min-width: 480px) {
-  h1 {
-    max-width: none;
+nav a {
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+nav a:hover {
+  color: var(--brand);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+label {
+  display: block;
+  margin-top: 1rem;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* Shared presentational helpers (swap-able design layer) */
+@layer components {
+  .btn-brand {
+    @apply inline-flex items-center justify-center gap-2 rounded px-4 py-2 font-medium transition-colors disabled:opacity-50 bg-brand text-on-brand hover:bg-brand-strong;
   }
-
-  p {
-    max-width: none;
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded px-4 py-2 font-medium transition-colors disabled:opacity-50 border border-line text-ink hover:bg-surface-3;
+  }
+  .card {
+    @apply rounded-lg border border-line bg-surface-2 p-4;
+  }
+  .input {
+    @apply w-full rounded border border-line bg-surface px-3 py-2 text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand;
+  }
+  .container {
+    @apply mx-auto w-full max-w-2xl px-4;
   }
 }

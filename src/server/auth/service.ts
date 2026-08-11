@@ -4,6 +4,7 @@ import { bindDeviceToUser } from "~/server/anti-cheat/device";
 import { logActivity } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
 import { authSessions, testers, users } from "~/server/db/schema";
+import { HttpError } from "~/server/errors";
 import { getRequestMeta } from "~/server/request";
 import { getSupabaseAdmin, getSupabaseAnon } from "~/server/supabase/client";
 import { clearAuthCookie, readAuthCookie, writeAuthCookie } from "./session";
@@ -174,22 +175,22 @@ export async function getCurrentDeviceId(): Promise<string | null> {
 /** Returns the signed-in user or throws. Used by protected actions. */
 export async function requireCurrentUser(): Promise<PublicUser> {
   const user = await getCurrentUser();
-  if (!user) throw new Error("Not signed in");
-  if (user.isBlocked) throw new Error("Account blocked");
+  if (!user) throw new HttpError(401, "Not signed in");
+  if (user.isBlocked) throw new HttpError(403, "Account blocked");
   return user;
 }
 
 /** Returns the bound device id or throws. Used by protected actions. */
 export async function requireCurrentDevice(): Promise<string> {
   const deviceId = await getCurrentDeviceId();
-  if (!deviceId) throw new Error("No device bound to this session");
+  if (!deviceId) throw new HttpError(401, "No device bound to this session");
   return deviceId;
 }
 
 /** Returns the current user if they are an admin, else throws. */
 export async function requireAdmin(): Promise<PublicUser> {
   const user = await requireCurrentUser();
-  if (user.role !== "admin") throw new Error("Forbidden");
+  if (user.role !== "admin") throw new HttpError(403, "Forbidden");
   return user;
 }
 
