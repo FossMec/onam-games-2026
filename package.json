@@ -31,6 +31,7 @@
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.2.0",
     "drizzle-kit": "^0.31.10",
+    "iron-webcrypto": "^2.0.0",
     "tailwindcss": "^4.3.3",
     "vite-plus": "catalog:"
   },
