@@ -1,6 +1,9 @@
 import { and, eq, isNull } from "drizzle-orm";
+import type { FingerprintSignals } from "~/lib/fingerprint";
+import { bindDeviceToUser } from "~/server/anti-cheat/device";
+import { logActivity } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
-import { authSessions, users } from "~/server/db/schema";
+import { authSessions, testers, users } from "~/server/db/schema";
 import { getRequestMeta } from "~/server/request";
 import { getSupabaseAdmin, getSupabaseAnon } from "~/server/supabase/client";
 import { clearAuthCookie, readAuthCookie, writeAuthCookie } from "./session";
@@ -53,11 +56,13 @@ export interface PublicUser {
 
 /**
  * Called after a Google OAuth sign-in completes on the client.
- * Validates the Supabase session, upserts our user row, creates a DB-backed
- * auth session and sets the HttpOnly session cookie.
+ * Validates the Supabase session, upserts our user row, binds the device
+ * (one-user-per-device enforcement), creates a DB-backed auth session and sets
+ * the HttpOnly session cookie. Testers added by email are promoted here.
  */
 export async function completeOAuthSignIn(
   session: OAuthSession,
+  signals: FingerprintSignals,
 ): Promise<{ userId: string; onboardingCompleted: boolean }> {
   const sb = getSupabaseAnon();
   const { data, error } = await sb.auth.getUser(session.access_token);
@@ -98,11 +103,29 @@ export async function completeOAuthSignIn(
     userId = created.id;
   }
 
+  // Tester promotion (added by email via /admin). Testers go through the exact
+  // same fingerprint + device binding as everyone else.
+  const [tester] = await db
+    .select({ id: testers.id })
+    .from(testers)
+    .where(and(eq(testers.email, email), eq(testers.active, true)))
+    .limit(1);
+  if (tester) {
+    await db.update(users).set({ role: "tester" }).where(eq(users.id, userId));
+  }
+
+  // Device binding + one-user-per-device enforcement.
+  const bind = await bindDeviceToUser(userId, signals);
+  if (!bind.allowed) {
+    throw new Error(bind.reason ?? "Device not allowed");
+  }
+
   const meta = getRequestMeta();
   const [sess] = await db
     .insert(authSessions)
     .values({
       userId,
+      deviceId: bind.deviceId,
       refreshToken: session.refresh_token,
       accessToken: session.access_token,
       expiresAt: session.expires_at ? new Date(session.expires_at * 1000) : null,
@@ -113,7 +136,16 @@ export async function completeOAuthSignIn(
     })
     .returning({ id: authSessions.id });
 
-  await writeAuthCookie(sess.id);
+  await writeAuthCookie({ sid: sess.id, deviceId: bind.deviceId });
+
+  await logActivity({
+    userId,
+    deviceId: bind.deviceId,
+    ip: meta.ip,
+    eventType: existing ? "login" : "signup",
+    meta: { deviceHash: bind.deviceHash, idStability: signals.idStability },
+  });
+
   return { userId, onboardingCompleted: existing?.onboardingCompleted ?? false };
 }
 
@@ -133,12 +165,25 @@ export async function getCurrentUser(): Promise<PublicUser | null> {
   return (row ?? null) as PublicUser | null;
 }
 
+/** Device id bound to the current session, if any. */
+export async function getCurrentDeviceId(): Promise<string | null> {
+  const data = await readAuthCookie();
+  return data?.deviceId ?? null;
+}
+
 /** Returns the signed-in user or throws. Used by protected actions. */
 export async function requireCurrentUser(): Promise<PublicUser> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not signed in");
   if (user.isBlocked) throw new Error("Account blocked");
   return user;
+}
+
+/** Returns the bound device id or throws. Used by protected actions. */
+export async function requireCurrentDevice(): Promise<string> {
+  const deviceId = await getCurrentDeviceId();
+  if (!deviceId) throw new Error("No device bound to this session");
+  return deviceId;
 }
 
 /** Refresh the stored Supabase access token if it is near expiry. */

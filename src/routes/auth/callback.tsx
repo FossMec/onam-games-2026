@@ -1,5 +1,6 @@
 import { useNavigate } from "@solidjs/router";
 import { onMount } from "solid-js";
+import { collectFingerprint } from "~/lib/fingerprint";
 import { getBrowserSupabase } from "~/lib/supabase-client";
 import { completeSignIn } from "~/server/auth/actions";
 
@@ -14,11 +15,15 @@ export default function AuthCallback() {
     }
     const session = data.session;
     try {
-      const result = await completeSignIn({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
-        expires_at: session.expires_at ?? undefined,
-      });
+      const fingerprint = await collectFingerprint();
+      const result = await completeSignIn(
+        {
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+          expires_at: session.expires_at ?? undefined,
+        },
+        fingerprint,
+      );
       navigate(result.onboardingCompleted ? "/" : "/onboarding", {
         replace: true,
       });

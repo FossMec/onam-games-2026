@@ -1,6 +1,7 @@
 "use server";
 
 import { ZodError } from "zod";
+import type { FingerprintSignals } from "~/lib/fingerprint";
 import { completeOAuthSignIn, getCurrentUser, signOut, type OAuthSession } from "./service";
 import { completeOnboarding, uploadAvatar, type OnboardingInput } from "./onboarding";
 
@@ -8,8 +9,8 @@ export async function getMe() {
   return getCurrentUser();
 }
 
-export async function completeSignIn(session: OAuthSession) {
-  return completeOAuthSignIn(session);
+export async function completeSignIn(session: OAuthSession, fingerprint: FingerprintSignals) {
+  return completeOAuthSignIn(session, fingerprint);
 }
 
 export async function signOutAction() {

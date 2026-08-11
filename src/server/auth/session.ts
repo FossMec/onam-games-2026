@@ -4,6 +4,7 @@ const SESSION_NAME = "og_session";
 
 export interface AuthCookieData {
   sid?: string;
+  deviceId?: string;
 }
 
 function getSecret(): string {
@@ -31,15 +32,15 @@ async function getSessionManager() {
 export async function readAuthCookie(): Promise<AuthCookieData | null> {
   try {
     const session = await getSessionManager();
-    return session.data.sid ? { sid: session.data.sid } : null;
+    return session.data.sid ? session.data : null;
   } catch {
     return null;
   }
 }
 
-export async function writeAuthCookie(sid: string): Promise<void> {
+export async function writeAuthCookie(data: AuthCookieData): Promise<void> {
   const session = await getSessionManager();
-  await session.update({ sid });
+  await session.update(data);
 }
 
 export async function clearAuthCookie(): Promise<void> {
