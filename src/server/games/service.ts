@@ -1,6 +1,8 @@
 import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
 import { games } from "~/server/db/schema";
+import type { GameMetric } from "./registry";
+import { getGameDefByType } from "./registry";
 import { getSetting } from "~/server/settings/service";
 
 export type GameStatus = "upcoming" | "tester" | "live" | "closed";
@@ -18,7 +20,13 @@ export interface GameCard {
   endAt: string | null;
   testerReleaseAt: string | null;
   status: GameStatus;
-  config: unknown;
+  /** Registry copy — safe for every game at every status. */
+  tagline: string;
+  howTo: string[];
+  metric: GameMetric;
+  maxAttempts: number;
+  /** Public asset references only. Never puzzle data. */
+  assets: unknown;
 }
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
@@ -98,6 +106,7 @@ function toCard(
     status: GameStatus;
   },
 ): GameCard {
+  const def = getGameDefByType(game.gameType);
   return {
     id: game.id,
     slug: game.slug,
@@ -110,7 +119,16 @@ function toCard(
     endAt: schedule.endAt?.toISOString() ?? null,
     testerReleaseAt: schedule.testerReleaseAt?.toISOString() ?? null,
     status: schedule.status,
-    config: game.configJson,
+    // Only registry *copy* ships here. The previous version returned
+    // `configJson` wholesale for every published game — including unreleased
+    // ones — which handed tomorrow's setup to anyone who called the action.
+    // Puzzle data now reaches the browser solely through `/start`, which
+    // refuses to run until the game is live.
+    tagline: def?.public.tagline ?? "",
+    howTo: def?.public.howTo ?? [],
+    metric: def?.metric ?? "time",
+    maxAttempts: def?.maxAttempts ?? 1,
+    assets: game.assetsJson,
   };
 }
 

@@ -121,11 +121,12 @@ export async function bindDeviceToUser(
         .limit(1);
       if (other && other.userId !== userId) {
         const [otherUser] = await db
-          .select({ isBlocked: users.isBlocked })
+          .select({ banLevel: users.banLevel })
           .from(users)
           .where(eq(users.id, other.userId))
           .limit(1);
-        if (otherUser && !otherUser.isBlocked) {
+        // A hard-banned prior owner does not get to lock the device forever.
+        if (otherUser && otherUser.banLevel < 4) {
           await logSuspicious({
             userId,
             deviceId,
@@ -211,11 +212,11 @@ async function detectHardwareCorrelation(
   for (const row of shared) {
     if (row.linkedUserId === userId) continue;
     const [linked] = await db
-      .select({ isBlocked: users.isBlocked })
+      .select({ banLevel: users.banLevel })
       .from(users)
       .where(eq(users.id, row.linkedUserId))
       .limit(1);
-    if (linked && !linked.isBlocked) otherUserIds.add(row.linkedUserId);
+    if (linked && linked.banLevel < 4) otherUserIds.add(row.linkedUserId);
   }
 
   if (otherUserIds.size === 0) return;

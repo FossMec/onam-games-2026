@@ -2,88 +2,206 @@
 @source "./**/*.{ts,tsx}";
 
 /*
- * Design tokens — single place to re-skin the app. `@theme` wires each color
- * to a runtime CSS variable so `[data-theme]` can override it live, and the
- * generated utilities (bg-brand, text-muted, border-line, ...) all follow.
+ * ============================================================================
+ * DESIGN LANGUAGE — pop art / comic book x Memphis x Linux ricing
+ * ============================================================================
+ *
+ * Childlike, loud, funny, approachable. Washed vintage-comic-print colour on
+ * cream newsprint, never neon.
+ *
+ * SIX RULES
+ *
+ *  1. NO SHADOWS. ANYWHERE. Hard offset shadows are the neobrutalism tell, and
+ *     comics never used them. Depth comes from three things instead:
+ *       - ink outline weight (thicker = closer)
+ *       - flat colour blocking
+ *       - HALFTONE DOTS as shading, which is literally how comics shaded
+ *     If something needs to feel raised, give it dots, not a shadow.
+ *
+ *  2. THE HALFTONE IS A POOKALAM. Ben-Day dots are the signature of pop art.
+ *     Ours are laid out in radial pookalam symmetry instead of a square grid,
+ *     so the pop-art motif and the Onam motif are the same object.
+ *
+ *  3. MEMPHIS CONFETTI IS SECRETLY ONAM. vallam -> long zigzag, pookalam ->
+ *     concentric rings, muthukuda -> half circle, banana leaf -> blob,
+ *     palm -> squiggle. Reads as Memphis to outsiders, as Onam to Malayalis.
+ *
+ *  4. EVERYTHING IS INKED. One warm near-black. Every box, button, input and
+ *     avatar gets the same confident outline. Never a grey hairline border.
+ *
+ *  5. WASHED, NOT NEON. Six accents tuned to near-identical lightness so they
+ *     clash harmoniously. Saturated neon on cream looks like a scam site;
+ *     washed vintage print looks like a comic annual from 1994.
+ *
+ *  6. TILT IS PUNCTUATION. A degree or two of rotation on stickers and badges
+ *     sells the collage. Never rotate anything a player must read under time
+ *     pressure — no boards, no timers, no leaderboard rows.
+ *
+ * Restyle here, not in routes.
  */
+
 @theme {
-  --color-brand: var(--brand);
-  --color-brand-strong: var(--brand-strong);
-  --color-brand-soft: var(--brand-soft);
-  --color-on-brand: var(--text-on-brand);
+  --color-brand: var(--pop-teal);
+  --color-brand-strong: var(--pop-teal-deep);
+  --color-brand-soft: var(--pop-teal-soft);
+  --color-on-brand: var(--ink);
 
-  --color-accent: var(--accent);
-  --color-accent-soft: var(--accent-soft);
+  --color-accent: var(--pop-yellow);
+  --color-accent-strong: var(--pop-yellow-deep);
+  --color-accent-soft: var(--pop-yellow-soft);
 
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-surface-3: var(--surface-3);
+  --color-surface: var(--paper);
+  --color-surface-2: var(--paper-2);
+  --color-surface-3: var(--paper-3);
 
-  --color-ink: var(--text);
-  --color-muted: var(--text-muted);
+  --color-ink: var(--ink);
+  --color-muted: var(--ink-soft);
 
-  --color-line: var(--border);
+  --color-line: var(--ink);
 
-  --color-ok: var(--success);
-  --color-warn: var(--warn);
-  --color-danger: var(--danger);
+  --color-ok: var(--pop-teal);
+  --color-warn: var(--pop-yellow-deep);
+  --color-danger: var(--pop-red);
+
+  --color-pop-red: var(--pop-red);
+  --color-pop-yellow: var(--pop-yellow);
+  --color-pop-teal: var(--pop-teal);
+  --color-pop-blue: var(--pop-blue);
+  --color-pop-pink: var(--pop-pink);
+  --color-pop-purple: var(--pop-purple);
 
   --radius: var(--radius-base);
   --radius-lg: var(--radius-lg);
+
+  --font-logo: var(--font-stack-logo);
+  --font-display: var(--font-stack-display);
+  --font-sans: var(--font-stack-body);
+  --font-mono: var(--font-stack-mono);
+  --font-comic: var(--font-stack-comic);
+  --font-hand: var(--font-stack-hand);
 }
 
 :root {
-  color-scheme: dark;
+  /* Single theme. Cream paper IS the identity — a dark variant would dilute it. */
+  color-scheme: light;
 
-  /* Brand — FOSS green × Onam yellow */
-  --brand: #4ade80;
-  --brand-strong: #22c55e;
-  --brand-soft: rgb(74 222 128 / 0.12);
-  --text-on-brand: #04110a;
+  /* --- paper + ink ------------------------------------------------------- */
+  --paper: #fbf3e4; /* newsprint cream */
+  --paper-2: #fffcf5; /* raised panel */
+  --paper-3: #f0e4cc; /* sunken / muted fill */
+  --ink: #22202b; /* warm near-black — every outline, every glyph */
+  --ink-soft: #6b6478;
 
-  --accent: #fbbf24;
-  --accent-soft: rgb(251 191 36 / 0.12);
+  /* --- washed comic print ------------------------------------------------ */
+  --pop-red: #f2695c;
+  --pop-yellow: #f5c443;
+  --pop-teal: #5fbfa8;
+  --pop-blue: #7b9be0;
+  --pop-pink: #e48bb4;
+  --pop-purple: #9c82d4;
 
-  /* Surfaces — terminal dark */
-  --surface: #0b0f14;
-  --surface-2: #111820;
-  --surface-3: #18222d;
+  /* Deeper cuts, for text that must pass contrast on cream. */
+  --pop-teal-deep: #2f8f79;
+  --pop-yellow-deep: #b3820b;
 
-  --text: #e6edf3;
-  --text-muted: #8b98a5;
+  --pop-teal-soft: rgb(95 191 168 / 0.22);
+  --pop-yellow-soft: rgb(245 196 67 / 0.25);
 
-  --border: #232d39;
+  /* Ink weight is the depth system. Mobile first; steps up at sm. */
+  --ink-w: 2.5px;
+  --ink-w-bold: 4px;
 
-  --success: #4ade80;
-  --warn: #fbbf24;
-  --danger: #f87171;
-
+  /* Comic panels are boxy but not razor-square. */
   --radius-base: 0.5rem;
-  --radius-lg: 0.75rem;
+  --radius-lg: 1rem;
+
+  /*
+   * Six faces, each with exactly one job — that discipline is what keeps a
+   * multi-font system from reading like a ransom note. A reader should never
+   * wonder why a face changed.
+   *
+   * Comic Sans as a fallback is a genuinely correct call, not a joke: it is
+   * the most widely installed rounded comic face on earth, so an un-fonted
+   * first paint still lands in the right neighbourhood.
+   */
+  --font-stack-logo: "Bungee", "Baloo Chettan 2", Impact, sans-serif;
+  --font-stack-display:
+    "Baloo Chettan 2", "Baloo 2", "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif;
+  --font-stack-body: "Nunito", "Segoe UI Rounded", system-ui, -apple-system, sans-serif;
+  --font-stack-mono: "Space Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-stack-comic: "Bangers", "Baloo Chettan 2", Impact, fantasy;
+  --font-stack-hand: "Caveat", "Comic Sans MS", cursive;
 }
 
-:root[data-theme="light"] {
-  color-scheme: light;
-  --brand: #16a34a;
-  --brand-strong: #15803d;
-  --brand-soft: rgb(22 163 74 / 0.1);
-  --text-on-brand: #ffffff;
+@media (min-width: 640px) {
+  :root {
+    --ink-w: 3px;
+    --ink-w-bold: 5px;
+  }
+}
 
-  --accent: #d97706;
-  --accent-soft: rgb(217 119 6 / 0.1);
+/*
+ * Self-hosted, OFL-licensed, no CDN. Every font on this site is free software —
+ * which is both the correct call for a FOSS event and a line in the footer.
+ * Files are fetched by `vp run fonts:fetch`; the stacks above degrade cleanly
+ * until they land, so nothing is broken by their absence.
+ */
+/* Display + body carry the whole page, so these two are the preloaded pair. */
+@font-face {
+  font-family: "Baloo Chettan 2";
+  src: url("/fonts/baloo-chettan-2.woff2") format("woff2");
+  font-weight: 400 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Nunito";
+  src: url("/fonts/nunito.woff2") format("woff2");
+  font-weight: 400 900;
+  font-display: swap;
+}
 
-  --surface: #ffffff;
-  --surface-2: #f6f8fa;
-  --surface-3: #eceff3;
+/* Wordmark only. Shade is the second layer of the poster-chrome stack. */
+@font-face {
+  font-family: "Bungee";
+  src: url("/fonts/bungee.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Bungee Shade";
+  src: url("/fonts/bungee-shade.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
 
-  --text: #1f2937;
-  --text-muted: #6b7280;
+/* Numerals — timers, leaderboards, anything measurable. */
+@font-face {
+  font-family: "Space Mono";
+  src: url("/fonts/space-mono-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Space Mono";
+  src: url("/fonts/space-mono-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
 
-  --border: #d7dde3;
+/* Onomatopoeia shouts. */
+@font-face {
+  font-family: "Bangers";
+  src: url("/fonts/bangers.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
 
-  --success: #16a34a;
-  --warn: #d97706;
-  --danger: #dc2626;
+/* Margin scribbles — the sarcasm channel. */
+@font-face {
+  font-family: "Caveat";
+  src: url("/fonts/caveat.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
 }
 
 * {
@@ -97,34 +215,50 @@ body {
 }
 
 body {
-  background-color: var(--surface);
-  color: var(--text);
-  line-height: 1.5;
+  background-color: var(--paper);
+  color: var(--ink);
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
-    "Helvetica Neue", sans-serif;
+  font-family: var(--font-stack-body);
+
+  /*
+   * The pookalam halftone. Two conic rings of dots radiating from the top
+   * centre, plus a faint terrazzo speckle. Pure gradients — zero requests,
+   * scales to any viewport, and it is the page's only "shading".
+   */
+  background-image:
+    repeating-conic-gradient(
+      from 0deg at 50% -10%,
+      var(--pop-yellow-soft) 0deg 0.9deg,
+      transparent 0.9deg 9deg
+    ),
+    repeating-radial-gradient(circle at 50% -10%, rgb(34 32 43 / 0.05) 0 2px, transparent 2px 46px);
+  background-attachment: fixed;
+}
+
+/* Display face is the loud one: heavy, tight, a touch oversized. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-stack-display);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  text-wrap: balance;
 }
 
 h1 {
-  font-size: 1.6rem;
+  font-size: clamp(2rem, 8vw, 3.25rem);
 }
 
-nav {
-  display: flex;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--border);
-}
-
-nav a {
-  color: var(--text);
-  text-decoration: none;
-  font-size: 0.9rem;
-}
-
-nav a:hover {
-  color: var(--brand);
+/* Anything measurable is mono + tabular, automatically. */
+.tabular-nums,
+time,
+code,
+kbd,
+samp {
+  font-family: var(--font-stack-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 table {
@@ -132,37 +266,397 @@ table {
   width: 100%;
 }
 
+/* Admin + leaderboard tables have bare markup and lean on these. */
 th,
 td {
   text-align: left;
-  padding: 0.5rem;
-  border-bottom: 1px solid var(--border);
+  padding: 0.65rem 0.5rem;
+  border-bottom: var(--ink-w) solid var(--ink);
+}
+
+th {
+  font-family: var(--font-stack-display);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--paper-3);
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
 }
 
 label {
   display: block;
   margin-top: 1rem;
+  font-weight: 700;
 }
 
 button {
   cursor: pointer;
+  font-family: inherit;
 }
 
-/* Shared presentational helpers (swap-able design layer) */
+a {
+  color: inherit;
+}
+
+::selection {
+  background: var(--pop-yellow);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: var(--ink-w-bold) solid var(--pop-blue);
+  outline-offset: 2px;
+}
+
 @layer components {
+  /* ---------------------------------------------------------------- layout */
+  .container {
+    @apply mx-auto w-full max-w-3xl px-4;
+  }
+
+  /* ----------------------------------------------------------------- ink ---
+   * One outline treatment, used everywhere. `--pop` retints any element's
+   * decorative fill without needing a new class.
+   */
+  .inked {
+    border: var(--ink-w) solid var(--ink);
+  }
+
+  /* ---------------------------------------------------------------- panels */
+
+  /*
+   * Comic panel. Flat fill, confident outline, no shadow. A coloured strip
+   * along the top does the job a shadow used to — it separates the panel from
+   * the page and lets each card carry its own accent.
+   */
+  .card {
+    @apply relative rounded bg-surface-2 p-4;
+    border: var(--ink-w) solid var(--ink);
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 0.55rem;
+    background: var(--pop, var(--pop-yellow));
+    border-bottom: var(--ink-w) solid var(--ink);
+    border-radius: calc(var(--radius-base) - 2px) calc(var(--radius-base) - 2px) 0 0;
+  }
+
+  /* The strip eats into the top padding, so give it room back. */
+  .card {
+    padding-top: 1.35rem;
+  }
+
+  /* Opt out of the strip when a card is purely functional. */
+  .card-plain::before {
+    display: none;
+  }
+  .card-plain {
+    padding-top: 1rem;
+  }
+
+  .pop-red {
+    --pop: var(--pop-red);
+  }
+  .pop-yellow {
+    --pop: var(--pop-yellow);
+  }
+  .pop-teal {
+    --pop: var(--pop-teal);
+  }
+  .pop-blue {
+    --pop: var(--pop-blue);
+  }
+  .pop-pink {
+    --pop: var(--pop-pink);
+  }
+  .pop-purple {
+    --pop: var(--pop-purple);
+  }
+
+  /* --------------------------------------------------------------- buttons */
+
+  /*
+   * Depth without shadow: the button is a flat inked block that physically
+   * sinks. On press it translates 2px and the fill darkens via an inset
+   * halftone. Big tap targets — 48px minimum, this is a phone-first event.
+   */
+  .btn-brand,
+  .btn-accent,
+  .btn-ghost,
+  .btn-danger {
+    @apply relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded px-5 py-2.5 text-center transition-transform duration-75 disabled:cursor-not-allowed disabled:opacity-55;
+    font-family: var(--font-stack-display);
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: 0.01em;
+    border: var(--ink-w) solid var(--ink);
+    color: var(--ink);
+  }
+
+  /* Ben-Day dots wash across the button on press — comic shading, not a shadow. */
+  .btn-brand::after,
+  .btn-accent::after,
+  .btn-ghost::after,
+  .btn-danger::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 75ms;
+    background-image: radial-gradient(rgb(34 32 43 / 0.4) 1.2px, transparent 1.3px);
+    background-size: 6px 6px;
+    pointer-events: none;
+  }
+
+  .btn-brand:active:not(:disabled),
+  .btn-accent:active:not(:disabled),
+  .btn-ghost:active:not(:disabled),
+  .btn-danger:active:not(:disabled) {
+    transform: translateY(2px);
+  }
+
+  .btn-brand:active:not(:disabled)::after,
+  .btn-accent:active:not(:disabled)::after,
+  .btn-ghost:active:not(:disabled)::after,
+  .btn-danger:active:not(:disabled)::after {
+    opacity: 1;
+  }
+
   .btn-brand {
-    @apply inline-flex items-center justify-center gap-2 rounded px-4 py-2 font-medium transition-colors disabled:opacity-50 bg-brand text-on-brand hover:bg-brand-strong;
+    background: var(--pop-teal);
+  }
+  .btn-accent {
+    background: var(--pop-yellow);
+  }
+  .btn-danger {
+    background: var(--pop-red);
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded px-4 py-2 font-medium transition-colors disabled:opacity-50 border border-line text-ink hover:bg-surface-3;
+    background: var(--paper-2);
   }
-  .card {
-    @apply rounded-lg border border-line bg-surface-2 p-4;
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--paper-3);
   }
+
+  /* ----------------------------------------------------------------- forms */
   .input {
-    @apply w-full rounded border border-line bg-surface px-3 py-2 text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand;
+    @apply w-full rounded bg-surface-2 px-3 py-2.5 text-ink placeholder:text-muted focus:outline-none;
+    font-family: var(--font-stack-body);
+    font-weight: 600;
+    border: var(--ink-w) solid var(--ink);
+    min-height: 3rem;
   }
-  .container {
-    @apply mx-auto w-full max-w-2xl px-4;
+
+  .input:focus {
+    background: var(--pop-yellow-soft);
+  }
+
+  /* --------------------------------------------------------------- accents */
+
+  /* The one place tilt is allowed. Slapped on, like a real sticker. */
+  .sticker {
+    @apply inline-block rounded px-2.5 py-1 text-xs;
+    font-family: var(--font-stack-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border: var(--ink-w) solid var(--ink);
+    background: var(--pop, var(--pop-yellow));
+    color: var(--ink);
+    transform: rotate(-2.5deg);
+  }
+
+  .sticker-alt {
+    transform: rotate(2deg);
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs;
+    font-family: var(--font-stack-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 2px solid var(--ink);
+    background: var(--pop, var(--paper-3));
+    color: var(--ink);
+  }
+
+  /*
+   * Comic onomatopoeia. Manglish, never POW/BAM — this is the joke nobody
+   * else can copy. Pair with <Burst/> for the starburst behind it.
+   */
+  .shout {
+    font-family: var(--font-stack-comic);
+    font-size: clamp(2rem, 9vw, 3.5rem);
+    letter-spacing: 0.02em;
+    line-height: 0.95;
+    color: var(--pop-red);
+    -webkit-text-stroke: 2px var(--ink);
+    paint-order: stroke fill;
+    transform: rotate(-3deg);
+    display: inline-block;
+  }
+
+  /*
+   * The sarcasm channel. Rendering asides in a distinct marked style keeps
+   * the jokes from muddying functional copy — you can be as rude as you like
+   * in here without ever making a button ambiguous.
+   */
+  /*
+   * Set in a marker hand so every aside looks scrawled in the margin of the
+   * comic rather than typeset. Giving the jokes their own visual voice is what
+   * lets the functional copy stay plain — you can be as rude as you like in
+   * here without ever making a button ambiguous.
+   */
+  .comment {
+    font-family: var(--font-stack-hand);
+    font-size: 1.15rem;
+    line-height: 1.25;
+    color: var(--ink-soft);
+    transform: rotate(-0.6deg);
+    display: inline-block;
+  }
+
+  .comment::before {
+    content: "↳ ";
+    color: var(--pop-teal-deep);
+  }
+
+  /* ------------------------------------------------------------- wordmark --
+   * Real comic-poster chrome, no images: Bungee Shade renders the solid drop
+   * behind, Bungee renders the face on top, offset by the shade's own depth.
+   * Two text layers, one element.
+   */
+  .wordmark {
+    position: relative;
+    display: inline-block;
+    font-family: var(--font-stack-logo);
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    color: var(--ink);
+  }
+
+  .wordmark::before {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    font-family: "Bungee Shade", var(--font-stack-logo);
+    color: var(--pop-yellow);
+    z-index: -1;
+  }
+
+  /* Section heading with a dashed rule filling the remaining width. */
+  .rule {
+    @apply flex items-center gap-3 text-sm uppercase;
+    font-family: var(--font-stack-display);
+    font-weight: 800;
+    letter-spacing: 0.08em;
+  }
+
+  .rule::after {
+    content: "";
+    flex: 1;
+    height: 0;
+    border-top: var(--ink-w) dashed var(--ink);
+    opacity: 0.35;
+  }
+
+  /* Halftone shading, as a utility. This is the shadow replacement. */
+  .halftone {
+    background-image: radial-gradient(var(--ink) 1.4px, transparent 1.5px);
+    background-size: 7px 7px;
+    opacity: 0.16;
+  }
+
+  /* Decorative art layers never touch layout or catch taps. */
+  .art-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+  }
+
+  .art-over {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+/* --------------------------------------------------------------- animation --
+ * Subtle, ambient, and strictly decorative. Transform/opacity only, so nothing
+ * can ever shift layout (CLS stays 0). Gameplay surfaces opt out entirely.
+ */
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(var(--spin, 0deg));
+  }
+  50% {
+    transform: translate3d(0, -6px, 0) rotate(calc(var(--spin, 0deg) + 3deg));
+  }
+}
+
+@keyframes pookalam-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pop-in {
+  0% {
+    transform: scale(0.7) rotate(-6deg);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.06) rotate(1.5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(-1.5deg);
+  }
+  50% {
+    transform: rotate(1.5deg);
+  }
+}
+
+.anim-drift {
+  animation: drift 7s ease-in-out infinite;
+}
+
+.anim-turn {
+  animation: pookalam-turn 240s linear infinite;
+}
+
+.anim-pop {
+  animation: pop-in 340ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.anim-wiggle:hover {
+  animation: wiggle 320ms ease-in-out 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

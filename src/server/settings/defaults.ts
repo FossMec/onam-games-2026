@@ -65,10 +65,21 @@ export const settingsRegistry: SettingDef[] = [
     defaultValue: "",
   },
   {
-    key: "scoring.percentile_anchor",
-    group: "scoring",
-    description: "Percentile anchor used to normalise a day's times (p99 = 1.0)",
-    defaultValue: 99,
+    key: "hunt.final_token",
+    group: "hunt",
+    /**
+     * Server-only. Never expose this through a public settings reader — it is
+     * the single answer to the day-6 hunt for every player.
+     */
+    description: "Treasure hunt final-stage token (case/punctuation insensitive). Keep secret.",
+    defaultValue: "",
+  },
+  {
+    key: "hunt.token_query_param",
+    group: "hunt",
+    description:
+      "Query parameter the final clue uses to hand over the token, e.g. /games/treasure-hunt?token=…",
+    defaultValue: "token",
   },
 ];
 

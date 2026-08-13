@@ -8,7 +8,9 @@ import { submitOnboarding, uploadAvatarAction } from "~/server/auth/actions";
 export default function Onboarding() {
   const navigate = useNavigate();
   const [college, setCollege] = createSignal("");
+  const [collegeOther, setCollegeOther] = createSignal("");
   const [branch, setBranch] = createSignal("");
+  const [branchOther, setBranchOther] = createSignal("");
   const [batch, setBatch] = createSignal("");
   const [div, setDiv] = createSignal("none");
   const [instagram, setInstagram] = createSignal("");
@@ -63,6 +65,8 @@ export default function Onboarding() {
           | "me"
           | "other"
           | undefined,
+        collegeOther: collegeOther().trim() || undefined,
+        branchOther: branchOther().trim() || undefined,
         batch: (batch() || undefined) as "27" | "28" | "29" | "30" | "<=26" | undefined,
         div: (div() || undefined) as "none" | "a" | "b" | "c" | undefined,
         instagramHandle: instagram().trim().replace(/^@+/, "") || undefined,
@@ -146,6 +150,28 @@ export default function Onboarding() {
             </Show>
           </div>
 
+          <Show when={college() === "other"}>
+            <div>
+              <label for="collegeOther" class="text-sm font-medium">
+                Where are you from? *
+              </label>
+              <input
+                id="collegeOther"
+                value={collegeOther()}
+                onInput={(e) => setCollegeOther(e.currentTarget.value)}
+                placeholder="College, school, or 'Working professional'"
+                maxLength={80}
+                class="input"
+              />
+              <p class="mt-1 text-xs text-muted">
+                This shows next to your name on the leaderboard.
+              </p>
+              <Show when={fieldError("collegeOther")}>
+                <p class="mt-1 text-sm text-danger">{fieldError("collegeOther")}</p>
+              </Show>
+            </div>
+          </Show>
+
           <Show when={college() === "mec"}>
             <div>
               <label for="branch" class="text-sm font-medium">
@@ -168,6 +194,25 @@ export default function Onboarding() {
                 <p class="mt-1 text-sm text-danger">{fieldError("branch")}</p>
               </Show>
             </div>
+
+            <Show when={branch() === "other"}>
+              <div>
+                <label for="branchOther" class="text-sm font-medium">
+                  Which branch? *
+                </label>
+                <input
+                  id="branchOther"
+                  value={branchOther()}
+                  onInput={(e) => setBranchOther(e.currentTarget.value)}
+                  placeholder="e.g. Architecture"
+                  maxLength={60}
+                  class="input"
+                />
+                <Show when={fieldError("branchOther")}>
+                  <p class="mt-1 text-sm text-danger">{fieldError("branchOther")}</p>
+                </Show>
+              </div>
+            </Show>
 
             <div>
               <label for="batch" class="text-sm font-medium">

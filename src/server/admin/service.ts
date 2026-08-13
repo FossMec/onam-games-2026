@@ -11,6 +11,8 @@ import {
   users,
 } from "~/server/db/client";
 import { requireAdmin } from "~/server/auth/service";
+import type { BanLevel } from "~/server/auth/bans";
+import { setBanLevel } from "~/server/auth/bans";
 import { ensureDefaultSettings } from "~/server/settings/defaults";
 
 export async function adminListUsers(limit = 200) {
@@ -24,7 +26,9 @@ export async function adminListUsers(limit = 200) {
       college: users.college,
       branch: users.branch,
       batch: users.batch,
-      isBlocked: users.isBlocked,
+      banLevel: users.banLevel,
+      banUntil: users.banUntil,
+      banReason: users.banReason,
       trustScore: users.trustScore,
       streakCount: users.streakCount,
       onboardingCompleted: users.onboardingCompleted,
@@ -41,12 +45,15 @@ export async function adminSetUserRole(userId: string, role: "player" | "tester"
   await getDb().update(users).set({ role }).where(eq(users.id, userId));
 }
 
-export async function adminSetUserBlock(userId: string, blocked: boolean, reason?: string) {
+/**
+ * Sets a player's ban level (0-4). Level 4 is only ever reachable from here —
+ * automated anti-cheat can propose it, but a human confirms it, because the
+ * shared-NAT and shared-device signals this event runs on produce real false
+ * positives.
+ */
+export async function adminSetUserBanLevel(userId: string, level: BanLevel, reason?: string) {
   await requireAdmin();
-  await getDb()
-    .update(users)
-    .set({ isBlocked: blocked, blockReason: blocked ? (reason ?? "blocked by admin") : null })
-    .where(eq(users.id, userId));
+  await setBanLevel(userId, level, level === 0 ? null : (reason ?? "set by admin"));
 }
 
 export async function adminListTesters() {

@@ -24,11 +24,16 @@ const USER_SELECT = {
   instagramHandle: users.instagramHandle,
   whatsappNumber: users.whatsappNumber,
   college: users.college,
+  collegeOther: users.collegeOther,
   branch: users.branch,
+  branchOther: users.branchOther,
   batch: users.batch,
   div: users.div,
   role: users.role,
-  isBlocked: users.isBlocked,
+  banLevel: users.banLevel,
+  banUntil: users.banUntil,
+  banReason: users.banReason,
+  banAckedAt: users.banAckedAt,
   trustScore: users.trustScore,
   streakCount: users.streakCount,
   bestStreak: users.bestStreak,
@@ -44,11 +49,16 @@ export interface PublicUser {
   instagramHandle: string | null;
   whatsappNumber: string | null;
   college: "mec" | "other" | null;
+  collegeOther: string | null;
   branch: "cs" | "cu" | "ee" | "eb" | "ec" | "ev" | "me" | "other" | null;
+  branchOther: string | null;
   batch: "27" | "28" | "29" | "30" | "<=26" | null;
   div: "none" | "a" | "b" | "c";
   role: "player" | "tester" | "admin";
-  isBlocked: boolean;
+  banLevel: number;
+  banUntil: Date | null;
+  banReason: string | null;
+  banAckedAt: Date | null;
   trustScore: number;
   streakCount: number;
   bestStreak: number;
@@ -173,11 +183,19 @@ export async function getCurrentDeviceId(): Promise<string | null> {
   return data?.deviceId ?? null;
 }
 
-/** Returns the signed-in user or throws. Used by protected actions. */
+/**
+ * Returns the signed-in user or throws.
+ *
+ * Only a hard ban (level 4) closes the account here. Soft bans are enforced at
+ * the point of *play* by `assertCanPlay`, so a benched player keeps their
+ * profile, the leaderboard and the schedule.
+ */
 export async function requireCurrentUser(): Promise<PublicUser> {
   const user = await getCurrentUser();
   if (!user) throw new HttpError(401, "Not signed in");
-  if (user.isBlocked) throw new HttpError(403, "Account blocked");
+  if (user.banLevel >= 4) {
+    throw new HttpError(403, user.banReason ?? "Account blocked");
+  }
   return user;
 }
 

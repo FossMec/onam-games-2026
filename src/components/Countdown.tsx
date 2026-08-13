@@ -1,19 +1,82 @@
-import { createEffect, createSignal, onCleanup } from "solid-js";
+import { Show, createEffect, createSignal, onCleanup } from "solid-js";
 
-export function Countdown(props: { target: Date }) {
+/**
+ * Segmented countdown.
+ *
+ * The old version rendered one unclassed `<span>` with unpadded values
+ * ("0d 5h 3m 9s") and never stopped at zero. Digits now live in their own
+ * inked boxes with zero-padding, so the width is stable and the number never
+ * jitters as it ticks — important when it sits next to a release time people
+ * are staring at.
+ */
+
+interface CountdownProps {
+  target: Date;
+  /** Shown once the target passes. */
+  doneLabel?: string;
+  /** Drop the days box when a release is hours away. */
+  compact?: boolean;
+}
+
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+function Segment(props: { value: string; unit: string }) {
+  return (
+    <span class="inline-flex flex-col items-center gap-0.5">
+      <span
+        class="rounded px-1.5 py-0.5 text-lg tabular-nums"
+        style={{
+          background: "var(--paper-2)",
+          border: "2px solid var(--ink)",
+          "font-weight": 700,
+          "min-width": "2.1rem",
+        }}
+      >
+        {props.value}
+      </span>
+      <span
+        class="text-[0.6rem] uppercase"
+        style={{ "font-family": "var(--font-stack-display)", "font-weight": 800, opacity: 0.65 }}
+      >
+        {props.unit}
+      </span>
+    </span>
+  );
+}
+
+export function Countdown(props: CountdownProps) {
   const [now, setNow] = createSignal(Date.now());
+
   createEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     onCleanup(() => clearInterval(timer));
   });
+
   const diff = () => Math.max(0, props.target.getTime() - now());
   const days = () => Math.floor(diff() / 86400000);
-  const hours = () => Math.floor((diff() % 86400000) / 3600000);
-  const minutes = () => Math.floor((diff() % 3600000) / 60000);
-  const seconds = () => Math.floor((diff() % 60000) / 1000);
+  const hours = () => Math.floor(diff() / 3600000) % 24;
+  const minutes = () => Math.floor(diff() / 60000) % 60;
+  const seconds = () => Math.floor(diff() / 1000) % 60;
+
   return (
-    <span>
-      {days()}d {hours()}h {minutes()}m {seconds()}s
-    </span>
+    <Show
+      when={diff() > 0}
+      fallback={
+        <span class="sticker" style={{ "--pop": "var(--pop-teal)" }}>
+          {props.doneLabel ?? "It's live!"}
+        </span>
+      }
+    >
+      <span class="inline-flex items-start gap-1.5">
+        <Show when={!props.compact || days() > 0}>
+          <Segment value={pad(days())} unit="days" />
+        </Show>
+        <Segment value={pad(hours())} unit="hrs" />
+        <Segment value={pad(minutes())} unit="min" />
+        <Segment value={pad(seconds())} unit="sec" />
+      </span>
+    </Show>
   );
 }

@@ -30,12 +30,25 @@ export const users = pgTable(
     instagramHandle: text("instagram_handle"),
     whatsappNumber: text("whatsapp_number"),
     college: collegeEnum("college"),
+    /** Free text when `college = 'other'`; shown on public boards, so moderated. */
+    collegeOther: text("college_other"),
     branch: branchEnum("branch"),
+    /** Free text when `branch = 'other'`. */
+    branchOther: text("branch_other"),
     batch: batchEnum("batch"),
     div: divEnum("div").default("none"),
     role: roleEnum("role").default("player"),
-    isBlocked: boolean("is_blocked").notNull().default(false),
-    blockReason: text("block_reason"),
+    /**
+     * Graduated enforcement, replacing the old boolean block:
+     *   0 none · 1 warning (must acknowledge) · 2 soft 3h · 3 soft 24h · 4 hard
+     * Levels 2 and 3 set `banUntil` and only gate *playing* — browsing and the
+     * leaderboard stay open, so a benched player still has a reason to return.
+     */
+    banLevel: integer("ban_level").notNull().default(0),
+    banUntil: timestamp("ban_until", { withTimezone: true }),
+    banReason: text("ban_reason"),
+    /** When the player dismissed the level-1 warning; re-armed on a new incident. */
+    banAckedAt: timestamp("ban_acked_at", { withTimezone: true }),
     trustScore: integer("trust_score").notNull().default(100),
     streakCount: integer("streak_count").notNull().default(0),
     bestStreak: integer("best_streak").notNull().default(0),
@@ -120,9 +133,15 @@ export const games = pgTable(
     endAt: timestamp("end_at", { withTimezone: true }),
     testerEarlyHours: integer("tester_early_hours").notNull().default(24),
     status: gameStatusEnum("status").notNull().default("upcoming"),
-    configJson: jsonb("config_json"),
+    /**
+     * Public asset references only (pookalam image URL, sprite sheet). Anything
+     * that would spoil a puzzle belongs in the registry, not here — this column
+     * is reachable from the browser for every published game.
+     */
     assetsJson: jsonb("assets_json"),
     published: boolean("published").notNull().default(false),
+    /** Set once the day's points have been settled; makes settlement idempotent. */
+    settledAt: timestamp("settled_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("games_day_idx").on(t.day)],
@@ -150,10 +169,21 @@ export const gameAttempts = pgTable(
       .notNull()
       .references(() => games.id, { onDelete: "cascade" }),
     seed: text("seed").notNull(),
+    /**
+     * 1-based, per (user, game). One-shot games cap this at 1 via the registry's
+     * `maxAttempts` rather than a DB constraint, so retry games (Maveli Jump)
+     * share the exact same code path.
+     */
+    attemptNumber: integer("attempt_number").notNull().default(1),
     initialStateHash: text("initial_state_hash"),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     durationMs: integer("duration_ms"),
+    /**
+     * Server-derived score for `metric: "score"` games — the value returned by
+     * the registry's `verify`, never the number the client claimed.
+     */
+    score: integer("score"),
     submittedStateHash: text("submitted_state_hash"),
     serverValid: boolean("server_valid").notNull().default(false),
     isAnomalous: boolean("is_anomalous").notNull().default(false),
@@ -167,7 +197,11 @@ export const gameAttempts = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    unique("game_attempts_user_game_key").on(t.userId, t.gameId),
+    // Replaces the old unique(user, game): retry games need many rows, and the
+    // per-day cap now comes from the registry. This still makes a duplicate
+    // attempt number impossible, so a raced double-start cannot mint two rows.
+    unique("game_attempts_user_game_number_key").on(t.userId, t.gameId, t.attemptNumber),
+    index("game_attempts_user_game_idx").on(t.userId, t.gameId),
     index("game_attempts_game_idx").on(t.gameId),
     index("game_attempts_started_at_idx").on(t.startedAt),
   ],
@@ -251,6 +285,16 @@ export const appSettings = pgTable(
   (t) => [index("app_settings_group_idx").on(t.group)],
 );
 
+export const metricEnum = pgEnum("metric", ["time", "score", "fcfs"]);
+
+/**
+ * One row per (game, user): the player's *best* result for that day.
+ *
+ * `durationMs` and `score` are both nullable because the games are not
+ * commensurable in their raw units — a time game has no score and Maveli Jump
+ * has no meaningful completion time. `metric` says which column ranks this row.
+ * Cross-game comparison happens only through `points`, never through raw units.
+ */
 export const dailyLeaderboard = pgTable(
   "daily_leaderboard",
   {
@@ -261,18 +305,32 @@ export const dailyLeaderboard = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    /** The specific attempt that produced this best result. */
     attemptId: uuid("attempt_id")
       .notNull()
       .references(() => gameAttempts.id, { onDelete: "cascade" }),
-    durationMs: integer("duration_ms").notNull(),
+    metric: metricEnum("metric").notNull().default("time"),
+    /** Ranking value for `time` games; also the tiebreak for `fcfs`. */
+    durationMs: integer("duration_ms"),
+    /** Ranking value for `score` games (best run of the day). */
+    score: integer("score"),
+    /** Runs used today. Display only — never affects ranking. */
+    attemptsUsed: integer("attempts_used").notNull().default(1),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull(),
-    percentileScore: doublePrecision("percentile_score"),
+    /**
+     * Settled at day close, both null while the day is live. Rank is shown
+     * live and recomputed on read; points are frozen so a player's total never
+     * moves under them after the fact.
+     */
+    rank: integer("rank"),
+    points: integer("points"),
     isFlagged: boolean("is_flagged").notNull().default(false),
   },
   (t) => [
     unique("daily_leaderboard_game_user_key").on(t.gameId, t.userId),
-    index("daily_leaderboard_duration_idx").on(t.durationMs),
+    index("daily_leaderboard_game_duration_idx").on(t.gameId, t.durationMs),
+    index("daily_leaderboard_game_score_idx").on(t.gameId, t.score),
   ],
 );
 
@@ -281,7 +339,10 @@ export const globalScores = pgTable("global_scores", {
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
   gamesCompleted: integer("games_completed").notNull().default(0),
-  weightedTotal: doublePrecision("weighted_total").notNull().default(0),
+  /** Sum of settled daily points. The only cross-game currency. */
+  totalPoints: integer("total_points").notNull().default(0),
+  /** Retention bonus from consecutive-day play, kept separate so it is explainable. */
+  streakBonus: integer("streak_bonus").notNull().default(0),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

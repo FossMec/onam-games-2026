@@ -1,5 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { checkRateLimit } from "~/server/anti-cheat/ratelimit";
+import { assertCanPlay } from "~/server/auth/bans";
 import { requireCurrentDevice, requireCurrentUser } from "~/server/auth/service";
 import { HttpError } from "~/server/errors";
 import { startAttempt } from "~/server/games/attempts";
@@ -11,6 +12,9 @@ export async function POST({ params }: APIEvent) {
     if (!user.onboardingCompleted) {
       return Response.json({ error: "Complete your profile first" }, { status: 403 });
     }
+    // Soft bans bite here rather than at sign-in, so a benched player keeps
+    // the leaderboard and the schedule.
+    assertCanPlay(user);
     const deviceId = await requireCurrentDevice();
     const meta = getRequestMeta();
 

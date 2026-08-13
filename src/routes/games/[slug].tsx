@@ -1,36 +1,72 @@
 import { Title } from "@solidjs/meta";
-import { createAsync, useParams } from "@solidjs/router";
+import { createAsync, useParams, useSearchParams } from "@solidjs/router";
 import { Show, createEffect, createSignal, onCleanup } from "solid-js";
 import { Countdown } from "~/components/Countdown";
-import { getMe } from "~/server/auth/actions";
+import { ShoutBurst } from "~/components/art/Burst";
+import { JigsawGame, type JigsawViewData } from "~/components/games/JigsawGame";
+import { TinderGame, type TinderCardView } from "~/components/games/TinderGame";
+import { ackWarningAction, getMe, getMyBanState } from "~/server/auth/actions";
 import { getGame, getMyAttempt } from "~/server/games/actions";
 import { clearAttempt, getStoredAttempt, storeAttempt } from "~/lib/game-session";
+import { SHOUT_COLOR, moodForResult, shout } from "~/lib/shouts";
+
+/**
+ * The client-visible half of a generated instance. Discriminated by `kind` so
+ * each game board can narrow to its own shape; the solution half never ships.
+ */
+type GameView =
+  | { kind: "tinder"; cards: TinderCardView[] }
+  | JigsawViewData
+  | { kind: "hunt"; prompt: string }
+  | { kind: "braindead"; mission: string; buttonLabel: string }
+  | { kind: string; [key: string]: unknown };
+
+interface FinishPayload {
+  valid: boolean;
+  durationMs: number;
+  score: number | null;
+  metric: "time" | "score" | "fcfs";
+  afterDeadline: boolean;
+  attemptsRemaining: number;
+  isPersonalBest: boolean;
+  reason?: string;
+}
 
 export default function GamePage() {
   const params = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const slug = () => params.slug ?? "";
   const game = createAsync(() => getGame(slug()));
   const me = createAsync(() => getMe());
   const myAttempt = createAsync(() => getMyAttempt(slug()));
+  const banState = createAsync(() => getMyBanState());
 
   const [attemptToken, setAttemptToken] = createSignal<string | null>(null);
   const [startedAt, setStartedAt] = createSignal<number | null>(null);
   const [now, setNow] = createSignal(Date.now());
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal("");
-  const [finished, setFinished] = createSignal(false);
-  const [result, setResult] = createSignal<{
-    valid: boolean;
-    durationMs: number;
-    afterDeadline: boolean;
-  } | null>(null);
+  const [warningDismissed, setWarningDismissed] = createSignal(false);
+  const [result, setResult] = createSignal<FinishPayload | null>(null);
+  const [huntToken, setHuntToken] = createSignal("");
+  /** The playable board from the server. Never contains the solution. */
+  const [view, setView] = createSignal<GameView | null>(null);
+  const [rehydrated, setRehydrated] = createSignal(false);
 
+  /*
+   * A refresh loses the board, so an attempt found in local storage is
+   * rehydrated by calling `/start` again. That endpoint is idempotent — it
+   * returns the *existing* attempt with the same seed and the same original
+   * `startedAt`, so resuming never re-rolls the puzzle or resets the clock.
+   */
   createEffect(() => {
+    if (rehydrated() || result()) return;
     const stored = getStoredAttempt(slug());
-    if (stored && !finished()) {
-      setAttemptToken(stored.attemptToken);
-      setStartedAt(new Date(stored.startedAt).getTime());
-    }
+    if (!stored) return;
+    setRehydrated(true);
+    setAttemptToken(stored.attemptToken);
+    setStartedAt(new Date(stored.startedAt).getTime());
+    void start();
   });
 
   createEffect(() => {
@@ -49,18 +85,18 @@ export default function GamePage() {
       const data = (await res.json()) as {
         attemptToken?: string;
         startedAt?: string;
+        view?: GameView;
         error?: string;
       };
       if (!res.ok || !data.attemptToken || !data.startedAt) {
         setError(data.error ?? "Failed to start");
         return;
       }
-      storeAttempt(slug(), {
-        attemptToken: data.attemptToken,
-        startedAt: data.startedAt,
-      });
+      storeAttempt(slug(), { attemptToken: data.attemptToken, startedAt: data.startedAt });
       setAttemptToken(data.attemptToken);
       setStartedAt(new Date(data.startedAt).getTime());
+      setView(data.view ?? null);
+      setResult(null);
     } catch {
       setError("Network error");
     } finally {
@@ -68,7 +104,7 @@ export default function GamePage() {
     }
   };
 
-  const finish = async () => {
+  const finish = async (submittedState: unknown) => {
     const token = attemptToken();
     if (!token) return;
     setBusy(true);
@@ -77,29 +113,25 @@ export default function GamePage() {
       const res = await fetch(`/api/game/${slug()}/finish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          attemptToken: token,
-          submittedState: isBraindead() ? { pressed: true } : { placeholder: true },
-          movesCount: isBraindead() ? 1 : 0,
-        }),
+        body: JSON.stringify({ attemptToken: token, submittedState }),
       });
-      const data = (await res.json()) as {
-        valid?: boolean;
-        durationMs?: number;
-        afterDeadline?: boolean;
-        error?: string;
-      };
+      const data = (await res.json()) as Partial<FinishPayload> & { error?: string };
       if (!res.ok) {
         setError(data.error ?? "Failed to submit");
         return;
       }
       clearAttempt(slug());
       setAttemptToken(null);
-      setFinished(true);
+      setStartedAt(null);
       setResult({
         valid: data.valid ?? false,
         durationMs: data.durationMs ?? 0,
+        score: data.score ?? null,
+        metric: data.metric ?? "time",
         afterDeadline: data.afterDeadline ?? false,
+        attemptsRemaining: data.attemptsRemaining ?? 0,
+        isPersonalBest: data.isPersonalBest ?? false,
+        reason: data.reason,
       });
     } catch {
       setError("Network error");
@@ -108,21 +140,67 @@ export default function GamePage() {
     }
   };
 
-  // Score/details from server state so they survive refresh/revisit.
   const attempt = () => myAttempt();
-  const submitted = () => finished() || attempt()?.status === "submitted";
-  const score = () =>
-    result() ??
-    (attempt()?.status === "submitted"
-      ? {
-          valid: attempt()!.valid,
-          durationMs: attempt()!.durationMs ?? 0,
-          afterDeadline: attempt()!.afterDeadline,
-        }
-      : null);
-
-  const playable = () => game() && (game()!.status === "live" || game()!.status === "tester");
+  const isHunt = () => game()?.gameType === "hunt";
   const isBraindead = () => game()?.gameType === "braindead";
+  const isTinder = () => game()?.gameType === "tinder";
+
+  const isJigsaw = () => game()?.gameType === "jigsaw";
+
+  const tinderCards = (): TinderCardView[] | null => {
+    const current = view();
+    return current && current.kind === "tinder" ? (current.cards as TinderCardView[]) : null;
+  };
+
+  const jigsawView = (): JigsawViewData | null => {
+    const current = view();
+    return current && current.kind === "jigsaw" ? (current as JigsawViewData) : null;
+  };
+  const playable = () => game() && (game()!.status === "live" || game()!.status === "tester");
+
+  const attemptsLeft = () => result()?.attemptsRemaining ?? attempt()?.attemptsRemaining ?? 0;
+  const isRetryGame = () => (game()?.maxAttempts ?? 1) > 1;
+
+  /** One-shot games are done for good; retry games are done only once runs run out. */
+  const finished = () =>
+    isRetryGame()
+      ? attemptsLeft() <= 0 && !attemptToken()
+      : (result() !== null || attempt()?.status === "submitted") && !attemptToken();
+
+  /**
+   * The final hunt clue hands the token over as a URL parameter, so a scanned
+   * QR lands straight on a resolved submission. The value is stripped from the
+   * address bar once read — it is the answer, and it should not sit in history
+   * or get pasted into a group chat along with the page link.
+   */
+  createEffect(() => {
+    if (!isHunt()) return;
+    const fromUrl = searchParams.token;
+    const value = Array.isArray(fromUrl) ? fromUrl[0] : fromUrl;
+    if (!value) return;
+    setHuntToken(value);
+    setSearchParams({ token: undefined }, { replace: true });
+  });
+
+  // Auto-submit a URL-delivered token the moment there is an attempt to put it on.
+  createEffect(() => {
+    if (!isHunt() || busy() || result()) return;
+    if (huntToken() && attemptToken()) {
+      void finish({ token: huntToken() });
+    }
+  });
+
+  const showWarning = () => banState()?.level === 1 && banState()!.needsAck && !warningDismissed();
+
+  /** Stable per-result so the shout and burst don't reshuffle on re-render. */
+  const attemptKey = () => `${slug()}-${result()?.durationMs ?? 0}-${result()?.score ?? 0}`;
+
+  const resultMood = () =>
+    moodForResult({
+      valid: result()?.valid ?? false,
+      afterDeadline: result()?.afterDeadline ?? false,
+      isPersonalBest: result()?.isPersonalBest ?? false,
+    });
 
   return (
     <main class="container space-y-6 py-8">
@@ -142,7 +220,37 @@ export default function GamePage() {
             Day {game()!.day} · {game()!.difficulty}
           </p>
           <h1 class="text-3xl font-bold tracking-tight">{game()!.title}</h1>
+          <Show when={game()!.tagline}>
+            <p class="text-muted">{game()!.tagline}</p>
+          </Show>
         </section>
+
+        {/* Level-1 warning: acknowledge before anything else on the page works. */}
+        <Show when={showWarning()}>
+          <div class="card space-y-3 border-warn/40 bg-warn/10">
+            <p class="font-semibold text-warn">Heads up</p>
+            <p class="text-sm">{banState()!.message}</p>
+            <button
+              type="button"
+              class="btn-ghost"
+              onClick={() => {
+                setWarningDismissed(true);
+                void ackWarningAction();
+              }}
+            >
+              OK, understood
+            </button>
+          </div>
+        </Show>
+
+        <Show when={banState()?.blocksPlay}>
+          <div class="card border-danger/40 bg-danger/10">
+            <p class="text-sm text-danger">{banState()!.message}</p>
+            <a href="/leaderboard" class="btn-ghost mt-3">
+              View leaderboard
+            </a>
+          </div>
+        </Show>
 
         <Show when={game()!.status === "upcoming"}>
           <div class="card space-y-3">
@@ -181,7 +289,7 @@ export default function GamePage() {
           </div>
         </Show>
 
-        <Show when={playable()}>
+        <Show when={playable() && !banState()?.blocksPlay && !showWarning()}>
           <Show when={!me()}>
             <div class="card flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p class="text-muted">Sign in to play this game.</p>
@@ -206,18 +314,16 @@ export default function GamePage() {
             </div>
           </Show>
 
-          <Show when={me()?.onboardingCompleted && !submitted() && !attemptToken()}>
+          {/* ------------------------------------------------------ idle */}
+          <Show when={me()?.onboardingCompleted && !attemptToken() && !finished()}>
             <div class="card space-y-4 text-center">
-              <Show
-                when={attempt()?.status !== "in_progress"}
-                fallback={<p class="text-muted">You have an attempt in progress.</p>}
-              >
-                <p class="text-muted">
-                  {isBraindead()
-                    ? "There is no strategy. There is no skill. There is only the button."
+              <p class="text-muted">
+                {isBraindead()
+                  ? "There is no strategy. There is no skill. There is only the button."
+                  : isRetryGame()
+                    ? `Your best run of the day is the one that counts. ${attemptsLeft()} run${attemptsLeft() === 1 ? "" : "s"} left.`
                     : "Only one attempt per game. The timer starts when you press start."}
-                </p>
-              </Show>
+              </p>
               <button
                 type="button"
                 onClick={start}
@@ -230,62 +336,148 @@ export default function GamePage() {
                     ? "Resume"
                     : isBraindead()
                       ? "START THE POINTLESS RITUAL"
-                      : "Start game"}
+                      : isRetryGame() && (attempt()?.attemptsUsed ?? 0) > 0
+                        ? "Go again"
+                        : "Start game"}
               </button>
             </div>
           </Show>
 
-          <Show when={me()?.onboardingCompleted && attemptToken() && !submitted()}>
+          {/* --------------------------------------------------- in play */}
+          <Show when={me()?.onboardingCompleted && attemptToken()}>
             <div class="card space-y-4 text-center">
               <p class="text-3xl font-bold tabular-nums">
                 {Math.floor(elapsed() / 60)}m {elapsed() % 60}s
               </p>
               <p class="text-xs text-muted">Timer is server-side; refreshing does not reset it.</p>
-              <Show
-                when={!isBraindead()}
-                fallback={
+
+              <Show when={isHunt()}>
+                <div class="space-y-3">
+                  <input
+                    value={huntToken()}
+                    onInput={(e) => setHuntToken(e.currentTarget.value)}
+                    placeholder="Paste the final token"
+                    class="input text-center font-mono"
+                  />
                   <button
                     type="button"
-                    onClick={finish}
-                    disabled={busy()}
-                    class="btn-brand px-12 py-6 text-2xl"
+                    onClick={() => finish({ token: huntToken() })}
+                    disabled={busy() || !huntToken().trim()}
+                    class="btn-brand px-8 py-3 text-lg"
                   >
-                    {busy() ? "Submitting…" : "THE BUTTON"}
+                    {busy() ? "Checking…" : "Submit token"}
                   </button>
-                }
-              >
+                </div>
+              </Show>
+
+              <Show when={isBraindead()}>
                 <button
                   type="button"
-                  onClick={finish}
+                  onClick={() => finish({ pressed: true })}
                   disabled={busy()}
-                  class="btn-brand px-8 py-3 text-lg"
+                  class="btn-brand px-12 py-6 text-2xl"
                 >
-                  {busy() ? "Submitting…" : "Finish"}
+                  {busy() ? "Submitting…" : "THE BUTTON"}
                 </button>
+              </Show>
+
+              <Show when={isTinder()}>
+                <Show
+                  when={tinderCards()}
+                  fallback={<p class="font-semibold">Dealing the deck…</p>}
+                >
+                  <TinderGame
+                    slug={slug()}
+                    attemptToken={attemptToken()!}
+                    cards={tinderCards()!}
+                    disabled={busy()}
+                    onFinish={(submission) => finish(submission)}
+                  />
+                </Show>
+              </Show>
+
+              <Show when={isJigsaw()}>
+                <Show
+                  when={jigsawView()}
+                  fallback={<p class="font-semibold">Cutting the pookalam…</p>}
+                >
+                  <JigsawGame
+                    view={jigsawView()!}
+                    startedAt={startedAt() ?? Date.now()}
+                    disabled={busy()}
+                    onFinish={(submission) => finish(submission)}
+                  />
+                </Show>
+              </Show>
+
+              <Show when={!isHunt() && !isBraindead() && !isTinder() && !isJigsaw()}>
+                <p class="text-sm text-muted">
+                  This game's board is not wired up yet — it will render here.
+                </p>
               </Show>
             </div>
           </Show>
 
-          <Show when={submitted() && score()}>
-            <div class="card space-y-2 text-center">
-              <p class="text-xl font-semibold">
-                {score()!.valid
-                  ? score()!.afterDeadline
-                    ? "Completed after the deadline"
-                    : "Completed!"
-                  : "Submission rejected."}
-              </p>
-              <Show when={score()!.valid}>
-                <p class="text-2xl font-bold tabular-nums text-brand">
-                  {(score()!.durationMs / 1000).toFixed(1)}s
+          {/* ----------------------------------------------------- result */}
+          <Show when={result()}>
+            <div class="card pop-yellow space-y-3 text-center">
+              {/*
+                The shout carries the verdict — it is the loudest moment on the
+                site and the payoff for the whole run. Keyed on the attempt so a
+                refresh shows the same word instead of reshuffling.
+              */}
+              <ShoutBurst
+                text={shout(resultMood(), attemptKey())}
+                color={SHOUT_COLOR[resultMood()]}
+                seed={attemptKey()}
+              />
+
+              <Show when={result()!.valid && result()!.metric === "score"}>
+                <p class="text-3xl font-bold tabular-nums">
+                  {(result()!.score ?? 0).toLocaleString("en-IN")}
+                  <span class="text-base"> m above Paathalam</span>
                 </p>
               </Show>
-              <Show when={score()!.afterDeadline}>
-                <p class="text-sm text-muted">Counts for the global board only.</p>
+              <Show when={result()!.valid && result()!.metric !== "score"}>
+                <p class="text-3xl font-bold tabular-nums">
+                  {(result()!.durationMs / 1000).toFixed(1)}s
+                </p>
               </Show>
-              <a href="/leaderboard" class="btn-ghost">
-                View leaderboard
-              </a>
+
+              <Show when={!result()!.valid && result()!.reason}>
+                <p class="font-semibold" style={{ color: "var(--pop-red)" }}>
+                  {result()!.reason}
+                </p>
+              </Show>
+              <Show when={result()!.afterDeadline}>
+                <p class="comment">counts for the global board only. you know what you did.</p>
+              </Show>
+              <Show when={isRetryGame() && result()!.attemptsRemaining > 0}>
+                <span class="badge" style={{ "--pop": "var(--paper-2)" }}>
+                  {result()!.attemptsRemaining} run
+                  {result()!.attemptsRemaining === 1 ? "" : "s"} left today
+                </span>
+              </Show>
+
+              <div>
+                <a href="/leaderboard" class="btn-ghost">
+                  View leaderboard
+                </a>
+              </div>
+            </div>
+          </Show>
+
+          {/* Retry games keep the start button available until runs run out. */}
+          <Show when={isRetryGame() && result() && result()!.attemptsRemaining > 0}>
+            <div class="text-center">
+              <button
+                type="button"
+                onClick={start}
+                disabled={busy()}
+                class="btn-brand px-8 py-3 text-lg"
+              >
+                {busy() ? "Starting…" : "Go again"}
+              </button>
             </div>
           </Show>
 

@@ -16,10 +16,29 @@ const optionalTrimmed = (min: number, max: number, pattern?: RegExp) =>
     .optional()
     .or(z.literal(""));
 
+/**
+ * Free text that ends up on a public leaderboard. Letters, digits and basic
+ * punctuation only — enough for "St. Joseph's College" or "Working
+ * professional", not enough to inject markup or paste an essay.
+ */
+const freeText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .min(2)
+    .max(max)
+    .regex(/^[\p{L}\p{N} .,''&()/-]+$/u, "Use letters, numbers and basic punctuation only")
+    .optional()
+    .or(z.literal(""));
+
 export const onboardingSchema = z
   .object({
     college: z.enum(collegeValues),
+    /** Required when `college = 'other'`. */
+    collegeOther: freeText(80),
     branch: z.enum(branchValues).optional(),
+    /** Required when `branch = 'other'`. */
+    branchOther: freeText(60),
     batch: z.enum(batchValues).optional(),
     div: z.enum(divValues).optional(),
     instagramHandle: optionalTrimmed(3, 30, /^[a-zA-Z0-9._]+$/),
@@ -41,6 +60,20 @@ export const onboardingSchema = z
           message: "Batch is required for MEC",
         });
       }
+      // "Other" branch is only meaningful if they say which one.
+      if (val.branch === "other" && !val.collegeOther && !val.branchOther) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["branchOther"],
+          message: "Tell us which branch",
+        });
+      }
+    } else if (val.college === "other" && !val.collegeOther) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["collegeOther"],
+        message: "Tell us where you're from — college, school, or work",
+      });
     }
   });
 
@@ -55,11 +88,16 @@ export async function completeOnboarding(input: OnboardingInput): Promise<void> 
   };
   const parsed = onboardingSchema.parse(normalized);
   const isMec = parsed.college === "mec";
+  const branch = isMec ? (parsed.branch ?? null) : null;
   await getDb()
     .update(users)
     .set({
       college: parsed.college,
-      branch: isMec ? (parsed.branch ?? null) : null,
+      // Only stored when the matching enum actually says "other", so a stale
+      // free-text value can never shadow a real selection.
+      collegeOther: parsed.college === "other" ? parsed.collegeOther?.trim() || null : null,
+      branch,
+      branchOther: branch === "other" ? parsed.branchOther?.trim() || null : null,
       batch: isMec ? (parsed.batch ?? null) : null,
       div: parsed.div ?? "none",
       instagramHandle: parsed.instagramHandle?.trim() || null,

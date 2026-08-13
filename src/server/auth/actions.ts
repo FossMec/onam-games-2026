@@ -4,9 +4,30 @@ import { ZodError } from "zod";
 import type { FingerprintSignals } from "~/lib/fingerprint";
 import { completeOAuthSignIn, getCurrentUser, signOut, type OAuthSession } from "./service";
 import { completeOnboarding, uploadAvatar, type OnboardingInput } from "./onboarding";
+import { acknowledgeWarning, banMessage, describeBan } from "./bans";
 
 export async function getMe() {
   return getCurrentUser();
+}
+
+/** Ban state for the current user, shaped for the UI. */
+export async function getMyBanState() {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const state = describeBan(user);
+  if (state.level === 0) return null;
+  return {
+    level: state.level,
+    needsAck: state.needsAck,
+    blocksPlay: state.blocksPlay,
+    until: state.until?.toISOString() ?? null,
+    message: banMessage(state),
+  };
+}
+
+export async function ackWarningAction() {
+  const user = await getCurrentUser();
+  if (user) await acknowledgeWarning(user.id);
 }
 
 export async function completeSignIn(

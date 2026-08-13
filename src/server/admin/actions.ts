@@ -12,7 +12,7 @@ import {
   adminListTesters,
   adminListUsers,
   adminSetTesterActive,
-  adminSetUserBlock,
+  adminSetUserBanLevel,
   adminSetUserRole,
   adminUpdateGame,
   adminUpdateSetting,
@@ -37,8 +37,8 @@ export async function setUserRole(userId: string, role: "player" | "tester" | "a
   await adminSetUserRole(userId, role);
 }
 
-export async function setUserBlock(userId: string, blocked: boolean, reason?: string) {
-  await adminSetUserBlock(userId, blocked, reason);
+export async function setUserBanLevel(userId: string, level: 0 | 1 | 2 | 3 | 4, reason?: string) {
+  await adminSetUserBanLevel(userId, level, reason);
 }
 
 export async function listTesters() {

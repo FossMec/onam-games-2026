@@ -34,8 +34,19 @@ export default function AuthCallback() {
   });
 
   return (
-    <main>
-      <p>Signing you in…</p>
+    <main class="container flex min-h-[70vh] items-center justify-center py-8">
+      <div
+        class="w-full max-w-sm rounded-lg p-8 text-center"
+        style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--paper-2)" }}
+      >
+        <p
+          class="text-2xl"
+          style={{ "font-family": "var(--font-stack-display)", "font-weight": 800 }}
+        >
+          Signing you in…
+        </p>
+        <p class="comment">checking you're not four people in a trench coat</p>
+      </div>
     </main>
   );
 }

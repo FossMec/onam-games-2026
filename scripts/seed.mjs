@@ -1,5 +1,10 @@
-// Seeds local dev data: default settings + the 7-day schedule (day 1 = live,
-// the braindead demo game) into the DATABASE_URL from .env.
+// Seeds settings + the 7-day schedule into the DATABASE_URL from .env.
+//
+// The `games` rows carry schedule and operational state only. How each game
+// behaves — attempts, limits, generation, verification — lives in
+// src/server/games/registry.ts, joined on `game_type`. Keep the types below in
+// sync with that file or the game will refuse to start.
+//
 // Usage: node --env-file=.env scripts/seed.mjs
 import postgres from "postgres";
 
@@ -17,11 +22,13 @@ const settings = [
   ["schedule.game_duration_hours", 24, "schedule"],
   ["enforce_one_user_per_device", true, "anti-cheat"],
   ["anti_cheat.speed_p99_factor", 0.1, "anti-cheat"],
-  ["anti_cheat.min_plausible_ms", 1000, "anti-cheat"],
   ["ui.leaderboard_poll_ms", 120000, "ui"],
   ["ui.refresh_cooldown_ms", 10000, "ui"],
   ["social.whatsapp_group_link", "", "social"],
-  ["scoring.percentile_anchor", 99, "scoring"],
+  // Left blank on purpose: the hunt verifier fails closed until an admin sets
+  // the real token, so a seeded database can never accept a guess.
+  ["hunt.final_token", "", "hunt"],
+  ["hunt.token_query_param", "token", "hunt"],
 ];
 
 for (const [key, value, group] of settings) {
@@ -32,28 +39,91 @@ for (const [key, value, group] of settings) {
   `;
 }
 
+/**
+ * Order is chosen for retention, not difficulty:
+ *   day 1 is the lowest-friction, most shareable game (hook),
+ *   day 3 is the hardest (mid-week, committed players),
+ *   day 5 is the retry game on Onam eve (highest time-on-site),
+ *   day 6 sends everyone back through the whole site.
+ */
 const games = [
   {
     day: 1,
-    slug: "button",
-    title: "The Button",
-    hint: "It is a button. That is all. Do not overthink it.",
-    game_type: "braindead",
-    difficulty: "trivial",
+    slug: "open-source-tinder",
+    title: "Open Source Tinder",
+    hint: "Some of these logos are lying to you.",
+    game_type: "tinder",
+    difficulty: "normal",
+  },
+  {
+    day: 2,
+    slug: "pookalam-jigsaw",
+    title: "Pookalam Jigsaw",
+    hint: "Every piece looks like every other piece. That is the joke.",
+    game_type: "jigsaw",
+    difficulty: "hard",
+    // THE ARTWORK SWAP POINT. The jigsaw only uses this as a texture inside
+    // its clip paths, so dropping in the real pookalam means changing this URL
+    // — no deploy, no code change. Requirements: square aspect ratio, and busy
+    // near the edges (a plain border makes the corner pieces pure guesswork).
+    // A more symmetric design is a HARDER puzzle, so revisit `minPlausibleMs`
+    // for the jigsaw in src/server/games/registry.ts when you change it.
+    assets: { imageUrl: "/pookalam-placeholder.svg" },
+  },
+  {
+    day: 3,
+    slug: "wend",
+    title: "Wend",
+    hint: "Four groups. One of them is not what you think it is.",
+    game_type: "wend",
+    difficulty: "hard",
+  },
+  {
+    day: 4,
+    slug: "escape-the-vallam",
+    title: "Escape the Vallam",
+    hint: "The snake boat only moves the long way. Everything else is in the way.",
+    game_type: "unblock",
+    difficulty: "hard",
+  },
+  {
+    day: 5,
+    slug: "maveli-jump",
+    title: "Maveli Jump",
+    hint: "Paathalam is below. Kerala is above. Start climbing.",
+    game_type: "jump",
+    difficulty: "normal",
+  },
+  {
+    day: 6,
+    slug: "treasure-hunt",
+    title: "The Hunt",
+    hint: "Clue one is here. The rest are not.",
+    game_type: "hunt",
+    difficulty: "hard",
   },
 ];
 
 for (const g of games) {
+  const assets = g.assets ? JSON.stringify(g.assets) : null;
   await sql`
-    insert into games (slug, day, title, hint, game_type, difficulty, published)
-    values (${g.slug}, ${g.day}, ${g.title}, ${g.hint}, ${g.game_type}, ${g.difficulty}, true)
+    insert into games (slug, day, title, hint, game_type, difficulty, published, assets_json)
+    values (
+      ${g.slug}, ${g.day}, ${g.title}, ${g.hint}, ${g.game_type}, ${g.difficulty}, true,
+      ${assets}::jsonb
+    )
     on conflict (slug) do update set
+      day = excluded.day,
       title = excluded.title,
       hint = excluded.hint,
       game_type = excluded.game_type,
-      published = excluded.published
+      difficulty = excluded.difficulty,
+      published = excluded.published,
+      -- Never clobber artwork an admin swapped in by hand.
+      assets_json = coalesce(excluded.assets_json, games.assets_json)
   `;
 }
 
-console.log("Seeded settings +", games.length, "game ('button', braindead) — the only demo game.");
+console.log(`Seeded ${settings.length} settings + ${games.length} games (days 1-6).`);
+console.log("Day 7 (pookalam ELO voting) is not a timed game and has no `games` row.");
 await sql.end();

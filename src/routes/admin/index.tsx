@@ -10,7 +10,7 @@ import {
   getAdminDashboard,
   listGames,
   setTesterActive,
-  setUserBlock,
+  setUserBanLevel,
   setUserRole,
   unblockIpAction,
   updateGame,
@@ -279,17 +279,31 @@ export default function Admin() {
                     <td>{user.trustScore}</td>
                     <td>{user.streakCount}</td>
                     <td>
-                      <button
-                        type="button"
-                        onClick={() =>
+                      <select
+                        value={String(user.banLevel ?? 0)}
+                        onChange={(e) =>
                           run(
-                            () => setUserBlock(user.id, !user.isBlocked, "by admin"),
-                            user.isBlocked ? "Unblocked" : "Blocked",
+                            () =>
+                              setUserBanLevel(
+                                user.id,
+                                Number(e.currentTarget.value) as 0 | 1 | 2 | 3 | 4,
+                                "by admin",
+                              ),
+                            "Ban level updated",
                           )
                         }
                       >
-                        {user.isBlocked ? "Unblock" : "Block"}
-                      </button>
+                        <option value="0">0 · clear</option>
+                        <option value="1">1 · warning</option>
+                        <option value="2">2 · 3h bench</option>
+                        <option value="3">3 · 24h bench</option>
+                        <option value="4">4 · hard ban</option>
+                      </select>
+                      <Show when={user.banUntil}>
+                        <span class="ml-2 text-xs text-muted">
+                          until {new Date(user.banUntil!).toLocaleString("en-IN")}
+                        </span>
+                      </Show>
                     </td>
                   </tr>
                 )}

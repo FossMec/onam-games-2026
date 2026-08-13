@@ -43,6 +43,13 @@
       "when": 1786482422671,
       "tag": "0005_sticky_thaddeus_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786600115257,
+      "tag": "0006_pop_scoring_bans",
+      "breakpoints": true
     }
   ]
 }
