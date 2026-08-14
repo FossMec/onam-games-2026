@@ -1,5 +1,5 @@
 import { createAsync } from "@solidjs/router";
-import { Check, ChevronDown, ChevronUp, Copy, Terminal } from "lucide-solid";
+import { ChevronDown, ChevronUp, Key, ShieldCheck } from "lucide-solid";
 import { Show, createSignal } from "solid-js";
 
 import { getMe } from "~/server/auth/actions";
@@ -7,21 +7,7 @@ import { SpriteIcon } from "./art/SpriteIcon";
 
 export function MaveliLetter() {
   const me = createAsync(() => getMe());
-  const [copied, setCopied] = createSignal(false);
-  const [showToast, setShowToast] = createSignal(false);
   const [isExpanded, setIsExpanded] = createSignal(false);
-
-  const copySSH = async () => {
-    try {
-      await navigator.clipboard.writeText("ssh pathalam@mahali.local -p 22");
-      setCopied(true);
-      setShowToast(true);
-      setTimeout(() => setCopied(false), 2500);
-      setTimeout(() => setShowToast(false), 4000);
-    } catch {
-      // Fallback
-    }
-  };
 
   const recipientName = () => me()?.name || "Prajakale & Fellow Hacker";
   const recipientCollege = () => me()?.college || "Govt. Model Engineering College";
@@ -210,35 +196,30 @@ export function MaveliLetter() {
                   </div>
                 </div>
 
-                {/* Compact PS Action Bar */}
-                <div class="mt-2 p-2 rounded-lg bg-[var(--paper-3)] border border-[var(--ink)] text-[11px] font-mono flex flex-col xs:flex-row items-start xs:items-center justify-between gap-1.5 w-full">
-                  <div class="flex items-center gap-1.5 min-w-0 max-w-full">
-                    <Terminal size={13} class="shrink-0 text-[var(--ink)]" />
-                    <span class="truncate">
-                      <strong>PS:</strong> If you know how to exit Vim:
+                {/* Cryptographic GPG Signed Box */}
+                <div class="mt-2.5 p-2.5 rounded-lg bg-[var(--paper-3)] border border-[var(--ink)] text-[11px] font-mono space-y-1">
+                  <div class="flex items-center justify-between flex-wrap gap-1 text-[10px] pb-1 border-b border-[var(--ink-soft)]/20">
+                    <span class="inline-flex items-center gap-1 font-bold text-emerald-800">
+                      <ShieldCheck size={13} class="text-emerald-700 shrink-0" />
+                      <span>GPG SIGNED PROCLAMATION</span>
                     </span>
+                    <span class="text-[var(--ink-soft)]">KEY-ID: 0xMAVELI_ONAM_2026</span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={copySSH}
-                    class="w-full xs:w-auto inline-flex items-center justify-center gap-1 px-2 py-1 rounded bg-[var(--pop-yellow)] hover:bg-[var(--pop-teal)] font-mono font-black text-[11px] border border-[var(--ink)] cursor-pointer transition-all active:translate-y-0.5 shrink-0"
-                    title="Copy SSH command"
-                  >
-                    <Show when={copied()} fallback={<Copy size={11} strokeWidth={2.5} />}>
-                      <Check size={11} strokeWidth={2.5} class="text-emerald-700" />
-                    </Show>
+                  <p class="leading-relaxed text-[11px]">
+                    <strong>PS:</strong> If you know how to exit Vim:{" "}
+                    <code class="px-1.5 py-0.5 rounded bg-[var(--paper-2)] border border-[var(--ink)] font-bold text-[10.5px] select-all">
+                      ssh pathalam@mahali.local -p 22
+                    </code>
+                  </p>
+
+                  <p class="text-[9.5px] text-[var(--ink-soft)] font-mono flex items-center gap-1 pt-0.5">
+                    <Key size={10} class="shrink-0 opacity-60" />
                     <span class="truncate">
-                      {copied() ? "Copied!" : "ssh pathalam@mahali.local -p 22"}
+                      Fingerprint: 800A D122 6YON AMF0 SSME C202 6PAT ALAM
                     </span>
-                  </button>
+                  </p>
                 </div>
-
-                <Show when={showToast()}>
-                  <div class="text-[10px] font-mono text-emerald-800 font-bold animate-pulse text-center sm:text-left">
-                    ⚡ Connection attempt recorded. Maveli is still typing :help in Patala.
-                  </div>
-                </Show>
               </div>
 
               {/* Mobile Read More / Collapse Toggle Button */}
