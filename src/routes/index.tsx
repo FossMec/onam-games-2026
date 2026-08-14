@@ -734,7 +734,9 @@ export default function Home() {
       </Section>
 
       {/* ---------------------------------------------------- royal letter from maveli */}
-      <MaveliLetter />
+      <Section title="A Letter from the King to the Prajakal" id="maveli-letter">
+        <MaveliLetter />
+      </Section>
 
       {/* ---------------------------------------------------- how it works (8 items) */}
       <Section title="How it works" id="how-it-works">

@@ -13,8 +13,9 @@ export function MaveliLetter() {
   const recipientCollege = () => me()?.college || "Govt. Model Engineering College";
 
   return (
-    <section class="w-full max-w-4xl mx-auto my-8 px-2 sm:px-4">
+    <div class="w-full max-w-4xl mx-auto">
       {/* Postcard Container with Folded Corner Effect & Inset Badges */}
+
       <div
         class="relative w-full rounded-2xl p-4 sm:p-6 bg-[#fffdf5] text-[var(--ink)] shadow-xl transition-all"
         style={{
@@ -239,6 +240,6 @@ export function MaveliLetter() {
           </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
