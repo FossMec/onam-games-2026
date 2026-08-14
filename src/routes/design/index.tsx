@@ -134,17 +134,17 @@ const MEMES = [
     color: "var(--pop-teal)",
   },
   {
-    title: "Compute Sovereign",
+    title: "Out of Tokens",
     src: "/images/memes/need-more-tokens.png",
-    caption: "Maveli rejects closed APIs. Give me more open weights.",
-    tag: "OPEN AI",
+    caption: "ERROR: OUT OF TOKENS — Maveli ran out of tokens right before Thiruvonam.",
+    tag: "RATE LIMIT",
     color: "var(--pop-purple)",
   },
   {
-    title: "Production Ready",
+    title: "Rustaceans on Vallam",
     src: "/images/memes/failure-is-not-an-option.png",
-    caption: "Failure is not an option. It is bundled in the default build.",
-    tag: "DEPLOYMENT",
+    caption: "Failure is not an Option<T>, it's a Result<T, E>.",
+    tag: "RUST BORROW",
     color: "var(--pop-red)",
   },
 ];
