@@ -88,15 +88,36 @@ export default function Home() {
   const me = createAsync(() => getMe());
   const [signingOut, setSigningOut] = createSignal(false);
   const [selectedDay, setSelectedDay] = createSignal<number>(1);
+  const currentActiveDay = () => {
+    const list = games();
+    if (!list || list.length === 0) return 1;
 
-  const liveGame = () => games()?.find((g) => g.status === "live" || g.status === "tester");
+    // 1. Currently live or tester game
+    const live = list.find((g) => g.status === "live" || g.status === "tester");
+    if (live) return live.day;
 
-  // Auto-focus on currently live game if available
+    // 2. Most recent game that has released by date
+    const now = Date.now();
+    const released = list
+      .filter((g) => g.releaseAt && new Date(g.releaseAt).getTime() <= now)
+      .sort((a, b) => b.day - a.day);
+    if (released.length > 0) return released[0].day;
+
+    // 3. Fallback to latest closed game or Day 1
+    const closed = list.filter((g) => g.status === "closed").sort((a, b) => b.day - a.day);
+    if (closed.length > 0) return closed[0].day;
+
+    return 1;
+  };
+
+  const liveGame = () =>
+    games()?.find((g) => g.day === currentActiveDay()) ??
+    games()?.find((g) => g.status === "live" || g.status === "tester");
+
+  // Auto-focus on currently active / current day's game
   createEffect(() => {
-    const live = liveGame();
-    if (live) {
-      setSelectedDay(live.day);
-    }
+    const day = currentActiveDay();
+    setSelectedDay(day);
   });
 
   // Assemble full 7-day schedule
