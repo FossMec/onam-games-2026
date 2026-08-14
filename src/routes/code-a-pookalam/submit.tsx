@@ -148,16 +148,19 @@ export default function SubmitPookalam() {
               </label>
 
               <label class="block space-y-1">
-                <span class="font-extrabold">Source link</span>
+                <span class="font-extrabold">GitHub Repository Link</span>
                 <input
                   class="input"
                   type="url"
                   value={sourceUrl()}
                   onInput={(e) => setSourceUrl(e.currentTarget.value)}
                   required
-                  placeholder="https://github.com/you/pookalam"
+                  placeholder="https://github.com/username/pookalam"
                 />
-                <span class="comment">repo, gist, codepen — anywhere we can read and run it.</span>
+                <span class="comment">
+                  GitHub repository or GitHub Gist link only. Include your source code and how to
+                  run it.
+                </span>
               </label>
 
               <label class="block space-y-1">

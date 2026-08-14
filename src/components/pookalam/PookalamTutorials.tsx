@@ -248,17 +248,17 @@ export function PookalamTutorials() {
       </div>
 
       {/* Tabs */}
-      <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+      <div class="px-1 py-1.5 flex gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         <For each={TUTORIALS}>
           {(t) => {
             const Icon = t.icon;
-            const isSel = t.id === activeId();
+            const isSel = () => t.id === activeId();
             return (
               <button
                 type="button"
                 onClick={() => setActiveId(t.id)}
                 class={`px-3.5 py-2 rounded-xl border-2 border-[var(--ink)] text-xs font-black shrink-0 transition-all cursor-pointer flex items-center gap-2 ${
-                  isSel
+                  isSel()
                     ? "bg-[var(--pop-yellow)] scale-105 shadow-[3px_3px_0px_0px_var(--ink)]"
                     : "bg-[var(--paper-2)] opacity-80 hover:opacity-100 hover:bg-[var(--paper)]"
                 }`}
