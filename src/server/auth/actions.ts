@@ -1,14 +1,14 @@
-import { query } from "@solidjs/router";
+"use server";
+
 import { ZodError } from "zod";
 import type { FingerprintSignals } from "~/lib/fingerprint";
 import { completeOAuthSignIn, getCurrentUser, signOut, type OAuthSession } from "./service";
 import { completeOnboarding, uploadAvatar, type OnboardingInput } from "./onboarding";
 import { acknowledgeWarning, banMessage, describeBan } from "./bans";
 
-export const getMe = query(async () => {
-  "use server";
+export async function getMe() {
   return getCurrentUser();
-}, "users:me");
+}
 
 /** Ban state for the current user, shaped for the UI. */
 export async function getMyBanState() {
