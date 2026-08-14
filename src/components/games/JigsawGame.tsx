@@ -38,11 +38,19 @@ interface Move {
   t: number;
 }
 
+export interface JigsawProgress {
+  placement: (number | null)[];
+  moveLog: Move[];
+}
+
 export interface JigsawGameProps {
   view: JigsawViewData;
   startedAt: number;
   onFinish: (submission: { placement: (number | null)[]; moveLog: Move[] }) => void;
   disabled?: boolean;
+  /** Placement and moves from a previous visit. */
+  initialProgress?: JigsawProgress | null;
+  onProgress?: (progress: JigsawProgress) => void;
 }
 
 /** Unit cell; the SVG is scaled by viewBox so this never needs pixels. */
@@ -106,6 +114,17 @@ export function JigsawGame(props: JigsawGameProps) {
   const [moveLog, setMoveLog] = createSignal<Move[]>([]);
 
   onMount(() => {
+    const saved = props.initialProgress;
+    if (saved && saved.placement.length === count()) {
+      // Tray is derived rather than stored: it is exactly the pieces not on the
+      // board, so keeping a second copy would only create a way for the two to
+      // disagree after a restore.
+      const placed = new Set(saved.placement.filter((id): id is number => id !== null));
+      setPlacement(saved.placement.slice());
+      setMoveLog(saved.moveLog.slice());
+      setTray(props.view.trayOrder.filter((id) => !placed.has(id)));
+      return;
+    }
     setPlacement(Array.from<number | null>({ length: count() }).fill(null));
     setTray(props.view.trayOrder.slice());
   });

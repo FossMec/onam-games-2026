@@ -29,6 +29,18 @@ export interface TinderGameProps {
   /** Called with the full transcript once the deck is cleared. */
   onFinish: (submission: { passes: Decision[][] }) => void;
   disabled?: boolean;
+  /** Deck state from a previous visit. */
+  initialProgress?: TinderProgress | null;
+  onProgress?: (progress: TinderProgress) => void;
+}
+
+/** Everything needed to put a half-swiped deck back exactly as it was. */
+export interface TinderProgress {
+  queue: string[];
+  passIds: string[];
+  decisions: Decision[];
+  transcript: Decision[][];
+  passNumber: number;
 }
 
 const SWIPE_THRESHOLD = 80;
@@ -36,11 +48,20 @@ const SWIPE_THRESHOLD = 80;
 export function TinderGame(props: TinderGameProps) {
   const byId = createMemo(() => new Map(props.cards.map((c) => [c.id, c])));
 
-  const [queue, setQueue] = createSignal<string[]>(props.cards.map((c) => c.id));
-  const [passIds, setPassIds] = createSignal<string[]>(props.cards.map((c) => c.id));
-  const [decisions, setDecisions] = createSignal<Decision[]>([]);
-  const [transcript, setTranscript] = createSignal<Decision[][]>([]);
-  const [passNumber, setPassNumber] = createSignal(1);
+  /*
+   * Restored wholesale, including the pass number and the graded transcript.
+   * A partial restore would desynchronise the deck from what the server will
+   * replay at verification, and a mismatched transcript is a rejected run —
+   * so it is all of it or none of it.
+   */
+  const saved = props.initialProgress;
+  const [queue, setQueue] = createSignal<string[]>(saved?.queue ?? props.cards.map((c) => c.id));
+  const [passIds, setPassIds] = createSignal<string[]>(
+    saved?.passIds ?? props.cards.map((c) => c.id),
+  );
+  const [decisions, setDecisions] = createSignal<Decision[]>(saved?.decisions ?? []);
+  const [transcript, setTranscript] = createSignal<Decision[][]>(saved?.transcript ?? []);
+  const [passNumber, setPassNumber] = createSignal(saved?.passNumber ?? 1);
   const [grading, setGrading] = createSignal(false);
   const [error, setError] = createSignal("");
 
@@ -50,6 +71,17 @@ export function TinderGame(props: TinderGameProps) {
 
   const top = () => queue()[0];
   const remaining = () => queue().length;
+
+  /** Snapshots the whole deck so a reload puts it back exactly. */
+  const report = (patch: Partial<TinderProgress> = {}) =>
+    props.onProgress?.({
+      queue: queue(),
+      passIds: passIds(),
+      decisions: decisions(),
+      transcript: transcript(),
+      passNumber: passNumber(),
+      ...patch,
+    });
 
   const gradePass = async (finalDecisions: Decision[]) => {
     setGrading(true);
@@ -73,6 +105,7 @@ export function TinderGame(props: TinderGameProps) {
       const nextTranscript = [...transcript(), finalDecisions];
       setTranscript(nextTranscript);
       setDecisions([]);
+      report({ transcript: nextTranscript, decisions: [] });
 
       if (data.wrongIds.length === 0) {
         props.onFinish({ passes: nextTranscript });
@@ -103,6 +136,7 @@ export function TinderGame(props: TinderGameProps) {
 
     const rest = queue().slice(1);
     setQueue(rest);
+    report({ queue: rest, decisions: nextDecisions });
     if (rest.length === 0) void gradePass(nextDecisions);
   };
 

@@ -3,14 +3,31 @@ import { createAsync, useParams, useSearchParams } from "@solidjs/router";
 import { Show, createEffect, createSignal, onCleanup } from "solid-js";
 import { Countdown } from "~/components/Countdown";
 import { ShoutBurst } from "~/components/art/Burst";
-import { JigsawGame, type JigsawViewData } from "~/components/games/JigsawGame";
+import {
+  JigsawGame,
+  type JigsawProgress,
+  type JigsawViewData,
+} from "~/components/games/JigsawGame";
 import { JumpGame, type JumpViewData } from "~/components/games/JumpGame";
-import { TinderGame, type TinderCardView } from "~/components/games/TinderGame";
-import { VallamGame, type VallamViewData } from "~/components/games/VallamGame";
-import { WendGame, type WendViewData } from "~/components/games/WendGame";
+import {
+  TinderGame,
+  type TinderCardView,
+  type TinderProgress,
+} from "~/components/games/TinderGame";
+import { VallamGame, type VallamMove, type VallamViewData } from "~/components/games/VallamGame";
+import { WendGame, type Cell as WendCell, type WendViewData } from "~/components/games/WendGame";
 import { ackWarningAction, getMe, getMyBanState } from "~/server/auth/actions";
 import { getGame, getMyAttempt } from "~/server/games/actions";
-import { clearAttempt, getStoredAttempt, storeAttempt } from "~/lib/game-session";
+import {
+  clearAttempt,
+  clearProgress,
+  getFinished,
+  getProgress,
+  getStoredAttempt,
+  saveFinished,
+  saveProgress,
+  storeAttempt,
+} from "~/lib/game-session";
 import { SHOUT_COLOR, moodForResult, shout } from "~/lib/shouts";
 
 /**
@@ -25,6 +42,8 @@ type GameView =
   | JumpViewData
   | { kind: "hunt"; prompt: string }
   | { kind: string; [key: string]: unknown };
+
+type WendFound = { word: string; cells: WendCell[] };
 
 interface FinishPayload {
   valid: boolean;
@@ -57,6 +76,28 @@ export default function GamePage() {
   /** The playable board from the server. Never contains the solution. */
   const [view, setView] = createSignal<GameView | null>(null);
   const [rehydrated, setRehydrated] = createSignal(false);
+  /** Board state restored from a previous visit, handed to the board on mount. */
+  const [restored, setRestored] = createSignal<unknown>(null);
+  /**
+   * The finished board, so a player can still look at what they did after a
+   * reload. Read once on mount; the server owns the result, this owns the
+   * picture of it.
+   */
+  const [finishedBoard, setFinishedBoard] = createSignal<{
+    view: GameView;
+    submission: unknown;
+  } | null>(null);
+
+  /**
+   * Board progress is written on every move, which for the jigsaw is a lot of
+   * writes. `saveProgress` is a synchronous localStorage call, so it is kept
+   * off the move path itself and batched to the next idle frame.
+   */
+  const persist = (progress: unknown) => {
+    const token = attemptToken();
+    if (!token) return;
+    queueMicrotask(() => saveProgress(token, progress));
+  };
 
   /*
    * A refresh loses the board, so an attempt found in local storage is
@@ -66,11 +107,20 @@ export default function GamePage() {
    */
   createEffect(() => {
     if (rehydrated() || result()) return;
+    setRehydrated(true);
+
+    // A finished board outlives the attempt, so it is restored first and
+    // independently — a player who comes back tomorrow still gets to see it.
+    const done = getFinished(slug());
+    if (done) {
+      setFinishedBoard({ view: done.view as GameView, submission: done.submission });
+    }
+
     const stored = getStoredAttempt(slug());
     if (!stored) return;
-    setRehydrated(true);
     setAttemptToken(stored.attemptToken);
     setStartedAt(new Date(stored.startedAt).getTime());
+    setRestored(getProgress(stored.attemptToken));
     void start();
   });
 
@@ -125,6 +175,18 @@ export default function GamePage() {
         setError(data.error ?? "Failed to submit");
         return;
       }
+      // Keep the board before dropping the attempt, so the player can look at
+      // what they submitted instead of it vanishing into a result card.
+      const board = view();
+      if (board) {
+        saveFinished(slug(), {
+          view: board,
+          submission: submittedState,
+          finishedAt: new Date().toISOString(),
+        });
+        setFinishedBoard({ view: board, submission: submittedState });
+      }
+      clearProgress(token);
       clearAttempt(slug());
       setAttemptToken(null);
       setStartedAt(null);
@@ -409,6 +471,8 @@ export default function GamePage() {
                     attemptToken={attemptToken()!}
                     cards={tinderCards()!}
                     disabled={busy()}
+                    initialProgress={restored() as TinderProgress | null}
+                    onProgress={persist}
                     onFinish={(submission) => finish(submission)}
                   />
                 </Show>
@@ -423,6 +487,8 @@ export default function GamePage() {
                     view={jigsawView()!}
                     startedAt={startedAt() ?? Date.now()}
                     disabled={busy()}
+                    initialProgress={restored() as JigsawProgress | null}
+                    onProgress={persist}
                     onFinish={(submission) => finish(submission)}
                   />
                 </Show>
@@ -433,6 +499,8 @@ export default function GamePage() {
                   <WendGame
                     view={wendView()!}
                     disabled={busy()}
+                    initialFound={(restored() as { found?: WendFound[] } | null)?.found}
+                    onProgress={(found) => persist({ found })}
                     onFinish={(submission) => finish(submission)}
                   />
                 </Show>
@@ -443,6 +511,8 @@ export default function GamePage() {
                   <VallamGame
                     view={vallamView()!}
                     disabled={busy()}
+                    initialMoves={(restored() as { moves?: VallamMove[] } | null)?.moves}
+                    onProgress={(moves) => persist({ moves })}
                     onFinish={(submission) => finish(submission)}
                   />
                 </Show>
@@ -478,6 +548,48 @@ export default function GamePage() {
                 <p class="text-sm text-muted">
                   This game's board is not wired up yet — it will render here.
                 </p>
+              </Show>
+            </div>
+          </Show>
+
+          {/* -------------------------------------------- the finished board */}
+          {/*
+            Shown once the attempt is over and kept across reloads. Finishing a
+            puzzle and having it vanish into a result card is a bad ending —
+            people want to look at the thing they solved. Every board is
+            `disabled`, so this is a picture, not a second go.
+          */}
+          <Show when={!attemptToken() && finishedBoard()}>
+            <div class="card card-plain space-y-3">
+              <p class="rule">Your board</p>
+              <Show when={(finishedBoard()!.view as GameView).kind === "wend"}>
+                <WendGame
+                  view={finishedBoard()!.view as WendViewData}
+                  disabled
+                  initialFound={
+                    (finishedBoard()!.submission as { found?: WendFound[] } | null)?.found
+                  }
+                  onFinish={() => undefined}
+                />
+              </Show>
+              <Show when={(finishedBoard()!.view as GameView).kind === "vallam"}>
+                <VallamGame
+                  view={finishedBoard()!.view as VallamViewData}
+                  disabled
+                  initialMoves={
+                    (finishedBoard()!.submission as { moves?: VallamMove[] } | null)?.moves
+                  }
+                  onFinish={() => undefined}
+                />
+              </Show>
+              <Show when={(finishedBoard()!.view as GameView).kind === "jigsaw"}>
+                <JigsawGame
+                  view={finishedBoard()!.view as JigsawViewData}
+                  startedAt={0}
+                  disabled
+                  initialProgress={finishedBoard()!.submission as JigsawProgress | null}
+                  onFinish={() => undefined}
+                />
               </Show>
             </div>
           </Show>

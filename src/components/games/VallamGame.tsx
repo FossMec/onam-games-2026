@@ -42,6 +42,9 @@ export interface VallamGameProps {
   view: VallamViewData;
   onFinish: (submission: { moves: VallamMove[] }) => void;
   disabled?: boolean;
+  /** Moves from a previous visit, replayed to restore the board. */
+  initialMoves?: VallamMove[];
+  onProgress?: (moves: VallamMove[]) => void;
 }
 
 /**
@@ -88,9 +91,30 @@ function reachable(boats: BoatView[], boat: BoatView, size: number): number[] {
   return deltas;
 }
 
+/** Replays a move list onto the starting position. */
+function replay(start: BoatView[], moves: VallamMove[]): BoatView[] {
+  let boats = start;
+  for (const move of moves) {
+    boats = boats.map((b) =>
+      b.id === move.b
+        ? { ...b, r: b.horizontal ? b.r : b.r + move.d, c: b.horizontal ? b.c + move.d : b.c }
+        : b,
+    );
+  }
+  return boats;
+}
+
 export function VallamGame(props: VallamGameProps) {
-  const [boats, setBoats] = createSignal<BoatView[]>(props.view.boats);
-  const [moves, setMoves] = createSignal<VallamMove[]>([]);
+  /*
+   * Restored by replaying the move list rather than by storing boat positions.
+   * The move list is what gets submitted and what the server replays, so
+   * rebuilding from it means the board a resuming player sees is exactly the
+   * board their submission describes — two representations could drift.
+   */
+  const [moves, setMoves] = createSignal<VallamMove[]>(props.initialMoves ?? []);
+  const [boats, setBoats] = createSignal<BoatView[]>(
+    replay(props.view.boats, props.initialMoves ?? []),
+  );
   const [selected, setSelected] = createSignal<number | null>(null);
 
   const size = () => props.view.size;
@@ -126,6 +150,7 @@ export function VallamGame(props: VallamGameProps) {
     setBoats(next);
     setMoves(log);
     setSelected(null);
+    props.onProgress?.(log);
 
     const escapee = next.find((b) => b.id === 0)!;
     if (escapee.c + escapee.len === size()) props.onFinish({ moves: log });
@@ -149,6 +174,7 @@ export function VallamGame(props: VallamGameProps) {
     setBoats(props.view.boats);
     setMoves([]);
     setSelected(null);
+    props.onProgress?.([]);
   };
 
   const pct = (n: number) => `${(n / size()) * 100}%`;

@@ -1,31 +1,108 @@
 const STORE_PREFIX = "og_attempt:";
+const PROGRESS_PREFIX = "og_progress:";
+const DONE_PREFIX = "og_done:";
+
+/**
+ * Local game session storage.
+ *
+ * Three separate things live here, and the difference matters:
+ *
+ *   attempt   which attempt is open, so a refresh can resume it
+ *   progress  how far into the board the player has got
+ *   done      the board they finished, so they can look at it afterwards
+ *
+ * NONE OF IT IS TRUSTED. Everything stored here is either something the server
+ * already told us (the attempt token, which the server re-validates) or
+ * something the server will re-derive anyway (the move list, which is replayed
+ * at verification). Progress is deliberately the player's *moves*, never a
+ * score or an elapsed time — those come from the server and are never written
+ * here, so editing localStorage buys nothing but a rejected submission.
+ *
+ * Progress is keyed by attempt token rather than by slug: a retry game issues a
+ * new token per run, and half-finished state leaking from one run into the next
+ * would be both wrong and confusing.
+ */
 
 export interface StoredAttempt {
   attemptToken: string;
   startedAt: string;
 }
 
-export function getStoredAttempt(slug: string): StoredAttempt | null {
+function read<T>(key: string): T | null {
   try {
-    const raw = localStorage.getItem(STORE_PREFIX + slug);
-    return raw ? (JSON.parse(raw) as StoredAttempt) : null;
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
   } catch {
+    // Malformed or unavailable storage must never break a game in progress.
     return null;
   }
 }
 
-export function storeAttempt(slug: string, attempt: StoredAttempt): void {
+function write(key: string, value: unknown): void {
   try {
-    localStorage.setItem(STORE_PREFIX + slug, JSON.stringify(attempt));
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Best effort: private mode and full quotas are both survivable. The
+    // attempt itself lives on the server; this only costs the player a resume.
+  }
+}
+
+function drop(key: string): void {
+  try {
+    localStorage.removeItem(key);
   } catch {
     // best effort
   }
 }
 
+/* --------------------------------------------------------------- attempt */
+
+export function getStoredAttempt(slug: string): StoredAttempt | null {
+  return read<StoredAttempt>(STORE_PREFIX + slug);
+}
+
+export function storeAttempt(slug: string, attempt: StoredAttempt): void {
+  write(STORE_PREFIX + slug, attempt);
+}
+
 export function clearAttempt(slug: string): void {
-  try {
-    localStorage.removeItem(STORE_PREFIX + slug);
-  } catch {
-    // best effort
-  }
+  drop(STORE_PREFIX + slug);
+}
+
+/* -------------------------------------------------------------- progress */
+
+/** Mid-attempt board state. Shape is whatever that game's board component uses. */
+export function getProgress<T>(attemptToken: string): T | null {
+  return read<T>(PROGRESS_PREFIX + attemptToken);
+}
+
+export function saveProgress(attemptToken: string, progress: unknown): void {
+  write(PROGRESS_PREFIX + attemptToken, progress);
+}
+
+export function clearProgress(attemptToken: string): void {
+  drop(PROGRESS_PREFIX + attemptToken);
+}
+
+/* ------------------------------------------------------------- completed */
+
+/**
+ * A finished board, kept so the player can still see what they did after a
+ * reload. Keyed by slug, not by attempt: what a player wants to look back at is
+ * "the day I finished", and for a retry game that is their last completed run.
+ */
+export interface FinishedBoard {
+  /** The board the server handed out, so it can be re-rendered exactly. */
+  view: unknown;
+  /** What the player submitted, replayed into the board read-only. */
+  submission: unknown;
+  finishedAt: string;
+}
+
+export function getFinished(slug: string): FinishedBoard | null {
+  return read<FinishedBoard>(DONE_PREFIX + slug);
+}
+
+export function saveFinished(slug: string, board: FinishedBoard): void {
+  write(DONE_PREFIX + slug, board);
 }
