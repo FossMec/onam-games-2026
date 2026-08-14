@@ -24,7 +24,6 @@ type GameView =
   | VallamViewData
   | JumpViewData
   | { kind: "hunt"; prompt: string }
-  | { kind: "braindead"; mission: string; buttonLabel: string }
   | { kind: string; [key: string]: unknown };
 
 interface FinishPayload {
@@ -148,7 +147,6 @@ export default function GamePage() {
 
   const attempt = () => myAttempt();
   const isHunt = () => game()?.gameType === "hunt";
-  const isBraindead = () => game()?.gameType === "braindead";
   const isTinder = () => game()?.gameType === "tinder";
 
   const isJigsaw = () => game()?.gameType === "jigsaw";
@@ -353,11 +351,9 @@ export default function GamePage() {
           <Show when={me()?.onboardingCompleted && !attemptToken() && !finished()}>
             <div class="card space-y-4 text-center">
               <p class="text-muted">
-                {isBraindead()
-                  ? "There is no strategy. There is no skill. There is only the button."
-                  : isRetryGame()
-                    ? `Your best run of the day is the one that counts. ${attemptsLeft()} run${attemptsLeft() === 1 ? "" : "s"} left.`
-                    : "Only one attempt per game. The timer starts when you press start."}
+                {isRetryGame()
+                  ? `Your best run of the day is the one that counts. ${attemptsLeft()} run${attemptsLeft() === 1 ? "" : "s"} left.`
+                  : "Only one attempt per game. The timer starts when you press start."}
               </p>
               <button
                 type="button"
@@ -369,11 +365,9 @@ export default function GamePage() {
                   ? "Starting…"
                   : attempt()?.status === "in_progress"
                     ? "Resume"
-                    : isBraindead()
-                      ? "START THE POINTLESS RITUAL"
-                      : isRetryGame() && (attempt()?.attemptsUsed ?? 0) > 0
-                        ? "Go again"
-                        : "Start game"}
+                    : isRetryGame() && (attempt()?.attemptsUsed ?? 0) > 0
+                      ? "Go again"
+                      : "Start game"}
               </button>
             </div>
           </Show>
@@ -403,17 +397,6 @@ export default function GamePage() {
                     {busy() ? "Checking…" : "Submit token"}
                   </button>
                 </div>
-              </Show>
-
-              <Show when={isBraindead()}>
-                <button
-                  type="button"
-                  onClick={() => finish({ pressed: true })}
-                  disabled={busy()}
-                  class="btn-brand px-12 py-6 text-2xl"
-                >
-                  {busy() ? "Submitting…" : "THE BUTTON"}
-                </button>
               </Show>
 
               <Show when={isTinder()}>
@@ -489,13 +472,7 @@ export default function GamePage() {
 
               <Show
                 when={
-                  !isHunt() &&
-                  !isBraindead() &&
-                  !isTinder() &&
-                  !isJigsaw() &&
-                  !isWend() &&
-                  !isVallam() &&
-                  !isJump()
+                  !isHunt() && !isTinder() && !isJigsaw() && !isWend() && !isVallam() && !isJump()
                 }
               >
                 <p class="text-sm text-muted">

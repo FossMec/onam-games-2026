@@ -4,7 +4,6 @@ import * as jump from "./impl/jump";
 import * as tinder from "./impl/tinder";
 import * as vallam from "./impl/vallam";
 import * as wend from "./impl/wend";
-import { createRng } from "./rng";
 
 /**
  * Fallback jigsaw artwork. Overridden per-game by `games.assets_json.imageUrl`,
@@ -334,43 +333,6 @@ export const GAMES: readonly GameDef[] = [
       return normalizeToken(claimed) === normalizeToken(expected)
         ? { valid: true }
         : { valid: false, reason: "That is not the token. Keep looking." };
-    },
-  },
-
-  /* ------------------------------------------------------------------ dev */
-  {
-    slug: "button",
-    day: 0,
-    gameType: "braindead",
-    metric: "time",
-    maxAttempts: 1,
-    minPlausibleMs: 0,
-    maxDurationMs: 10 * MINUTE,
-    maxSubmissionBytes: 2_000,
-    public: {
-      title: "The Button",
-      tagline: "There is no strategy. There is no skill. There is only the button.",
-      hint: "It is a button. That is all. Do not overthink it.",
-      howTo: ["Press start.", "Press the button.", "Reflect on your choices."],
-    },
-    generate: (seed) => ({
-      view: {
-        kind: "braindead",
-        mission: "Press the button. That's it. That's the whole game.",
-        buttonLabel: "THE BUTTON",
-        // Proof the seeded RNG is wired end to end.
-        nonce: createRng(seed).int(1000, 9999),
-      },
-      solution: null,
-    }),
-    verify: ({ submission }) => {
-      const pressed =
-        !!submission &&
-        typeof submission === "object" &&
-        (submission as { pressed?: boolean }).pressed === true;
-      return pressed
-        ? { valid: true, movesCount: 1 }
-        : { valid: false, reason: "You didn't press the button. Impressive." };
     },
   },
 ];
