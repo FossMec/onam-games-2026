@@ -112,14 +112,13 @@ const base = { seed: SEED, difficulty: "hard", durationMs: 120_000 };
 /* ------------------------------------------------------------------ wend */
 console.log("\n\x1b[1mWend\x1b[0m — one canonical board, per-player orientation");
 {
-  const view = wend.generate(SEED).view as WendView;
   expectRejected("empty submission", wend.verify({ ...base, submission: { found: [] } }));
   expectRejected(
     "every word claimed with invented coordinates",
     wend.verify({
       ...base,
       submission: {
-        found: view.words.map((word) => ({
+        found: [...wend.WORDS].map((word) => ({
           word,
           cells: Array.from({ length: word.length }, (_, i) => ({ r: 0, c: i })),
         })),
@@ -142,7 +141,7 @@ console.log("\n\x1b[1mWend\x1b[0m — one canonical board, per-player orientatio
       submission: {
         found: [
           {
-            word: view.words[0],
+            word: wend.WORDS[0],
             cells: [
               { r: 0, c: 0 },
               { r: 1, c: 1 },

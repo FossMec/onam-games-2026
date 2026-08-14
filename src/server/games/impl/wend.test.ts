@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { BOARD, GRID_SIZE, WORDS, applyTransform, generate, verify } from "./wend";
+import { BOARD, GRID_SIZE, WORDS, applyTransform, generate, matchTrace, verify } from "./wend";
 import type { Cell, WendView } from "./wend";
 
 const SEED = "5c4b3a2918273645f0e1d2c3b4a59687";
@@ -227,5 +227,56 @@ describe("verify", () => {
     expect(run({ found: WORDS.map((word) => ({ word, cells: [{ r: 99, c: 99 }] })) }).valid).toBe(
       false,
     );
+  });
+});
+
+describe("matchTrace", () => {
+  const cellsFor = (word: string, seed = SEED) =>
+    solve(viewOf(seed).grid)!.find((f) => f.word === word)!.cells;
+
+  it("confirms a path that spells a hidden word", () => {
+    expect(matchTrace(SEED, cellsFor("GNU"))).toBe("GNU");
+  });
+
+  it("rejects a path that spells nothing", () => {
+    const grid = viewOf().grid;
+    // Two adjacent open tiles plus a third, deliberately not a word.
+    const junk = cellsFor("POOKALAM").slice(0, 3).reverse();
+    expect(grid).toBeDefined();
+    expect(matchTrace(SEED, junk)).toBeNull();
+  });
+
+  it("rejects a diagonal or broken path outright", () => {
+    expect(
+      matchTrace(SEED, [
+        { r: 0, c: 0 },
+        { r: 1, c: 1 },
+        { r: 2, c: 2 },
+      ]),
+    ).toBeNull();
+  });
+
+  it("rejects out-of-bounds cells", () => {
+    expect(
+      matchTrace(SEED, [
+        { r: -1, c: 0 },
+        { r: 0, c: 0 },
+        { r: 0, c: 1 },
+      ]),
+    ).toBeNull();
+    expect(
+      matchTrace(SEED, [
+        { r: 99, c: 99 },
+        { r: 0, c: 0 },
+        { r: 0, c: 1 },
+      ]),
+    ).toBeNull();
+  });
+
+  it("does not leak a word for a path on another player's board", () => {
+    const other = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
+      .map((s) => `seed-${s}`)
+      .find((s) => JSON.stringify(viewOf(s).grid) !== JSON.stringify(viewOf(SEED).grid))!;
+    expect(matchTrace(SEED, cellsFor("POOKALAM", other))).toBeNull();
   });
 });

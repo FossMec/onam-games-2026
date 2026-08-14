@@ -175,6 +175,24 @@ export default function GamePage() {
     }
   };
 
+  /**
+   * Asks the server whether a traced Wend path spells one of the hidden words.
+   * The words never reach the browser, so this round trip is the only way the
+   * board can lock a word in. See `routes/api/game/[slug]/trace.ts`.
+   */
+  const traceWord = async (cells: WendCell[]): Promise<string | null> => {
+    const token = attemptToken();
+    if (!token) return null;
+    const res = await fetch(`/api/game/${slug()}/trace`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ attemptToken: token, cells }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { word?: string | null };
+    return data.word ?? null;
+  };
+
   const finish = async (submittedState: unknown) => {
     const token = attemptToken();
     if (!token) return;
@@ -517,6 +535,7 @@ export default function GamePage() {
                     disabled={busy()}
                     initialFound={(restored() as { found?: WendFound[] } | null)?.found}
                     onProgress={(found) => persist({ found })}
+                    onTrace={traceWord}
                     onFinish={(submission) => finish(submission)}
                   />
                 </Show>

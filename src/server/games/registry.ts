@@ -194,8 +194,8 @@ export const GAMES: readonly GameDef[] = [
       tagline: "Six words, one grid, and absolutely no room to spare.",
       hint: "If a word leaves a tile stranded, it's the wrong word.",
       howTo: [
-        "Tap a tile, then tap next to it to trace a word. Paths bend — up, down, left, right, never diagonally.",
-        "Six words are hiding: one of every length from three to eight letters.",
+        "Drag across the letters to trace a word. Paths bend — up, down, left, right, never diagonally.",
+        "You don't get the words. You get how many there are and how long each one is.",
         "Every tile belongs to exactly one word. Nothing may be left over.",
         "Fastest correct board wins.",
       ],

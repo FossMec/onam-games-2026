@@ -100,8 +100,16 @@ export interface WendView {
   size: number;
   /** Transformed letters. An empty string is a wall. */
   grid: string[][];
-  /** The words to find, in a per-player order. */
-  words: string[];
+  /**
+   * How long each hidden word is, ascending. NOT the words themselves.
+   *
+   * Deducing which routes spell which words is the puzzle. An earlier version
+   * shipped the word list to the browser, which gave the whole thing away —
+   * with the answers in hand the board is a five-minute tracing exercise.
+   * The player gets what the real game gives them: how many words, and how
+   * long each one is.
+   */
+  wordLengths: number[];
   /** How many tiles must end up covered. Lets the UI show honest progress. */
   openCells: number;
 }
@@ -131,13 +139,12 @@ const countOpen = (grid: string[][]): number =>
 
 export function generate(seed: string): GeneratedInstance {
   const grid = displayGrid(seed);
-  const rng = createRng(`${seed}:wend-words`);
   return {
     view: {
       kind: "wend",
       size: GRID_SIZE,
       grid,
-      words: rng.shuffle([...WORDS]),
+      wordLengths: [...WORDS].map((w) => w.length).sort((a, b) => a - b),
       openCells: countOpen(grid),
     } satisfies WendView,
     /*
@@ -151,6 +158,44 @@ export function generate(seed: string): GeneratedInstance {
 }
 
 const adjacent = (a: Cell, b: Cell): boolean => Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1;
+
+/**
+ * Does this traced path spell one of the hidden words?
+ *
+ * Backs the mid-attempt trace endpoint. The words are the puzzle and are never
+ * sent to the browser, so the client cannot answer this itself. Shipping hashes
+ * instead would not help — an eight-letter uppercase word falls to a wordlist
+ * in seconds — so the check is a server round trip.
+ *
+ * It returns only the word the player just traced, which they can read off
+ * their own screen, and says nothing about the ones they have not found.
+ * Nothing here is authoritative: the whole board is re-validated at finish, so
+ * lying to this endpoint gains nothing.
+ */
+export function matchTrace(seed: string, cells: Cell[]): string | null {
+  if (!Array.isArray(cells) || cells.length < 3) return null;
+  const grid = displayGrid(seed);
+  let word = "";
+  for (let i = 0; i < cells.length; i += 1) {
+    const cell = cells[i];
+    if (
+      typeof cell?.r !== "number" ||
+      typeof cell?.c !== "number" ||
+      !Number.isInteger(cell.r) ||
+      !Number.isInteger(cell.c) ||
+      cell.r < 0 ||
+      cell.r >= GRID_SIZE ||
+      cell.c < 0 ||
+      cell.c >= GRID_SIZE
+    ) {
+      return null;
+    }
+    if (grid[cell.r][cell.c] === "") return null;
+    if (i > 0 && !adjacent(cells[i - 1], cell)) return null;
+    word += grid[cell.r][cell.c];
+  }
+  return (WORDS as readonly string[]).includes(word) ? word : null;
+}
 
 export function verify(input: VerifyInput): VerifyResult {
   const submission = input.submission as WendSubmission | null;
