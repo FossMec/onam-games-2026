@@ -29,6 +29,12 @@ export function Footer() {
         <p class="comment">
           every font here is free software. so is the site. so is your soul, probably.
         </p>
+        <p class="text-sm font-extrabold">
+          designed at fossmec by Dijith ·{" "}
+          <a href="/design" class="underline decoration-2 underline-offset-4">
+            how it was designed
+          </a>
+        </p>
       </div>
     </footer>
   );
