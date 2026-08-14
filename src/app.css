@@ -160,16 +160,14 @@
   font-display: swap;
 }
 
-/* Wordmark only. Shade is the second layer of the poster-chrome stack. */
+/*
+ * Wordmark only. One cut is enough — `.wordmark` builds its poster chrome by
+ * drawing this same face twice, because the Bungee display cuts are not
+ * metric-compatible with each other and cannot be stacked.
+ */
 @font-face {
   font-family: "Bungee";
   src: url("/fonts/bungee.woff2") format("woff2");
-  font-weight: 400;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Bungee Shade";
-  src: url("/fonts/bungee-shade.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
@@ -530,9 +528,25 @@ a {
   }
 
   /* ------------------------------------------------------------- wordmark --
-   * Real comic-poster chrome, no images: Bungee Shade renders the solid drop
-   * behind, Bungee renders the face on top, offset by the shade's own depth.
-   * Two text layers, one element.
+   * Comic-poster chrome, no images: the same word drawn twice, the back copy
+   * in flat yellow and nudged down-right, the face in ink on top.
+   *
+   * BOTH LAYERS MUST USE THE SAME FONT. This originally set the back layer in
+   * Bungee Shade, on the assumption that the Bungee family is metric-compatible
+   * for layering. It is not: every Bungee Shade glyph is exactly 100/1000em
+   * wider than its Bungee counterpart and carries a different left sidebearing,
+   * so the two layers drifted further apart with each letter and the wider copy
+   * wrapped onto a second line inside the absolutely-positioned box. Since the
+   * divergence is cumulative, no single offset or letter-spacing tweak fixes
+   * it. One font for both layers makes misalignment structurally impossible at
+   * any size.
+   *
+   * The offset is in `em`, so the chrome scales with the type — the nav
+   * wordmark and the 60px hero get proportionally the same depth.
+   *
+   * This is not a violation of the no-shadows rule: it is a second flat
+   * letterform, which is how the effect was actually printed, not a blurred
+   * box-shadow.
    */
   .wordmark {
     position: relative;
@@ -547,9 +561,14 @@ a {
   .wordmark::before {
     content: attr(data-text);
     position: absolute;
-    inset: 0;
-    font-family: "Bungee Shade", var(--font-stack-logo);
+    left: 0;
+    top: 0;
+    /* Never wrap: the back layer must stay one line whatever the box does. */
+    white-space: nowrap;
+    font-family: inherit;
+    letter-spacing: inherit;
     color: var(--pop-yellow);
+    transform: translate(0.06em, 0.07em);
     z-index: -1;
   }
 

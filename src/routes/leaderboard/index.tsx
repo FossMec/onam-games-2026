@@ -1,6 +1,6 @@
 import { Title } from "@solidjs/meta";
 import { createAsync } from "@solidjs/router";
-import { For, Show, createEffect, createSignal, onCleanup } from "solid-js";
+import { For, Show, createEffect, createSignal, onCleanup, useTransition } from "solid-js";
 import { getGames } from "~/server/games/actions";
 import { getDaily, getGlobal } from "~/server/leaderboard/actions";
 import type { DailyBoard, DailyEntry, GlobalEntry } from "~/server/leaderboard/service";
@@ -61,6 +61,21 @@ export default function Leaderboard() {
   const [lastRefresh, setLastRefresh] = createSignal(Date.now());
   const [now, setNow] = createSignal(Date.now());
 
+  /*
+   * Every board switch and every poll goes through this transition.
+   *
+   * `createAsync` returns `undefined` while it refetches, so a bare
+   * `setView(id)` made `<Show when={daily()}>` fall through, unmount the whole
+   * table, and mount it again a moment later — the screen "blinked". The
+   * two-minute poll did exactly the same thing, just less visibly.
+   *
+   * A transition holds the current render until the new data has resolved, so
+   * the old board stays on screen and is simply swapped. `pending` dims it, so
+   * something clearly happened without the layout ever collapsing.
+   */
+  const [pending, startTransition] = useTransition();
+  const show = (id: string | null) => void startTransition(() => setView(id));
+
   const daily = createAsync<DailyBoard | null>(() => {
     void version();
     const id = view();
@@ -76,7 +91,7 @@ export default function Leaderboard() {
     const timer = setInterval(() => {
       setNow(Date.now());
       if (document.visibilityState === "visible") {
-        setVersion((v) => v + 1);
+        void startTransition(() => setVersion((v) => v + 1));
       }
     }, POLL_MS);
     const tick = setInterval(() => setNow(Date.now()), 1000);
@@ -92,7 +107,7 @@ export default function Leaderboard() {
     if (cooldownLeft() > 0) return;
     setLastRefresh(Date.now());
     setNow(Date.now());
-    setVersion((v) => v + 1);
+    void startTransition(() => setVersion((v) => v + 1));
   };
 
   const selectedGame = () =>
@@ -102,7 +117,15 @@ export default function Leaderboard() {
     view() === null ? global()?.entries.length === 0 : daily()?.entries.length === 0;
 
   return (
-    <main class="container space-y-6 py-8">
+    <main
+      class="container space-y-6 py-8"
+      style={{
+        // Opacity only: no layout property may change here, or the fix for the
+        // blink would reintroduce a smaller one.
+        opacity: pending() ? 0.55 : 1,
+        transition: "opacity 140ms ease-out",
+      }}
+    >
       <Title>Leaderboard — FOSS Onam Games</Title>
 
       <section class="space-y-2">
@@ -127,7 +150,7 @@ export default function Leaderboard() {
             "--pop": view() === null ? "var(--pop-teal)" : "var(--paper-2)",
             cursor: "pointer",
           }}
-          onClick={() => setView(null)}
+          onClick={() => show(null)}
         >
           Overall
         </button>
@@ -140,7 +163,7 @@ export default function Leaderboard() {
                 "--pop": view() === game.id ? "var(--pop-teal)" : "var(--paper-2)",
                 cursor: "pointer",
               }}
-              onClick={() => setView(game.id)}
+              onClick={() => show(game.id)}
             >
               Day {game.day}
             </button>

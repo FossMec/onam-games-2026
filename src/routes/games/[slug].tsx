@@ -178,7 +178,15 @@ export default function GamePage() {
     const current = view();
     return current && current.kind === "jump" ? (current as JumpViewData) : null;
   };
-  const playable = () => game() && (game()!.status === "live" || game()!.status === "tester");
+  /*
+   * Closed games stay playable — every past day is open forever so a latecomer
+   * can catch up. The run counts towards the overall table at the completion
+   * floor and never touches that day's board; the server decides that from its
+   * own clock, this is only what to render.
+   */
+  const isCatchUp = () => game()?.status === "closed";
+  const playable = () =>
+    game() && (game()!.status === "live" || game()!.status === "tester" || isCatchUp());
 
   const attemptsLeft = () => result()?.attemptsRemaining ?? attempt()?.attemptsRemaining ?? 0;
   const isRetryGame = () => (game()?.maxAttempts ?? 1) > 1;
@@ -302,10 +310,15 @@ export default function GamePage() {
           </div>
         </Show>
 
-        <Show when={game()!.status === "closed"}>
-          <div class="card">
-            <p class="text-muted">This game has ended. Results are on the leaderboard.</p>
-            <a href="/leaderboard" class="btn-ghost mt-4">
+        <Show when={isCatchUp()}>
+          <div class="card pop-blue space-y-2">
+            <p class="font-extrabold">This day is over, but you can still play it.</p>
+            <p class="font-semibold">
+              It counts towards the overall board — but not this day's leaderboard, and not for a
+              rank. That field already settled.
+            </p>
+            <p class="comment">no clock to beat. just you and the puzzle. finally.</p>
+            <a href="/leaderboard" class="btn-ghost mt-2 inline-block">
               View leaderboard
             </a>
           </div>
@@ -524,7 +537,9 @@ export default function GamePage() {
                 </p>
               </Show>
               <Show when={result()!.afterDeadline}>
-                <p class="comment">counts for the global board only. you know what you did.</p>
+                <p class="comment">
+                  counts for the overall board, not this day's. you got there eventually.
+                </p>
               </Show>
               <Show when={isRetryGame() && result()!.attemptsRemaining > 0}>
                 <span class="badge" style={{ "--pop": "var(--paper-2)" }}>

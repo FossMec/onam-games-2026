@@ -26,7 +26,6 @@ const UA =
 const FONTS = [
   // Wordmark only — two layers stacked for comic-poster chrome.
   { out: "bungee.woff2", query: "Bungee", subsets: ["latin"] },
-  { out: "bungee-shade.woff2", query: "Bungee+Shade", subsets: ["latin"] },
 
   // Display / headings / buttons.
   { out: "baloo-chettan-2.woff2", query: "Baloo+Chettan+2:wght@400..800", subsets: ["latin"] },

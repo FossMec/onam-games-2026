@@ -15,7 +15,8 @@ const statusSticker: Record<string, { label: string; pop: string }> = {
   live: { label: "Live now", pop: "var(--pop-teal)" },
   tester: { label: "Tester access", pop: "var(--pop-purple)" },
   upcoming: { label: "Locked", pop: "var(--paper-3)" },
-  closed: { label: "Ended", pop: "var(--paper-3)" },
+  // Not "Ended": a past day is still playable, just no longer ranked.
+  closed: { label: "Catch up", pop: "var(--pop-blue)" },
 };
 
 function Section(props: { title: string; children: unknown; id?: string }) {
@@ -192,6 +193,17 @@ export default function Home() {
                   <Show when={game.status === "live" || game.status === "tester"}>
                     <a href={`/games/${game.slug}`} class="btn-brand w-full">
                       Play now
+                    </a>
+                  </Show>
+
+                  {/*
+                    Past days stay open so someone who joined late is not locked
+                    out of two thirds of the event. Ghost rather than brand, so
+                    it never competes with today's game for attention.
+                  */}
+                  <Show when={game.status === "closed"}>
+                    <a href={`/games/${game.slug}`} class="btn-ghost w-full">
+                      Play it anyway
                     </a>
                   </Show>
                 </article>

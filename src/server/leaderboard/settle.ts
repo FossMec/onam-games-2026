@@ -1,6 +1,6 @@
 import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
-import { dailyLeaderboard, games, globalScores, users } from "~/server/db/schema";
+import { dailyLeaderboard, gameAttempts, games, globalScores, users } from "~/server/db/schema";
 import { higherIsBetter, requireGameDef } from "~/server/games/registry";
 import { resolveSchedule } from "~/server/games/service";
 
@@ -19,7 +19,7 @@ import { resolveSchedule } from "~/server/games/service";
  */
 
 /** Points for finishing at all, on top of the rank curve. Playing always beats skipping. */
-const COMPLETION_FLOOR = 50;
+export const COMPLETION_FLOOR = 50;
 const MAX_RANK_POINTS = 1000;
 
 /**
@@ -144,11 +144,11 @@ export async function settleGame(gameId: string): Promise<{ settled: boolean; pl
 }
 
 /**
- * Recomputes `global_scores` from settled daily rows.
+ * Recomputes `global_scores` from settled daily rows, plus catch-up play.
  *
  * Deliberately a full recompute rather than an incremental add: it runs once a
- * day over ~500 rows, and it means a corrected flag or a voided attempt can
- * never leave a stale total behind.
+ * day over ~500 rows, and it means a corrected flag, a voided attempt or a new
+ * late completion can never leave a stale total behind.
  */
 export async function rollUpGlobalScores(): Promise<void> {
   const db = getDb();
@@ -167,6 +167,49 @@ export async function rollUpGlobalScores(): Promise<void> {
     entry.games += 1;
     totals.set(row.userId, entry);
   }
+
+  /*
+   * Catch-up play. Old games stay open forever, and finishing one late counts
+   * towards the overall table — but at the completion floor only, never at a
+   * rank.
+   *
+   * Ranking a late run is not possible and would not be fair if it were. The
+   * day's field has already settled; scoring against it would let someone
+   * displace players who were racing a clock they no longer face, and scoring
+   * late players against each other just rewards whoever waits longest for the
+   * weakest field. So catch-up is worth exactly what it should be: credit for
+   * doing the thing, and no credit for beating anyone.
+   *
+   * `not exists` against `daily_leaderboard` is what keeps it from
+   * double-counting — a player who ranked on the day is scored by their rank
+   * and never also picks up the floor.
+   */
+  const lateRows = await db
+    .select({ userId: gameAttempts.userId, gameId: gameAttempts.gameId })
+    .from(gameAttempts)
+    .innerJoin(users, eq(users.id, gameAttempts.userId))
+    .where(
+      and(
+        eq(gameAttempts.serverValid, true),
+        eq(gameAttempts.afterDeadline, true),
+        eq(gameAttempts.isAnomalous, false),
+        eq(users.role, "player"),
+        sql`not exists (
+          select 1 from ${dailyLeaderboard}
+          where ${dailyLeaderboard.userId} = ${gameAttempts.userId}
+            and ${dailyLeaderboard.gameId} = ${gameAttempts.gameId}
+        )`,
+      ),
+    )
+    .groupBy(gameAttempts.userId, gameAttempts.gameId);
+
+  for (const row of lateRows) {
+    const entry = totals.get(row.userId) ?? { points: 0, games: 0 };
+    entry.points += COMPLETION_FLOOR;
+    entry.games += 1;
+    totals.set(row.userId, entry);
+  }
+
   if (totals.size === 0) return;
 
   const streaks = await db.select({ id: users.id, bestStreak: users.bestStreak }).from(users);

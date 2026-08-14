@@ -1,9 +1,10 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { logActivity, logSuspicious } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
 import { dailyLeaderboard, devices, gameAttempts, games, globalScores } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
+import { rollUpGlobalScores } from "~/server/leaderboard/settle";
 import { getRedisOrNull } from "~/server/redis/client";
 import type { GameAssets, GameDef, GameMetric } from "./registry";
 import { requireGameDef } from "./registry";
@@ -64,7 +65,18 @@ async function expireIfStale(
 export async function startAttempt(input: StartInput): Promise<StartResult> {
   const game = await getGameBySlug(input.slug, input.role);
   if (!game) throw new HttpError(404, "Game not found");
-  if (game.status !== "live" && game.status !== "tester") {
+  /*
+   * `closed` is deliberately playable. Every past day stays open forever, so
+   * somebody who joins on day 5 can still go back and play days 1-4 — which is
+   * most of the point of a week-long event with a growing audience.
+   *
+   * A late run counts towards the overall table at the completion floor and
+   * never appears on that day's leaderboard; `finishAttempt` derives that from
+   * the server clock, so nothing here has to be trusted. Only `upcoming` is
+   * refused, because releasing a puzzle early is the one thing that cannot be
+   * undone.
+   */
+  if (game.status === "upcoming") {
     throw new HttpError(403, "This game is not available yet");
   }
   const def = requireGameDef(game.gameType);
@@ -468,6 +480,29 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
       eventType: "game_submit_late",
       meta: { durationMs, gameId: game.id },
     });
+
+    /*
+     * Catch-up play: no daily row, but the overall table owes them the
+     * completion floor. `rollUpGlobalScores` is a full recompute, so it is only
+     * worth running when this submission actually changed anything — that is,
+     * on the *first* valid late completion of this game by this player.
+     * Retrying Maveli Jump eleven more times after the day closed must not
+     * trigger eleven recomputes.
+     */
+    const [earlier] = await db
+      .select({ id: gameAttempts.id })
+      .from(gameAttempts)
+      .where(
+        and(
+          eq(gameAttempts.userId, input.userId),
+          eq(gameAttempts.gameId, game.id),
+          eq(gameAttempts.serverValid, true),
+          eq(gameAttempts.afterDeadline, true),
+          ne(gameAttempts.id, attempt.id),
+        ),
+      )
+      .limit(1);
+    if (!earlier) await rollUpGlobalScores();
   }
 
   await logActivity({
