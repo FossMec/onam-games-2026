@@ -12,9 +12,9 @@
 
 export const EVENT = {
   name: "FOSS Onam Games",
-  tagline: "Seven days. Six games. One pookalam. Zero dignity.",
+  tagline: "Seven days. Six mini-games. One pookalam. Zero dignity.",
   blurb:
-    "A week of daily games for Onam, run by the FOSS club. Every day a new game unlocks, everyone plays the same puzzle, and the fastest solve wins. Come for the prizes, stay because you cannot let your friend beat you.",
+    "A celebration of Onam and open source, run by fossmec. Create an intricate flower carpet purely with code in Code-a-Pookalam (open all week), and play a fun new mini-game every evening to climb the leaderboard and win daily cash prizes!",
   // TODO: confirm before launch.
   dates: "TODO — event dates",
   registerNote: "Sign in with Google. Takes about eleven seconds.",
@@ -22,19 +22,35 @@ export const EVENT = {
   howItWorks: [
     {
       title: "A game a day",
-      body: "One new game unlocks every evening. It stays open for 24 hours, then it's gone.",
+      body: "One new mini-game unlocks every evening. Solve it fast to top that day's board.",
+    },
+    {
+      title: "Code-a-Pookalam",
+      body: "Create an intricate pookalam purely using code (HTML Canvas, SVG, or CSS). Submissions stay open all week!",
     },
     {
       title: "Everyone gets the same puzzle",
-      body: "Same puzzle, same difficulty, for everybody. Nobody gets an easier draw than you did.",
+      body: "Same seed, same puzzle, same difficulty for all players. Zero unfair advantages.",
+    },
+    {
+      title: "One shot per game",
+      body: "You only get one official ranked run per game once you hit Start. Make every second count.",
     },
     {
       title: "The clock does not stop",
-      body: "Refresh, close the tab, throw your phone — the timer keeps counting. Finish the run you started.",
+      body: "Refresh, close the tab, throw your phone — the timer keeps ticking server-side. Finish the run you started.",
     },
     {
-      title: "Points, not seconds",
-      body: "Each day you score on where you finished, not raw time. That's how a jigsaw and a jumping king end up on the same leaderboard.",
+      title: "Points over raw seconds",
+      body: "Each day you score based on your relative ranking, not raw milliseconds. Consistency across all 7 days wins the crown.",
+    },
+    {
+      title: "Daily & pookalam cash prizes",
+      body: "Daily winners receive ₹200 each day. Code-a-Pookalam winners take home ₹1,500, ₹1,000, and ₹500!",
+    },
+    {
+      title: "Fair play & server verification",
+      body: "All moves and solve times are cryptographically verified on the backend. Pure skill only.",
     },
   ],
 
@@ -44,12 +60,21 @@ export const EVENT = {
     aside: "yes we thought about this way too hard",
   },
 
-  // TODO: confirm prizes and amounts with whoever controls the budget.
   prizes: [
-    { rank: "Overall winner", detail: "TODO — top of the weekly points table" },
-    { rank: "Runners-up", detail: "TODO — 2nd and 3rd overall" },
-    { rank: "Daily winners", detail: "TODO — fastest on each individual day" },
-    { rank: "Code-a-Pookalam", detail: "TODO — separate prize pool" },
+    { rank: "Overall Winner", detail: "1st Place Champion — Top of the 7-day points leaderboard" },
+    {
+      rank: "Code-a-Pookalam 1st",
+      detail: "₹1,500 cash prize — Crowned best coded algorithmic pookalam",
+    },
+    { rank: "Code-a-Pookalam 2nd & 3rd", detail: "₹1,000 (2nd) & ₹500 (3rd) — Podium winners" },
+    {
+      rank: "Daily Game Winners",
+      detail: "₹200 cash each day (7 days) — Announced after each day's deadline",
+    },
+    {
+      rank: "Lucky Voter Winner",
+      detail: "₹200 prize drawn randomly among voters in the Day 7 Pookalam ELO showdown",
+    },
   ],
 
   rules: [
