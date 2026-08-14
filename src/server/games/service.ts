@@ -132,6 +132,32 @@ function toCard(
   };
 }
 
+/**
+ * Strips everything about a game that has not been released yet.
+ *
+ * Done here rather than in the UI on purpose: `getGames` is a server function
+ * any signed-in browser can call directly, so hiding tomorrow's title behind a
+ * `<Show>` would hide it from nobody. The reveal is most of the fun of a daily
+ * event and it only works if the data genuinely is not sent.
+ *
+ * What survives is what a locked card legitimately needs: which day it is, when
+ * it opens, and that it is locked.
+ */
+function maskCard(card: GameCard): GameCard {
+  return {
+    ...card,
+    // The slug names the game as plainly as the title does.
+    slug: "",
+    title: "???",
+    hint: null,
+    tagline: "",
+    howTo: [],
+    gameType: "",
+    difficulty: "",
+    assets: null,
+  };
+}
+
 export async function getGamesList(viewerRole: ViewerRole): Promise<GameCard[]> {
   const db = getDb();
   const rows = await db
@@ -139,9 +165,10 @@ export async function getGamesList(viewerRole: ViewerRole): Promise<GameCard[]> 
     .from(games)
     .where(eq(games.published, true))
     .orderBy(asc(games.day));
-  return Promise.all(
+  const cards = await Promise.all(
     rows.map(async (game) => toCard(game, await resolveSchedule(game, viewerRole))),
   );
+  return cards.map((card) => (card.status === "upcoming" ? maskCard(card) : card));
 }
 
 export async function getGameBySlug(
@@ -155,5 +182,11 @@ export async function getGameBySlug(
     .where(and(eq(games.slug, slug), eq(games.published, true)))
     .limit(1);
   if (!game) return null;
-  return toCard(game, await resolveSchedule(game, viewerRole));
+  const card = toCard(game, await resolveSchedule(game, viewerRole));
+  /*
+   * Masked here too, but the slug is left intact: the caller already typed it,
+   * so blanking it would only break the page they are looking at. Everything
+   * that actually describes the game is still withheld.
+   */
+  return card.status === "upcoming" ? { ...maskCard(card), slug: card.slug } : card;
 }
