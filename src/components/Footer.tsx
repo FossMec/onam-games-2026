@@ -72,10 +72,14 @@ export function Footer() {
           </a>
         </div>
 
-        <p class="text-sm font-extrabold sm:text-base">
-          Seven days of games. One week of Onam. Designed and Engineered at fossmec by Dijith Dinesh
-          ·{" "}
-          <a href="/design" class="underline decoration-2 underline-offset-4">
+        <p class="text-sm sm:text-base font-bold leading-relaxed text-[var(--ink)]">
+          Built with late-night hacks, sadya & open-source love by{" "}
+          <span class="font-extrabold text-[var(--ink)]">Dijith Dinesh</span> for{" "}
+          <span class="font-extrabold text-[var(--ink)]">fossmec</span> ·{" "}
+          <a
+            href="/design"
+            class="underline decoration-2 underline-offset-4 font-extrabold hover:text-[var(--pop-teal-deep)] transition-colors"
+          >
             Design Language
           </a>
         </p>
