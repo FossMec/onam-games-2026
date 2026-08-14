@@ -196,32 +196,19 @@ export default function Home() {
           </div>
 
           <div class="flex flex-wrap items-center justify-center gap-3 pt-1">
-            <Show
-              when={me()}
-              fallback={
-                <a href="/auth/signin" class="btn-brand">
-                  Sign in & play
-                </a>
-              }
-            >
-              <Show
-                when={liveGame()}
-                fallback={
-                  <a href="/leaderboard" class="btn-brand">
-                    See the board
-                  </a>
-                }
-              >
-                <a href={`/games/${liveGame()!.slug}`} class="btn-brand">
-                  Play today's game (Day {liveGame()!.day})
-                </a>
+            <a href="#games-arena" class="btn-brand inline-flex items-center gap-1.5">
+              <Show when={liveGame()} fallback={<span>Play Daily Games ↓</span>}>
+                <span>
+                  Play Day {liveGame()!.day} (
+                  {liveGame()!.status === "live" ? "Live Now" : "Early Access"}) ↓
+                </span>
               </Show>
-            </Show>
+            </a>
             <a href="#pookalam" class="btn-accent">
               Code-a-Pookalam
             </a>
-            <a href="#games-arena" class="btn-ghost">
-              Explore 7 Days ↓
+            <a href="/leaderboard" class="btn-ghost">
+              Leaderboard
             </a>
           </div>
 
