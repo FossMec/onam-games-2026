@@ -539,15 +539,18 @@ a {
    */
   .comment {
     font-family: var(--font-stack-hand);
-    font-size: 1.15rem;
-    line-height: 1.25;
-    color: var(--ink-soft);
-    transform: rotate(-0.6deg);
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--ink);
+    letter-spacing: 0.015em;
+    transform: rotate(-0.5deg);
     display: inline-block;
   }
 
   .comment::before {
     content: "↳ ";
+    font-weight: 800;
     color: var(--pop-teal-deep);
   }
 
