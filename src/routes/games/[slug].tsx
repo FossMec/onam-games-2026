@@ -120,6 +120,7 @@ export default function GamePage() {
     if (!stored) return;
     setAttemptToken(stored.attemptToken);
     setStartedAt(new Date(stored.startedAt).getTime());
+    setNow(Date.now());
     setRestored(getProgress(stored.attemptToken));
     void start();
   });
@@ -130,7 +131,21 @@ export default function GamePage() {
     onCleanup(() => clearInterval(timer));
   });
 
-  const elapsed = () => (startedAt() === null ? 0 : Math.floor((now() - startedAt()!) / 1000));
+  /**
+   * Elapsed seconds, floored at zero.
+   *
+   * Two things made this briefly show a negative time. `now` only ticks once a
+   * second, so the first render after an attempt started was using a timestamp
+   * from before the round trip; and `startedAt` is the *server's* clock, which
+   * can legitimately sit a little ahead of the browser's. Together they showed
+   * "-1m 3s" for a moment before the first tick corrected it.
+   *
+   * `now` is refreshed the instant an attempt starts, and the clamp handles the
+   * clock skew that no amount of refreshing can fix. Elapsed time here is only
+   * ever a display; the ranked duration is measured server-side.
+   */
+  const elapsed = () =>
+    startedAt() === null ? 0 : Math.max(0, Math.floor((now() - startedAt()!) / 1000));
 
   const start = async () => {
     setBusy(true);
@@ -150,6 +165,7 @@ export default function GamePage() {
       storeAttempt(slug(), { attemptToken: data.attemptToken, startedAt: data.startedAt });
       setAttemptToken(data.attemptToken);
       setStartedAt(new Date(data.startedAt).getTime());
+      setNow(Date.now());
       setView(data.view ?? null);
       setResult(null);
     } catch {
