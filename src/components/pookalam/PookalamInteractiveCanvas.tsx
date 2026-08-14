@@ -1,7 +1,16 @@
-import { Download, Layers, Play, RotateCcw, Sliders, Sparkles } from "lucide-solid";
+import {
+  ChevronDown,
+  ChevronRight,
+  Download,
+  Layers,
+  Play,
+  RotateCcw,
+  Sliders,
+  Sparkles,
+} from "lucide-solid";
 import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
 
-type ElementType = "leafPetal" | "tulipPetal" | "smallFlower" | "dot" | "woven" | "heart";
+export type ElementType = "leafPetal" | "tulipPetal" | "smallFlower" | "dot" | "woven" | "heart";
 
 type ElementSpec = {
   type: ElementType;
@@ -45,20 +54,34 @@ const PALETTE = {
   darkBlue: "#121b44",
 };
 
+const SHAPES: { type: ElementType; label: string; icon: string }[] = [
+  { type: "smallFlower", label: "Rosette", icon: "🌸" },
+  { type: "tulipPetal", label: "Tulip", icon: "🌷" },
+  { type: "leafPetal", label: "Leaf", icon: "🍃" },
+  { type: "dot", label: "Pearl", icon: "⚪" },
+  { type: "heart", label: "Heart", icon: "💛" },
+  { type: "woven", label: "Mesh", icon: "🕸️" },
+];
+
 export function PookalamInteractiveCanvas() {
   let canvasRef: HTMLCanvasElement | undefined;
   let containerRef: HTMLDivElement | undefined;
 
-  const [activeTab, setActiveTab] = createSignal<"quick" | "layers">("quick");
+  const [activeTab, setActiveTab] = createSignal<"layers" | "quick">("layers");
   const [isPaused, setIsPaused] = createSignal(false);
   const [isComplete, setIsComplete] = createSignal(false);
-  const [progressPercent, setProgressPercent] = createSignal(0);
+  const [isCollapsed, setIsCollapsed] = createSignal(false);
 
   // Configurable options
   const [motif, setMotif] = createSignal<CenterMotif>("foss");
   const [speedMultiplier, setSpeedMultiplier] = createSignal<number>(1);
   const [rotationSpeedFactor, setRotationSpeedFactor] = createSignal<number>(1);
   const [countMultiplier, setCountMultiplier] = createSignal<number>(1);
+
+  // Layer custom element shape overrides (default undefined = original 2025 blueprint)
+  const [layerShapeOverrides, setLayerShapeOverrides] = createSignal<Record<number, ElementType>>(
+    {},
+  );
   const [enabledLayers, setEnabledLayers] = createSignal<Record<number, boolean>>({
     0: true,
     1: true,
@@ -231,11 +254,11 @@ export function PookalamInteractiveCanvas() {
     ctx.restore();
   };
 
-  // Exact 2025 Peak Layer Blueprint
   const getLayers = (): Layer[] => {
     const scale = state.currentScaleFactor;
     const cMul = countMultiplier();
     const enabled = enabledLayers();
+    const overrides = layerShapeOverrides();
 
     const allLayers: Layer[] = [
       {
@@ -244,7 +267,7 @@ export function PookalamInteractiveCanvas() {
         enabled: enabled[0] ?? true,
         spec: [
           {
-            type: "woven",
+            type: overrides[0] || "woven",
             size: 35 * scale,
             color: PALETTE.darkBlue,
             strokeColor: PALETTE.white,
@@ -260,13 +283,13 @@ export function PookalamInteractiveCanvas() {
         enabled: enabled[1] ?? true,
         spec: [
           {
-            type: "dot",
+            type: overrides[1] || "dot",
             size: 3 * scale,
             color: PALETTE.white,
           },
           {
-            type: "smallFlower",
-            size: 4 * scale,
+            type: overrides[1] || "smallFlower",
+            size: (overrides[1] ? 14 : 4) * scale,
             color: PALETTE.amber,
           },
         ],
@@ -280,13 +303,13 @@ export function PookalamInteractiveCanvas() {
         enabled: enabled[2] ?? true,
         spec: [
           {
-            type: "smallFlower",
+            type: overrides[2] || "smallFlower",
             size: 18 * scale,
             color: PALETTE.white,
           },
           {
-            type: "dot",
-            size: 4 * scale,
+            type: overrides[2] ? overrides[2] : "dot",
+            size: (overrides[2] ? 14 : 4) * scale,
             color: PALETTE.deepOrange,
           },
         ],
@@ -300,23 +323,23 @@ export function PookalamInteractiveCanvas() {
         enabled: enabled[3] ?? true,
         spec: [
           {
-            type: "dot",
-            size: 5 * scale,
+            type: overrides[3] || "dot",
+            size: (overrides[3] ? 16 : 5) * scale,
             color: PALETTE.amber,
           },
           {
-            type: "dot",
-            size: 5 * scale,
+            type: overrides[3] || "dot",
+            size: (overrides[3] ? 16 : 5) * scale,
             color: PALETTE.deepOrange,
           },
           {
-            type: "tulipPetal",
+            type: overrides[3] || "tulipPetal",
             size: 22 * scale,
             color: PALETTE.offWhite,
           },
           {
-            type: "dot",
-            size: 5 * scale,
+            type: overrides[3] || "dot",
+            size: (overrides[3] ? 16 : 5) * scale,
             color: PALETTE.leafGreen,
           },
         ],
@@ -331,13 +354,13 @@ export function PookalamInteractiveCanvas() {
         enabled: enabled[4] ?? true,
         spec: [
           {
-            type: "dot",
-            size: 8 * scale,
+            type: overrides[4] || "dot",
+            size: (overrides[4] ? 16 : 8) * scale,
             color: PALETTE.amber,
           },
           {
-            type: "dot",
-            size: 8 * scale,
+            type: overrides[4] || "dot",
+            size: (overrides[4] ? 16 : 8) * scale,
             color: PALETTE.orange,
           },
         ],
@@ -351,12 +374,12 @@ export function PookalamInteractiveCanvas() {
         enabled: enabled[5] ?? true,
         spec: [
           {
-            type: "leafPetal",
+            type: overrides[5] || "leafPetal",
             size: 25 * scale,
             color: PALETTE.leafGreen,
           },
           {
-            type: "heart",
+            type: overrides[5] || "heart",
             size: 15 * scale,
             color: PALETTE.lightGray,
           },
@@ -371,22 +394,22 @@ export function PookalamInteractiveCanvas() {
         enabled: enabled[6] ?? true,
         spec: [
           {
-            type: "dot",
-            size: 6 * scale,
+            type: overrides[6] || "dot",
+            size: (overrides[6] ? 24 : 6) * scale,
             color: PALETTE.orange,
           },
           {
-            type: "leafPetal",
+            type: overrides[6] || "leafPetal",
             size: 30 * scale,
             color: PALETTE.white,
           },
           {
-            type: "dot",
-            size: 3 * scale,
+            type: overrides[6] || "dot",
+            size: (overrides[6] ? 24 : 3) * scale,
             color: PALETTE.orange,
           },
           {
-            type: "leafPetal",
+            type: overrides[6] || "leafPetal",
             size: 30 * scale,
             color: PALETTE.white,
           },
@@ -401,8 +424,8 @@ export function PookalamInteractiveCanvas() {
         enabled: enabled[7] ?? true,
         spec: [
           {
-            type: "smallFlower",
-            size: 12 * scale,
+            type: overrides[7] || "smallFlower",
+            size: 14 * scale,
             color: PALETTE.deepOrange,
           },
         ],
@@ -466,9 +489,6 @@ export function PookalamInteractiveCanvas() {
     const containerWidth = containerRef.clientWidth;
     const displaySize = Math.min(containerWidth * 0.94, 520);
 
-    if (Math.abs(displaySize - state.currentDisplaySize) < 2 && state.drawingPlan.length > 0)
-      return;
-
     state.currentDisplaySize = displaySize;
     state.currentScaleFactor = displaySize / 400;
     state.currentCenterX = displaySize / 2;
@@ -494,8 +514,16 @@ export function PookalamInteractiveCanvas() {
     state.pausedTimeTotal = 0;
     state.lastPauseStart = 0;
     setIsComplete(false);
-    setProgressPercent(0);
     reinitializeCanvas();
+  };
+
+  const onSettingsChange = () => {
+    buildPlan();
+  };
+
+  const setLayerShape = (id: number, shape: ElementType) => {
+    setLayerShapeOverrides((prev) => ({ ...prev, [id]: shape }));
+    onSettingsChange();
   };
 
   const animate = (timestamp: number) => {
@@ -522,7 +550,6 @@ export function PookalamInteractiveCanvas() {
 
     if (elapsed < state.totalDrawingDuration) {
       setIsComplete(false);
-      setProgressPercent(Math.round((elapsed / Math.max(1, state.totalDrawingDuration)) * 100));
 
       state.drawingPlan.forEach((instr, index) => {
         if (elapsed >= instr.startTime) {
@@ -541,7 +568,6 @@ export function PookalamInteractiveCanvas() {
       });
     } else {
       setIsComplete(true);
-      setProgressPercent(100);
 
       const rotFactor = rotationSpeedFactor();
       const rotationSpeed = 0.000002 * rotFactor;
@@ -570,7 +596,7 @@ export function PookalamInteractiveCanvas() {
             const pulseProgress = (elapsed % pulseDuration) / pulseDuration;
             const activeElementIndex = Math.floor(pulseProgress * layer.elements);
             if (i === activeElementIndex) {
-              drawColor = layer.finalAnimation.color;
+              drawColor = PALETTE.shimmerWhite;
             }
           }
 
@@ -624,7 +650,7 @@ export function PookalamInteractiveCanvas() {
 
   const toggleLayer = (id: number) => {
     setEnabledLayers((prev) => ({ ...prev, [id]: !prev[id] }));
-    restart();
+    onSettingsChange();
   };
 
   const resetToPeak = () => {
@@ -632,6 +658,7 @@ export function PookalamInteractiveCanvas() {
     setSpeedMultiplier(1);
     setRotationSpeedFactor(1);
     setCountMultiplier(1);
+    setLayerShapeOverrides({});
     setEnabledLayers({
       0: true,
       1: true,
@@ -642,7 +669,7 @@ export function PookalamInteractiveCanvas() {
       6: true,
       7: true,
     });
-    restart();
+    onSettingsChange();
   };
 
   const downloadPNG = () => {
@@ -694,23 +721,23 @@ export function PookalamInteractiveCanvas() {
     document.body.removeChild(a);
   };
 
-  const layerNames = [
-    { id: 0, name: "Center Logo Medallion" },
-    { id: 1, name: "Layer 1: Amber Mini Rosettes" },
-    { id: 2, name: "Layer 2: White Star Rosettes" },
-    { id: 3, name: "Layer 3: Tulip & Leaf Pearls" },
-    { id: 4, name: "Layer 4: Dual Amber/Orange Pearls" },
-    { id: 5, name: "Layer 5: Green Leaves & Gray Hearts" },
-    { id: 6, name: "Layer 6: Grand White Petals" },
-    { id: 7, name: "Layer 7: Outer Deep Orange Rosettes" },
+  const layerItems = [
+    { id: 0, name: "Center Emblem", defaultShape: "woven" as ElementType },
+    { id: 1, name: "Layer 1: Inner Rosette", defaultShape: "smallFlower" as ElementType },
+    { id: 2, name: "Layer 2: Star Ring", defaultShape: "smallFlower" as ElementType },
+    { id: 3, name: "Layer 3: Tulip Bloom", defaultShape: "tulipPetal" as ElementType },
+    { id: 4, name: "Layer 4: Pearl Dots", defaultShape: "dot" as ElementType },
+    { id: 5, name: "Layer 5: Foliage & Hearts", defaultShape: "leafPetal" as ElementType },
+    { id: 6, name: "Layer 6: Grand Petals", defaultShape: "leafPetal" as ElementType },
+    { id: 7, name: "Layer 7: Outer Perimeter", defaultShape: "smallFlower" as ElementType },
   ];
 
   return (
     <div
-      class="relative w-full rounded-2xl overflow-hidden border-4 border-[var(--ink)] shadow-[8px_8px_0px_0px_var(--ink)] p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row items-center justify-between gap-6"
+      class="relative w-full rounded-2xl overflow-hidden border-4 border-[var(--ink)] shadow-[8px_8px_0px_0px_var(--ink)] p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row items-center justify-between gap-6 transition-all duration-300"
       style={{ background: "#121b44" }}
     >
-      {/* ---------------------------------------------------- LEFT: LIVE CANVAS (No hover transform, zero obstruction) */}
+      {/* ---------------------------------------------------- LEFT / CENTER: LIVE CANVAS */}
       <div
         ref={(el) => (containerRef = el)}
         class="relative flex-1 flex items-center justify-center w-full min-w-0 max-w-[500px] aspect-square mx-auto"
@@ -722,261 +749,323 @@ export function PookalamInteractiveCanvas() {
           title="Click to Pause / Resume"
         />
 
-        {/* Progress pill on top */}
-        <Show when={!isComplete()}>
-          <div class="absolute top-2 left-2 right-2 flex items-center gap-2 px-3 py-1 rounded-full bg-[#121b44]/90 backdrop-blur border border-white/20 text-[11px] font-bold text-white shadow">
-            <span>Drawing Pookalam:</span>
-            <div class="flex-1 h-1.5 rounded-full bg-white/20 overflow-hidden">
-              <div
-                class="h-full bg-[var(--pop-yellow)] transition-all duration-150"
-                style={{ width: `${progressPercent()}%` }}
-              />
-            </div>
-            <span>{progressPercent()}%</span>
-          </div>
+        {/* Floating Expand Button when collapsed (Desktop / Overlay) */}
+        <Show when={isCollapsed()}>
+          <button
+            type="button"
+            onClick={() => setIsCollapsed(false)}
+            class="absolute top-2 right-2 px-3 py-1.5 rounded-xl bg-[var(--pop-yellow)] text-[var(--ink)] font-black text-xs border-2 border-[var(--ink)] shadow-[2px_2px_0px_0px_var(--ink)] hover:bg-[var(--pop-teal)] transition-all cursor-pointer flex items-center gap-1.5 animate-bounce"
+            title="Open Studio Controls"
+          >
+            <Sliders size={13} strokeWidth={2.5} />
+            <span>Customize</span>
+          </button>
         </Show>
       </div>
 
-      {/* ---------------------------------------------------- RIGHT: INLINE CONTROLS */}
-      <div class="w-full lg:w-[380px] rounded-xl p-4 sm:p-5 bg-[#1a2352] border-2 border-white/20 text-white flex flex-col justify-between space-y-4 shadow-xl shrink-0">
-        <div>
-          {/* Header & Tabs */}
-          <div class="flex items-center justify-between gap-2 border-b border-white/10 pb-3 mb-3">
-            <div class="flex items-center gap-1.5">
-              <Sparkles size={16} class="text-[var(--pop-yellow)]" />
-              <h3 class="text-sm font-black text-white uppercase tracking-tight">
-                Studio Controls
-              </h3>
-            </div>
-
-            {/* Inline Navigation Tabs */}
-            <div class="flex items-center p-0.5 rounded-lg bg-[#121b44] border border-white/10 text-xs font-bold">
-              <button
-                type="button"
-                onClick={() => setActiveTab("quick")}
-                class={`px-2.5 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1 ${
-                  activeTab() === "quick"
-                    ? "bg-[var(--pop-yellow)] text-[var(--ink)] font-black"
-                    : "text-gray-300 hover:text-white"
-                }`}
-              >
-                <Sliders size={12} />
-                <span>Controls</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("layers")}
-                class={`px-2.5 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1 ${
-                  activeTab() === "layers"
-                    ? "bg-[var(--pop-yellow)] text-[var(--ink)] font-black"
-                    : "text-gray-300 hover:text-white"
-                }`}
-              >
-                <Layers size={12} />
-                <span>Layers</span>
-              </button>
-            </div>
+      {/* ---------------------------------------------------- RIGHT / BOTTOM: COLLAPSIBLE CONTROLS */}
+      <Show
+        when={!isCollapsed()}
+        fallback={
+          /* Collapsed Pill for Mobile / Desktop */
+          <div class="w-full lg:w-auto flex justify-center pt-2">
+            <button
+              type="button"
+              onClick={() => setIsCollapsed(false)}
+              class="w-full lg:w-auto py-2.5 px-5 rounded-xl bg-[#1a2352] border-2 border-white/20 text-white font-black text-xs flex items-center justify-center gap-2 hover:border-white/40 cursor-pointer shadow-lg"
+            >
+              <Sliders size={14} class="text-[var(--pop-yellow)]" />
+              <span>Open Studio Controls</span>
+            </button>
           </div>
-
-          {/* TAB 1: QUICK CONTROLS */}
-          <Show when={activeTab() === "quick"}>
-            <div class="space-y-3.5 text-xs">
-              <p class="text-gray-300 leading-relaxed text-[11px]">
-                Watch the mathematical 2025 pookalam bloom in real time. Adjust speed, density, or
-                center emblems.
-              </p>
-
-              {/* Center Motif Selector */}
-              <div class="space-y-1.5">
-                <label class="text-[11px] uppercase font-black text-gray-300 tracking-wider">
-                  Center Motif Emblem
-                </label>
-                <div class="grid grid-cols-4 gap-1.5 font-bold">
-                  {[
-                    { id: "foss", label: "⚙️ FOSS" },
-                    { id: "tux", label: "🐧 Tux" },
-                    { id: "crab", label: "🦀 Rust" },
-                    { id: "lamp", label: "🪔 Lamp" },
-                  ].map((m) => (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMotif(m.id as CenterMotif);
-                        restart();
-                      }}
-                      class={`py-1.5 px-1 rounded-lg border text-center transition-all cursor-pointer text-xs ${
-                        motif() === m.id
-                          ? "bg-[var(--pop-teal)] text-[var(--ink)] border-[var(--ink)] font-black shadow-sm"
-                          : "bg-[#25306d] border-white/20 text-gray-200 hover:border-white/40"
-                      }`}
-                    >
-                      <span class="truncate block">{m.label}</span>
-                    </button>
-                  ))}
-                </div>
+        }
+      >
+        <div class="w-full lg:w-[410px] rounded-xl p-4 sm:p-5 bg-[#1a2352] border-2 border-white/20 text-white flex flex-col justify-between space-y-4 shadow-xl shrink-0 transition-all duration-300">
+          <div>
+            {/* Header, Tabs & Collapse Toggle */}
+            <div class="flex items-center justify-between gap-2 border-b border-white/10 pb-3 mb-3">
+              <div class="flex items-center gap-1.5">
+                <Sparkles size={16} class="text-[var(--pop-yellow)]" />
+                <h3 class="text-sm font-black text-white uppercase tracking-tight">
+                  Studio Controls
+                </h3>
               </div>
 
-              {/* Draw Speed */}
-              <div class="space-y-1.5">
-                <div class="flex justify-between text-[11px] uppercase font-black text-gray-300">
-                  <span>Draw / Bloom Speed</span>
-                  <span class="font-mono text-[var(--pop-yellow)]">{speedMultiplier()}x</span>
+              <div class="flex items-center gap-1.5">
+                {/* Inline Navigation Tabs */}
+                <div class="flex items-center p-0.5 rounded-lg bg-[#121b44] border border-white/10 text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("layers")}
+                    class={`px-2.5 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+                      activeTab() === "layers"
+                        ? "bg-[var(--pop-yellow)] text-[var(--ink)] font-black"
+                        : "text-gray-300 hover:text-white"
+                    }`}
+                  >
+                    <Layers size={12} />
+                    <span>Layer Items</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("quick")}
+                    class={`px-2.5 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+                      activeTab() === "quick"
+                        ? "bg-[var(--pop-yellow)] text-[var(--ink)] font-black"
+                        : "text-gray-300 hover:text-white"
+                    }`}
+                  >
+                    <Sliders size={12} />
+                    <span>Speed</span>
+                  </button>
                 </div>
-                <div class="grid grid-cols-4 gap-1.5 font-bold">
-                  {[0.5, 1, 2, 4].map((spd) => (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSpeedMultiplier(spd);
-                        restart();
-                      }}
-                      class={`py-1 rounded-lg border text-center transition-all cursor-pointer ${
-                        speedMultiplier() === spd
-                          ? "bg-[var(--pop-yellow)] text-[var(--ink)] border-[var(--ink)] font-black"
-                          : "bg-[#25306d] border-white/20 text-gray-200"
-                      }`}
-                    >
-                      {spd}x
-                    </button>
-                  ))}
-                </div>
-              </div>
 
-              {/* Petal Density Multiplier */}
-              <div class="space-y-1.5">
-                <div class="flex justify-between text-[11px] uppercase font-black text-gray-300">
-                  <span>Petal Density Multiplier</span>
-                  <span class="font-mono text-[var(--pop-yellow)]">{countMultiplier()}x</span>
-                </div>
-                <div class="grid grid-cols-4 gap-1.5 font-bold">
-                  {[0.5, 1, 1.5, 2].map((mul) => (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCountMultiplier(mul);
-                        restart();
-                      }}
-                      class={`py-1 rounded-lg border text-center transition-all cursor-pointer ${
-                        countMultiplier() === mul
-                          ? "bg-[var(--pop-pink)] text-white border-[var(--ink)] font-black"
-                          : "bg-[#25306d] border-white/20 text-gray-200"
-                      }`}
-                    >
-                      {mul}x
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Spin Mode */}
-              <div class="space-y-1.5">
-                <div class="flex justify-between text-[11px] uppercase font-black text-gray-300">
-                  <span>Harmonic Rotation</span>
-                </div>
-                <div class="grid grid-cols-3 gap-1.5 font-bold">
-                  {[
-                    { val: 0, label: "Off" },
-                    { val: 1, label: "Serene" },
-                    { val: 3, label: "Brisk" },
-                  ].map((rot) => (
-                    <button
-                      type="button"
-                      onClick={() => setRotationSpeedFactor(rot.val)}
-                      class={`py-1 rounded-lg border text-center transition-all cursor-pointer ${
-                        rotationSpeedFactor() === rot.val
-                          ? "bg-[var(--pop-yellow)] text-[var(--ink)] border-[var(--ink)] font-black"
-                          : "bg-[#25306d] border-white/20 text-gray-200"
-                      }`}
-                    >
-                      {rot.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Show>
-
-          {/* TAB 2: INLINE LAYER TOGGLES */}
-          <Show when={activeTab() === "layers"}>
-            <div class="space-y-2 max-h-[280px] overflow-y-auto pr-1 scrollbar-thin">
-              <div class="flex items-center justify-between text-[11px] uppercase font-black text-gray-300 pb-1">
-                <span>Toggle 8 Peak Layers</span>
+                {/* Collapse Button (Desktop: ChevronRight, Mobile: ChevronDown) */}
                 <button
                   type="button"
-                  onClick={resetToPeak}
-                  class="text-[10px] text-[var(--pop-yellow)] hover:underline cursor-pointer"
+                  onClick={() => setIsCollapsed(true)}
+                  class="p-1 rounded-lg bg-[#121b44] border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Collapse Controls Panel"
                 >
-                  Reset Defaults
+                  <span class="hidden lg:inline-block">
+                    <ChevronRight size={15} />
+                  </span>
+                  <span class="inline-block lg:hidden">
+                    <ChevronDown size={15} />
+                  </span>
                 </button>
               </div>
-
-              <For each={layerNames}>
-                {(l) => {
-                  const isEnabled = () => enabledLayers()[l.id] ?? true;
-                  return (
-                    <div
-                      class={`p-2.5 rounded-lg border transition-all flex items-center justify-between text-xs cursor-pointer ${
-                        isEnabled()
-                          ? "bg-[#25306d] border-white/25 text-white"
-                          : "bg-[#141b40] border-white/10 text-gray-400 opacity-60"
-                      }`}
-                      onClick={() => toggleLayer(l.id)}
-                    >
-                      <label class="flex items-center gap-2 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={isEnabled()}
-                          onChange={() => toggleLayer(l.id)}
-                          class="accent-[var(--pop-yellow)] w-3.5 h-3.5 cursor-pointer"
-                        />
-                        <span class="font-bold text-[11px]">{l.name}</span>
-                      </label>
-                      <span class="text-[10px] font-mono font-bold text-[var(--pop-yellow)]">
-                        {isEnabled() ? "Active" : "Hidden"}
-                      </span>
-                    </div>
-                  );
-                }}
-              </For>
             </div>
-          </Show>
-        </div>
 
-        {/* Action Buttons */}
-        <div class="space-y-2 pt-2 border-t border-white/10">
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsPaused((prev) => !prev)}
-              class="flex-1 py-2 px-3 rounded-lg bg-[#25306d] hover:bg-[#32408a] border border-white/20 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Show when={!isPaused()} fallback={<Play size={12} fill="currentColor" />}>
-                <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              </Show>
-              <span>{isPaused() ? "Resume" : isComplete() ? "Mesmerize" : "Pause"}</span>
-            </button>
+            {/* TAB 1: LAYER ITEM SHAPE PICKERS */}
+            <Show when={activeTab() === "layers"}>
+              <div class="space-y-2 max-h-[300px] overflow-y-auto pr-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                <div class="flex items-center justify-between text-[11px] uppercase font-black text-gray-300 pb-1">
+                  <span>Select Items for Each Layer</span>
+                  <button
+                    type="button"
+                    onClick={resetToPeak}
+                    class="text-[10px] text-[var(--pop-yellow)] hover:underline cursor-pointer"
+                  >
+                    Reset Defaults
+                  </button>
+                </div>
 
-            <button
-              type="button"
-              onClick={restart}
-              class="py-2 px-3 rounded-lg bg-[#25306d] hover:bg-[#32408a] border border-white/20 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              title="Replay drawing animation"
-            >
-              <RotateCcw size={13} strokeWidth={2.5} />
-              <span>Replay</span>
-            </button>
+                <For each={layerItems}>
+                  {(l) => {
+                    const isEnabled = () => enabledLayers()[l.id] ?? true;
+                    const currentShape = () => layerShapeOverrides()[l.id] || l.defaultShape;
+
+                    return (
+                      <div
+                        class={`p-2 rounded-lg border transition-all space-y-1.5 ${
+                          isEnabled()
+                            ? "bg-[#25306d] border-white/25 text-white"
+                            : "bg-[#141b40] border-white/10 text-gray-400 opacity-60"
+                        }`}
+                      >
+                        <div class="flex items-center justify-between text-xs font-bold">
+                          <span class="text-[11px] font-black">{l.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleLayer(l.id)}
+                            class={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded cursor-pointer ${
+                              isEnabled()
+                                ? "bg-[var(--pop-yellow)] text-[var(--ink)]"
+                                : "bg-white/10 text-gray-400"
+                            }`}
+                          >
+                            {isEnabled() ? "Active" : "Hidden"}
+                          </button>
+                        </div>
+
+                        {/* Shape Option Pills */}
+                        <Show when={isEnabled()}>
+                          <div class="grid grid-cols-6 gap-1 pt-0.5">
+                            <For each={SHAPES}>
+                              {(s) => {
+                                const isSelected = () => currentShape() === s.type;
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => setLayerShape(l.id, s.type)}
+                                    class={`py-1 px-0.5 rounded flex flex-col items-center justify-center transition-all cursor-pointer ${
+                                      isSelected()
+                                        ? "bg-[var(--pop-teal)] text-[var(--ink)] font-black scale-105 shadow-sm"
+                                        : "bg-[#121b44] hover:bg-[#1a2352] text-gray-300"
+                                    }`}
+                                    title={s.label}
+                                  >
+                                    <span class="text-xs leading-none">{s.icon}</span>
+                                    <span class="text-[8px] font-bold leading-tight truncate mt-0.5">
+                                      {s.label}
+                                    </span>
+                                  </button>
+                                );
+                              }}
+                            </For>
+                          </div>
+                        </Show>
+                      </div>
+                    );
+                  }}
+                </For>
+              </div>
+            </Show>
+
+            {/* TAB 2: SPEED & MOTIF */}
+            <Show when={activeTab() === "quick"}>
+              <div class="space-y-3.5 text-xs">
+                {/* Center Motif Selector */}
+                <div class="space-y-1.5">
+                  <label class="text-[11px] uppercase font-black text-gray-300 tracking-wider">
+                    Center Motif Emblem
+                  </label>
+                  <div class="grid grid-cols-4 gap-1.5 font-bold">
+                    {[
+                      { id: "foss", label: "⚙️ FOSS" },
+                      { id: "tux", label: "🐧 Tux" },
+                      { id: "crab", label: "🦀 Rust" },
+                      { id: "lamp", label: "🪔 Lamp" },
+                    ].map((m) => (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMotif(m.id as CenterMotif);
+                          onSettingsChange();
+                        }}
+                        class={`py-1.5 px-1 rounded-lg border text-center transition-all cursor-pointer text-xs ${
+                          motif() === m.id
+                            ? "bg-[var(--pop-teal)] text-[var(--ink)] border-[var(--ink)] font-black shadow-sm"
+                            : "bg-[#25306d] border-white/20 text-gray-200 hover:border-white/40"
+                        }`}
+                      >
+                        <span class="truncate block">{m.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Draw Speed */}
+                <div class="space-y-1.5">
+                  <div class="flex justify-between text-[11px] uppercase font-black text-gray-300">
+                    <span>Draw / Bloom Speed</span>
+                    <span class="font-mono text-[var(--pop-yellow)]">{speedMultiplier()}x</span>
+                  </div>
+                  <div class="grid grid-cols-4 gap-1.5 font-bold">
+                    {[0.5, 1, 2, 4].map((spd) => (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSpeedMultiplier(spd);
+                          onSettingsChange();
+                        }}
+                        class={`py-1 rounded-lg border text-center transition-all cursor-pointer ${
+                          speedMultiplier() === spd
+                            ? "bg-[var(--pop-yellow)] text-[var(--ink)] border-[var(--ink)] font-black"
+                            : "bg-[#25306d] border-white/20 text-gray-200"
+                        }`}
+                      >
+                        {spd}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Petal Density Multiplier */}
+                <div class="space-y-1.5">
+                  <div class="flex justify-between text-[11px] uppercase font-black text-gray-300">
+                    <span>Petal Density Multiplier</span>
+                    <span class="font-mono text-[var(--pop-yellow)]">{countMultiplier()}x</span>
+                  </div>
+                  <div class="grid grid-cols-4 gap-1.5 font-bold">
+                    {[0.5, 1, 1.5, 2].map((mul) => (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCountMultiplier(mul);
+                          onSettingsChange();
+                        }}
+                        class={`py-1 rounded-lg border text-center transition-all cursor-pointer ${
+                          countMultiplier() === mul
+                            ? "bg-[var(--pop-pink)] text-white border-[var(--ink)] font-black"
+                            : "bg-[#25306d] border-white/20 text-gray-200"
+                        }`}
+                      >
+                        {mul}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Spin Mode */}
+                <div class="space-y-1.5">
+                  <div class="flex justify-between text-[11px] uppercase font-black text-gray-300">
+                    <span>Harmonic Rotation</span>
+                  </div>
+                  <div class="grid grid-cols-3 gap-1.5 font-bold">
+                    {[
+                      { val: 0, label: "Off" },
+                      { val: 1, label: "Serene" },
+                      { val: 3, label: "Brisk" },
+                    ].map((rot) => (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRotationSpeedFactor(rot.val);
+                          onSettingsChange();
+                        }}
+                        class={`py-1 rounded-lg border text-center transition-all cursor-pointer ${
+                          rotationSpeedFactor() === rot.val
+                            ? "bg-[var(--pop-yellow)] text-[var(--ink)] border-[var(--ink)] font-black"
+                            : "bg-[#25306d] border-white/20 text-gray-200"
+                        }`}
+                      >
+                        {rot.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </Show>
           </div>
 
-          <button
-            type="button"
-            onClick={downloadPNG}
-            class="w-full btn-brand py-2.5 px-4 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 cursor-pointer shadow-[3px_3px_0px_0px_var(--ink)]"
-          >
-            <Download size={15} strokeWidth={2.5} />
-            <span>Download 1600px PNG</span>
-          </button>
+          {/* Action Buttons */}
+          <div class="space-y-2 pt-2 border-t border-white/10">
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsPaused((prev) => !prev)}
+                class="flex-1 py-2 px-3 rounded-lg bg-[#25306d] hover:bg-[#32408a] border border-white/20 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Show when={!isPaused()} fallback={<Play size={12} fill="currentColor" />}>
+                  <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                </Show>
+                <span>{isPaused() ? "Resume" : isComplete() ? "Mesmerize" : "Pause"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={restart}
+                class="py-2 px-3 rounded-lg bg-[#25306d] hover:bg-[#32408a] border border-white/20 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                title="Replay drawing animation"
+              >
+                <RotateCcw size={13} strokeWidth={2.5} />
+                <span>Replay</span>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={downloadPNG}
+              class="w-full btn-brand py-2.5 px-4 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 cursor-pointer shadow-[3px_3px_0px_0px_var(--ink)]"
+            >
+              <Download size={15} strokeWidth={2.5} />
+              <span>Download 1600px PNG</span>
+            </button>
+          </div>
         </div>
-      </div>
+      </Show>
     </div>
   );
 }
