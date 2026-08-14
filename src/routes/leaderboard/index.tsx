@@ -12,6 +12,7 @@ import {
   Zap,
 } from "lucide-solid";
 import { For, Show, createEffect, createSignal, onCleanup, useTransition } from "solid-js";
+import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { getGames } from "~/server/games/actions";
 import { getDaily, getGlobal } from "~/server/leaderboard/actions";
@@ -183,31 +184,37 @@ export default function Leaderboard() {
     >
       <Title>Leaderboard — FOSS Onam Games</Title>
 
-      {/* ---------------------------------------------------- Compact Header */}
-      <div class="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <div class="flex items-center gap-2">
-            <SpriteIcon name="tux-king" size={30} animate="float" interactive />
-            <h1 class="text-2xl sm:text-3xl font-extrabold m-0">Leaderboard</h1>
+      {/* Confetti decoration behind header */}
+      <div
+        class="relative overflow-hidden rounded-lg px-4 py-5"
+        style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--paper-2)" }}
+      >
+        <Confetti seed="leaderboard-hero" count={8} animate />
+        <div class="art-over flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div class="flex items-center gap-2">
+              <SpriteIcon name="tux-king" size={30} animate="float" interactive />
+              <h1 class="text-2xl sm:text-3xl font-extrabold m-0">Leaderboard</h1>
+            </div>
+            <p class="text-xs sm:text-sm font-semibold mt-0.5" style={{ color: "var(--ink-soft)" }}>
+              {tab() === "daily"
+                ? "Daily mini-game results · Top 1 wins ₹200 daily"
+                : "Overall 7-day championship standings · 1050 pts max/game"}
+            </p>
           </div>
-          <p class="text-xs sm:text-sm font-semibold mt-0.5" style={{ color: "var(--ink-soft)" }}>
-            {tab() === "daily"
-              ? "Daily mini-game results · Top 1 wins ₹200 daily"
-              : "Overall 7-day championship standings · 1050 pts max/game"}
-          </p>
-        </div>
 
-        <button
-          type="button"
-          onClick={refresh}
-          disabled={cooldownLeft() > 0}
-          class="btn-ghost text-xs px-3 py-1.5 inline-flex items-center gap-1.5 cursor-pointer"
-        >
-          <RefreshCw size={13} strokeWidth={2.5} class={pending() ? "animate-spin" : ""} />
-          <span>
-            {cooldownLeft() > 0 ? `Wait ${Math.ceil(cooldownLeft() / 1000)}s` : "Refresh"}
-          </span>
-        </button>
+          <button
+            type="button"
+            onClick={refresh}
+            disabled={cooldownLeft() > 0}
+            class="btn-ghost text-xs px-3 py-1.5 inline-flex items-center gap-1.5 cursor-pointer"
+          >
+            <RefreshCw size={13} strokeWidth={2.5} class={pending() ? "animate-spin" : ""} />
+            <span>
+              {cooldownLeft() > 0 ? `Wait ${Math.ceil(cooldownLeft() / 1000)}s` : "Refresh"}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* ---------------------------------------------------- Unified Minimal Toolbar */}
@@ -303,37 +310,25 @@ export default function Leaderboard() {
         </div>
       </Show>
 
-      {/* ---------------------------------------------------- Compact Top #1 Winner Callout */}
-      <Show
-        when={
-          tab() === "daily" &&
-          topDailyWinner() &&
-          (daily()?.settled || selectedGame()?.status === "closed")
-        }
-      >
+      {/* ---------------------------------------------------- Compact Top #1 Winner Callout (only when day is closed) */}
+      <Show when={tab() === "daily" && topDailyWinner() && selectedGame()?.status === "closed"}>
         {(() => {
           const top = topDailyWinner()!;
-          const isSettled = daily()?.settled || selectedGame()?.status === "closed";
-
           return (
-            <div class="card card-plain p-4 bg-[var(--pop-yellow)] flex items-center justify-between gap-4">
-              <div class="flex items-center gap-3 min-w-0">
+            <div class="relative overflow-hidden card card-plain p-4 bg-[var(--pop-yellow)] flex items-center justify-between gap-4">
+              <Confetti seed="winner-callout" count={6} animate />
+              <div class="art-over flex items-center gap-3 min-w-0">
                 <SpriteIcon name="tux-king" size={36} animate="wobble" class="shrink-0" />
                 <div class="min-w-0">
                   <div class="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase px-2 py-0.5 rounded bg-[var(--paper-2)] border border-[var(--ink)]">
-                    <Show when={isSettled} fallback={<Zap size={12} strokeWidth={3} />}>
-                      <Trophy size={12} strokeWidth={3} />
-                    </Show>
-                    <span>{isSettled ? "Day Winner · ₹200 Cash" : "#1 Leader"}</span>
+                    <Trophy size={12} strokeWidth={3} />
+                    <span>Day Winner · ₹200 Cash</span>
                   </div>
                   <p class="font-black text-base sm:text-lg mt-1 truncate">{top.name}</p>
                 </div>
               </div>
-              <div class="text-right font-mono font-black text-sm sm:text-base shrink-0">
+              <div class="art-over text-right font-mono font-black text-sm sm:text-base shrink-0">
                 <p>{formatMetric(top)}</p>
-                <p class="text-xs font-semibold" style={{ color: "var(--ink-soft)" }}>
-                  {top.points} pts
-                </p>
               </div>
             </div>
           );
@@ -384,7 +379,7 @@ export default function Leaderboard() {
             style={{ color: "var(--ink-soft)" }}
           >
             <span>Rank & Player</span>
-            <span class="text-right">{daily()!.metricLabel} · Points</span>
+            <span class="text-right">{daily()!.metricLabel}</span>
           </div>
 
           <div class="divide-y divide-[var(--ink-soft)]/20">
@@ -413,12 +408,6 @@ export default function Leaderboard() {
                       <div class="flex items-center gap-3 shrink-0 text-right">
                         <div class="font-mono tabular-nums text-sm font-extrabold">
                           <span>{formatMetric(entry)}</span>
-                          <span
-                            class="text-xs font-semibold ml-1.5"
-                            style={{ color: "var(--ink-soft)" }}
-                          >
-                            ({entry.points} pts)
-                          </span>
                         </div>
                         <span class="text-[var(--ink-soft)] select-none">
                           <Show
@@ -467,9 +456,7 @@ export default function Leaderboard() {
                 Your Rank: #{daily()!.myEntry!.rank} of {daily()!.fieldSize}
               </p>
             </div>
-            <p class="font-mono font-black text-sm">
-              {formatMetric(daily()!.myEntry!)} · {daily()!.myEntry!.points} pts
-            </p>
+            <p class="font-mono font-black text-sm">{formatMetric(daily()!.myEntry!)}</p>
           </div>
         </Show>
       </Show>
