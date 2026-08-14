@@ -52,6 +52,26 @@ const PALETTE = {
   darkBlue: "#121b44",
 };
 
+// 16 curated theme-matched washed-out / pastel floral colors
+const THEME_PALETTE_16 = [
+  { label: "Thumba White", hex: "#FFFFFF" },
+  { label: "Jasmine Cream", hex: "#F5F3EB" },
+  { label: "Pastel Lemon", hex: "#FFEAA7" },
+  { label: "Marigold Yellow", hex: "#FFBF00" },
+  { label: "Warm Ochre", hex: "#F5C469" },
+  { label: "Saffron Orange", hex: "#F7A01E" },
+  { label: "Muted Terracotta", hex: "#E17055" },
+  { label: "Deep Burnt Orange", hex: "#D95F02" },
+  { label: "Pastel Rose", hex: "#FD79A8" },
+  { label: "Washed Hibiscus", hex: "#E84393" },
+  { label: "Pastel Lavender", hex: "#A29BFE" },
+  { label: "Soft Sky Blue", hex: "#74B9FF" },
+  { label: "Mint Sage", hex: "#A3D4A8" },
+  { label: "Tulsi Green", hex: "#66A36D" },
+  { label: "Muted Silver", hex: "#CED1D3" },
+  { label: "Midnight Blue", hex: "#1A2352" },
+];
+
 // Exact vector rendering of the mathematical canvas elements
 function ShapeIcon(props: { type: ElementType }) {
   switch (props.type) {
@@ -132,8 +152,10 @@ export function PookalamInteractiveCanvas() {
   const [rotationSpeedFactor, setRotationSpeedFactor] = createSignal<number>(1);
   const [countMultiplier, setCountMultiplier] = createSignal<number>(1);
 
-  // Layer custom element shape slot overrides
+  // Layer custom element shape & color slot overrides
   const [slotOverrides, setSlotOverrides] = createSignal<Record<string, ElementType>>({});
+  const [colorOverrides, setColorOverrides] = createSignal<Record<string, string>>({});
+
   const [enabledLayers, setEnabledLayers] = createSignal<Record<number, boolean>>({
     0: true,
     1: true,
@@ -265,6 +287,10 @@ export function PookalamInteractiveCanvas() {
     return slotOverrides()[`${layerId}_${slotIdx}`] || defaultShape;
   };
 
+  const getColor = (layerId: number, slotIdx: number, defaultColor: string): string => {
+    return colorOverrides()[`${layerId}_${slotIdx}`] || defaultColor;
+  };
+
   // Exact 2025 Multi-Spec Layer Blueprint
   const getLayers = (): Layer[] => {
     const scale = state.currentScaleFactor;
@@ -296,12 +322,12 @@ export function PookalamInteractiveCanvas() {
           {
             type: getSlot(1, 0, "dot"),
             size: 3 * scale,
-            color: PALETTE.white,
+            color: getColor(1, 0, PALETTE.white),
           },
           {
             type: getSlot(1, 1, "smallFlower"),
             size: 4 * scale,
-            color: PALETTE.amber,
+            color: getColor(1, 1, PALETTE.amber),
           },
         ],
         radius: 28 * scale,
@@ -316,12 +342,12 @@ export function PookalamInteractiveCanvas() {
           {
             type: getSlot(2, 0, "smallFlower"),
             size: 18 * scale,
-            color: PALETTE.white,
+            color: getColor(2, 0, PALETTE.white),
           },
           {
             type: getSlot(2, 1, "dot"),
             size: 4 * scale,
-            color: PALETTE.deepOrange,
+            color: getColor(2, 1, PALETTE.deepOrange),
           },
         ],
         radius: 50 * scale,
@@ -336,22 +362,22 @@ export function PookalamInteractiveCanvas() {
           {
             type: getSlot(3, 0, "dot"),
             size: 5 * scale,
-            color: PALETTE.amber,
+            color: getColor(3, 0, PALETTE.amber),
           },
           {
             type: getSlot(3, 0, "dot"),
             size: 5 * scale,
-            color: PALETTE.deepOrange,
+            color: getColor(3, 0, PALETTE.deepOrange),
           },
           {
             type: getSlot(3, 1, "tulipPetal"),
             size: 22 * scale,
-            color: PALETTE.offWhite,
+            color: getColor(3, 1, PALETTE.offWhite),
           },
           {
             type: getSlot(3, 0, "dot"),
             size: 5 * scale,
-            color: PALETTE.leafGreen,
+            color: getColor(3, 0, PALETTE.leafGreen),
           },
         ],
         radius: 75 * scale,
@@ -367,12 +393,12 @@ export function PookalamInteractiveCanvas() {
           {
             type: getSlot(4, 0, "dot"),
             size: 8 * scale,
-            color: PALETTE.amber,
+            color: getColor(4, 0, PALETTE.amber),
           },
           {
             type: getSlot(4, 1, "dot"),
             size: 8 * scale,
-            color: PALETTE.orange,
+            color: getColor(4, 1, PALETTE.orange),
           },
         ],
         radius: 100 * scale,
@@ -387,12 +413,12 @@ export function PookalamInteractiveCanvas() {
           {
             type: getSlot(5, 0, "leafPetal"),
             size: 25 * scale,
-            color: PALETTE.leafGreen,
+            color: getColor(5, 0, PALETTE.leafGreen),
           },
           {
             type: getSlot(5, 1, "heart"),
             size: 15 * scale,
-            color: PALETTE.lightGray,
+            color: getColor(5, 1, PALETTE.lightGray),
           },
         ],
         radius: 130 * scale,
@@ -407,22 +433,22 @@ export function PookalamInteractiveCanvas() {
           {
             type: getSlot(6, 0, "dot"),
             size: 6 * scale,
-            color: PALETTE.orange,
+            color: getColor(6, 0, PALETTE.orange),
           },
           {
             type: getSlot(6, 1, "leafPetal"),
             size: 30 * scale,
-            color: PALETTE.white,
+            color: getColor(6, 1, PALETTE.white),
           },
           {
             type: getSlot(6, 0, "dot"),
             size: 3 * scale,
-            color: PALETTE.orange,
+            color: getColor(6, 0, PALETTE.orange),
           },
           {
             type: getSlot(6, 1, "leafPetal"),
             size: 30 * scale,
-            color: PALETTE.white,
+            color: getColor(6, 1, PALETTE.white),
           },
         ],
         radius: 165 * scale,
@@ -437,7 +463,7 @@ export function PookalamInteractiveCanvas() {
           {
             type: getSlot(7, 0, "smallFlower"),
             size: 12 * scale,
-            color: PALETTE.deepOrange,
+            color: getColor(7, 0, PALETTE.deepOrange),
           },
         ],
         radius: 190 * scale,
@@ -534,6 +560,11 @@ export function PookalamInteractiveCanvas() {
 
   const setSlotShape = (layerId: number, slotIdx: number, shape: ElementType) => {
     setSlotOverrides((prev) => ({ ...prev, [`${layerId}_${slotIdx}`]: shape }));
+    onSettingsChange();
+  };
+
+  const setSlotColor = (layerId: number, slotIdx: number, color: string) => {
+    setColorOverrides((prev) => ({ ...prev, [`${layerId}_${slotIdx}`]: color }));
     onSettingsChange();
   };
 
@@ -669,6 +700,7 @@ export function PookalamInteractiveCanvas() {
     setRotationSpeedFactor(1);
     setCountMultiplier(1);
     setSlotOverrides({});
+    setColorOverrides({});
     setEnabledLayers({
       0: true,
       1: true,
@@ -736,66 +768,128 @@ export function PookalamInteractiveCanvas() {
       id: 1,
       name: "Layer 1: Inner Rosette Ring",
       slots: [
-        { idx: 0, label: "Pearl Dots", default: "dot" as ElementType },
-        { idx: 1, label: "Mini Rosettes", default: "smallFlower" as ElementType },
+        { idx: 0, label: "Pearl Dots", default: "dot" as ElementType, defaultColor: PALETTE.white },
+        {
+          idx: 1,
+          label: "Mini Rosettes",
+          default: "smallFlower" as ElementType,
+          defaultColor: PALETTE.amber,
+        },
       ],
     },
     {
       id: 2,
       name: "Layer 2: Star Flowers",
       slots: [
-        { idx: 0, label: "Star Rosettes", default: "smallFlower" as ElementType },
-        { idx: 1, label: "Orange Pearls", default: "dot" as ElementType },
+        {
+          idx: 0,
+          label: "Star Rosettes",
+          default: "smallFlower" as ElementType,
+          defaultColor: PALETTE.white,
+        },
+        {
+          idx: 1,
+          label: "Orange Pearls",
+          default: "dot" as ElementType,
+          defaultColor: PALETTE.deepOrange,
+        },
       ],
     },
     {
       id: 3,
       name: "Layer 3: Tulip & Pearl Ring",
       slots: [
-        { idx: 0, label: "Surrounding Pearls", default: "dot" as ElementType },
-        { idx: 1, label: "Tulip Petals", default: "tulipPetal" as ElementType },
+        {
+          idx: 0,
+          label: "Surrounding Pearls",
+          default: "dot" as ElementType,
+          defaultColor: PALETTE.amber,
+        },
+        {
+          idx: 1,
+          label: "Tulip Petals",
+          default: "tulipPetal" as ElementType,
+          defaultColor: PALETTE.offWhite,
+        },
       ],
     },
     {
       id: 4,
       name: "Layer 4: Dual Pearl Ring",
       slots: [
-        { idx: 0, label: "Amber Pearls", default: "dot" as ElementType },
-        { idx: 1, label: "Orange Pearls", default: "dot" as ElementType },
+        {
+          idx: 0,
+          label: "Amber Pearls",
+          default: "dot" as ElementType,
+          defaultColor: PALETTE.amber,
+        },
+        {
+          idx: 1,
+          label: "Orange Pearls",
+          default: "dot" as ElementType,
+          defaultColor: PALETTE.orange,
+        },
       ],
     },
     {
       id: 5,
       name: "Layer 5: Foliage & Hearts",
       slots: [
-        { idx: 0, label: "Green Leaves", default: "leafPetal" as ElementType },
-        { idx: 1, label: "Gray Hearts", default: "heart" as ElementType },
+        {
+          idx: 0,
+          label: "Green Leaves",
+          default: "leafPetal" as ElementType,
+          defaultColor: PALETTE.leafGreen,
+        },
+        {
+          idx: 1,
+          label: "Gray Hearts",
+          default: "heart" as ElementType,
+          defaultColor: PALETTE.lightGray,
+        },
       ],
     },
     {
       id: 6,
       name: "Layer 6: Grand White Petals",
       slots: [
-        { idx: 0, label: "Pearl Spacers", default: "dot" as ElementType },
-        { idx: 1, label: "Grand Petals", default: "leafPetal" as ElementType },
+        {
+          idx: 0,
+          label: "Pearl Spacers",
+          default: "dot" as ElementType,
+          defaultColor: PALETTE.orange,
+        },
+        {
+          idx: 1,
+          label: "Grand Petals",
+          default: "leafPetal" as ElementType,
+          defaultColor: PALETTE.white,
+        },
       ],
     },
     {
       id: 7,
       name: "Layer 7: Outer Perimeter",
-      slots: [{ idx: 0, label: "Outer Rosettes", default: "smallFlower" as ElementType }],
+      slots: [
+        {
+          idx: 0,
+          label: "Outer Rosettes",
+          default: "smallFlower" as ElementType,
+          defaultColor: PALETTE.deepOrange,
+        },
+      ],
     },
   ];
 
   return (
     <div
-      class="relative w-full rounded-2xl overflow-hidden border-4 border-[var(--ink)] shadow-[8px_8px_0px_0px_var(--ink)] p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row items-center justify-between gap-6 transition-all duration-300"
+      class="relative w-full rounded-2xl overflow-hidden border-4 border-[var(--ink)] shadow-[8px_8px_0px_0px_var(--ink)] p-3 sm:p-4 lg:p-5 flex flex-col lg:flex-row items-center justify-between gap-5 transition-all duration-300"
       style={{ background: "#121b44" }}
     >
       {/* ---------------------------------------------------- LEFT / CENTER: LIVE CANVAS */}
       <div
         ref={(el) => (containerRef = el)}
-        class="relative flex-1 flex items-center justify-center w-full min-w-0 max-w-[500px] aspect-square mx-auto"
+        class="relative flex-1 flex items-center justify-center w-full min-w-0 max-w-[480px] aspect-square mx-auto"
       >
         <canvas
           ref={(el) => (canvasRef = el)}
@@ -879,11 +973,11 @@ export function PookalamInteractiveCanvas() {
               </div>
             </div>
 
-            {/* TAB 1: LAYER ITEM SHAPE PICKERS (LAYERS 1 TO 7) */}
+            {/* TAB 1: LAYER ITEM SHAPE & THEMED 16-COLOR PALETTE (LAYERS 1 TO 7) */}
             <Show when={activeTab() === "layers"}>
-              <div class="space-y-2.5 max-h-[310px] overflow-y-auto pr-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <div class="space-y-2.5 max-h-[320px] overflow-y-auto pr-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 <div class="flex items-center justify-between text-[11px] uppercase font-black text-gray-300 pb-1">
-                  <span>Customise Motifs & Rings</span>
+                  <span>Customise Shapes & Colors</span>
                   <button
                     type="button"
                     onClick={resetToPeak}
@@ -921,23 +1015,32 @@ export function PookalamInteractiveCanvas() {
                           </button>
                         </div>
 
-                        {/* Repeating / Alternating Shape Slots */}
+                        {/* Repeating / Alternating Shape & Color Slots */}
                         <Show when={isEnabled()}>
-                          <div class="space-y-1.5 pt-0.5">
+                          <div class="space-y-2 pt-0.5">
                             <For each={l.slots}>
                               {(slot) => {
                                 const currentShape = () => getSlot(l.id, slot.idx, slot.default);
+                                const currentColor = () =>
+                                  getColor(l.id, slot.idx, slot.defaultColor);
 
                                 return (
-                                  <div class="space-y-1 bg-[#18204d]/70 p-1.5 rounded-md border border-white/10">
+                                  <div class="space-y-1.5 bg-[#18204d]/70 p-2 rounded-md border border-white/10">
+                                    {/* Slot Title & Active Color Indicator */}
                                     <div class="flex items-center justify-between text-[10px] font-bold text-gray-300">
                                       <span class="truncate">{slot.label}</span>
-                                      <span class="font-mono text-[9px] text-[var(--pop-yellow)] uppercase">
-                                        {currentShape()}
-                                      </span>
+                                      <div class="flex items-center gap-1.5">
+                                        <span
+                                          class="w-2.5 h-2.5 rounded-full border border-white/40 shadow-xs"
+                                          style={{ "background-color": currentColor() }}
+                                        />
+                                        <span class="font-mono text-[9px] text-[var(--pop-yellow)] uppercase">
+                                          {currentShape()}
+                                        </span>
+                                      </div>
                                     </div>
 
-                                    {/* Shape Picker Row with Exact SVG Vectors */}
+                                    {/* 1. Shape Picker Row with Exact SVG Vectors */}
                                     <div class="grid grid-cols-6 gap-1">
                                       <For each={SHAPES}>
                                         {(s) => {
@@ -960,6 +1063,29 @@ export function PookalamInteractiveCanvas() {
                                                 {s.label}
                                               </span>
                                             </button>
+                                          );
+                                        }}
+                                      </For>
+                                    </div>
+
+                                    {/* 2. Tiny Color Palette Dots */}
+                                    <div class="flex items-center justify-between gap-1 pt-1 border-t border-white/5">
+                                      <For each={THEME_PALETTE_16}>
+                                        {(c) => {
+                                          const isSelected = () =>
+                                            currentColor().toLowerCase() === c.hex.toLowerCase();
+                                          return (
+                                            <button
+                                              type="button"
+                                              onClick={() => setSlotColor(l.id, slot.idx, c.hex)}
+                                              class={`w-2.5 h-2.5 rounded-full transition-transform cursor-pointer shrink-0 ${
+                                                isSelected()
+                                                  ? "ring-2 ring-[var(--pop-yellow)] scale-125 border border-white"
+                                                  : "border border-black/40 hover:scale-125 opacity-85 hover:opacity-100"
+                                              }`}
+                                              style={{ "background-color": c.hex }}
+                                              title={c.label}
+                                            />
                                           );
                                         }}
                                       </For>

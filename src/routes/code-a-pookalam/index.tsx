@@ -1,5 +1,5 @@
 import { Title } from "@solidjs/meta";
-import { CheckCircle2, Layers, Send, Sparkles, Trophy, Vote } from "lucide-solid";
+import { CheckCircle2, Layers, Send, Trophy, Vote } from "lucide-solid";
 import { For } from "solid-js";
 
 import { Confetti } from "~/components/art/Confetti";
@@ -13,70 +13,51 @@ const POPS = ["pop-yellow", "pop-teal", "pop-blue", "pop-purple", "pop-pink"];
 
 export default function CodeAPookalam() {
   return (
-    <main class="container space-y-12 py-6 max-w-5xl">
+    <main class="container space-y-6 py-3 sm:py-4 max-w-5xl">
       <Title>{POOKALAM.title} — FOSS Onam Games</Title>
 
-      {/* ---------------------------------------------------- TOP SUBMIT ACTION BAR */}
-      <section class="rounded-2xl p-4 sm:p-5 bg-[var(--pop-yellow)] border-4 border-[var(--ink)] shadow-[6px_6px_0px_0px_var(--ink)] flex flex-col md:flex-row items-center justify-between gap-4">
-        <div class="flex items-center gap-3.5 min-w-0">
-          <SpriteIcon name="maveli-laptop" size={44} animate="float" class="shrink-0" />
+      {/* ---------------------------------------------------- COMPACT HERO HEADER & SUBMIT ACTION BAR */}
+      <section class="rounded-2xl p-3.5 sm:p-4 bg-[var(--pop-yellow)] border-4 border-[var(--ink)] shadow-[6px_6px_0px_0px_var(--ink)] flex flex-col md:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <SpriteIcon name="maveli-laptop" size={40} animate="float" class="shrink-0" />
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
+              <h1
+                class="text-lg sm:text-xl font-black truncate"
+                style={{ "font-family": "var(--font-stack-display)" }}
+              >
+                Code-a-Pookalam 2026
+              </h1>
               <span class="badge text-[10px] py-0 px-2 uppercase font-black bg-[var(--paper-2)] border border-[var(--ink)]">
                 ₹3,000 Prize Pool
               </span>
-              <span class="text-xs font-black uppercase text-[var(--ink)] tracking-wider">
-                Open All Week · Closes Day 6
-              </span>
             </div>
-            <h2
-              class="text-lg sm:text-xl font-black truncate mt-0.5"
-              style={{ "font-family": "var(--font-stack-display)" }}
-            >
-              Code-a-Pookalam 2026
-            </h2>
+            <p class="text-xs font-semibold text-[var(--ink)]/85 truncate">
+              {POOKALAM.tagline} · Open All Week (Closes Day 6)
+            </p>
           </div>
         </div>
 
-        <div class="flex items-center gap-2.5 w-full md:w-auto shrink-0 justify-end">
+        <div class="flex items-center gap-2 w-full md:w-auto shrink-0 justify-end">
           <a
             href="/code-a-pookalam/vote"
-            class="flex-1 md:flex-initial px-4 py-2.5 rounded-xl bg-[var(--paper)] border-2 border-[var(--ink)] font-black text-xs sm:text-sm text-center hover:bg-[var(--pop-teal)] transition-all cursor-pointer shadow-[2px_2px_0px_0px_var(--ink)] active:translate-y-0.5 inline-flex items-center justify-center gap-1.5"
+            class="flex-1 md:flex-initial px-3.5 py-2 rounded-xl bg-[var(--paper)] border-2 border-[var(--ink)] font-black text-xs sm:text-sm text-center hover:bg-[var(--pop-teal)] transition-all cursor-pointer shadow-[2px_2px_0px_0px_var(--ink)] active:translate-y-0.5 inline-flex items-center justify-center gap-1.5"
           >
-            <Vote size={15} strokeWidth={2.5} />
+            <Vote size={14} strokeWidth={2.5} />
             <span>Elo Voting Arena</span>
           </a>
           <a
             href="/code-a-pookalam/submit"
-            class="flex-1 md:flex-initial btn-brand py-2.5 px-5 rounded-xl text-xs sm:text-sm font-black text-center shadow-[3px_3px_0px_0px_var(--ink)] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 inline-flex items-center justify-center gap-1.5"
+            class="flex-1 md:flex-initial btn-brand py-2 px-4 rounded-xl text-xs sm:text-sm font-black text-center shadow-[3px_3px_0px_0px_var(--ink)] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 inline-flex items-center justify-center gap-1.5"
           >
-            <Send size={15} strokeWidth={2.5} />
-            <span>Submit Your Pookalam</span>
+            <Send size={14} strokeWidth={2.5} />
+            <span>Submit Pookalam</span>
           </a>
         </div>
       </section>
 
-      {/* ---------------------------------------------------- HERO & INTERACTIVE CANVAS */}
-      <section class="space-y-6">
-        <div class="text-center max-w-2xl mx-auto space-y-2.5">
-          <div class="inline-flex items-center gap-1.5 text-xs font-black uppercase px-3 py-1 rounded-full bg-[var(--pop-teal)] border-2 border-[var(--ink)] shadow-[2px_2px_0px_0px_var(--ink)]">
-            <Sparkles size={13} />
-            <span>Generative Floral Art</span>
-          </div>
-          <h1
-            class="text-3xl sm:text-5xl font-black tracking-tight"
-            style={{ "font-family": "var(--font-stack-display)" }}
-          >
-            Code a Pookalam.
-          </h1>
-          <p
-            class="text-sm sm:text-base font-semibold leading-relaxed"
-            style={{ color: "var(--ink-soft)" }}
-          >
-            {POOKALAM.blurb}
-          </p>
-        </div>
-
+      {/* ---------------------------------------------------- HERO LIVE CANVAS STUDIO */}
+      <section class="space-y-3">
         {/* Live Interactive Canvas Studio Component */}
         <PookalamInteractiveCanvas />
       </section>
