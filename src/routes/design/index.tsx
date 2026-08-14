@@ -136,10 +136,11 @@ const MEMES = [
   {
     title: "Out of Tokens",
     src: "/images/memes/need-more-tokens.png",
-    caption: "ERROR: OUT OF TOKENS — Maveli ran out of tokens right before Thiruvonam.",
+    caption: "Maveli ran out of tokens right before Thiruvonam trying to vibecode a pookalam.",
     tag: "RATE LIMIT",
     color: "var(--pop-purple)",
   },
+
   {
     title: "Rustaceans on Vallam",
     src: "/images/memes/failure-is-not-an-option.png",
