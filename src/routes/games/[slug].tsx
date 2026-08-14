@@ -4,7 +4,10 @@ import { Show, createEffect, createSignal, onCleanup } from "solid-js";
 import { Countdown } from "~/components/Countdown";
 import { ShoutBurst } from "~/components/art/Burst";
 import { JigsawGame, type JigsawViewData } from "~/components/games/JigsawGame";
+import { JumpGame, type JumpViewData } from "~/components/games/JumpGame";
 import { TinderGame, type TinderCardView } from "~/components/games/TinderGame";
+import { VallamGame, type VallamViewData } from "~/components/games/VallamGame";
+import { WendGame, type WendViewData } from "~/components/games/WendGame";
 import { ackWarningAction, getMe, getMyBanState } from "~/server/auth/actions";
 import { getGame, getMyAttempt } from "~/server/games/actions";
 import { clearAttempt, getStoredAttempt, storeAttempt } from "~/lib/game-session";
@@ -17,6 +20,9 @@ import { SHOUT_COLOR, moodForResult, shout } from "~/lib/shouts";
 type GameView =
   | { kind: "tinder"; cards: TinderCardView[] }
   | JigsawViewData
+  | WendViewData
+  | VallamViewData
+  | JumpViewData
   | { kind: "hunt"; prompt: string }
   | { kind: "braindead"; mission: string; buttonLabel: string }
   | { kind: string; [key: string]: unknown };
@@ -155,6 +161,22 @@ export default function GamePage() {
   const jigsawView = (): JigsawViewData | null => {
     const current = view();
     return current && current.kind === "jigsaw" ? (current as JigsawViewData) : null;
+  };
+
+  const isWend = () => game()?.gameType === "wend";
+  const wendView = (): WendViewData | null => {
+    const current = view();
+    return current && current.kind === "wend" ? (current as WendViewData) : null;
+  };
+  const isVallam = () => game()?.gameType === "unblock";
+  const vallamView = (): VallamViewData | null => {
+    const current = view();
+    return current && current.kind === "vallam" ? (current as VallamViewData) : null;
+  };
+  const isJump = () => game()?.gameType === "jump";
+  const jumpView = (): JumpViewData | null => {
+    const current = view();
+    return current && current.kind === "jump" ? (current as JumpViewData) : null;
   };
   const playable = () => game() && (game()!.status === "live" || game()!.status === "tester");
 
@@ -410,7 +432,59 @@ export default function GamePage() {
                 </Show>
               </Show>
 
-              <Show when={!isHunt() && !isBraindead() && !isTinder() && !isJigsaw()}>
+              <Show when={isWend()}>
+                <Show when={wendView()} fallback={<p class="font-semibold">Shuffling letters…</p>}>
+                  <WendGame
+                    view={wendView()!}
+                    disabled={busy()}
+                    onFinish={(submission) => finish(submission)}
+                  />
+                </Show>
+              </Show>
+
+              <Show when={isVallam()}>
+                <Show when={vallamView()} fallback={<p class="font-semibold">Launching boats…</p>}>
+                  <VallamGame
+                    view={vallamView()!}
+                    disabled={busy()}
+                    onFinish={(submission) => finish(submission)}
+                  />
+                </Show>
+              </Show>
+
+              <Show when={isJump()}>
+                {/*
+                  `keyed` matters here: this is the one game with retries, and
+                  the canvas holds a whole simulation in local state. Without it
+                  "Go again" would reuse the component and carry the dead run's
+                  physics into the new attempt.
+                */}
+                <Show
+                  when={jumpView()}
+                  keyed
+                  fallback={<p class="font-semibold">Waking Maveli…</p>}
+                >
+                  {(current) => (
+                    <JumpGame
+                      view={current}
+                      disabled={busy()}
+                      onFinish={(submission) => finish(submission)}
+                    />
+                  )}
+                </Show>
+              </Show>
+
+              <Show
+                when={
+                  !isHunt() &&
+                  !isBraindead() &&
+                  !isTinder() &&
+                  !isJigsaw() &&
+                  !isWend() &&
+                  !isVallam() &&
+                  !isJump()
+                }
+              >
                 <p class="text-sm text-muted">
                   This game's board is not wired up yet — it will render here.
                 </p>

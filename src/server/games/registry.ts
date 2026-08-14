@@ -1,6 +1,9 @@
 import { getSetting } from "~/server/settings/service";
 import * as jigsaw from "./impl/jigsaw";
+import * as jump from "./impl/jump";
 import * as tinder from "./impl/tinder";
+import * as vallam from "./impl/vallam";
+import * as wend from "./impl/wend";
 import { createRng } from "./rng";
 
 /**
@@ -123,26 +126,6 @@ export function higherIsBetter(metric: GameMetric): boolean {
   return metric === "score";
 }
 
-/**
- * Placeholder for a game whose puzzle logic is not written yet.
- *
- * It fails **closed**: an unimplemented game cannot be completed, so it can
- * never put a bogus row on a leaderboard. The previous engine did the opposite
- * and accepted any structurally-valid object.
- */
-function unimplemented(what: string): Pick<GameDef, "generate" | "verify"> {
-  return {
-    generate: (seed) => ({
-      view: { kind: "unimplemented", what, seed },
-      solution: null,
-    }),
-    verify: () => ({
-      valid: false,
-      reason: `${what} is not finished yet. Nice try though.`,
-    }),
-  };
-}
-
 const MINUTE = 60_000;
 
 export const GAMES: readonly GameDef[] = [
@@ -233,7 +216,8 @@ export const GAMES: readonly GameDef[] = [
      * to any simultaneous single-puzzle release; the transforms raise the cost
      * of copying without ever changing what a player is asked to solve.
      */
-    ...unimplemented("Wend"),
+    generate: (seed) => wend.generate(seed),
+    verify: (input) => wend.verify(input),
   },
 
   /* ---------------------------------------------------------------- day 4 */
@@ -256,7 +240,14 @@ export const GAMES: readonly GameDef[] = [
         "Fastest escape wins. Move count is recorded but does not rank you.",
       ],
     },
-    ...unimplemented("Escape the Vallam"),
+    /**
+     * Every board is generated backwards from a BFS solver, so it is provably
+     * solvable and its true minimum move count is known before it ships. The
+     * generator rejects boards below a par floor — a puzzle you clear in three
+     * moves does not separate 500 players.
+     */
+    generate: (seed, difficulty) => vallam.generate(seed, difficulty),
+    verify: (input) => vallam.verify(input),
   },
 
   /* ---------------------------------------------------------------- day 5 */
@@ -280,12 +271,23 @@ export const GAMES: readonly GameDef[] = [
       tagline: "One year of freedom. Infinite platforms. Zero dignity.",
       hint: "Paathalam is below. Kerala is above. Start climbing.",
       howTo: [
-        "Tilt or tap to steer. Maveli jumps on his own — he has done this before.",
+        "Hold the left or right half of the board to steer. Maveli jumps on his own — he has done this before.",
+        "Yellow platforms break, blue ones move, pink ones launch you.",
         "Height above Paathalam is your score.",
-        "You get a limited number of runs today. Your best run is the one that counts.",
+        "Twelve runs today. Your best one is the one that counts.",
       ],
     },
-    ...unimplemented("Maveli Jump"),
+    /**
+     * The only `score` game, and the reason the whole leaderboard is ranked on
+     * percentile points rather than raw numbers: "4,300 metres" and "12.4
+     * seconds" are not comparable, but "beat 87% of the field" is.
+     *
+     * The client submits an input trace, never a score. The server re-runs the
+     * simulation to derive the height, and cross-checks the trace's implied
+     * duration against the server clock. See `impl/jump.ts`.
+     */
+    generate: () => jump.generate(),
+    verify: (input) => jump.verify(input),
   },
 
   /* ---------------------------------------------------------------- day 6 */
