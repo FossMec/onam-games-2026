@@ -128,13 +128,21 @@ export default function Leaderboard() {
     >
       <Title>Leaderboard — FOSS Onam Games</Title>
 
-      <section class="space-y-2">
-        <h1 class="rule">Leaderboard</h1>
-        <p class="font-semibold">
-          {view() === null
-            ? "Every game is worth up to 1050 points, awarded by where you finished in that day's field — so a fast jigsaw and a high jump are worth the same thing."
-            : "Ranked in this game's own units. Points are awarded from your rank when the day closes."}
-        </p>
+      <section class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="space-y-2 flex-1">
+          <h1 class="rule">Leaderboard</h1>
+          <p class="font-semibold">
+            {view() === null
+              ? "Every game is worth up to 1050 points, awarded by where you finished in that day's field — so a fast jigsaw and a high jump are worth the same thing."
+              : "Ranked in this game's own units. Points are awarded from your rank when the day closes."}
+          </p>
+        </div>
+        <img
+          src="/images/memes/failure-is-not-an-option.png"
+          alt="Failure is not an option meme"
+          class="w-32 sm:w-40 h-auto object-contain shrink-0 select-none hidden xs:block"
+          style={{ filter: "drop-shadow(3px 3px 0 var(--ink))" }}
+        />
       </section>
 
       {/*

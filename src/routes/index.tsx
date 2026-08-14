@@ -73,7 +73,7 @@ const statusSticker: Record<string, { label: string; pop: string }> = {
 
 function Section(props: { title: string; children: unknown; id?: string }) {
   return (
-    <section id={props.id} class="space-y-5">
+    <section id={props.id} class="space-y-5 scroll-mt-28">
       <h2 class="rule">{props.title}</h2>
       {props.children as never}
     </section>
@@ -336,6 +336,14 @@ export default function Home() {
               </div>
               <p class="comment text-xs">{POOKALAM.aside}</p>
             </div>
+
+            {/* Tux Kasavu Meme Sticker on larger screens */}
+            <img
+              src="/images/memes/sudo-mkdir-pookalam.png"
+              alt="Sudo mkdir pookalam meme"
+              class="w-32 lg:w-40 h-auto object-contain select-none shrink-0 self-center hidden lg:block"
+              style={{ filter: "drop-shadow(3px 3px 0 var(--ink))" }}
+            />
           </div>
         </div>
       </Section>
@@ -658,6 +666,26 @@ export default function Home() {
 
       {/* ---------------------------------------------------------- prizes */}
       <Section title="Prizes & Rewards">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-lg bg-[var(--paper-2)] border-2 border-[var(--ink)]">
+          <div class="space-y-1 text-center sm:text-left">
+            <p
+              class="font-extrabold text-lg"
+              style={{ "font-family": "var(--font-stack-display)" }}
+            >
+              ₹4,600+ Total Cash Prizes
+            </p>
+            <p class="text-xs sm:text-sm font-semibold" style={{ color: "var(--ink-soft)" }}>
+              ₹200 daily winners · ₹3,000 Code-a-Pookalam podium · ₹200 lucky voter bounty!
+            </p>
+          </div>
+          <img
+            src="/images/memes/talk-is-cheap-sadya.png"
+            alt="Talk is cheap give me sadya meme"
+            class="w-28 sm:w-36 h-auto object-contain select-none shrink-0"
+            style={{ filter: "drop-shadow(2px 2px 0 var(--ink))" }}
+          />
+        </div>
+
         <div class="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
           <For each={EVENT.prizes}>
             {(prize, index) => {
