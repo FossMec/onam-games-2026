@@ -372,8 +372,89 @@ export const authSessions = pgTable(
   ],
 );
 
+/* --------------------------------------------------------------- day 7 */
+
+export const pookalamStatusEnum = pgEnum("pookalam_status", ["pending", "approved", "rejected"]);
+
+/**
+ * Code-a-Pookalam entries. One per person, hence the unique on `userId` — the
+ * contest is judged by head-to-head voting and letting one person field three
+ * entries would let them farm the pairing.
+ *
+ * Artwork is referenced by URL rather than uploaded. Hosting user images would
+ * mean object storage, a moderation queue for actual image content, and a bill;
+ * a link to a repo plus a link to a render costs nothing and is what a coding
+ * contest wants anyway. `status` gates whether an entry enters the pairing at
+ * all, so an admin sees every link before a voter does.
+ */
+export const pookalamSubmissions = pgTable(
+  "pookalam_submissions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    /** Where the code lives. The whole point of the contest. */
+    sourceUrl: text("source_url").notNull(),
+    /** A render of the result. Shown to voters; the source URL is not. */
+    imageUrl: text("image_url").notNull(),
+    notes: text("notes"),
+    status: pookalamStatusEnum("status").notNull().default("pending"),
+    reviewNote: text("review_note"),
+    reviewedBy: uuid("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    /**
+     * Elo. Starts at 1200 by convention; `matches` drives the K-factor so a new
+     * entry converges fast and a settled one stops swinging on one vote.
+     */
+    rating: doublePrecision("rating").notNull().default(1200),
+    matches: integer("matches").notNull().default(0),
+    wins: integer("wins").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("pookalam_submissions_user_key").on(t.userId),
+    index("pookalam_submissions_status_idx").on(t.status),
+    index("pookalam_submissions_rating_idx").on(t.rating),
+  ],
+);
+
+/**
+ * One row per judged pair.
+ *
+ * `pairKey` is the two submission ids sorted and joined, which makes "this
+ * voter has already judged this pair" a unique constraint rather than
+ * application logic. Without it a voter could refresh their way to voting the
+ * same matchup repeatedly and move a rating on their own.
+ */
+export const pookalamVotes = pgTable(
+  "pookalam_votes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    voterId: uuid("voter_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    winnerId: uuid("winner_id")
+      .notNull()
+      .references(() => pookalamSubmissions.id, { onDelete: "cascade" }),
+    loserId: uuid("loser_id")
+      .notNull()
+      .references(() => pookalamSubmissions.id, { onDelete: "cascade" }),
+    /** Sorted `${a}:${b}` of the two submission ids. */
+    pairKey: text("pair_key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("pookalam_votes_voter_pair_key").on(t.voterId, t.pairKey),
+    index("pookalam_votes_voter_idx").on(t.voterId),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Device = typeof devices.$inferSelect;
 export type Game = typeof games.$inferSelect;
 export type GameAttempt = typeof gameAttempts.$inferSelect;
+export type PookalamSubmission = typeof pookalamSubmissions.$inferSelect;

@@ -93,11 +93,26 @@ export default function CodeAPookalam() {
         <Halftone opacity={0.12} />
         <div class="art-over space-y-3">
           <h2 class="text-2xl">Ready to draw with maths?</h2>
-          {/* TODO: point at the real submission form once it exists. */}
-          <p class="font-semibold">Submissions open closer to the date.</p>
-          <a href="/" class="btn-brand">
-            Back to the games
-          </a>
+          <p class="font-semibold">
+            Two links — where the code lives, and a render of what it draws.
+          </p>
+          {/*
+            All three pages handle their own closed state, so they stay linked
+            the whole week rather than appearing and vanishing. Someone who
+            follows a link on day 2 gets told when voting opens, which is more
+            useful than a dead end.
+          */}
+          <div class="flex flex-wrap justify-center gap-2">
+            <a href="/code-a-pookalam/submit" class="btn-brand">
+              Submit an entry
+            </a>
+            <a href="/code-a-pookalam/vote" class="btn-ghost">
+              Vote
+            </a>
+            <a href="/code-a-pookalam/results" class="btn-ghost">
+              Results
+            </a>
+          </div>
         </div>
       </section>
     </main>

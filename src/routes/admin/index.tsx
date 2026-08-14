@@ -1,6 +1,7 @@
 import { Title } from "@solidjs/meta";
 import { createAsync } from "@solidjs/router";
 import { For, Show, createSignal, onMount } from "solid-js";
+import { PookalamReview } from "~/components/admin/PookalamReview";
 import { getMe } from "~/server/auth/actions";
 import {
   addTester,
@@ -443,6 +444,8 @@ export default function Admin() {
             </tbody>
           </table>
         </section>
+
+        <PookalamReview />
 
         <section class="card space-y-3">
           <h2 class="text-lg font-semibold">Activity log</h2>

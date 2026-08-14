@@ -81,6 +81,24 @@ export const settingsRegistry: SettingDef[] = [
       "Query parameter the final clue uses to hand over the token, e.g. /games/treasure-hunt?token=…",
     defaultValue: "token",
   },
+  {
+    key: "pookalam.submissions_open",
+    group: "pookalam",
+    description: "Code-a-Pookalam entry form accepts new and edited submissions",
+    defaultValue: false,
+  },
+  {
+    key: "pookalam.voting_open",
+    group: "pookalam",
+    description: "Day 7: head-to-head voting is live and votes move Elo ratings",
+    defaultValue: false,
+  },
+  {
+    key: "pookalam.results_public",
+    group: "pookalam",
+    description: "Reveal the ranked standings and the authors behind them",
+    defaultValue: false,
+  },
 ];
 
 /** Inserts any missing default settings so the app always has sane config. */
