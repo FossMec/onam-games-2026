@@ -227,25 +227,27 @@ body {
     transform: rotate(0deg);
   }
   to {
-    transform: rotate(360deg);
+    transform: rotate(-360deg);
   }
 }
 
 .bg-radial-spin {
   position: fixed;
-  top: -100vmax;
-  left: -100vmax;
+  top: 0;
+  left: 50%;
   width: 300vmax;
   height: 300vmax;
+  margin-left: -150vmax;
+  margin-top: -150vmax;
   pointer-events: none;
   z-index: -10;
-  transform-origin: center center;
-  animation: rotate-rays-slow 240s linear infinite;
+  transform-origin: 50% 50%;
+  animation: rotate-rays-slow 480s linear infinite;
   will-change: transform;
 
   /*
-   * The pookalam halftone. Conic rays radiating from the center,
-   * plus concentric dots. Rotates smoothly in the background.
+   * The pookalam halftone. Conic rays radiating from the top center,
+   * plus concentric dots. Rotates smoothly in the opposite direction.
    */
   background-image:
     repeating-conic-gradient(
