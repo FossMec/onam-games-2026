@@ -35,7 +35,9 @@ export default function App() {
           {/* Filter defs, mounted once for the whole app. */}
           <InkFilter />
           <div class="flex min-h-screen flex-col relative z-0">
-            <Nav />
+            <Suspense>
+              <Nav />
+            </Suspense>
             {/* Every page, not just the game page — a warning nobody sees is not a warning. */}
             <BanNotice />
             <div class="flex-1">
