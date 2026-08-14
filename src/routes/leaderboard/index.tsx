@@ -1,7 +1,6 @@
 import { Title } from "@solidjs/meta";
 import { createAsync } from "@solidjs/router";
 import { For, Show, createEffect, createSignal, onCleanup, useTransition } from "solid-js";
-import { Burst, Halftone } from "~/components/art/Burst";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { getGames } from "~/server/games/actions";
 import { getDaily, getGlobal } from "~/server/leaderboard/actions";
@@ -50,6 +49,7 @@ export default function Leaderboard() {
   const games = createAsync(() => getGames());
   const [tab, setTab] = createSignal<"daily" | "overall">("daily");
   const [selectedDay, setSelectedDay] = createSignal<number>(1);
+  const [expandedId, setExpandedId] = createSignal<string | null>(null);
   const [version, setVersion] = createSignal(0);
   const [lastRefresh, setLastRefresh] = createSignal(Date.now());
   const [now, setNow] = createSignal(Date.now());
@@ -125,9 +125,13 @@ export default function Leaderboard() {
     });
   };
 
+  const toggleExpand = (id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  };
+
   return (
     <main
-      class="container space-y-6 py-8"
+      class="container space-y-4 py-6 max-w-4xl"
       style={{
         opacity: pending() ? 0.65 : 1,
         transition: "opacity 140ms ease-out",
@@ -135,195 +139,139 @@ export default function Leaderboard() {
     >
       <Title>Leaderboard — FOSS Onam Games</Title>
 
-      {/* ---------------------------------------------------- Header Banner */}
-      <section class="relative overflow-hidden rounded-lg p-5 sm:p-7 bg-[var(--paper-2)] border-2 border-[var(--ink)]">
-        <Halftone opacity={0.12} />
-        <div class="art-over flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div class="space-y-2 text-center sm:text-left flex-1">
-            <div class="flex items-center justify-center sm:justify-start gap-2">
-              <SpriteIcon name="tux-king" size={36} animate="float" interactive />
-              <h1 class="text-3xl sm:text-4xl">Leaderboard</h1>
-            </div>
-            <p class="font-semibold text-sm sm:text-base leading-relaxed">
-              {tab() === "daily"
-                ? "Daily mini-game rankings and cash prize winners. Top 1 wins ₹200 every day!"
-                : "Overall 7-day championship board. Every game awards up to 1050 relative points + streak bonuses."}
-            </p>
+      {/* ---------------------------------------------------- Compact Header */}
+      <div class="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <div class="flex items-center gap-2">
+            <SpriteIcon name="tux-king" size={30} animate="float" interactive />
+            <h1 class="text-2xl sm:text-3xl font-extrabold m-0">Leaderboard</h1>
           </div>
-          <img
-            src="/images/memes/failure-is-not-an-option.png"
-            alt="Failure is not an option meme"
-            class="w-32 sm:w-40 h-auto object-contain shrink-0 select-none hidden xs:block"
-            style={{ filter: "drop-shadow(3px 3px 0 var(--ink))" }}
-          />
-        </div>
-      </section>
-
-      {/* ---------------------------------------------------- 2 Main Tabs */}
-      <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b-2 border-[var(--ink)] pb-3">
-        <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-          <button
-            type="button"
-            class={`btn font-extrabold text-sm sm:text-base py-2.5 px-6 rounded-md cursor-pointer transition-all ${
-              tab() === "daily" ? "btn-brand shadow-none" : "btn-ghost"
-            }`}
-            onClick={() => startTransition(() => setTab("daily"))}
-          >
-            ⚡ Daily Games
-          </button>
-          <button
-            type="button"
-            class={`btn font-extrabold text-sm sm:text-base py-2.5 px-6 rounded-md cursor-pointer transition-all ${
-              tab() === "overall" ? "btn-brand shadow-none" : "btn-ghost"
-            }`}
-            onClick={() => startTransition(() => setTab("overall"))}
-          >
-            🏆 Overall Standings
-          </button>
+          <p class="text-xs sm:text-sm font-semibold mt-0.5" style={{ color: "var(--ink-soft)" }}>
+            {tab() === "daily"
+              ? "Daily mini-game results · Top 1 wins ₹200 daily"
+              : "Overall 7-day championship standings · 1050 pts max/game"}
+          </p>
         </div>
 
         <button
           type="button"
           onClick={refresh}
           disabled={cooldownLeft() > 0}
-          class="btn-ghost text-xs sm:text-sm px-4 py-2 self-end sm:self-auto"
+          class="btn-ghost text-xs px-3 py-1.5 inline-flex items-center gap-1.5 cursor-pointer"
         >
-          {cooldownLeft() > 0 ? `Refresh in ${Math.ceil(cooldownLeft() / 1000)}s` : "🔄 Refresh"}
+          <span>
+            {cooldownLeft() > 0 ? `Wait ${Math.ceil(cooldownLeft() / 1000)}s` : "🔄 Refresh"}
+          </span>
         </button>
       </div>
 
-      {/* ---------------------------------------------------- Daily Controls & Carousel */}
-      <Show when={tab() === "daily"}>
-        <div class="space-y-4">
-          <div class="flex items-center justify-between gap-2 flex-wrap bg-[var(--paper-2)] p-3 rounded-lg border-2 border-[var(--ink)]">
-            {/* Prev / Next Day Controls */}
-            <div class="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={prevDay}
-                class="btn-ghost px-3 py-1.5 text-xs sm:text-sm inline-flex items-center gap-1 cursor-pointer"
-                aria-label="Previous Day"
-              >
-                <span>←</span>
-                <span class="font-extrabold">Prev Day</span>
-              </button>
-              <button
-                type="button"
-                onClick={nextDay}
-                class="btn-ghost px-3 py-1.5 text-xs sm:text-sm inline-flex items-center gap-1 cursor-pointer"
-                aria-label="Next Day"
-              >
-                <span class="font-extrabold">Next Day</span>
-                <span>→</span>
-              </button>
-            </div>
+      {/* ---------------------------------------------------- Unified Minimal Toolbar */}
+      <div class="card p-2.5 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[var(--paper-2)]">
+        {/* 2 Main Segmented Tabs */}
+        <div class="inline-flex rounded-md p-1 bg-[var(--paper-3)] border-2 border-[var(--ink)] w-full sm:w-auto">
+          <button
+            type="button"
+            class={`flex-1 sm:flex-initial text-xs sm:text-sm font-extrabold px-4 py-1.5 rounded transition-all cursor-pointer ${
+              tab() === "daily"
+                ? "bg-[var(--pop-teal)] text-[var(--ink)] font-black"
+                : "opacity-75 hover:opacity-100"
+            }`}
+            onClick={() => startTransition(() => setTab("daily"))}
+          >
+            ⚡ Daily
+          </button>
+          <button
+            type="button"
+            class={`flex-1 sm:flex-initial text-xs sm:text-sm font-extrabold px-4 py-1.5 rounded transition-all cursor-pointer ${
+              tab() === "overall"
+                ? "bg-[var(--pop-teal)] text-[var(--ink)] font-black"
+                : "opacity-75 hover:opacity-100"
+            }`}
+            onClick={() => startTransition(() => setTab("overall"))}
+          >
+            🏆 Overall
+          </button>
+        </div>
 
-            {/* Current Day Label */}
-            <div class="flex items-center gap-2">
-              <span
-                class="text-xs sm:text-sm font-extrabold px-3 py-1 rounded-full uppercase"
-                style={{
-                  background: "var(--pop-yellow)",
-                  border: "2px solid var(--ink)",
-                  "font-family": "var(--font-stack-display)",
-                }}
-              >
-                Day {selectedDay()} of 7
-              </span>
-              <Show when={selectedGame()}>
-                <span class="font-extrabold text-sm sm:text-base">{selectedGame()!.title}</span>
-              </Show>
-            </div>
-          </div>
-
-          {/* 7-Day Quick Strip */}
-          <div class="grid grid-cols-4 sm:grid-cols-7 gap-2">
-            <For
-              each={
-                games() ??
-                [1, 2, 3, 4, 5, 6, 7].map((d) => ({
-                  id: String(d),
-                  day: d,
-                  title: `Day ${d}`,
-                  status: "upcoming",
-                }))
-              }
+        {/* Daily Minimal Day Chips */}
+        <Show when={tab() === "daily"}>
+          <div class="flex items-center gap-1 flex-wrap justify-center">
+            <button
+              type="button"
+              onClick={prevDay}
+              class="btn-ghost px-2 py-1 text-xs font-black cursor-pointer"
+              aria-label="Previous Day"
             >
-              {(g) => {
-                const isSelected = g.day === selectedDay();
+              ←
+            </button>
+            <For each={[1, 2, 3, 4, 5, 6, 7]}>
+              {(d) => {
+                const isSel = d === selectedDay();
                 return (
                   <button
                     type="button"
-                    class={`card p-2 text-center text-xs font-extrabold cursor-pointer transition-all ${
-                      isSelected
-                        ? "pop-teal ring-2 ring-[var(--ink)] font-bold scale-[1.02]"
-                        : "bg-[var(--paper-2)] opacity-80 hover:opacity-100"
+                    onClick={() => startTransition(() => setSelectedDay(d))}
+                    class={`w-7 h-7 rounded font-extrabold text-xs grid place-items-center transition-all cursor-pointer ${
+                      isSel
+                        ? "bg-[var(--pop-yellow)] border-2 border-[var(--ink)] font-black scale-105"
+                        : "bg-[var(--paper)] border border-[var(--ink-soft)]/40 opacity-75 hover:opacity-100"
                     }`}
-                    onClick={() => startTransition(() => setSelectedDay(g.day))}
+                    title={`Day ${d}`}
                   >
-                    <span>Day {g.day}</span>
+                    {d}
                   </button>
                 );
               }}
             </For>
+            <button
+              type="button"
+              onClick={nextDay}
+              class="btn-ghost px-2 py-1 text-xs font-black cursor-pointer"
+              aria-label="Next Day"
+            >
+              →
+            </button>
           </div>
+        </Show>
+      </div>
+
+      {/* ---------------------------------------------------- Subtle Day Meta Row */}
+      <Show when={tab() === "daily" && selectedGame()}>
+        <div
+          class="flex items-center justify-between text-xs font-bold px-1"
+          style={{ color: "var(--ink-soft)" }}
+        >
+          <span>
+            Day {selectedDay()}: <strong class="text-[var(--ink)]">{selectedGame()!.title}</strong>
+          </span>
+          <span class="badge text-[10px] py-0.5 px-2 uppercase">
+            {selectedGame()!.status === "closed" ? "Closed / Final" : selectedGame()!.status}
+          </span>
         </div>
       </Show>
 
-      {/* ---------------------------------------------------- TOP #1 WINNER SHOWCASE */}
+      {/* ---------------------------------------------------- Compact Top #1 Winner Callout */}
       <Show when={tab() === "daily" && topDailyWinner()}>
         {(() => {
           const top = topDailyWinner()!;
           const isSettled = daily()?.settled || selectedGame()?.status === "closed";
 
           return (
-            <div
-              class="relative overflow-hidden rounded-lg p-5 sm:p-6 text-center space-y-3 bg-[var(--pop-yellow)]"
-              style={{ border: "var(--ink-w-bold) solid var(--ink)" }}
-            >
-              <div class="art-over flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div class="flex items-center gap-3">
-                  <div class="relative">
-                    <Burst color="var(--pop-yellow)" seed="winner-crown" spikes={12} />
-                    <SpriteIcon name="tux-king" size={54} animate="wobble" interactive />
-                  </div>
-                  <div class="text-center sm:text-left">
-                    <span
-                      class="sticker"
-                      style={{ "--pop": isSettled ? "var(--pop-teal)" : "var(--pop-pink)" }}
-                    >
-                      {isSettled ? "👑 Day Winner (₹200 Cash)" : "⚡ Current #1 Leader"}
-                    </span>
-                    <h3 class="text-2xl sm:text-3xl mt-1 font-black">{top.name}</h3>
-                    <p
-                      class="text-xs sm:text-sm font-semibold"
-                      style={{ color: "var(--ink-soft)" }}
-                    >
-                      {top.college ?? "Independent"} {top.branch ? `· ${top.branch}` : ""}
-                    </p>
-                  </div>
+            <div class="card p-3 sm:p-4 bg-[var(--pop-yellow)] flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <SpriteIcon name="tux-king" size={32} animate="wobble" class="shrink-0" />
+                <div class="min-w-0">
+                  <span class="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-[var(--paper-2)] border border-[var(--ink)]">
+                    {isSettled ? "👑 Day Winner (₹200 Cash)" : "⚡ #1 Leader"}
+                  </span>
+                  <p class="font-extrabold text-base sm:text-lg mt-0.5 truncate">{top.name}</p>
                 </div>
-
-                <div class="flex flex-wrap items-center justify-center gap-3">
-                  <div class="card card-plain p-2.5 text-center min-w-[5rem]">
-                    <span
-                      class="text-[10px] font-extrabold uppercase"
-                      style={{ color: "var(--ink-soft)" }}
-                    >
-                      {daily()!.metricLabel}
-                    </span>
-                    <p class="text-lg font-black font-mono">{formatMetric(top)}</p>
-                  </div>
-                  <div class="card card-plain p-2.5 text-center min-w-[5rem]">
-                    <span
-                      class="text-[10px] font-extrabold uppercase"
-                      style={{ color: "var(--ink-soft)" }}
-                    >
-                      Points
-                    </span>
-                    <p class="text-lg font-black font-mono">{top.points} pts</p>
-                  </div>
-                </div>
+              </div>
+              <div class="text-right font-mono font-extrabold text-sm sm:text-base shrink-0">
+                <p>{formatMetric(top)}</p>
+                <p class="text-xs" style={{ color: "var(--ink-soft)" }}>
+                  {top.points} pts
+                </p>
               </div>
             </div>
           );
@@ -335,50 +283,21 @@ export default function Leaderboard() {
           const top = topGlobalWinner()!;
 
           return (
-            <div
-              class="relative overflow-hidden rounded-lg p-5 sm:p-6 text-center space-y-3 bg-[var(--pop-yellow)]"
-              style={{ border: "var(--ink-w-bold) solid var(--ink)" }}
-            >
-              <div class="art-over flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div class="flex items-center gap-3">
-                  <div class="relative">
-                    <Burst color="var(--pop-yellow)" seed="overall-crown" spikes={12} />
-                    <SpriteIcon name="maveli-laptop" size={54} animate="float" interactive />
-                  </div>
-                  <div class="text-center sm:text-left">
-                    <span class="sticker" style={{ "--pop": "var(--pop-teal)" }}>
-                      👑 Current #1 Grand Champion
-                    </span>
-                    <h3 class="text-2xl sm:text-3xl mt-1 font-black">{top.name}</h3>
-                    <p
-                      class="text-xs sm:text-sm font-semibold"
-                      style={{ color: "var(--ink-soft)" }}
-                    >
-                      {top.college ?? "Independent"}
-                    </p>
-                  </div>
+            <div class="card p-3 sm:p-4 bg-[var(--pop-yellow)] flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <SpriteIcon name="maveli-laptop" size={32} animate="float" class="shrink-0" />
+                <div class="min-w-0">
+                  <span class="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-[var(--paper-2)] border border-[var(--ink)]">
+                    👑 Current #1 Grand Champion
+                  </span>
+                  <p class="font-extrabold text-base sm:text-lg mt-0.5 truncate">{top.name}</p>
                 </div>
-
-                <div class="flex flex-wrap items-center justify-center gap-3">
-                  <div class="card card-plain p-2.5 text-center min-w-[5rem]">
-                    <span
-                      class="text-[10px] font-extrabold uppercase"
-                      style={{ color: "var(--ink-soft)" }}
-                    >
-                      Games Played
-                    </span>
-                    <p class="text-lg font-black font-mono">{top.gamesCompleted} / 7</p>
-                  </div>
-                  <div class="card card-plain p-2.5 text-center min-w-[5rem]">
-                    <span
-                      class="text-[10px] font-extrabold uppercase"
-                      style={{ color: "var(--ink-soft)" }}
-                    >
-                      Total Points
-                    </span>
-                    <p class="text-lg font-black font-mono">{top.totalPoints} pts</p>
-                  </div>
-                </div>
+              </div>
+              <div class="text-right font-mono font-extrabold text-sm sm:text-base shrink-0">
+                <p>{top.totalPoints} pts</p>
+                <p class="text-xs" style={{ color: "var(--ink-soft)" }}>
+                  {top.gamesCompleted}/7 games
+                </p>
               </div>
             </div>
           );
@@ -388,149 +307,181 @@ export default function Leaderboard() {
       {/* ---------------------------------------------------- Empty State */}
       <Show when={isEmpty()}>
         <div class="card pop-yellow text-center p-6 space-y-2">
-          <SpriteIcon name="octocat-garland" size={48} animate="wobble" class="mx-auto" />
-          <p class="font-extrabold text-lg">No submissions yet.</p>
-          <p class="comment">be the first to finish and claim the #1 spot!</p>
+          <SpriteIcon name="octocat-garland" size={40} animate="wobble" class="mx-auto" />
+          <p class="font-extrabold text-base">No submissions yet.</p>
+          <p class="comment text-xs">be the first to finish and claim the #1 spot!</p>
         </div>
       </Show>
 
-      {/* ---------------------------------------------------- DAILY LEADERBOARD TABLE */}
+      {/* ---------------------------------------------------- DAILY LEADERBOARD TABLE (Standing, Name, Score) */}
       <Show when={tab() === "daily" && daily() && daily()!.entries.length > 0}>
-        <div class="card overflow-x-auto p-0">
-          <table class="w-full">
-            <thead class="bg-[var(--paper-2)] border-b-2 border-[var(--ink)]">
-              <tr class="text-left text-xs font-extrabold tracking-widest uppercase">
-                <th class="py-3 px-3">#</th>
-                <th class="py-3 px-3">Player</th>
-                <th class="py-3 px-3">College</th>
-                <Show when={daily()!.metric === "score"}>
-                  <th class="py-3 px-3 text-right">Runs</th>
-                </Show>
-                <th class="py-3 px-3 text-right">{daily()!.metricLabel}</th>
-                <th class="py-3 px-3 text-right">Points</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-[var(--ink-soft)]/20">
-              <For each={daily()!.entries}>
-                {(entry) => (
-                  <tr style={{ background: entry.isMe ? "var(--pop-yellow)" : "transparent" }}>
-                    <td class="py-3 px-3">
-                      <RankChip rank={entry.rank} />
-                    </td>
-                    <td class="py-3 px-3 font-extrabold">
-                      <div class="flex items-center gap-1.5">
-                        <Show when={entry.rank === 1}>
-                          <SpriteIcon name="tux-king" size={20} />
-                        </Show>
-                        <span>{entry.name}</span>
-                        {entry.isMe && <span class="comment text-xs"> that's you</span>}
+        <div class="card p-0 overflow-hidden">
+          <div
+            class="bg-[var(--paper-2)] px-3 py-2 border-b-2 border-[var(--ink)] flex items-center justify-between text-xs font-extrabold uppercase tracking-wider"
+            style={{ color: "var(--ink-soft)" }}
+          >
+            <span>Rank & Player</span>
+            <span class="text-right">{daily()!.metricLabel} · Points</span>
+          </div>
+
+          <div class="divide-y divide-[var(--ink-soft)]/20">
+            <For each={daily()!.entries}>
+              {(entry) => {
+                const isExpanded = () => expandedId() === `daily-${entry.userId}`;
+                return (
+                  <div
+                    class={`transition-colors cursor-pointer ${
+                      entry.isMe ? "bg-[var(--pop-yellow)]/60" : "hover:bg-[var(--paper-2)]"
+                    }`}
+                    onClick={() => toggleExpand(`daily-${entry.userId}`)}
+                  >
+                    {/* Main Row: Standing, Name, Score */}
+                    <div class="px-3 py-2.5 flex items-center justify-between gap-2">
+                      <div class="flex items-center gap-2.5 min-w-0">
+                        <RankChip rank={entry.rank} />
+                        <div class="min-w-0">
+                          <p class="font-extrabold text-sm truncate flex items-center gap-1.5">
+                            <span>{entry.name}</span>
+                            {entry.isMe && <span class="comment text-[11px]">you</span>}
+                          </p>
+                        </div>
                       </div>
-                    </td>
-                    <td class="py-3 px-3 text-xs sm:text-sm" style={{ color: "var(--ink-soft)" }}>
-                      {entry.college ?? "-"}
-                      {entry.branch ? ` · ${entry.branch}` : ""}
-                    </td>
-                    <Show when={daily()!.metric === "score"}>
-                      <td
-                        class="py-3 px-3 text-right font-mono tabular-nums text-xs sm:text-sm"
-                        style={{ color: "var(--ink-soft)" }}
-                      >
-                        {entry.attemptsUsed}
-                      </td>
+
+                      <div class="flex items-center gap-2.5 shrink-0 text-right">
+                        <div class="font-mono tabular-nums text-sm font-extrabold">
+                          <span>{formatMetric(entry)}</span>
+                          <span
+                            class="text-xs font-semibold ml-1.5"
+                            style={{ color: "var(--ink-soft)" }}
+                          >
+                            ({entry.points} pts)
+                          </span>
+                        </div>
+                        <span class="text-xs opacity-50 select-none">
+                          {isExpanded() ? "▲" : "▼"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Expandable Details Drawer */}
+                    <Show when={isExpanded()}>
+                      <div class="px-3 pb-3 pt-1 text-xs border-t border-[var(--ink-soft)]/10 bg-[var(--paper-3)]/60 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p class="font-semibold" style={{ color: "var(--ink-soft)" }}>
+                            College:{" "}
+                            <strong class="text-[var(--ink)]">
+                              {entry.college ?? "Not specified"}
+                            </strong>
+                            {entry.branch ? ` · ${entry.branch}` : ""}
+                          </p>
+                        </div>
+                        <div class="flex items-center gap-3 font-mono text-[11px]">
+                          <Show when={daily()!.metric === "score"}>
+                            <span>Runs: {entry.attemptsUsed}</span>
+                          </Show>
+                          <span>Finished: {formatClock(entry.submittedAt)}</span>
+                        </div>
+                      </div>
                     </Show>
-                    <td class="py-3 px-3 text-right font-mono font-bold tabular-nums text-xs sm:text-sm">
-                      {formatMetric(entry)}
-                    </td>
-                    <td
-                      class="py-3 px-3 text-right font-mono font-extrabold tabular-nums text-xs sm:text-sm"
-                      style={{ color: entry.isProvisional ? "var(--ink-soft)" : "var(--ink)" }}
-                      title={entry.isProvisional ? "Not final while the day is still running" : ""}
-                    >
-                      {entry.points}
-                      {entry.isProvisional ? "*" : ""}
-                    </td>
-                  </tr>
-                )}
-              </For>
-            </tbody>
-          </table>
+                  </div>
+                );
+              }}
+            </For>
+          </div>
         </div>
 
         <Show when={daily()!.myEntry && !daily()!.entries.some((e) => e.isMe)}>
-          <div class="card pop-yellow p-4 flex items-center justify-between">
+          <div class="card pop-yellow p-3 flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <SpriteIcon name="foss-mec-badge" size={28} />
-              <p class="font-extrabold">
+              <SpriteIcon name="foss-mec-badge" size={24} />
+              <p class="font-extrabold text-sm">
                 Your Rank: #{daily()!.myEntry!.rank} of {daily()!.fieldSize}
               </p>
             </div>
-            <p class="font-mono font-black text-base">
+            <p class="font-mono font-black text-sm">
               {formatMetric(daily()!.myEntry!)} · {daily()!.myEntry!.points} pts
             </p>
           </div>
         </Show>
       </Show>
 
-      {/* ---------------------------------------------------- OVERALL LEADERBOARD TABLE */}
+      {/* ---------------------------------------------------- OVERALL LEADERBOARD TABLE (Standing, Name, Score) */}
       <Show when={tab() === "overall" && global() && global()!.entries.length > 0}>
-        <div class="card overflow-x-auto p-0">
-          <table class="w-full">
-            <thead class="bg-[var(--paper-2)] border-b-2 border-[var(--ink)]">
-              <tr class="text-left text-xs font-extrabold tracking-widest uppercase">
-                <th class="py-3 px-3">#</th>
-                <th class="py-3 px-3">Player</th>
-                <th class="py-3 px-3">College</th>
-                <th class="py-3 px-3 text-right">Games</th>
-                <th class="py-3 px-3 text-right">Streak</th>
-                <th class="py-3 px-3 text-right">Points</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-[var(--ink-soft)]/20">
-              <For each={global()!.entries}>
-                {(entry) => (
-                  <tr style={{ background: entry.isMe ? "var(--pop-yellow)" : "transparent" }}>
-                    <td class="py-3 px-3">
-                      <RankChip rank={entry.rank} />
-                    </td>
-                    <td class="py-3 px-3 font-extrabold">
-                      <div class="flex items-center gap-1.5">
-                        <Show when={entry.rank === 1}>
-                          <SpriteIcon name="maveli-laptop" size={20} />
-                        </Show>
-                        <span>{entry.name}</span>
-                        {entry.isMe && <span class="comment text-xs"> that's you</span>}
+        <div class="card p-0 overflow-hidden">
+          <div
+            class="bg-[var(--paper-2)] px-3 py-2 border-b-2 border-[var(--ink)] flex items-center justify-between text-xs font-extrabold uppercase tracking-wider"
+            style={{ color: "var(--ink-soft)" }}
+          >
+            <span>Rank & Player</span>
+            <span class="text-right">Total Points</span>
+          </div>
+
+          <div class="divide-y divide-[var(--ink-soft)]/20">
+            <For each={global()!.entries}>
+              {(entry) => {
+                const isExpanded = () => expandedId() === `global-${entry.userId}`;
+                return (
+                  <div
+                    class={`transition-colors cursor-pointer ${
+                      entry.isMe ? "bg-[var(--pop-yellow)]/60" : "hover:bg-[var(--paper-2)]"
+                    }`}
+                    onClick={() => toggleExpand(`global-${entry.userId}`)}
+                  >
+                    {/* Main Row: Standing, Name, Score */}
+                    <div class="px-3 py-2.5 flex items-center justify-between gap-2">
+                      <div class="flex items-center gap-2.5 min-w-0">
+                        <RankChip rank={entry.rank} />
+                        <div class="min-w-0">
+                          <p class="font-extrabold text-sm truncate flex items-center gap-1.5">
+                            <span>{entry.name}</span>
+                            {entry.isMe && <span class="comment text-[11px]">you</span>}
+                          </p>
+                        </div>
                       </div>
-                    </td>
-                    <td class="py-3 px-3 text-xs sm:text-sm" style={{ color: "var(--ink-soft)" }}>
-                      {entry.college ?? "-"}
-                    </td>
-                    <td class="py-3 px-3 text-right font-mono tabular-nums text-xs sm:text-sm">
-                      {entry.gamesCompleted} / 7
-                    </td>
-                    <td
-                      class="py-3 px-3 text-right font-mono tabular-nums text-xs sm:text-sm"
-                      style={{ color: "var(--ink-soft)" }}
-                      title="Bonus for playing consecutive days"
-                    >
-                      {entry.streakBonus > 0 ? `+${entry.streakBonus}` : "—"}
-                    </td>
-                    <td class="py-3 px-3 text-right font-mono font-extrabold tabular-nums text-xs sm:text-sm">
-                      {entry.totalPoints}
-                    </td>
-                  </tr>
-                )}
-              </For>
-            </tbody>
-          </table>
+
+                      <div class="flex items-center gap-2.5 shrink-0 text-right">
+                        <span class="font-mono tabular-nums text-sm font-black">
+                          {entry.totalPoints} pts
+                        </span>
+                        <span class="text-xs opacity-50 select-none">
+                          {isExpanded() ? "▲" : "▼"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Expandable Details Drawer */}
+                    <Show when={isExpanded()}>
+                      <div class="px-3 pb-3 pt-1 text-xs border-t border-[var(--ink-soft)]/10 bg-[var(--paper-3)]/60 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p class="font-semibold" style={{ color: "var(--ink-soft)" }}>
+                            College:{" "}
+                            <strong class="text-[var(--ink)]">
+                              {entry.college ?? "Not specified"}
+                            </strong>
+                          </p>
+                        </div>
+                        <div class="flex items-center gap-3 font-mono text-[11px]">
+                          <span>Games: {entry.gamesCompleted}/7</span>
+                          <span>
+                            Streak Bonus: {entry.streakBonus > 0 ? `+${entry.streakBonus}` : "None"}
+                          </span>
+                        </div>
+                      </div>
+                    </Show>
+                  </div>
+                );
+              }}
+            </For>
+          </div>
         </div>
 
         <Show when={global()!.myEntry && !global()!.entries.some((e) => e.isMe)}>
-          <div class="card pop-yellow p-4 flex items-center justify-between">
+          <div class="card pop-yellow p-3 flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <SpriteIcon name="foss-mec-badge" size={28} />
-              <p class="font-extrabold">Your Global Rank: #{global()!.myEntry!.rank}</p>
+              <SpriteIcon name="foss-mec-badge" size={24} />
+              <p class="font-extrabold text-sm">Your Global Rank: #{global()!.myEntry!.rank}</p>
             </div>
-            <p class="font-mono font-black text-base">{global()!.myEntry!.totalPoints} pts</p>
+            <p class="font-mono font-black text-sm">{global()!.myEntry!.totalPoints} pts</p>
           </div>
         </Show>
       </Show>
@@ -541,12 +492,12 @@ export default function Leaderboard() {
 function RankChip(props: { rank: number }) {
   return (
     <span
-      class="inline-grid place-items-center font-mono font-extrabold tabular-nums"
+      class="inline-grid place-items-center font-mono font-extrabold tabular-nums text-xs"
       style={{
-        "min-width": "2rem",
-        padding: "0.1rem 0.4rem",
+        "min-width": "1.75rem",
+        padding: "0.1rem 0.35rem",
         background: rankPop(props.rank),
-        border: props.rank <= 3 ? "var(--ink-w) solid var(--ink)" : "none",
+        border: props.rank <= 3 ? "var(--ink-w) solid var(--ink)" : "1px solid var(--ink-soft)",
         "border-radius": "999px",
       }}
     >
