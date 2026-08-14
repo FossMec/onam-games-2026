@@ -39,8 +39,6 @@ type DrawInstruction = {
   endTime: number;
 } & ElementSpec;
 
-export type CenterMotif = "foss" | "tux" | "crab" | "lamp";
-
 const PALETTE = {
   orange: "#F7A01E",
   amber: "#FFBF00",
@@ -120,13 +118,6 @@ const SHAPES: { type: ElementType; label: string }[] = [
   { type: "woven", label: "Mesh" },
 ];
 
-const MOTIFS: { id: CenterMotif; label: string; icon: string }[] = [
-  { id: "foss", label: "FOSS MEC", icon: "⚙️" },
-  { id: "tux", label: "Tux Linux", icon: "🐧" },
-  { id: "crab", label: "Ferris Rust", icon: "🦀" },
-  { id: "lamp", label: "Nilavilakku", icon: "🪔" },
-];
-
 export function PookalamInteractiveCanvas() {
   let canvasRef: HTMLCanvasElement | undefined;
   let containerRef: HTMLDivElement | undefined;
@@ -137,7 +128,6 @@ export function PookalamInteractiveCanvas() {
   const [isCollapsed, setIsCollapsed] = createSignal(false);
 
   // Configurable options
-  const [motif, setMotif] = createSignal<CenterMotif>("foss");
   const [speedMultiplier, setSpeedMultiplier] = createSignal<number>(1);
   const [rotationSpeedFactor, setRotationSpeedFactor] = createSignal<number>(1);
   const [countMultiplier, setCountMultiplier] = createSignal<number>(1);
@@ -258,60 +248,15 @@ export function PookalamInteractiveCanvas() {
     ctx.restore();
   };
 
-  const drawCenterMotif = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number) => {
-    const m = motif();
+  // Strictly and permanently render the official FOSS MEC Logo
+  const drawCenterLogo = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number) => {
     ctx.save();
     ctx.translate(x, y);
 
-    if (m === "tux") {
-      ctx.beginPath();
-      ctx.ellipse(0, 0, size * 0.36, size * 0.46, 0, 0, Math.PI * 2);
-      ctx.fillStyle = "#1F2937";
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(0, size * 0.05, size * 0.22, size * 0.3, 0, 0, Math.PI * 2);
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(0, -size * 0.16, size * 0.09, 0, Math.PI * 2);
-      ctx.fillStyle = PALETTE.amber;
-      ctx.fill();
-    } else if (m === "crab") {
-      ctx.beginPath();
-      ctx.ellipse(0, 0, size * 0.4, size * 0.28, 0, 0, Math.PI * 2);
-      ctx.fillStyle = "#E65100";
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(-size * 0.35, -size * 0.18, size * 0.13, 0, Math.PI * 2);
-      ctx.arc(size * 0.35, -size * 0.18, size * 0.13, 0, Math.PI * 2);
-      ctx.fillStyle = "#E65100";
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(-size * 0.12, -size * 0.1, size * 0.06, 0, Math.PI * 2);
-      ctx.arc(size * 0.12, -size * 0.1, size * 0.06, 0, Math.PI * 2);
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fill();
-    } else if (m === "lamp") {
-      ctx.beginPath();
-      ctx.ellipse(0, size * 0.18, size * 0.4, size * 0.16, 0, 0, Math.PI * 2);
-      ctx.fillStyle = PALETTE.amber;
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(0, -size * 0.45);
-      ctx.quadraticCurveTo(size * 0.2, -size * 0.18, 0, size * 0.08);
-      ctx.quadraticCurveTo(-size * 0.2, -size * 0.18, 0, -size * 0.45);
-      ctx.fillStyle = PALETTE.deepOrange;
-      ctx.fill();
-    } else if (state.logoImage) {
+    if (state.logoImage) {
       const logoWidth = size * 0.8;
       const logoHeight = logoWidth * 0.83;
       ctx.drawImage(state.logoImage, -logoWidth / 2, -logoHeight / 2, logoWidth, logoHeight);
-    } else {
-      ctx.font = `900 ${Math.round(size * 0.7)}px sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = PALETTE.white;
-      ctx.fillText("⚙", 0, -1);
     }
     ctx.restore();
   };
@@ -329,7 +274,7 @@ export function PookalamInteractiveCanvas() {
     const allLayers: Layer[] = [
       {
         id: 0,
-        name: "Center Emblem",
+        name: "Center Medallion",
         enabled: enabled[0] ?? true,
         spec: [
           {
@@ -627,7 +572,7 @@ export function PookalamInteractiveCanvas() {
           drawElement(ctx, instr);
 
           if (index === 0) {
-            drawCenterMotif(ctx, instr.x, instr.y, instr.size * 0.85);
+            drawCenterLogo(ctx, instr.x, instr.y, instr.size * 0.85);
           }
           ctx.globalAlpha = 1;
         }
@@ -679,7 +624,7 @@ export function PookalamInteractiveCanvas() {
           });
 
           if (layer.id === 0 && i === 0) {
-            drawCenterMotif(ctx, x, y, elementSpec.size * 0.85);
+            drawCenterLogo(ctx, x, y, elementSpec.size * 0.85);
           }
         }
       });
@@ -720,7 +665,6 @@ export function PookalamInteractiveCanvas() {
   };
 
   const resetToPeak = () => {
-    setMotif("foss");
     setSpeedMultiplier(1);
     setRotationSpeedFactor(1);
     setCountMultiplier(1);
@@ -773,7 +717,7 @@ export function PookalamInteractiveCanvas() {
         });
 
         if (layer.id === 0 && i === 0) {
-          drawCenterMotif(ctx, x, y, scaledSize * 0.85);
+          drawCenterLogo(ctx, x, y, scaledSize * 0.85);
         }
       }
     });
@@ -935,7 +879,7 @@ export function PookalamInteractiveCanvas() {
               </div>
             </div>
 
-            {/* TAB 1: CENTER LOGO & LAYER ITEM SHAPE PICKERS */}
+            {/* TAB 1: LAYER ITEM SHAPE PICKERS (LAYERS 1 TO 7) */}
             <Show when={activeTab() === "layers"}>
               <div class="space-y-2.5 max-h-[310px] overflow-y-auto pr-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 <div class="flex items-center justify-between text-[11px] uppercase font-black text-gray-300 pb-1">
@@ -949,60 +893,7 @@ export function PookalamInteractiveCanvas() {
                   </button>
                 </div>
 
-                {/* 1. CENTER LOGO EMBLEM SELECTOR */}
-                <div
-                  class={`p-2.5 rounded-lg border transition-all space-y-2 ${
-                    (enabledLayers()[0] ?? true)
-                      ? "bg-[#25306d] border-white/25 text-white"
-                      : "bg-[#141b40] border-white/10 text-gray-400 opacity-60"
-                  }`}
-                >
-                  <div class="flex items-center justify-between text-xs font-bold">
-                    <span class="text-[11px] font-black">Center Logo Emblem</span>
-                    <button
-                      type="button"
-                      onClick={() => toggleLayer(0)}
-                      class={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded cursor-pointer ${
-                        (enabledLayers()[0] ?? true)
-                          ? "bg-[var(--pop-yellow)] text-[var(--ink)]"
-                          : "bg-white/10 text-gray-400"
-                      }`}
-                    >
-                      {(enabledLayers()[0] ?? true) ? "Active" : "Hidden"}
-                    </button>
-                  </div>
-
-                  <Show when={enabledLayers()[0] ?? true}>
-                    <div class="grid grid-cols-4 gap-1.5 pt-0.5">
-                      <For each={MOTIFS}>
-                        {(m) => {
-                          const isSelected = () => motif() === m.id;
-                          return (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setMotif(m.id);
-                                onSettingsChange();
-                              }}
-                              class={`py-1.5 px-1 rounded flex flex-col items-center justify-center transition-all cursor-pointer ${
-                                isSelected()
-                                  ? "bg-[var(--pop-teal)] text-[var(--ink)] font-black scale-105 shadow-sm"
-                                  : "bg-[#121b44] hover:bg-[#202b66] text-gray-300 hover:text-white"
-                              }`}
-                            >
-                              <span class="text-sm leading-none">{m.icon}</span>
-                              <span class="text-[8px] font-bold leading-tight truncate mt-1">
-                                {m.label.split(" ")[0]}
-                              </span>
-                            </button>
-                          );
-                        }}
-                      </For>
-                    </div>
-                  </Show>
-                </div>
-
-                {/* 2. CONCENTRIC RINGS (1 to 7) */}
+                {/* CONCENTRIC RINGS (1 to 7) */}
                 <For each={layerConfigs}>
                   {(l) => {
                     const isEnabled = () => enabledLayers()[l.id] ?? true;
@@ -1086,7 +977,7 @@ export function PookalamInteractiveCanvas() {
               </div>
             </Show>
 
-            {/* TAB 2: SPEED & MOTIF */}
+            {/* TAB 2: SPEED & DENSITY */}
             <Show when={activeTab() === "quick"}>
               <div class="space-y-3.5 text-xs">
                 {/* Draw Speed */}
