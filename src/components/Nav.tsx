@@ -1,5 +1,6 @@
 import { createAsync, useLocation } from "@solidjs/router";
 import { ChevronDown, GraduationCap, LogOut, Mail, User } from "lucide-solid";
+
 import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
 import { signOutAndReload } from "~/lib/sign-out";
 import { getMe } from "~/server/auth/actions";
@@ -18,19 +19,33 @@ export function Nav() {
   const location = useLocation();
   const me = createAsync(() => getMe());
   const [dropdownOpen, setDropdownOpen] = createSignal(false);
-  let dropdownRef: HTMLDivElement | undefined = undefined;
+  let mobileContainerRef: HTMLDivElement | undefined = undefined;
+  let desktopContainerRef: HTMLDivElement | undefined = undefined;
 
   const isActive = (href: string) =>
     href === "/" ? location.pathname === "/" : location.pathname.startsWith(href);
 
   onMount(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef && !dropdownRef.contains(e.target as Node)) {
+    const handleDocumentClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const insideMobile = mobileContainerRef?.contains(target);
+      const insideDesktop = desktopContainerRef?.contains(target);
+      if (!insideMobile && !insideDesktop) {
         setDropdownOpen(false);
       }
     };
-    document.addEventListener("click", handleClickOutside);
-    onCleanup(() => document.removeEventListener("click", handleClickOutside));
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDropdownOpen(false);
+    };
+
+    document.addEventListener("click", handleDocumentClick);
+    document.addEventListener("keydown", handleKeyDown);
+
+    onCleanup(() => {
+      document.removeEventListener("click", handleDocumentClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    });
   });
 
   return (
@@ -70,8 +85,8 @@ export function Nav() {
               </div>
             </a>
 
-            {/* Mobile-only User Profile (Right-aligned in top row) */}
-            <div class="sm:hidden relative shrink-0">
+            {/* Mobile-only User Profile Container */}
+            <div ref={(el) => (mobileContainerRef = el)} class="sm:hidden relative shrink-0">
               <Show
                 when={me()}
                 fallback={
@@ -86,14 +101,9 @@ export function Nav() {
               >
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDropdownOpen((prev) => !prev);
-                  }}
+                  onClick={() => setDropdownOpen((prev) => !prev)}
                   class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-extrabold transition-all cursor-pointer bg-[var(--paper-2)] hover:bg-[var(--pop-yellow)]"
-                  style={{
-                    border: "2px solid var(--ink)",
-                  }}
+                  style={{ border: "2px solid var(--ink)" }}
                   aria-expanded={dropdownOpen()}
                   aria-label="User profile menu"
                 >
@@ -102,6 +112,61 @@ export function Nav() {
                   </div>
                   <ChevronDown size={12} strokeWidth={2.5} class="opacity-70" />
                 </button>
+
+                {/* Mobile Dropdown Popover */}
+                <Show when={dropdownOpen()}>
+                  <div
+                    class="absolute right-0 top-full mt-2 w-64 rounded-lg p-3.5 bg-[var(--paper-2)] shadow-2xl z-50 space-y-3"
+                    style={{ border: "var(--ink-w-bold) solid var(--ink)" }}
+                  >
+                    <div class="space-y-1 pb-2.5 border-b border-[var(--ink-soft)]/20">
+                      <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-full bg-[var(--pop-yellow)] border-2 border-[var(--ink)] grid place-items-center font-black text-sm uppercase">
+                          {me()!.name.charAt(0)}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                          <p class="font-extrabold text-sm truncate">{me()!.name}</p>
+                          <p
+                            class="text-xs truncate flex items-center gap-1 font-mono"
+                            style={{ color: "var(--ink-soft)" }}
+                          >
+                            <Mail size={11} class="shrink-0" />
+                            <span class="truncate">{me()!.email}</span>
+                          </p>
+                        </div>
+                      </div>
+                      <Show when={me()!.role === "admin"}>
+                        <span
+                          class="badge text-[10px] uppercase font-black"
+                          style={{ "--pop": "var(--pop-yellow)" }}
+                        >
+                          Admin
+                        </span>
+                      </Show>
+                      <Show when={me()!.college}>
+                        <div
+                          class="flex items-center gap-1 text-xs pt-1"
+                          style={{ color: "var(--ink-soft)" }}
+                        >
+                          <GraduationCap size={12} class="shrink-0" />
+                          <span class="truncate">
+                            {me()!.college} {me()!.branch ? `· ${me()!.branch}` : ""}
+                          </span>
+                        </div>
+                      </Show>
+                    </div>
+                    <div class="space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => void signOutAndReload()}
+                        class="w-full text-left font-extrabold text-xs py-2 px-2.5 rounded-md text-[var(--pop-red)] hover:bg-[var(--pop-red)] hover:text-[var(--ink)] transition-colors inline-flex items-center gap-2 cursor-pointer border border-transparent hover:border-[var(--ink)]"
+                      >
+                        <LogOut size={14} strokeWidth={2.5} />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </div>
+                </Show>
               </Show>
             </div>
           </div>
@@ -127,8 +192,8 @@ export function Nav() {
               </For>
             </nav>
 
-            {/* Desktop User Profile Dropdown */}
-            <div class="hidden sm:block relative shrink-0">
+            {/* Desktop User Profile Container */}
+            <div ref={(el) => (desktopContainerRef = el)} class="hidden sm:block relative shrink-0">
               <Show
                 when={me()}
                 fallback={
@@ -143,14 +208,9 @@ export function Nav() {
               >
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDropdownOpen((prev) => !prev);
-                  }}
+                  onClick={() => setDropdownOpen((prev) => !prev)}
                   class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-extrabold transition-all cursor-pointer bg-[var(--paper-2)] hover:bg-[var(--pop-yellow)]"
-                  style={{
-                    border: "2px solid var(--ink)",
-                  }}
+                  style={{ border: "2px solid var(--ink)" }}
                   aria-expanded={dropdownOpen()}
                   aria-label="User profile menu"
                 >
@@ -160,66 +220,67 @@ export function Nav() {
                   <span class="max-w-[7rem] truncate text-left">{me()!.name}</span>
                   <ChevronDown size={13} strokeWidth={2.5} class="opacity-70" />
                 </button>
+
+                {/* Desktop Dropdown Popover */}
+                <Show when={dropdownOpen()}>
+                  <div
+                    class="absolute right-0 top-full mt-2 w-72 rounded-lg p-3.5 bg-[var(--paper-2)] shadow-2xl z-50 space-y-3"
+                    style={{ border: "var(--ink-w-bold) solid var(--ink)" }}
+                  >
+                    <div class="space-y-1 pb-2.5 border-b border-[var(--ink-soft)]/20">
+                      <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-full bg-[var(--pop-yellow)] border-2 border-[var(--ink)] grid place-items-center font-black text-sm uppercase">
+                          {me()!.name.charAt(0)}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                          <div class="flex items-center gap-1.5">
+                            <p class="font-extrabold text-sm truncate">{me()!.name}</p>
+                            <Show when={me()!.role === "admin"}>
+                              <span
+                                class="badge text-[9px] py-0 px-1.5 uppercase font-black"
+                                style={{ "--pop": "var(--pop-yellow)" }}
+                              >
+                                Admin
+                              </span>
+                            </Show>
+                          </div>
+                          <p
+                            class="text-xs truncate flex items-center gap-1 font-mono"
+                            style={{ color: "var(--ink-soft)" }}
+                          >
+                            <Mail size={11} class="shrink-0" />
+                            <span class="truncate">{me()!.email}</span>
+                          </p>
+                        </div>
+                      </div>
+                      <Show when={me()!.college}>
+                        <div
+                          class="flex items-center gap-1 text-xs pt-1"
+                          style={{ color: "var(--ink-soft)" }}
+                        >
+                          <GraduationCap size={12} class="shrink-0" />
+                          <span class="truncate">
+                            {me()!.college} {me()!.branch ? `· ${me()!.branch}` : ""}
+                          </span>
+                        </div>
+                      </Show>
+                    </div>
+                    <div class="space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => void signOutAndReload()}
+                        class="w-full text-left font-extrabold text-xs py-2 px-2.5 rounded-md text-[var(--pop-red)] hover:bg-[var(--pop-red)] hover:text-[var(--ink)] transition-colors inline-flex items-center gap-2 cursor-pointer border border-transparent hover:border-[var(--ink)]"
+                      >
+                        <LogOut size={14} strokeWidth={2.5} />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </div>
+                </Show>
               </Show>
             </div>
           </div>
         </div>
-
-        {/* Global Floating Dropdown Menu (Anchored properly) */}
-        <Show when={dropdownOpen() && me()}>
-          <div
-            ref={(el) => (dropdownRef = el)}
-            onClick={(e) => e.stopPropagation()}
-            class="absolute right-4 top-full mt-1.5 w-64 sm:w-72 rounded-lg p-3.5 bg-[var(--paper-2)] shadow-2xl z-50 space-y-3"
-
-            style={{
-              border: "var(--ink-w-bold) solid var(--ink)",
-            }}
-          >
-            {/* User Info Header */}
-            <div class="space-y-1 pb-2.5 border-b border-[var(--ink-soft)]/20">
-              <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-full bg-[var(--pop-yellow)] border-2 border-[var(--ink)] grid place-items-center font-black text-sm uppercase">
-                  {me()!.name.charAt(0)}
-                </div>
-                <div class="min-w-0 flex-1">
-                  <p class="font-extrabold text-sm truncate">{me()!.name}</p>
-                  <p
-                    class="text-xs truncate flex items-center gap-1 font-mono"
-                    style={{ color: "var(--ink-soft)" }}
-                  >
-                    <Mail size={11} class="shrink-0" />
-                    <span class="truncate">{me()!.email}</span>
-                  </p>
-                </div>
-              </div>
-
-              <Show when={me()!.college}>
-                <div
-                  class="flex items-center gap-1 text-xs pt-1"
-                  style={{ color: "var(--ink-soft)" }}
-                >
-                  <GraduationCap size={12} class="shrink-0" />
-                  <span class="truncate">
-                    {me()!.college} {me()!.branch ? `· ${me()!.branch}` : ""}
-                  </span>
-                </div>
-              </Show>
-            </div>
-
-            {/* Actions */}
-            <div class="space-y-1">
-              <button
-                type="button"
-                onClick={() => void signOutAndReload()}
-                class="w-full text-left font-extrabold text-xs py-2 px-2.5 rounded-md text-[var(--pop-red)] hover:bg-[var(--pop-red)] hover:text-[var(--ink)] transition-colors inline-flex items-center gap-2 cursor-pointer border border-transparent hover:border-[var(--ink)]"
-              >
-                <LogOut size={14} strokeWidth={2.5} />
-                <span>Sign Out</span>
-              </button>
-            </div>
-          </div>
-        </Show>
       </div>
     </header>
   );

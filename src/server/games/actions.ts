@@ -1,5 +1,4 @@
-"use server";
-
+import { query } from "@solidjs/router";
 import { getCurrentUser } from "~/server/auth/service";
 import { getMyAttemptBySlug } from "./attempts";
 import type { ViewerRole } from "./service";
@@ -10,10 +9,11 @@ function viewerRole(user: { role?: "player" | "tester" | "admin" } | null): View
   return "player";
 }
 
-export async function getGames() {
+export const getGames = query(async () => {
+  "use server";
   const user = await getCurrentUser();
   return getGamesList(viewerRole(user));
-}
+}, "games:list");
 
 export async function getGame(slug: string) {
   const user = await getCurrentUser();
