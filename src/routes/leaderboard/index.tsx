@@ -178,7 +178,7 @@ export default function Leaderboard() {
       </div>
 
       {/* ---------------------------------------------------- Unified Minimal Toolbar */}
-      <div class="card p-2.5 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[var(--paper-2)]">
+      <div class="card card-plain p-2.5 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[var(--paper-2)]">
         {/* 2 Main Segmented Tabs */}
         <div class="inline-flex rounded-md p-1 bg-[var(--paper-3)] border-2 border-[var(--ink)] w-full sm:w-auto">
           <button
@@ -273,7 +273,7 @@ export default function Leaderboard() {
           const isSettled = daily()?.settled || selectedGame()?.status === "closed";
 
           return (
-            <div class="card p-4 bg-[var(--pop-yellow)] flex items-center justify-between gap-4">
+            <div class="card card-plain p-4 bg-[var(--pop-yellow)] flex items-center justify-between gap-4">
               <div class="flex items-center gap-3 min-w-0">
                 <SpriteIcon name="tux-king" size={36} animate="wobble" class="shrink-0" />
                 <div class="min-w-0">
@@ -302,7 +302,7 @@ export default function Leaderboard() {
           const top = topGlobalWinner()!;
 
           return (
-            <div class="card p-4 bg-[var(--pop-yellow)] flex items-center justify-between gap-4">
+            <div class="card card-plain p-4 bg-[var(--pop-yellow)] flex items-center justify-between gap-4">
               <div class="flex items-center gap-3 min-w-0">
                 <SpriteIcon name="maveli-laptop" size={36} animate="float" class="shrink-0" />
                 <div class="min-w-0">
@@ -326,7 +326,7 @@ export default function Leaderboard() {
 
       {/* ---------------------------------------------------- Empty State */}
       <Show when={isEmpty()}>
-        <div class="card pop-yellow text-center p-8 space-y-2">
+        <div class="card card-plain pop-yellow text-center p-8 space-y-2">
           <SpriteIcon name="octocat-garland" size={44} animate="wobble" class="mx-auto" />
           <p class="font-black text-lg">No submissions yet.</p>
           <p class="comment text-xs">be the first to finish and claim the #1 spot!</p>
@@ -335,9 +335,9 @@ export default function Leaderboard() {
 
       {/* ---------------------------------------------------- DAILY LEADERBOARD TABLE (Standing, Name, Score) */}
       <Show when={tab() === "daily" && daily() && daily()!.entries.length > 0}>
-        <div class="card p-0 overflow-hidden">
+        <div class="card card-plain p-0 overflow-hidden">
           <div
-            class="bg-[var(--paper-2)] px-4 py-3 border-b-2 border-[var(--ink)] flex items-center justify-between text-xs font-extrabold uppercase tracking-wider"
+            class="bg-[var(--paper-2)] px-4 py-2.5 border-b-2 border-[var(--ink)] flex items-center justify-between text-xs font-extrabold uppercase tracking-wider"
             style={{ color: "var(--ink-soft)" }}
           >
             <span>Rank & Player</span>
