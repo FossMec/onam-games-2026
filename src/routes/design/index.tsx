@@ -344,12 +344,12 @@ export default function DesignLanguage() {
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <For each={MEMES}>
               {(meme) => (
-                <div class="card card-plain overflow-hidden p-0 flex flex-col bg-[var(--paper-2)] border-2 border-[var(--ink)] hover:translate-y-[-2px] transition-transform">
-                  <div class="relative bg-[var(--paper-3)] border-b-2 border-[var(--ink)] overflow-hidden aspect-[4/3]">
+                <div class="card card-plain overflow-hidden p-0 flex flex-col bg-[var(--paper-2)] border-2 border-[var(--ink)]">
+                  <div class="relative bg-[var(--paper)] border-b-2 border-[var(--ink)] overflow-hidden p-3 flex items-center justify-center min-h-[220px]">
                     <img
                       src={meme.src}
                       alt={meme.title}
-                      class="w-full h-full object-cover"
+                      class="w-full h-auto max-h-56 object-contain"
                       loading="lazy"
                     />
                     <span
