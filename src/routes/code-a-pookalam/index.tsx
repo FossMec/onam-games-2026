@@ -12,9 +12,20 @@ import { POOKALAM } from "~/lib/event-content";
 
 const POPS = ["pop-yellow", "pop-teal", "pop-blue", "pop-purple", "pop-pink"];
 
-function Section(props: { title: string; children: JSX.Element; id?: string }) {
+function Section(props: {
+  title: string;
+  children: JSX.Element;
+  id?: string;
+  confettiSeed?: string;
+  confettiCount?: number;
+}) {
   return (
-    <section id={props.id} class="space-y-5 scroll-mt-28">
+    <section id={props.id} class="relative space-y-5 scroll-mt-28">
+      {props.confettiSeed && (
+        <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          <Confetti seed={props.confettiSeed} count={props.confettiCount ?? 5} animate />
+        </div>
+      )}
       <h2 class="rule">{props.title}</h2>
       {props.children}
     </section>
@@ -61,25 +72,20 @@ export default function CodeAPookalam() {
           </div>
 
           {/* Main Title Row */}
-          <div class="flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
-            <SpriteIcon
-              name="concentric-pookalam"
-              size={48}
-              animate="float"
-              interactive
-              class="hidden xs:inline-flex"
-            />
-            <p class="wordmark text-3xl sm:text-5xl" data-text="CODE-A-POOKALAM">
+          <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4 min-w-0">
+            <div class="flex justify-end shrink-0">
+              <SpriteIcon name="concentric-pookalam" size={36} animate="float" interactive />
+            </div>
+            <p
+              class="wordmark min-w-0"
+              data-text="CODE-A-POOKALAM"
+              style={{ "font-size": "clamp(1.4rem, 5.5vw, 3rem)" }}
+            >
               CODE-A-POOKALAM
             </p>
-            <SpriteIcon
-              name="tux-king"
-              size={48}
-              animate="float"
-              delay={1.2}
-              interactive
-              class="hidden xs:inline-flex"
-            />
+            <div class="flex justify-start shrink-0">
+              <SpriteIcon name="tux-king" size={36} animate="float" delay={1.2} interactive />
+            </div>
           </div>
 
           <p
@@ -99,7 +105,7 @@ export default function CodeAPookalam() {
       </section>
 
       {/* ---------------------------------------------------- PRIZES & BOUNTIES */}
-      <Section title="Prizes & Bounties" id="prizes">
+      <Section title="Prizes & Bounties" id="prizes" confettiSeed="cap-prizes" confettiCount={5}>
         <div class="grid sm:grid-cols-3 gap-3">
           <div class="card pop-yellow flex items-center gap-3.5">
             <SpriteIcon name="tux-king" size={38} animate="wobble" interactive class="shrink-0" />
@@ -128,7 +134,12 @@ export default function CodeAPookalam() {
       </Section>
 
       {/* ---------------------------------------------------- HOW IT WORKS */}
-      <Section title="How the Competition Works" id="how-it-works">
+      <Section
+        title="How the Competition Works"
+        id="how-it-works"
+        confettiSeed="cap-how"
+        confettiCount={4}
+      >
         <div class="grid md:grid-cols-3 gap-3">
           <div class="card pop-yellow space-y-2">
             <div class="flex items-center justify-between">
@@ -169,7 +180,7 @@ export default function CodeAPookalam() {
       </Section>
 
       {/* ---------------------------------------------------- RULES & CRITERIA */}
-      <Section title="Rules & Judging">
+      <Section title="Rules & Judging" confettiSeed="cap-rules" confettiCount={4}>
         <div class="grid md:grid-cols-2 gap-4">
           {/* Rules */}
           <div class="card pop-blue space-y-3">
@@ -216,12 +227,12 @@ export default function CodeAPookalam() {
       </Section>
 
       {/* ---------------------------------------------------- PREVIOUS YEAR CAROUSEL */}
-      <Section title="Past Community Creations">
+      <Section title="Past Community Creations" confettiSeed="cap-past" confettiCount={5}>
         <PreviousPookalamCarousel />
       </Section>
 
       {/* ---------------------------------------------------- TUTORIALS & STARTER LAB */}
-      <Section title="Ways to Code a Pookalam">
+      <Section title="Ways to Code a Pookalam" confettiSeed="cap-tutorials" confettiCount={4}>
         <PookalamTutorials />
       </Section>
 

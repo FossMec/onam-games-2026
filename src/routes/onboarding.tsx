@@ -1,6 +1,7 @@
 import { Title } from "@solidjs/meta";
 import { useNavigate } from "@solidjs/router";
 import { For, Show, createSignal } from "solid-js";
+import { Camera } from "lucide-solid";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { fileToWebpDataUrl } from "~/lib/avatar";
 import { branchValues, batchValues, collegeValues, divValues } from "~/lib/profile";
@@ -27,23 +28,19 @@ export default function Onboarding() {
     try {
       const dataUrl = await fileToWebpDataUrl(file);
       setAvatar(dataUrl);
+      // auto-upload immediately
+      setUploading(true);
+      setMessage("");
+      try {
+        await uploadAvatarAction(dataUrl);
+        setMessage("Profile picture updated!");
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "Upload failed.");
+      } finally {
+        setUploading(false);
+      }
     } catch {
       setMessage("Could not read that image.");
-    }
-  };
-
-  const uploadAvatar = async () => {
-    const dataUrl = avatar();
-    if (!dataUrl || uploading()) return;
-    setUploading(true);
-    setMessage("");
-    try {
-      await uploadAvatarAction(dataUrl);
-      setMessage("Profile picture updated.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Upload failed.");
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -108,35 +105,79 @@ export default function Onboarding() {
         </Show>
 
         <form onSubmit={onSubmit} class="card space-y-4">
-          <fieldset class="space-y-2 border-0 p-0">
-            <legend class="font-extrabold">Avatar (optional)</legend>
-            <div class="flex items-center gap-3">
-              <Show when={avatar()}>
-                <img
-                  src={avatar()!}
-                  alt="preview"
-                  class="h-16 w-16 rounded-full"
-                  style={{ border: "var(--ink-w) solid var(--ink)" }}
-                />
-              </Show>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => onAvatarChange(e.currentTarget.files?.[0])}
-                class="text-sm"
-                style={{ color: "var(--ink-soft)" }}
-              />
-              <Show when={avatar()}>
-                <button
-                  type="button"
-                  onClick={uploadAvatar}
-                  disabled={uploading()}
-                  class="btn-ghost text-sm"
+          <fieldset class="space-y-3 border-0 p-0">
+            <legend class="font-extrabold">
+              Avatar <span style={{ color: "var(--ink-soft)" }}>(optional)</span>
+            </legend>
+            <div class="flex items-center gap-5">
+              {/* Clickable avatar circle */}
+              <label
+                for="avatar-input"
+                class="relative shrink-0 cursor-pointer group"
+                title={uploading() ? "Uploading…" : "Click to change photo"}
+              >
+                <div
+                  class="w-20 h-20 rounded-full overflow-hidden grid place-items-center transition-all group-hover:opacity-80"
+                  style={{
+                    border: "var(--ink-w-bold) solid var(--ink)",
+                    background: "var(--pop-yellow)",
+                  }}
                 >
-                  {uploading() ? "Uploading…" : "Upload"}
-                </button>
-              </Show>
+                  <Show
+                    when={avatar()}
+                    fallback={
+                      <div
+                        class="flex flex-col items-center gap-1"
+                        style={{ color: "var(--ink-soft)" }}
+                      >
+                        <Camera size={22} />
+                        <span class="text-[9px] font-extrabold uppercase tracking-wide">Photo</span>
+                      </div>
+                    }
+                  >
+                    <img src={avatar()!} alt="Avatar preview" class="w-full h-full object-cover" />
+                  </Show>
+                </div>
+                {/* Edit overlay on hover */}
+                <div
+                  class="absolute inset-0 rounded-full grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ background: "rgba(0,0,0,0.35)" }}
+                >
+                  <Camera size={18} color="white" />
+                </div>
+                {/* Uploading spinner ring */}
+                <Show when={uploading()}>
+                  <div
+                    class="absolute inset-0 rounded-full"
+                    style={{
+                      border: "3px solid transparent",
+                      "border-top-color": "var(--pop-teal)",
+                      animation: "spin 0.7s linear infinite",
+                    }}
+                  />
+                </Show>
+              </label>
+
+              <div class="space-y-1 min-w-0">
+                <p class="font-extrabold text-sm">Profile photo</p>
+                <p class="text-xs font-semibold" style={{ color: "var(--ink-soft)" }}>
+                  {uploading() ? "Uploading…" : "Click the circle to pick an image"}
+                </p>
+                <Show when={avatar() && !uploading()}>
+                  <p class="text-xs font-extrabold" style={{ color: "var(--pop-teal-deep)" }}>
+                    ✓ Photo saved
+                  </p>
+                </Show>
+              </div>
             </div>
+
+            <input
+              id="avatar-input"
+              type="file"
+              accept="image/*"
+              class="sr-only"
+              onChange={(e) => onAvatarChange(e.currentTarget.files?.[0])}
+            />
           </fieldset>
 
           <div>

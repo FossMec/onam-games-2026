@@ -10,7 +10,7 @@ import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { SpriteScatter } from "~/components/art/SpriteScatter";
 import { EVENT, POOKALAM } from "~/lib/event-content";
-import { signOutAndReload } from "~/lib/sign-out";
+
 import { type SpriteName } from "~/lib/sprites";
 import { getMe } from "~/server/auth/actions";
 import { getGames } from "~/server/games/actions";
@@ -74,9 +74,20 @@ const statusSticker: Record<string, { label: string; pop: string }> = {
   closed: { label: "Catch up", pop: "var(--pop-blue)" },
 };
 
-function Section(props: { title: string; children: unknown; id?: string }) {
+function Section(props: {
+  title: string;
+  children: unknown;
+  id?: string;
+  confettiSeed?: string;
+  confettiCount?: number;
+}) {
   return (
-    <section id={props.id} class="space-y-5 scroll-mt-28">
+    <section id={props.id} class="relative space-y-5 scroll-mt-28">
+      <Show when={props.confettiSeed}>
+        <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          <Confetti seed={props.confettiSeed!} count={props.confettiCount ?? 6} animate />
+        </div>
+      </Show>
       <h2 class="rule">{props.title}</h2>
       {props.children as never}
     </section>
@@ -86,7 +97,7 @@ function Section(props: { title: string; children: unknown; id?: string }) {
 export default function Home() {
   const games = createAsync(() => getGames());
   const me = createAsync(() => getMe());
-  const [signingOut, setSigningOut] = createSignal(false);
+
   const [selectedDay, setSelectedDay] = createSignal<number>(1);
   const currentActiveDay = () => {
     const list = games();
@@ -194,25 +205,16 @@ export default function Home() {
           animate
         />
         <div class="art-over space-y-4 max-w-3xl mx-auto">
-          <div class="flex items-center justify-center gap-3 sm:gap-5 flex-wrap">
-            <SpriteIcon
-              name="maveli-laptop"
-              size={56}
-              animate="float"
-              interactive
-              class="hidden xs:inline-flex"
-            />
+          <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-5">
+            <div class="flex justify-end">
+              <SpriteIcon name="maveli-laptop" size={48} animate="float" interactive />
+            </div>
             <p class="wordmark text-4xl sm:text-6xl" data-text="FOSS ONAM">
               FOSS ONAM
             </p>
-            <SpriteIcon
-              name="tux-king"
-              size={56}
-              animate="float"
-              delay={1.2}
-              interactive
-              class="hidden xs:inline-flex"
-            />
+            <div class="flex justify-start">
+              <SpriteIcon name="tux-king" size={48} animate="float" delay={1.2} interactive />
+            </div>
           </div>
           <p
             class="mx-auto max-w-lg text-lg font-extrabold"
@@ -232,8 +234,11 @@ export default function Home() {
             />
           </div>
 
-          <div class="flex flex-wrap items-center justify-center gap-3 pt-1">
-            <a href="#games-arena" class="btn-brand inline-flex items-center gap-1.5">
+          <div class="flex flex-col items-center gap-2 pt-1 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3">
+            <a
+              href="#games-arena"
+              class="btn-brand inline-flex items-center gap-1.5 w-full sm:w-auto justify-center whitespace-nowrap"
+            >
               <Show when={liveGame()} fallback={<span>Play Daily Games ↓</span>}>
                 <span>
                   Play Day {liveGame()!.day} (
@@ -241,12 +246,14 @@ export default function Home() {
                 </span>
               </Show>
             </a>
-            <a href="#pookalam" class="btn-accent">
-              Code-a-Pookalam
-            </a>
-            <a href="/leaderboard" class="btn-ghost">
-              Leaderboard
-            </a>
+            <div class="flex items-center justify-center gap-2 w-full sm:w-auto">
+              <a href="#pookalam" class="btn-accent whitespace-nowrap">
+                Code-a-Pookalam
+              </a>
+              <a href="/leaderboard" class="btn-ghost whitespace-nowrap">
+                Leaderboard
+              </a>
+            </div>
           </div>
 
           <Show when={!me()}>
@@ -255,49 +262,15 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ---------------------------------------------------- signed-in bar */}
-      <Show when={me()}>
-        <div class="card card-plain flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div class="flex items-center gap-3">
-            <SpriteIcon name="foss-mec-badge" size={40} animate="wobble" interactive />
-            <div>
-              <p class="text-lg font-extrabold">Hi, {me()!.name}</p>
-              <p class="text-sm font-semibold" style={{ color: "var(--ink-soft)" }}>
-                Streak {me()!.streakCount} · Best {me()!.bestStreak}
-                {me()!.role === "admin" ? " · Admin" : ""}
-              </p>
-            </div>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <Show when={!me()!.onboardingCompleted}>
-              <a href="/onboarding" class="btn-accent">
-                Finish profile
-              </a>
-            </Show>
-            <a href="/leaderboard" class="btn-ghost">
-              Leaderboard
-            </a>
-            <button
-              type="button"
-              class="btn-ghost"
-              disabled={signingOut()}
-              onClick={() => {
-                setSigningOut(true);
-                void signOutAndReload();
-              }}
-            >
-              {signingOut() ? "Signing out…" : "Sign out"}
-            </button>
-          </div>
-        </div>
-      </Show>
+      {/* signed-in bar removed — streak/best now lives in Nav dropdown */}
 
       {/* -------------------------------------------------------- code-a-pookalam */}
-      <Section title="Code-a-Pookalam" id="pookalam">
+      <Section title="Code-a-Pookalam" id="pookalam" confettiSeed="pookalam-sec" confettiCount={5}>
         <div
           class="relative overflow-hidden rounded-lg p-4 sm:p-6"
           style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--pop-pink)" }}
         >
+          <Confetti seed="pookalam-box" count={6} animate />
           <Halftone opacity={0.12} />
           <div class="art-over flex flex-col sm:flex-row gap-4 sm:gap-6 items-center sm:items-start">
             {/* 1:1 Square Artwork */}
@@ -387,7 +360,12 @@ export default function Home() {
       </Section>
 
       {/* ------------------------------------------------------- daily games arena */}
-      <Section title="Daily Games Arena" id="games-arena">
+      <Section
+        title="Daily Games Arena"
+        id="games-arena"
+        confettiSeed="games-sec"
+        confettiCount={5}
+      >
         <Show when={!games()}>
           <p class="font-semibold text-center py-6">Loading the schedule…</p>
         </Show>
@@ -710,7 +688,7 @@ export default function Home() {
       </Section>
 
       {/* ---------------------------------------------------------- prizes */}
-      <Section title="Prizes & Rewards">
+      <Section title="Prizes & Rewards" confettiSeed="prizes-sec" confettiCount={6}>
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-lg bg-[var(--paper-2)] border-2 border-[var(--ink)]">
           <div class="space-y-1 text-center sm:text-left">
             <p
@@ -759,12 +737,17 @@ export default function Home() {
       </Section>
 
       {/* ---------------------------------------------------- royal letter from maveli */}
-      <Section title="A Letter from the King to the Prajakal" id="maveli-letter">
+      <Section
+        title="A Letter from the King to the Prajakal"
+        id="maveli-letter"
+        confettiSeed="maveli-sec"
+        confettiCount={4}
+      >
         <MaveliLetter />
       </Section>
 
       {/* ---------------------------------------------------- how it works (8 items) */}
-      <Section title="How it works" id="how-it-works">
+      <Section title="How it works" id="how-it-works" confettiSeed="how-sec" confettiCount={5}>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <For each={EVENT.howItWorks}>
             {(step, index) => (
@@ -796,7 +779,12 @@ export default function Home() {
       </Section>
 
       {/* --------------------------------------------------------- scoring */}
-      <Section title={EVENT.scoring.title} id="scoring">
+      <Section
+        title={EVENT.scoring.title}
+        id="scoring"
+        confettiSeed="scoring-sec"
+        confettiCount={4}
+      >
         <Bubble color="var(--pop-teal)">
           <p class="font-semibold">{EVENT.scoring.body}</p>
         </Bubble>
@@ -804,7 +792,7 @@ export default function Home() {
       </Section>
 
       {/* ----------------------------------------------------------- rules */}
-      <Section title="Fair play">
+      <Section title="Fair play" confettiSeed="fairplay-sec" confettiCount={4}>
         <ul class="card card-plain space-y-2">
           <For each={EVENT.rules}>
             {(rule) => (
@@ -818,7 +806,7 @@ export default function Home() {
       </Section>
 
       {/* ------------------------------------------------------------- faq */}
-      <Section title="Questions">
+      <Section title="Questions" confettiSeed="faq-sec" confettiCount={4}>
         <div class="space-y-3">
           <For each={EVENT.faq}>
             {(item) => (

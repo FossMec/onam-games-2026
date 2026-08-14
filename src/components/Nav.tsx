@@ -19,17 +19,25 @@ function ProfileMenu(props: {
   compact?: boolean;
 }) {
   const [open, setOpen] = createSignal(false);
+  let containerRef!: HTMLDivElement;
 
   onMount(() => {
+    const handleOutside = (e: MouseEvent) => {
+      if (!containerRef.contains(e.target as Node)) setOpen(false);
+    };
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
+    document.addEventListener("mousedown", handleOutside);
     document.addEventListener("keydown", handleKey);
-    onCleanup(() => document.removeEventListener("keydown", handleKey));
+    onCleanup(() => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleKey);
+    });
   });
 
   return (
-    <div class="relative shrink-0">
+    <div ref={containerRef} class="relative shrink-0">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
@@ -50,12 +58,6 @@ function ProfileMenu(props: {
       </button>
 
       <Show when={open()}>
-        {/* Transparent backdrop for outside clicks */}
-        <div
-          class="fixed inset-0 z-40 bg-transparent cursor-default"
-          onClick={() => setOpen(false)}
-        />
-
         {/* Dropdown Card */}
         <div
           class="absolute right-0 top-full mt-2 w-64 sm:w-72 rounded-lg p-3.5 bg-[var(--paper-2)] shadow-2xl z-50 space-y-3"
@@ -87,17 +89,25 @@ function ProfileMenu(props: {
                 </p>
               </div>
             </div>
-            <Show when={props.me.college}>
-              <div
-                class="flex items-center gap-1 text-xs pt-1"
-                style={{ color: "var(--ink-soft)" }}
-              >
-                <GraduationCap size={12} class="shrink-0" />
-                <span class="truncate">
-                  {props.me.college} {props.me.branch ? `· ${props.me.branch}` : ""}
+
+            {/* Streak + Best stat pills */}
+            <div class="flex items-center gap-2 pt-1.5">
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-[var(--pop-teal)]/20 border border-[var(--pop-teal-deep)]/30">
+                Streak {props.me.streakCount}
+              </span>
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-[var(--pop-yellow)]/30 border border-[var(--ink)]/20">
+                Best {props.me.bestStreak}
+              </span>
+              <Show when={props.me.college}>
+                <span
+                  class="text-[10px] font-semibold truncate flex items-center gap-0.5 min-w-0"
+                  style={{ color: "var(--ink-soft)" }}
+                >
+                  <GraduationCap size={10} class="shrink-0" />
+                  <span class="truncate">{props.me.college}</span>
                 </span>
-              </div>
-            </Show>
+              </Show>
+            </div>
           </div>
 
           <div class="space-y-1 text-xs font-bold">
