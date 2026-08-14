@@ -100,14 +100,28 @@ export function ConfettiShape(props: { kind: ShapeKind; color: string }) {
         />
       )}
       {props.kind === "thengu" && (
-        <path
-          d="M3 30c6-10 12-4 17-12s10-4 17-10"
-          fill="none"
-          stroke={props.color}
-          stroke-width="5"
-          stroke-linecap="round"
-        />
+        // Coconut palm: curved trunk with geometric arching palm fronds
+        <>
+          <path
+            d="M15 36 Q18 24 20 14"
+            fill="none"
+            stroke={stroke}
+            stroke-width="3"
+            stroke-linecap="round"
+          />
+          {/* Radiating Palm Fronds */}
+          <path
+            d="M20 14 Q28 8 35 13 M20 14 Q29 17 34 24 M20 14 Q12 7 5 11 M20 14 Q10 17 6 23 M20 14 Q20 4 21 2"
+            fill="none"
+            stroke={props.color}
+            stroke-width="3.5"
+            stroke-linecap="round"
+          />
+          <circle cx="18" cy="16" r="2" fill={stroke} />
+          <circle cx="22" cy="16" r="2" fill={stroke} />
+        </>
       )}
+
       {props.kind === "kite" && (
         <path
           d="M20 2 36 20 20 38 4 20Z"

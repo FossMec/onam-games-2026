@@ -108,7 +108,7 @@ const MEMPHIS_MOTIFS = [
     shape: "thengu" as const,
     color: "var(--pop-blue)",
     description:
-      "Curved Memphis squiggle symbolizing Kerala coconut palms swaying in the coastal breeze.",
+      "Geometric palm with curved trunk and radiating fronds swaying in the coastal breeze.",
   },
   {
     name: "Pattom (Festival Kite)",
