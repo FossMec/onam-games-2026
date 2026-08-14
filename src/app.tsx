@@ -1,4 +1,4 @@
-import { MetaProvider, Title } from "@solidjs/meta";
+import { Meta, MetaProvider, Title } from "@solidjs/meta";
 import { Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { Suspense } from "solid-js";
@@ -13,7 +13,23 @@ export default function App() {
     <Router
       root={(props) => (
         <MetaProvider>
-          <Title>FOSS Onam Games</Title>
+          <Title>FOSS Onam Games 2026 — FOSS MEC</Title>
+          <Meta
+            name="description"
+            content="Seven days of games. One week of Onam. A comic-themed, open-source celebration with daily browser challenges, Code-a-Pookalam, and live leaderboards by FOSS MEC."
+          />
+          <Meta name="author" content="Dijith Dinesh" />
+          <Meta name="creator" content="Dijith Dinesh" />
+          <Meta property="og:title" content="FOSS Onam Games 2026 — FOSS MEC" />
+          <Meta
+            property="og:description"
+            content="Seven days of games. One week of Onam. Designed & engineered by Dijith Dinesh for FOSS MEC."
+          />
+          <Meta property="og:image" content="/images/og-image.jpeg" />
+          <Meta name="twitter:card" content="summary_large_image" />
+          <Meta name="twitter:creator" content="@dijith" />
+          <Meta name="twitter:image" content="/images/og-image.jpeg" />
+
           {/* Slow rotating pookalam background rays */}
           <div class="bg-radial-spin" aria-hidden="true" />
           {/* Filter defs, mounted once for the whole app. */}
