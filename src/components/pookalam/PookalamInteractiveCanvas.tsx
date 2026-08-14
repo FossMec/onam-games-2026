@@ -54,13 +54,70 @@ const PALETTE = {
   darkBlue: "#121b44",
 };
 
-const SHAPES: { type: ElementType; label: string; icon: string }[] = [
-  { type: "smallFlower", label: "Rosette", icon: "🌸" },
-  { type: "tulipPetal", label: "Tulip", icon: "🌷" },
-  { type: "leafPetal", label: "Leaf", icon: "🍃" },
-  { type: "dot", label: "Pearl", icon: "⚪" },
-  { type: "heart", label: "Heart", icon: "💛" },
-  { type: "woven", label: "Mesh", icon: "🕸️" },
+// Exact vector rendering of the mathematical canvas elements
+function ShapeIcon(props: { type: ElementType }) {
+  switch (props.type) {
+    case "smallFlower":
+      return (
+        <svg viewBox="-12 -12 24 24" class="w-3.5 h-3.5 fill-current">
+          <g>
+            <ellipse cx="0" cy="-4.5" rx="2.2" ry="4.5" transform="rotate(0)" />
+            <ellipse cx="0" cy="-4.5" rx="2.2" ry="4.5" transform="rotate(72)" />
+            <ellipse cx="0" cy="-4.5" rx="2.2" ry="4.5" transform="rotate(144)" />
+            <ellipse cx="0" cy="-4.5" rx="2.2" ry="4.5" transform="rotate(216)" />
+            <ellipse cx="0" cy="-4.5" rx="2.2" ry="4.5" transform="rotate(288)" />
+          </g>
+        </svg>
+      );
+    case "tulipPetal":
+      return (
+        <svg viewBox="-10 -10 20 20" class="w-3.5 h-3.5 fill-current">
+          <path d="M 0 -8 Q 6 0 0 8 Q -6 0 0 -8 Z" />
+        </svg>
+      );
+    case "leafPetal":
+      return (
+        <svg viewBox="-10 -10 20 20" class="w-3.5 h-3.5 fill-current">
+          <path d="M 0 -8 C 4.5 -4 4.5 4 0 8 C -4.5 4 -4.5 -4 0 -8 Z" />
+        </svg>
+      );
+    case "dot":
+      return (
+        <svg viewBox="-10 -10 20 20" class="w-3.5 h-3.5 fill-current">
+          <circle cx="0" cy="0" r="4.5" />
+        </svg>
+      );
+    case "heart":
+      return (
+        <svg viewBox="-10 -10 20 20" class="w-3.5 h-3.5 fill-current">
+          <path d="M 0 -3.5 C 5 -8 7 0 0 6.5 C -7 0 -5 -8 0 -3.5 Z" />
+        </svg>
+      );
+    case "woven":
+      return (
+        <svg
+          viewBox="-12 -12 24 24"
+          class="w-3.5 h-3.5 stroke-current fill-none"
+          stroke-width="1.8"
+        >
+          <g transform="rotate(45)">
+            <ellipse cx="0" cy="0" rx="4" ry="8" />
+            <ellipse cx="0" cy="0" rx="8" ry="4" />
+          </g>
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
+const SHAPES: { type: ElementType; label: string }[] = [
+  { type: "smallFlower", label: "Rosette" },
+  { type: "tulipPetal", label: "Tulip" },
+  { type: "leafPetal", label: "Leaf" },
+  { type: "dot", label: "Pearl" },
+  { type: "heart", label: "Heart" },
+  { type: "woven", label: "Mesh" },
 ];
 
 export function PookalamInteractiveCanvas() {
@@ -78,10 +135,8 @@ export function PookalamInteractiveCanvas() {
   const [rotationSpeedFactor, setRotationSpeedFactor] = createSignal<number>(1);
   const [countMultiplier, setCountMultiplier] = createSignal<number>(1);
 
-  // Layer custom element shape overrides (default undefined = original 2025 blueprint)
-  const [layerShapeOverrides, setLayerShapeOverrides] = createSignal<Record<number, ElementType>>(
-    {},
-  );
+  // Layer custom element shape slot overrides (Slot 0 = Primary, Slot 1 = Secondary)
+  const [slotOverrides, setSlotOverrides] = createSignal<Record<string, ElementType>>({});
   const [enabledLayers, setEnabledLayers] = createSignal<Record<number, boolean>>({
     0: true,
     1: true,
@@ -254,11 +309,15 @@ export function PookalamInteractiveCanvas() {
     ctx.restore();
   };
 
+  const getSlot = (layerId: number, slotIdx: number, defaultShape: ElementType): ElementType => {
+    return slotOverrides()[`${layerId}_${slotIdx}`] || defaultShape;
+  };
+
+  // Exact 2025 Multi-Spec Layer Blueprint
   const getLayers = (): Layer[] => {
     const scale = state.currentScaleFactor;
     const cMul = countMultiplier();
     const enabled = enabledLayers();
-    const overrides = layerShapeOverrides();
 
     const allLayers: Layer[] = [
       {
@@ -267,7 +326,7 @@ export function PookalamInteractiveCanvas() {
         enabled: enabled[0] ?? true,
         spec: [
           {
-            type: overrides[0] || "woven",
+            type: getSlot(0, 0, "woven"),
             size: 35 * scale,
             color: PALETTE.darkBlue,
             strokeColor: PALETTE.white,
@@ -283,13 +342,13 @@ export function PookalamInteractiveCanvas() {
         enabled: enabled[1] ?? true,
         spec: [
           {
-            type: overrides[1] || "dot",
+            type: getSlot(1, 0, "dot"),
             size: 3 * scale,
             color: PALETTE.white,
           },
           {
-            type: overrides[1] || "smallFlower",
-            size: (overrides[1] ? 14 : 4) * scale,
+            type: getSlot(1, 1, "smallFlower"),
+            size: 4 * scale,
             color: PALETTE.amber,
           },
         ],
@@ -303,13 +362,13 @@ export function PookalamInteractiveCanvas() {
         enabled: enabled[2] ?? true,
         spec: [
           {
-            type: overrides[2] || "smallFlower",
+            type: getSlot(2, 0, "smallFlower"),
             size: 18 * scale,
             color: PALETTE.white,
           },
           {
-            type: overrides[2] ? overrides[2] : "dot",
-            size: (overrides[2] ? 14 : 4) * scale,
+            type: getSlot(2, 1, "dot"),
+            size: 4 * scale,
             color: PALETTE.deepOrange,
           },
         ],
@@ -323,23 +382,23 @@ export function PookalamInteractiveCanvas() {
         enabled: enabled[3] ?? true,
         spec: [
           {
-            type: overrides[3] || "dot",
-            size: (overrides[3] ? 16 : 5) * scale,
+            type: getSlot(3, 0, "dot"),
+            size: 5 * scale,
             color: PALETTE.amber,
           },
           {
-            type: overrides[3] || "dot",
-            size: (overrides[3] ? 16 : 5) * scale,
+            type: getSlot(3, 0, "dot"),
+            size: 5 * scale,
             color: PALETTE.deepOrange,
           },
           {
-            type: overrides[3] || "tulipPetal",
+            type: getSlot(3, 1, "tulipPetal"),
             size: 22 * scale,
             color: PALETTE.offWhite,
           },
           {
-            type: overrides[3] || "dot",
-            size: (overrides[3] ? 16 : 5) * scale,
+            type: getSlot(3, 0, "dot"),
+            size: 5 * scale,
             color: PALETTE.leafGreen,
           },
         ],
@@ -354,13 +413,13 @@ export function PookalamInteractiveCanvas() {
         enabled: enabled[4] ?? true,
         spec: [
           {
-            type: overrides[4] || "dot",
-            size: (overrides[4] ? 16 : 8) * scale,
+            type: getSlot(4, 0, "dot"),
+            size: 8 * scale,
             color: PALETTE.amber,
           },
           {
-            type: overrides[4] || "dot",
-            size: (overrides[4] ? 16 : 8) * scale,
+            type: getSlot(4, 1, "dot"),
+            size: 8 * scale,
             color: PALETTE.orange,
           },
         ],
@@ -374,12 +433,12 @@ export function PookalamInteractiveCanvas() {
         enabled: enabled[5] ?? true,
         spec: [
           {
-            type: overrides[5] || "leafPetal",
+            type: getSlot(5, 0, "leafPetal"),
             size: 25 * scale,
             color: PALETTE.leafGreen,
           },
           {
-            type: overrides[5] || "heart",
+            type: getSlot(5, 1, "heart"),
             size: 15 * scale,
             color: PALETTE.lightGray,
           },
@@ -394,22 +453,22 @@ export function PookalamInteractiveCanvas() {
         enabled: enabled[6] ?? true,
         spec: [
           {
-            type: overrides[6] || "dot",
-            size: (overrides[6] ? 24 : 6) * scale,
+            type: getSlot(6, 0, "dot"),
+            size: 6 * scale,
             color: PALETTE.orange,
           },
           {
-            type: overrides[6] || "leafPetal",
+            type: getSlot(6, 1, "leafPetal"),
             size: 30 * scale,
             color: PALETTE.white,
           },
           {
-            type: overrides[6] || "dot",
-            size: (overrides[6] ? 24 : 3) * scale,
+            type: getSlot(6, 0, "dot"),
+            size: 3 * scale,
             color: PALETTE.orange,
           },
           {
-            type: overrides[6] || "leafPetal",
+            type: getSlot(6, 1, "leafPetal"),
             size: 30 * scale,
             color: PALETTE.white,
           },
@@ -424,8 +483,8 @@ export function PookalamInteractiveCanvas() {
         enabled: enabled[7] ?? true,
         spec: [
           {
-            type: overrides[7] || "smallFlower",
-            size: 14 * scale,
+            type: getSlot(7, 0, "smallFlower"),
+            size: 12 * scale,
             color: PALETTE.deepOrange,
           },
         ],
@@ -521,8 +580,8 @@ export function PookalamInteractiveCanvas() {
     buildPlan();
   };
 
-  const setLayerShape = (id: number, shape: ElementType) => {
-    setLayerShapeOverrides((prev) => ({ ...prev, [id]: shape }));
+  const setSlotShape = (layerId: number, slotIdx: number, shape: ElementType) => {
+    setSlotOverrides((prev) => ({ ...prev, [`${layerId}_${slotIdx}`]: shape }));
     onSettingsChange();
   };
 
@@ -658,7 +717,7 @@ export function PookalamInteractiveCanvas() {
     setSpeedMultiplier(1);
     setRotationSpeedFactor(1);
     setCountMultiplier(1);
-    setLayerShapeOverrides({});
+    setSlotOverrides({});
     setEnabledLayers({
       0: true,
       1: true,
@@ -721,15 +780,65 @@ export function PookalamInteractiveCanvas() {
     document.body.removeChild(a);
   };
 
-  const layerItems = [
-    { id: 0, name: "Center Emblem", defaultShape: "woven" as ElementType },
-    { id: 1, name: "Layer 1: Inner Rosette", defaultShape: "smallFlower" as ElementType },
-    { id: 2, name: "Layer 2: Star Ring", defaultShape: "smallFlower" as ElementType },
-    { id: 3, name: "Layer 3: Tulip Bloom", defaultShape: "tulipPetal" as ElementType },
-    { id: 4, name: "Layer 4: Pearl Dots", defaultShape: "dot" as ElementType },
-    { id: 5, name: "Layer 5: Foliage & Hearts", defaultShape: "leafPetal" as ElementType },
-    { id: 6, name: "Layer 6: Grand Petals", defaultShape: "leafPetal" as ElementType },
-    { id: 7, name: "Layer 7: Outer Perimeter", defaultShape: "smallFlower" as ElementType },
+  const layerConfigs = [
+    {
+      id: 0,
+      name: "Center Emblem",
+      slots: [{ idx: 0, label: "Core Mesh", default: "woven" as ElementType }],
+    },
+    {
+      id: 1,
+      name: "Layer 1: Inner Rosette Ring",
+      slots: [
+        { idx: 0, label: "Pearl Dots", default: "dot" as ElementType },
+        { idx: 1, label: "Mini Rosettes", default: "smallFlower" as ElementType },
+      ],
+    },
+    {
+      id: 2,
+      name: "Layer 2: Star Flowers",
+      slots: [
+        { idx: 0, label: "Star Rosettes", default: "smallFlower" as ElementType },
+        { idx: 1, label: "Orange Pearls", default: "dot" as ElementType },
+      ],
+    },
+    {
+      id: 3,
+      name: "Layer 3: Tulip & Pearl Ring",
+      slots: [
+        { idx: 0, label: "Surrounding Pearls", default: "dot" as ElementType },
+        { idx: 1, label: "Tulip Petals", default: "tulipPetal" as ElementType },
+      ],
+    },
+    {
+      id: 4,
+      name: "Layer 4: Dual Pearl Ring",
+      slots: [
+        { idx: 0, label: "Amber Pearls", default: "dot" as ElementType },
+        { idx: 1, label: "Orange Pearls", default: "dot" as ElementType },
+      ],
+    },
+    {
+      id: 5,
+      name: "Layer 5: Foliage & Hearts",
+      slots: [
+        { idx: 0, label: "Green Leaves", default: "leafPetal" as ElementType },
+        { idx: 1, label: "Gray Hearts", default: "heart" as ElementType },
+      ],
+    },
+    {
+      id: 6,
+      name: "Layer 6: Grand White Petals",
+      slots: [
+        { idx: 0, label: "Pearl Spacers", default: "dot" as ElementType },
+        { idx: 1, label: "Grand Petals", default: "leafPetal" as ElementType },
+      ],
+    },
+    {
+      id: 7,
+      name: "Layer 7: Outer Perimeter",
+      slots: [{ idx: 0, label: "Outer Rosettes", default: "smallFlower" as ElementType }],
+    },
   ];
 
   return (
@@ -748,27 +857,14 @@ export function PookalamInteractiveCanvas() {
           onClick={() => setIsPaused((prev) => !prev)}
           title="Click to Pause / Resume"
         />
-
-        {/* Floating Expand Button when collapsed (Desktop / Overlay) */}
-        <Show when={isCollapsed()}>
-          <button
-            type="button"
-            onClick={() => setIsCollapsed(false)}
-            class="absolute top-2 right-2 px-3 py-1.5 rounded-xl bg-[var(--pop-yellow)] text-[var(--ink)] font-black text-xs border-2 border-[var(--ink)] shadow-[2px_2px_0px_0px_var(--ink)] hover:bg-[var(--pop-teal)] transition-all cursor-pointer flex items-center gap-1.5 animate-bounce"
-            title="Open Studio Controls"
-          >
-            <Sliders size={13} strokeWidth={2.5} />
-            <span>Customize</span>
-          </button>
-        </Show>
       </div>
 
       {/* ---------------------------------------------------- RIGHT / BOTTOM: COLLAPSIBLE CONTROLS */}
       <Show
         when={!isCollapsed()}
         fallback={
-          /* Collapsed Pill for Mobile / Desktop */
-          <div class="w-full lg:w-auto flex justify-center pt-2">
+          /* Collapsed Pill in regular layout flow */
+          <div class="w-full lg:w-auto flex justify-center py-2">
             <button
               type="button"
               onClick={() => setIsCollapsed(false)}
@@ -780,7 +876,7 @@ export function PookalamInteractiveCanvas() {
           </div>
         }
       >
-        <div class="w-full lg:w-[410px] rounded-xl p-4 sm:p-5 bg-[#1a2352] border-2 border-white/20 text-white flex flex-col justify-between space-y-4 shadow-xl shrink-0 transition-all duration-300">
+        <div class="w-full lg:w-[420px] rounded-xl p-4 sm:p-5 bg-[#1a2352] border-2 border-white/20 text-white flex flex-col justify-between space-y-4 shadow-xl shrink-0 transition-all duration-300">
           <div>
             {/* Header, Tabs & Collapse Toggle */}
             <div class="flex items-center justify-between gap-2 border-b border-white/10 pb-3 mb-3">
@@ -837,11 +933,11 @@ export function PookalamInteractiveCanvas() {
               </div>
             </div>
 
-            {/* TAB 1: LAYER ITEM SHAPE PICKERS */}
+            {/* TAB 1: MULTI-SLOT LAYER ITEM SHAPE PICKERS */}
             <Show when={activeTab() === "layers"}>
-              <div class="space-y-2 max-h-[300px] overflow-y-auto pr-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <div class="space-y-2.5 max-h-[310px] overflow-y-auto pr-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 <div class="flex items-center justify-between text-[11px] uppercase font-black text-gray-300 pb-1">
-                  <span>Select Items for Each Layer</span>
+                  <span>Customise Concentric Motifs</span>
                   <button
                     type="button"
                     onClick={resetToPeak}
@@ -851,14 +947,13 @@ export function PookalamInteractiveCanvas() {
                   </button>
                 </div>
 
-                <For each={layerItems}>
+                <For each={layerConfigs}>
                   {(l) => {
                     const isEnabled = () => enabledLayers()[l.id] ?? true;
-                    const currentShape = () => layerShapeOverrides()[l.id] || l.defaultShape;
 
                     return (
                       <div
-                        class={`p-2 rounded-lg border transition-all space-y-1.5 ${
+                        class={`p-2.5 rounded-lg border transition-all space-y-2 ${
                           isEnabled()
                             ? "bg-[#25306d] border-white/25 text-white"
                             : "bg-[#141b40] border-white/10 text-gray-400 opacity-60"
@@ -879,28 +974,50 @@ export function PookalamInteractiveCanvas() {
                           </button>
                         </div>
 
-                        {/* Shape Option Pills */}
+                        {/* Repeating / Alternating Shape Slots */}
                         <Show when={isEnabled()}>
-                          <div class="grid grid-cols-6 gap-1 pt-0.5">
-                            <For each={SHAPES}>
-                              {(s) => {
-                                const isSelected = () => currentShape() === s.type;
+                          <div class="space-y-1.5 pt-0.5">
+                            <For each={l.slots}>
+                              {(slot) => {
+                                const currentShape = () => getSlot(l.id, slot.idx, slot.default);
+
                                 return (
-                                  <button
-                                    type="button"
-                                    onClick={() => setLayerShape(l.id, s.type)}
-                                    class={`py-1 px-0.5 rounded flex flex-col items-center justify-center transition-all cursor-pointer ${
-                                      isSelected()
-                                        ? "bg-[var(--pop-teal)] text-[var(--ink)] font-black scale-105 shadow-sm"
-                                        : "bg-[#121b44] hover:bg-[#1a2352] text-gray-300"
-                                    }`}
-                                    title={s.label}
-                                  >
-                                    <span class="text-xs leading-none">{s.icon}</span>
-                                    <span class="text-[8px] font-bold leading-tight truncate mt-0.5">
-                                      {s.label}
-                                    </span>
-                                  </button>
+                                  <div class="space-y-1 bg-[#18204d]/70 p-1.5 rounded-md border border-white/10">
+                                    <div class="flex items-center justify-between text-[10px] font-bold text-gray-300">
+                                      <span class="truncate">{slot.label}</span>
+                                      <span class="font-mono text-[9px] text-[var(--pop-yellow)] uppercase">
+                                        {currentShape()}
+                                      </span>
+                                    </div>
+
+                                    {/* Shape Picker Row with Exact SVG Vectors */}
+                                    <div class="grid grid-cols-6 gap-1">
+                                      <For each={SHAPES}>
+                                        {(s) => {
+                                          const isSelected = () => currentShape() === s.type;
+                                          return (
+                                            <button
+                                              type="button"
+                                              onClick={() => setSlotShape(l.id, slot.idx, s.type)}
+                                              class={`py-1 px-0.5 rounded flex flex-col items-center justify-center transition-all cursor-pointer ${
+                                                isSelected()
+                                                  ? "bg-[var(--pop-teal)] text-[var(--ink)] font-black scale-105 shadow-sm"
+                                                  : "bg-[#121b44] hover:bg-[#202b66] text-gray-300 hover:text-white"
+                                              }`}
+                                              title={s.label}
+                                            >
+                                              <span class="flex items-center justify-center h-3.5 w-3.5">
+                                                <ShapeIcon type={s.type} />
+                                              </span>
+                                              <span class="text-[7.5px] font-bold leading-tight truncate mt-0.5">
+                                                {s.label}
+                                              </span>
+                                            </button>
+                                          );
+                                        }}
+                                      </For>
+                                    </div>
+                                  </div>
                                 );
                               }}
                             </For>
