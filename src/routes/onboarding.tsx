@@ -89,31 +89,38 @@ export default function Onboarding() {
       <Title>Complete your profile — FOSS Onam Games</Title>
 
       <div class="w-full max-w-lg space-y-6">
-        <section class="space-y-1">
-          <h1 class="text-3xl font-bold tracking-tight">Almost there</h1>
-          <p class="text-muted">Tell us a little about yourself.</p>
+        <section class="space-y-2">
+          <h1 class="rule">Almost there</h1>
+          <p class="font-semibold">
+            Tell us who you are so the leaderboard knows who to embarrass.
+          </p>
+          <p class="comment">two required fields. the rest is so we can tag you when you win.</p>
         </section>
 
         <Show when={message()}>
-          <p class="rounded border border-ok/30 bg-ok/10 px-3 py-2 text-sm text-ok">{message()}</p>
+          <div class="card pop-teal">
+            <p class="font-extrabold">{message()}</p>
+          </div>
         </Show>
 
         <form onSubmit={onSubmit} class="card space-y-4">
           <fieldset class="space-y-2 border-0 p-0">
-            <legend class="font-semibold">Avatar (optional)</legend>
+            <legend class="font-extrabold">Avatar (optional)</legend>
             <div class="flex items-center gap-3">
               <Show when={avatar()}>
                 <img
                   src={avatar()!}
                   alt="preview"
-                  class="h-16 w-16 rounded-full border border-line"
+                  class="h-16 w-16 rounded-full"
+                  style={{ border: "var(--ink-w) solid var(--ink)" }}
                 />
               </Show>
               <input
                 type="file"
                 accept="image/*"
                 onChange={(e) => onAvatarChange(e.currentTarget.files?.[0])}
-                class="text-sm text-muted"
+                class="text-sm"
+                style={{ color: "var(--ink-soft)" }}
               />
               <Show when={avatar()}>
                 <button
@@ -129,7 +136,7 @@ export default function Onboarding() {
           </fieldset>
 
           <div>
-            <label for="college" class="text-sm font-medium">
+            <label for="college" class="font-extrabold">
               College *
             </label>
             <select
@@ -146,13 +153,15 @@ export default function Onboarding() {
               </For>
             </select>
             <Show when={fieldError("college")}>
-              <p class="mt-1 text-sm text-danger">{fieldError("college")}</p>
+              <p class="mt-1 font-extrabold" style={{ color: "var(--pop-red)" }}>
+                {fieldError("college")}
+              </p>
             </Show>
           </div>
 
           <Show when={college() === "other"}>
             <div>
-              <label for="collegeOther" class="text-sm font-medium">
+              <label for="collegeOther" class="font-extrabold">
                 Where are you from? *
               </label>
               <input
@@ -163,18 +172,18 @@ export default function Onboarding() {
                 maxLength={80}
                 class="input"
               />
-              <p class="mt-1 text-xs text-muted">
-                This shows next to your name on the leaderboard.
-              </p>
+              <p class="comment">This shows next to your name on the leaderboard.</p>
               <Show when={fieldError("collegeOther")}>
-                <p class="mt-1 text-sm text-danger">{fieldError("collegeOther")}</p>
+                <p class="mt-1 font-extrabold" style={{ color: "var(--pop-red)" }}>
+                  {fieldError("collegeOther")}
+                </p>
               </Show>
             </div>
           </Show>
 
           <Show when={college() === "mec"}>
             <div>
-              <label for="branch" class="text-sm font-medium">
+              <label for="branch" class="font-extrabold">
                 Branch *
               </label>
               <select
@@ -191,13 +200,15 @@ export default function Onboarding() {
                 </For>
               </select>
               <Show when={fieldError("branch")}>
-                <p class="mt-1 text-sm text-danger">{fieldError("branch")}</p>
+                <p class="mt-1 font-extrabold" style={{ color: "var(--pop-red)" }}>
+                  {fieldError("branch")}
+                </p>
               </Show>
             </div>
 
             <Show when={branch() === "other"}>
               <div>
-                <label for="branchOther" class="text-sm font-medium">
+                <label for="branchOther" class="font-extrabold">
                   Which branch? *
                 </label>
                 <input
@@ -209,13 +220,15 @@ export default function Onboarding() {
                   class="input"
                 />
                 <Show when={fieldError("branchOther")}>
-                  <p class="mt-1 text-sm text-danger">{fieldError("branchOther")}</p>
+                  <p class="mt-1 font-extrabold" style={{ color: "var(--pop-red)" }}>
+                    {fieldError("branchOther")}
+                  </p>
                 </Show>
               </div>
             </Show>
 
             <div>
-              <label for="batch" class="text-sm font-medium">
+              <label for="batch" class="font-extrabold">
                 Batch *
               </label>
               <select
@@ -230,13 +243,15 @@ export default function Onboarding() {
                 <For each={batchValues}>{(value) => <option value={value}>{value}</option>}</For>
               </select>
               <Show when={fieldError("batch")}>
-                <p class="mt-1 text-sm text-danger">{fieldError("batch")}</p>
+                <p class="mt-1 font-extrabold" style={{ color: "var(--pop-red)" }}>
+                  {fieldError("batch")}
+                </p>
               </Show>
             </div>
           </Show>
 
           <div>
-            <label for="div" class="text-sm font-medium">
+            <label for="div" class="font-extrabold">
               Division
             </label>
             <select
@@ -252,8 +267,9 @@ export default function Onboarding() {
           </div>
 
           <div>
-            <label for="instagram" class="text-sm font-medium">
-              Instagram handle <span class="text-muted">(optional, for winner tags)</span>
+            <label for="instagram" class="font-extrabold">
+              Instagram handle{" "}
+              <span style={{ color: "var(--ink-soft)" }}>(optional, for winner tags)</span>
             </label>
             <input
               id="instagram"
@@ -264,13 +280,15 @@ export default function Onboarding() {
               class="input"
             />
             <Show when={fieldError("instagramHandle")}>
-              <p class="mt-1 text-sm text-danger">{fieldError("instagramHandle")}</p>
+              <p class="mt-1 font-extrabold" style={{ color: "var(--pop-red)" }}>
+                {fieldError("instagramHandle")}
+              </p>
             </Show>
           </div>
 
           <div>
-            <label for="whatsapp" class="text-sm font-medium">
-              WhatsApp number <span class="text-muted">(optional)</span>
+            <label for="whatsapp" class="font-extrabold">
+              WhatsApp number <span style={{ color: "var(--ink-soft)" }}>(optional)</span>
             </label>
             <input
               id="whatsapp"
@@ -281,7 +299,9 @@ export default function Onboarding() {
               class="input"
             />
             <Show when={fieldError("whatsappNumber")}>
-              <p class="mt-1 text-sm text-danger">{fieldError("whatsappNumber")}</p>
+              <p class="mt-1 font-extrabold" style={{ color: "var(--pop-red)" }}>
+                {fieldError("whatsappNumber")}
+              </p>
             </Show>
           </div>
 

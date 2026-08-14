@@ -1,9 +1,14 @@
 import { useLocation } from "@solidjs/router";
 import { For } from "solid-js";
 
+/**
+ * Three items, short labels. A phone header has room for the wordmark and about
+ * this much; anything more wraps and the sticky bar eats the screen.
+ */
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/leaderboard", label: "Board" },
+  { href: "/code-a-pookalam", label: "Pookalam" },
 ];
 
 /**

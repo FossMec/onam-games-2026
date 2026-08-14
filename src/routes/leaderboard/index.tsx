@@ -40,7 +40,19 @@ function formatMetric(entry: DailyEntry): string {
   }
 }
 
-const medal = (rank: number) => (rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : "");
+/**
+ * Rank colour. Emoji medals were the first attempt and looked wrong against
+ * ink-drawn everything else — a flat pop fill in a bordered chip is the same
+ * information in the page's own language.
+ */
+const rankPop = (rank: number): string =>
+  rank === 1
+    ? "var(--pop-yellow)"
+    : rank === 2
+      ? "var(--paper-3)"
+      : rank === 3
+        ? "var(--pop-red)"
+        : "transparent";
 
 export default function Leaderboard() {
   const games = createAsync(() => getGames());
@@ -93,49 +105,78 @@ export default function Leaderboard() {
     <main class="container space-y-6 py-8">
       <Title>Leaderboard — FOSS Onam Games</Title>
 
-      <section class="space-y-1">
-        <h1 class="text-3xl font-bold tracking-tight">Leaderboard</h1>
-        <p class="text-muted">
+      <section class="space-y-2">
+        <h1 class="rule">Leaderboard</h1>
+        <p class="font-semibold">
           {view() === null
             ? "Every game is worth up to 1050 points, awarded by where you finished in that day's field — so a fast jigsaw and a high jump are worth the same thing."
             : "Ranked in this game's own units. Points are awarded from your rank when the day closes."}
         </p>
       </section>
 
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <select
-          value={view() ?? ""}
-          onChange={(e) => setView(e.currentTarget.value || null)}
-          class="input sm:w-auto"
+      {/*
+        Day chips rather than a dropdown. Seven options is right at the edge
+        where a select stops being faster than tapping, and the chips also show
+        which days exist at a glance — which a collapsed select cannot.
+      */}
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          class="badge"
+          style={{
+            "--pop": view() === null ? "var(--pop-teal)" : "var(--paper-2)",
+            cursor: "pointer",
+          }}
+          onClick={() => setView(null)}
         >
-          <option value="">Global</option>
-          <For each={games()}>
-            {(game) => (
-              <option value={game.id}>
-                Day {game.day} — {game.title}
-              </option>
-            )}
-          </For>
-        </select>
-        <button type="button" onClick={refresh} disabled={cooldownLeft() > 0} class="btn-ghost">
+          Overall
+        </button>
+        <For each={games()}>
+          {(game) => (
+            <button
+              type="button"
+              class="badge"
+              style={{
+                "--pop": view() === game.id ? "var(--pop-teal)" : "var(--paper-2)",
+                cursor: "pointer",
+              }}
+              onClick={() => setView(game.id)}
+            >
+              Day {game.day}
+            </button>
+          )}
+        </For>
+        <button
+          type="button"
+          onClick={refresh}
+          disabled={cooldownLeft() > 0}
+          class="btn-ghost ml-auto"
+        >
           {cooldownLeft() > 0 ? `Refresh in ${Math.ceil(cooldownLeft() / 1000)}s` : "Refresh"}
         </button>
       </div>
 
-      <Show when={selectedGame()?.status === "closed"}>
-        <p class="rounded border border-warn/30 bg-warn/10 px-3 py-2 text-sm text-warn">
-          This game has ended. Late submissions count for the global board only.
+      <Show when={selectedGame()}>
+        <p class="font-extrabold" style={{ "font-family": "var(--font-stack-display)" }}>
+          Day {selectedGame()!.day} — {selectedGame()!.title}
         </p>
       </Show>
 
+      <Show when={selectedGame()?.status === "closed"}>
+        <p class="comment">that one's over. late submissions still count for the overall board.</p>
+      </Show>
+
       <Show when={daily() && !daily()!.settled && daily()!.entries.length > 0}>
-        <p class="rounded border border-line bg-surface-3 px-3 py-2 text-sm text-muted">
-          Still live — points shown are a projection and settle when the day closes.
+        <p class="comment">
+          still live — the points are a projection and settle when the day closes.
         </p>
       </Show>
 
       <Show when={isEmpty()}>
-        <p class="text-muted">No results yet.</p>
+        <div class="card pop-yellow text-center">
+          <p class="font-extrabold">Nobody has finished yet.</p>
+          <p class="comment">be the first. it counts for exactly as much as being the last.</p>
+        </div>
       </Show>
 
       {/* ------------------------------------------------------------ daily */}
@@ -143,7 +184,7 @@ export default function Leaderboard() {
         <div class="card overflow-x-auto">
           <table>
             <thead>
-              <tr class="text-left text-xs uppercase tracking-widest text-muted">
+              <tr class="text-left text-xs font-extrabold tracking-widest uppercase">
                 <th class="py-2">#</th>
                 <th class="py-2">Player</th>
                 <th class="py-2">College</th>
@@ -157,31 +198,33 @@ export default function Leaderboard() {
             <tbody>
               <For each={daily()!.entries}>
                 {(entry) => (
-                  <tr class={`border-t border-line ${entry.isMe ? "bg-brand-soft" : ""}`}>
+                  <tr style={{ background: entry.isMe ? "var(--pop-yellow)" : "transparent" }}>
                     <td class="py-2">
-                      <span class="inline-flex min-w-6 items-center gap-1">
-                        {medal(entry.rank)}
-                        {entry.rank}
-                      </span>
+                      <RankChip rank={entry.rank} />
                     </td>
-                    <td class="py-2 font-medium">
+                    <td class="py-2 font-extrabold">
                       {entry.name}
-                      {entry.isMe && <span class="text-xs text-brand"> · you</span>}
+                      {entry.isMe && <span class="comment"> that's you</span>}
                     </td>
-                    <td class="py-2 text-muted">
+                    <td class="py-2 text-sm" style={{ color: "var(--ink-soft)" }}>
                       {entry.college ?? "-"}
                       {entry.branch ? ` · ${entry.branch}` : ""}
                     </td>
                     <Show when={daily()!.metric === "score"}>
-                      <td class="py-2 text-right font-mono tabular-nums text-muted">
+                      <td
+                        class="py-2 text-right font-mono tabular-nums"
+                        style={{ color: "var(--ink-soft)" }}
+                      >
                         {entry.attemptsUsed}
                       </td>
                     </Show>
-                    <td class="py-2 text-right font-mono tabular-nums">{formatMetric(entry)}</td>
+                    <td class="py-2 text-right font-mono font-bold tabular-nums">
+                      {formatMetric(entry)}
+                    </td>
                     <td
-                      class={`py-2 text-right font-mono tabular-nums ${
-                        entry.isProvisional ? "text-muted" : "text-brand"
-                      }`}
+                      class="py-2 text-right font-mono font-extrabold tabular-nums"
+                      style={{ color: entry.isProvisional ? "var(--ink-soft)" : "var(--ink)" }}
+                      title={entry.isProvisional ? "Projected — settles when the day closes" : ""}
                     >
                       {entry.points}
                       {entry.isProvisional ? "*" : ""}
@@ -194,11 +237,12 @@ export default function Leaderboard() {
         </div>
 
         <Show when={daily()!.myEntry && !daily()!.entries.some((e) => e.isMe)}>
-          <p class="text-sm text-muted">
-            Your rank: <span class="font-semibold text-ink">#{daily()!.myEntry!.rank}</span> of{" "}
-            {daily()!.fieldSize} · {formatMetric(daily()!.myEntry!)} ·{" "}
-            <span class="font-semibold text-ink">{daily()!.myEntry!.points} pts</span>
-          </p>
+          <div class="card pop-yellow">
+            <p class="font-extrabold">
+              You: #{daily()!.myEntry!.rank} of {daily()!.fieldSize} ·{" "}
+              {formatMetric(daily()!.myEntry!)} · {daily()!.myEntry!.points} pts
+            </p>
+          </div>
         </Show>
       </Show>
 
@@ -207,7 +251,7 @@ export default function Leaderboard() {
         <div class="card overflow-x-auto">
           <table>
             <thead>
-              <tr class="text-left text-xs uppercase tracking-widest text-muted">
+              <tr class="text-left text-xs font-extrabold tracking-widest uppercase">
                 <th class="py-2">#</th>
                 <th class="py-2">Player</th>
                 <th class="py-2">College</th>
@@ -219,23 +263,26 @@ export default function Leaderboard() {
             <tbody>
               <For each={global()!.entries}>
                 {(entry) => (
-                  <tr class={`border-t border-line ${entry.isMe ? "bg-brand-soft" : ""}`}>
+                  <tr style={{ background: entry.isMe ? "var(--pop-yellow)" : "transparent" }}>
                     <td class="py-2">
-                      <span class="inline-flex min-w-6 items-center gap-1">
-                        {medal(entry.rank)}
-                        {entry.rank}
-                      </span>
+                      <RankChip rank={entry.rank} />
                     </td>
-                    <td class="py-2 font-medium">
+                    <td class="py-2 font-extrabold">
                       {entry.name}
-                      {entry.isMe && <span class="text-xs text-brand"> · you</span>}
+                      {entry.isMe && <span class="comment"> that's you</span>}
                     </td>
-                    <td class="py-2 text-muted">{entry.college ?? "-"}</td>
+                    <td class="py-2 text-sm" style={{ color: "var(--ink-soft)" }}>
+                      {entry.college ?? "-"}
+                    </td>
                     <td class="py-2 text-right font-mono tabular-nums">{entry.gamesCompleted}</td>
-                    <td class="py-2 text-right font-mono tabular-nums text-muted">
+                    <td
+                      class="py-2 text-right font-mono tabular-nums"
+                      style={{ color: "var(--ink-soft)" }}
+                      title="Bonus for playing consecutive days"
+                    >
                       {entry.streakBonus > 0 ? `+${entry.streakBonus}` : "—"}
                     </td>
-                    <td class="py-2 text-right font-mono tabular-nums font-semibold text-brand">
+                    <td class="py-2 text-right font-mono font-extrabold tabular-nums">
                       {entry.totalPoints}
                     </td>
                   </tr>
@@ -246,12 +293,35 @@ export default function Leaderboard() {
         </div>
 
         <Show when={global()!.myEntry && !global()!.entries.some((e) => e.isMe)}>
-          <p class="text-sm text-muted">
-            Your rank: <span class="font-semibold text-ink">#{global()!.myEntry!.rank}</span> ·{" "}
-            <span class="font-semibold text-ink">{global()!.myEntry!.totalPoints} pts</span>
-          </p>
+          <div class="card pop-yellow">
+            <p class="font-extrabold">
+              You: #{global()!.myEntry!.rank} · {global()!.myEntry!.totalPoints} pts
+            </p>
+          </div>
         </Show>
       </Show>
     </main>
+  );
+}
+
+/**
+ * Rank marker. The top three get a filled chip; everyone else gets the number
+ * on paper, so the podium reads instantly without three more colours competing
+ * down the whole table.
+ */
+function RankChip(props: { rank: number }) {
+  return (
+    <span
+      class="inline-grid place-items-center font-mono font-extrabold tabular-nums"
+      style={{
+        "min-width": "2rem",
+        padding: "0.1rem 0.4rem",
+        background: rankPop(props.rank),
+        border: props.rank <= 3 ? "var(--ink-w) solid var(--ink)" : "none",
+        "border-radius": "999px",
+      }}
+    >
+      {props.rank}
+    </span>
   );
 }
