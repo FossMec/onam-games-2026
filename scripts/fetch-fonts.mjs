@@ -49,6 +49,10 @@ const FONTS = [
   // Margin scribbles / the sarcasm channel. Single weight: a marker hand is
   // never bolded, and the variable range costs 3x the bytes for nothing.
   { out: "caveat.woff2", query: "Caveat:wght@400", subsets: ["latin"] },
+
+  // Authentic handwritten letter font (Kalam)
+  { out: "kalam-400.woff2", query: "Kalam:wght@400", subsets: ["latin"] },
+  { out: "kalam-700.woff2", query: "Kalam:wght@700", subsets: ["latin"] },
 ];
 
 /**

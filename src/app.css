@@ -131,6 +131,7 @@
   --font-stack-mono: "Space Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --font-stack-comic: "Bangers", "Baloo Chettan 2", Impact, fantasy;
   --font-stack-hand: "Caveat", "Comic Sans MS", cursive;
+  --font-stack-letter: "Kalam", "Caveat", "Comic Sans MS", cursive;
 }
 
 @media (min-width: 640px) {
@@ -199,6 +200,20 @@
   font-family: "Caveat";
   src: url("/fonts/caveat.woff2") format("woff2");
   font-weight: 400;
+  font-display: swap;
+}
+
+/* Handwritten letter text — Kalam. */
+@font-face {
+  font-family: "Kalam";
+  src: url("/fonts/kalam-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Kalam";
+  src: url("/fonts/kalam-700.woff2") format("woff2");
+  font-weight: 700;
   font-display: swap;
 }
 
