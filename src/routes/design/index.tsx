@@ -1,18 +1,17 @@
 import { Title } from "@solidjs/meta";
 import { For, createSignal } from "solid-js";
 import { Bubble, Halftone, ShoutBurst } from "~/components/art/Burst";
-import { Confetti } from "~/components/art/Confetti";
-
+import { Confetti, ConfettiShape } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
-import { SHOUT_COLOR } from "~/lib/shouts";
+import { SHOUT_COLOR, type ShoutMood } from "~/lib/shouts";
 import { SPRITE_REGISTRY, type SpriteName } from "~/lib/sprites";
 
 /**
  * The FOSS Onam Design Language & System Specification.
  *
- * Every example on this page is the live, working component rather than a static mockup —
- * tokens are live CSS custom properties, shouts are reactive components, and the halftone
- * uses the exact radial gradient algorithm from the core layout.
+ * Every example on this page is a live, working component —
+ * tokens are live CSS custom properties, shouts are reactive SVG components,
+ * and confetti motifs demonstrate the Memphis × Onam geometric system.
  */
 
 const PALETTE = [
@@ -77,6 +76,86 @@ const FONTS = [
   },
 ];
 
+const MEMPHIS_MOTIFS = [
+  {
+    name: "Vallam (Snake Boat)",
+    shape: "vallam" as const,
+    color: "var(--pop-red)",
+    description:
+      "Angular dynamic zigzag representing the Aranmula snake boat racing through river ripples.",
+  },
+  {
+    name: "Pookalam (Flower Carpet)",
+    shape: "pookalam" as const,
+    color: "var(--pop-yellow)",
+    description: "Concentric floral circles echoing the sacred geometry of the Onam floral carpet.",
+  },
+  {
+    name: "Muthukuda (Royal Parasol)",
+    shape: "muthukuda" as const,
+    color: "var(--pop-purple)",
+    description:
+      "Geometric half-circle with pendant bells styled after temple procession umbrellas.",
+  },
+  {
+    name: "Ila (Banana Leaf)",
+    shape: "ila" as const,
+    color: "var(--pop-teal)",
+    description: "Organic rounded trapezoid representing the fresh plantain leaf of the Onasadya.",
+  },
+  {
+    name: "Thengu (Coconut Palm)",
+    shape: "thengu" as const,
+    color: "var(--pop-blue)",
+    description:
+      "Curved Memphis squiggle symbolizing Kerala coconut palms swaying in the coastal breeze.",
+  },
+  {
+    name: "Pattom (Festival Kite)",
+    shape: "kite" as const,
+    color: "var(--pop-pink)",
+    description: "Tilted diamond kite floating across the festival sky.",
+  },
+];
+
+const ALL_SHOUTS: { mood: ShoutMood; label: string; shouts: string[] }[] = [
+  {
+    mood: "triumph",
+    label: "Triumph (#1 Rank / Personal Best)",
+    shouts: ["THEE THANNE NEE!", "THAKARPPAN!", "ADIPOLI!"],
+  },
+  {
+    mood: "great",
+    label: "Great (High Score / Victory)",
+    shouts: ["PWOLI!", "ADIPOLI!", "THAKARPPAN!"],
+  },
+  {
+    mood: "decent",
+    label: "Decent (Solid Attempt)",
+    shouts: ["KOLLALO ATH!", "OK-ish!"],
+  },
+  {
+    mood: "mid",
+    label: "Mid-Table (Encouraging Poke)",
+    shouts: ["MWONEEE...", "PAAVAM."],
+  },
+  {
+    mood: "fail",
+    label: "Fail (Game Over / Defeat)",
+    shouts: ["DWAAAA...", "AYYO"],
+  },
+  {
+    mood: "confused",
+    label: "Confused (404 / Anomaly)",
+    shouts: ["ENTHUVA!", "ENTHUVA IDHU?"],
+  },
+  {
+    mood: "late",
+    label: "Late (After Deadline)",
+    shouts: ["LATE AAYI", "AYYO"],
+  },
+];
+
 const RULES = [
   {
     title: "Zero Drop Shadows. Inked Depth Only.",
@@ -129,7 +208,7 @@ export default function DesignLanguage() {
     for (const [, info] of spriteEntries) {
       for (const t of info.tags) set.add(t);
     }
-    return ["all", ...Array.from(set)];
+    return ["all", ...Array.from(set).sort()];
   };
 
   const filteredSprites = () => {
@@ -165,7 +244,7 @@ export default function DesignLanguage() {
               FOSS MEC Design Specs
             </span>
           </div>
-          <h1 class="text-3xl sm:text-5xl font-black">Pop Art × Comic Book × Onam</h1>
+          <h1 class="text-3xl sm:text-5xl font-black">Pop Art × Comic Book × Memphis × Onam</h1>
           <p
             class="text-base sm:text-lg font-extrabold"
             style={{ "font-family": "var(--font-stack-display)" }}
@@ -181,25 +260,60 @@ export default function DesignLanguage() {
         <div class="card card-plain p-6 space-y-4 bg-[var(--paper-2)]">
           <p class="text-base sm:text-lg font-semibold leading-relaxed">
             FOSS Onam Games combines <strong>90s comic book print aesthetics</strong>,{" "}
-            <strong>Memphis design geometry</strong>, and{" "}
-            <strong>traditional Kerala Onam iconography</strong> into a cohesive, high-energy
-            interactive experience.
+            <strong>1980s Memphis geometric movement</strong>, and{" "}
+            <strong>traditional Kerala Onam heritage</strong> into an authentic, high-octane
+            celebration.
           </p>
           <p
             class="text-sm sm:text-base font-semibold leading-relaxed"
             style={{ color: "var(--ink-soft)" }}
           >
-            Rather than relying on generic modern dashboards with blurred shadows and dark-violet
-            accents, every screen is treated like an authentic inked comic strip printed on warm
-            newsprint paper. Tactile buttons, expressive typography, and culturally resonant
-            Manglish reactions create an environment that feels fun and immediately accessible.
+            Instead of standard corporate dark modes or generic cookie-cutter templates, the UI is
+            treated as an inked, tactile comic book printed on warm newsprint cream. Tactile
+            physical buttons, expressive typography, Memphis confetti geometry, and native Manglish
+            shouts create an atmosphere of pure festive joy.
           </p>
           <Bubble color="var(--pop-yellow)">
             <p class="font-extrabold text-sm sm:text-base">
-              The core principle: If an interface element doesn't spark delight or feel satisfying
-              to interact with, it doesn't belong in the games arena.
+              The core design benchmark: If an interface element doesn't spark joy or feel
+              satisfying to interact with, it doesn't belong in the games arena.
             </p>
           </Bubble>
+        </div>
+      </Section>
+
+      {/* Memphis Design × Onam Iconography Section */}
+      <Section title="Memphis Geometric Movement × Kerala Onam DNA">
+        <div class="space-y-4">
+          <p class="font-semibold text-sm sm:text-base">
+            The 1980s Memphis design style is famous for bold abstract geometric squiggles, zigzags,
+            and confetti. We reinvented Memphis geometry so that every single floating shape is an
+            authentic Kerala cultural artifact in disguise:
+          </p>
+
+          <div class="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+            <For each={MEMPHIS_MOTIFS}>
+              {(motif) => (
+                <div class="card card-plain p-4 flex items-start gap-3.5 bg-[var(--paper-2)]">
+                  <div
+                    class="w-12 h-12 rounded-lg grid place-items-center shrink-0 border-2 border-[var(--ink)] bg-[var(--paper)]"
+                    style={{ "box-shadow": "2px 2px 0 var(--ink)" }}
+                  >
+                    <div class="w-7 h-7">
+                      <ConfettiShape kind={motif.shape} color={motif.color} />
+                    </div>
+                  </div>
+
+                  <div class="min-w-0 flex-1">
+                    <p class="font-extrabold text-base">{motif.name}</p>
+                    <p class="text-xs font-semibold pt-1 leading-relaxed text-[var(--ink-soft)]">
+                      {motif.description}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </For>
+          </div>
         </div>
       </Section>
 
@@ -212,25 +326,22 @@ export default function DesignLanguage() {
             whale carrying a flower pookalam, and Ferris crab with a Kerala caparison.
           </p>
 
-          {/* Filter Chips */}
+          {/* Filter Chips (Correct reactive selection) */}
           <div class="flex items-center gap-1.5 flex-wrap">
             <For each={allTags()}>
-              {(tag) => {
-                const isSel = tag === selectedTag();
-                return (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTag(tag)}
-                    class={`px-3 py-1 rounded-full text-xs font-black uppercase transition-all cursor-pointer ${
-                      isSel
-                        ? "bg-[var(--pop-yellow)] border-2 border-[var(--ink)] scale-105"
-                        : "bg-[var(--paper-2)] border border-[var(--ink)]/30 hover:border-[var(--ink)]"
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                );
-              }}
+              {(tag) => (
+                <button
+                  type="button"
+                  onClick={() => setSelectedTag(tag)}
+                  class={`px-3 py-1 rounded-full text-xs font-black uppercase transition-all cursor-pointer ${
+                    selectedTag() === tag
+                      ? "bg-[var(--pop-yellow)] border-2 border-[var(--ink)] scale-105 shadow-xs"
+                      : "bg-[var(--paper-2)] border border-[var(--ink)]/30 hover:border-[var(--ink)] hover:bg-[var(--paper)]"
+                  }`}
+                >
+                  {tag}
+                </button>
+              )}
             </For>
           </div>
 
@@ -388,24 +499,48 @@ export default function DesignLanguage() {
         </div>
       </Section>
 
-      {/* Manglish Result Shouts */}
-      <Section title="Manglish Onomatopoeia Reaction System">
-        <p class="font-semibold text-sm sm:text-base">
-          Every win, close attempt, or game over renders an authentic Manglish shout burst styled
-          after vintage action comics:
-        </p>
-        <div class="grid gap-4 sm:grid-cols-3">
-          <For each={["THAKARPPAN!", "MWONEEE...", "DWAAAA..."]}>
-            {(text, i) => (
-              <div class="card card-plain grid place-items-center py-6">
-                <ShoutBurst
-                  text={text}
-                  color={[SHOUT_COLOR.triumph, SHOUT_COLOR.mid, SHOUT_COLOR.fail][i()]}
-                  seed={text}
-                />
-              </div>
-            )}
-          </For>
+      {/* Complete Manglish Shouting Catalog */}
+      <Section title="Complete Manglish Onomatopoeia Shout Catalog">
+        <div class="space-y-4">
+          <p class="font-semibold text-sm sm:text-base">
+            Every win, personal best, mid attempt, game over, or anomaly triggers an authentic
+            Manglish action shout burst in Bangers. Below is the complete catalog of all 13 shouts
+            across 7 distinct moods:
+          </p>
+
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <For each={ALL_SHOUTS}>
+              {(group) => (
+                <div class="card card-plain p-4 space-y-3 bg-[var(--paper-2)] flex flex-col justify-between">
+                  <div>
+                    <span
+                      class="badge text-[10px] font-black uppercase"
+                      style={{ "--pop": SHOUT_COLOR[group.mood] }}
+                    >
+                      {group.mood}
+                    </span>
+                    <p class="text-xs font-extrabold pt-1" style={{ color: "var(--ink-soft)" }}>
+                      {group.label}
+                    </p>
+                  </div>
+
+                  <div class="flex flex-wrap items-center justify-center gap-2 py-2">
+                    <For each={group.shouts}>
+                      {(shoutWord) => (
+                        <div class="p-2 grid place-items-center">
+                          <ShoutBurst
+                            text={shoutWord}
+                            color={SHOUT_COLOR[group.mood]}
+                            seed={shoutWord}
+                          />
+                        </div>
+                      )}
+                    </For>
+                  </div>
+                </div>
+              )}
+            </For>
+          </div>
         </div>
       </Section>
 

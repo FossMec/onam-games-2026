@@ -55,8 +55,9 @@ function rng(seed: string) {
   };
 }
 
-function Shape(props: { kind: ShapeKind; color: string }) {
+export function ConfettiShape(props: { kind: ShapeKind; color: string }) {
   const stroke = "var(--ink)";
+
   return (
     <svg viewBox="0 0 40 40" width="100%" height="100%" aria-hidden="true">
       {props.kind === "vallam" && (
@@ -175,7 +176,7 @@ export function Confetti(props: ConfettiProps) {
               opacity: 0.9,
             }}
           >
-            <Shape kind={piece.kind} color={piece.color} />
+            <ConfettiShape kind={piece.kind} color={piece.color} />
           </div>
         )}
       </For>
