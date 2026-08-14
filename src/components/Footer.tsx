@@ -72,16 +72,19 @@ export function Footer() {
           </a>
         </div>
 
-        <p class="text-sm sm:text-base font-extrabold leading-relaxed text-[var(--ink)]">
-          Seven days of games. One week of Onam. Designed and engineered at fossmec by{" "}
-          <span class="text-[var(--ink)]">Dijith Dinesh</span> ·{" "}
-          <a
-            href="/design"
-            class="underline decoration-2 underline-offset-4 hover:text-[var(--pop-teal-deep)] transition-colors"
-          >
-            Design System
-          </a>
-        </p>
+        <div class="space-y-1">
+          <p class="text-sm sm:text-base font-extrabold leading-relaxed text-[var(--ink)]">
+            Seven days of games. One week of Onam. Designed for fossmec by Dijith Dinesh
+          </p>
+          <p class="text-xs sm:text-sm font-bold">
+            <a
+              href="/design"
+              class="underline decoration-2 underline-offset-4 text-[var(--ink)] opacity-80 hover:opacity-100 hover:text-[var(--pop-teal-deep)] transition-colors"
+            >
+              Learn about the design language →
+            </a>
+          </p>
+        </div>
 
         <p class="comment text-base">
           free as in freedom, free as in payasam. licensed under GPLv3 — fork the repo, not Maveli's
