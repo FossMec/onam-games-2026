@@ -1,11 +1,12 @@
 import { Title } from "@solidjs/meta";
 import { createAsync } from "@solidjs/router";
-import { For, Show } from "solid-js";
+import { For, Show, createSignal } from "solid-js";
 import { Countdown } from "~/components/Countdown";
 import { Bubble, Burst, Halftone } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
 import { EVENT, POOKALAM } from "~/lib/event-content";
-import { getMe, signOutAction } from "~/server/auth/actions";
+import { getMe } from "~/server/auth/actions";
+import { signOutAndReload } from "~/lib/sign-out";
 import { getGames } from "~/server/games/actions";
 
 /** Each day gets its own pop colour so the week reads as a strip of panels. */
@@ -31,6 +32,7 @@ function Section(props: { title: string; children: unknown; id?: string }) {
 export default function Home() {
   const games = createAsync(() => getGames());
   const me = createAsync(() => getMe());
+  const [signingOut, setSigningOut] = createSignal(false);
 
   const liveGame = () => games()?.find((g) => g.status === "live" || g.status === "tester");
   const nextGame = () => games()?.find((g) => g.status === "upcoming" && g.releaseAt);
@@ -122,8 +124,16 @@ export default function Home() {
             <a href="/leaderboard" class="btn-ghost">
               Leaderboard
             </a>
-            <button type="button" class="btn-ghost" onClick={() => signOutAction()}>
-              Sign out
+            <button
+              type="button"
+              class="btn-ghost"
+              disabled={signingOut()}
+              onClick={() => {
+                setSigningOut(true);
+                void signOutAndReload();
+              }}
+            >
+              {signingOut() ? "Signing out…" : "Sign out"}
             </button>
           </div>
         </div>
