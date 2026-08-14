@@ -1,8 +1,11 @@
 import { Title } from "@solidjs/meta";
-import { For } from "solid-js";
+import { For, createSignal } from "solid-js";
 import { Countdown } from "~/components/Countdown";
 import { Bubble, Burst, Halftone, ShoutBurst } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
+import { SpriteIcon } from "~/components/art/SpriteIcon";
+import { SpriteScatter } from "~/components/art/SpriteScatter";
+import { ALL_SPRITE_NAMES, SPRITE_REGISTRY } from "~/lib/sprites";
 import { SHOUT_COLOR, type ShoutMood } from "~/lib/shouts";
 
 /**
@@ -48,6 +51,7 @@ function Section(props: { title: string; children: unknown }) {
 
 export default function StyleGuide() {
   const releaseIn = new Date(Date.now() + 1000 * 60 * 60 * 30);
+  const [animMode, setAnimMode] = createSignal<"float" | "wobble" | "pulse" | "none">("float");
 
   return (
     <main class="container space-y-12 py-8">
@@ -57,7 +61,8 @@ export default function StyleGuide() {
         class="relative overflow-hidden rounded-lg p-6 text-center"
         style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--paper-2)" }}
       >
-        <Confetti seed="styleguide" count={10} animate />
+        <Confetti seed="styleguide" count={6} animate />
+        <SpriteScatter seed="sg-spr" count={5} animate minSize={32} maxSize={48} opacity={0.75} />
         <div class="art-over space-y-2">
           <p class="wordmark text-3xl" data-text="STYLE GUIDE">
             STYLE GUIDE
@@ -65,6 +70,70 @@ export default function StyleGuide() {
           <p class="comment">if it isn't on this page, it doesn't exist</p>
         </div>
       </section>
+
+      {/* ------------------------------------------------ FOSS Onam Sprites */}
+      <Section title="FOSS × Onam Sprites & Animated Icons">
+        <div class="card card-plain space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="font-extrabold text-lg">31 Transparent Comic Sprites</p>
+              <p class="text-sm" style={{ color: "var(--ink-soft)" }}>
+                Extracted with contour-preserving alpha mask. Hover any sprite to test wobble.
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold">Animation:</span>
+              <button
+                type="button"
+                class={`badge cursor-pointer ${animMode() === "float" ? "pop-teal" : ""}`}
+                onClick={() => setAnimMode("float")}
+              >
+                Float
+              </button>
+              <button
+                type="button"
+                class={`badge cursor-pointer ${animMode() === "pulse" ? "pop-pink" : ""}`}
+                onClick={() => setAnimMode("pulse")}
+              >
+                Pulse
+              </button>
+              <button
+                type="button"
+                class={`badge cursor-pointer ${animMode() === "none" ? "pop-yellow" : ""}`}
+                onClick={() => setAnimMode("none")}
+              >
+                Static
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-6">
+            <For each={ALL_SPRITE_NAMES}>
+              {(name) => {
+                const item = SPRITE_REGISTRY[name];
+                return (
+                  <div
+                    class="card p-3 text-center flex flex-col items-center justify-between gap-2 group hover:border-[var(--pop-teal)]"
+                    style={{ background: "var(--paper-2)" }}
+                  >
+                    <div class="h-16 w-16 flex items-center justify-center">
+                      <SpriteIcon name={name} size={56} animate={animMode()} interactive />
+                    </div>
+                    <div class="w-full">
+                      <p class="text-xs font-extrabold truncate" title={item.label}>
+                        {name}
+                      </p>
+                      <span class="badge text-[10px] scale-90 inline-block">
+                        {item.sheet === "standalone" ? "emblem" : `sheet ${item.sheet}`}
+                      </span>
+                    </div>
+                  </div>
+                );
+              }}
+            </For>
+          </div>
+        </div>
+      </Section>
 
       <Section title="Colour">
         <div class="grid grid-cols-3 gap-3 sm:grid-cols-5">

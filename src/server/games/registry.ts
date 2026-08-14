@@ -10,7 +10,7 @@ import * as wend from "./impl/wend";
  * so dropping in the real pookalam is a DB edit, not a deploy. Regenerate the
  * placeholder with `node scripts/make-pookalam.mjs`.
  */
-const DEFAULT_POOKALAM = "/pookalam-placeholder.svg";
+const DEFAULT_POOKALAM = "/pookalam.jpeg";
 
 /**
  * Tokens get typed off a phone screen, read off paper, and pasted out of URLs.

@@ -68,7 +68,7 @@ const games = [
     // near the edges (a plain border makes the corner pieces pure guesswork).
     // A more symmetric design is a HARDER puzzle, so revisit `minPlausibleMs`
     // for the jigsaw in src/server/games/registry.ts when you change it.
-    assets: { imageUrl: "/pookalam-placeholder.svg" },
+    assets: { imageUrl: "/pookalam.jpeg" },
   },
   {
     day: 3,

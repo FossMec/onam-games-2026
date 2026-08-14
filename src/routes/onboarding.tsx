@@ -1,6 +1,7 @@
 import { Title } from "@solidjs/meta";
 import { useNavigate } from "@solidjs/router";
 import { For, Show, createSignal } from "solid-js";
+import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { fileToWebpDataUrl } from "~/lib/avatar";
 import { branchValues, batchValues, collegeValues, divValues } from "~/lib/profile";
 import { submitOnboarding, uploadAvatarAction } from "~/server/auth/actions";
@@ -90,7 +91,10 @@ export default function Onboarding() {
 
       <div class="w-full max-w-lg space-y-6">
         <section class="space-y-2">
-          <h1 class="rule">Almost there</h1>
+          <div class="flex items-center gap-3">
+            <SpriteIcon name="tux-king" size={44} animate="float" interactive />
+            <h1 class="rule">Almost there</h1>
+          </div>
           <p class="font-semibold">
             Tell us who you are so the leaderboard knows who to embarrass.
           </p>
