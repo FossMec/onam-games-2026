@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Clock, HelpCircle } from "lucide-solid";
 import { For, Show, createEffect, createSignal } from "solid-js";
 
 import { Countdown } from "~/components/Countdown";
+import { MaveliLetter } from "~/components/MaveliLetter";
 import { Bubble, Burst, Halftone } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
@@ -731,6 +732,9 @@ export default function Home() {
           </For>
         </div>
       </Section>
+
+      {/* ---------------------------------------------------- royal letter from maveli */}
+      <MaveliLetter />
 
       {/* ---------------------------------------------------- how it works (8 items) */}
       <Section title="How it works" id="how-it-works">
