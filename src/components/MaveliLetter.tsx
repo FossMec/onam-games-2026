@@ -100,8 +100,8 @@ export function MaveliLetter() {
                 uptime: 1226y
               </div>
             </div>
-            <span class="comment text-[10px] text-center leading-tight">
-              Maveli compiling Gentoo in Patala.
+            <span class="comment text-xs font-bold text-center leading-tight mt-1 text-[var(--ink)] block">
+              Maveli compiling Linux with banana fibers in Patala.
             </span>
           </div>
 
