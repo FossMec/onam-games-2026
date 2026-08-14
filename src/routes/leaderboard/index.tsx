@@ -65,15 +65,38 @@ export default function Leaderboard() {
   const [lastRefresh, setLastRefresh] = createSignal(Date.now());
   const [now, setNow] = createSignal(Date.now());
 
-  // Auto-select the live game's day when loaded
-  createEffect(() => {
+  const currentActiveDay = () => {
     const list = games();
-    if (list && list.length > 0) {
-      const live = list.find((g) => g.status === "live" || g.status === "tester");
-      if (live) {
-        setSelectedDay(live.day);
-      }
-    }
+    if (!list || list.length === 0) return 1;
+
+    // 1. Live or tester game right now
+    const live = list.find((g) => g.status === "live" || g.status === "tester");
+    if (live) return live.day;
+
+    // 2. Most recent game that has released by date
+    const now = Date.now();
+    const released = list
+      .filter((g) => g.releaseAt && new Date(g.releaseAt).getTime() <= now)
+      .sort((a, b) => b.day - a.day);
+    if (released.length > 0) return released[0].day;
+
+    // 3. Fallback to latest closed game or Day 1
+    const closed = list.filter((g) => g.status === "closed").sort((a, b) => b.day - a.day);
+    if (closed.length > 0) return closed[0].day;
+
+    return 1;
+  };
+
+  // Only show days that have released / unlocked up to current active day
+  const availableDays = () => {
+    const maxDay = currentActiveDay();
+    return Array.from({ length: Math.max(1, maxDay) }, (_, i) => i + 1);
+  };
+
+  // Auto-select the current day's game when loaded
+  createEffect(() => {
+    const day = currentActiveDay();
+    setSelectedDay(day);
   });
 
   const selectedGame = () => games()?.find((g) => g.day === selectedDay()) ?? null;
@@ -125,14 +148,24 @@ export default function Leaderboard() {
   const topGlobalWinner = () => (global()?.entries.length ? global()!.entries[0] : null);
 
   const prevDay = () => {
+    const days = availableDays();
+    if (days.length <= 1) return;
     void startTransition(() => {
-      setSelectedDay((d) => (d > 1 ? d - 1 : 7));
+      setSelectedDay((d) => {
+        const idx = days.indexOf(d);
+        return idx > 0 ? days[idx - 1] : days[days.length - 1];
+      });
     });
   };
 
   const nextDay = () => {
+    const days = availableDays();
+    if (days.length <= 1) return;
     void startTransition(() => {
-      setSelectedDay((d) => (d < 7 ? d + 1 : 1));
+      setSelectedDay((d) => {
+        const idx = days.indexOf(d);
+        return idx >= 0 && idx < days.length - 1 ? days[idx + 1] : days[0];
+      });
     });
   };
 
@@ -207,18 +240,20 @@ export default function Leaderboard() {
           </button>
         </div>
 
-        {/* Daily Minimal Day Chips */}
+        {/* Daily Minimal Day Chips (Only showing unlocked / released dates) */}
         <Show when={tab() === "daily"}>
           <div class="flex items-center gap-1.5 flex-wrap justify-center">
-            <button
-              type="button"
-              onClick={prevDay}
-              class="w-7 h-7 rounded grid place-items-center bg-[var(--paper)] border border-[var(--ink-soft)]/40 hover:border-[var(--ink)] hover:bg-[var(--pop-yellow)] cursor-pointer transition-all shrink-0"
-              aria-label="Previous Day"
-            >
-              <ChevronLeft size={14} strokeWidth={2.5} />
-            </button>
-            <For each={[1, 2, 3, 4, 5, 6, 7]}>
+            <Show when={availableDays().length > 1}>
+              <button
+                type="button"
+                onClick={prevDay}
+                class="w-7 h-7 rounded grid place-items-center bg-[var(--paper)] border border-[var(--ink-soft)]/40 hover:border-[var(--ink)] hover:bg-[var(--pop-yellow)] cursor-pointer transition-all shrink-0"
+                aria-label="Previous Day"
+              >
+                <ChevronLeft size={14} strokeWidth={2.5} />
+              </button>
+            </Show>
+            <For each={availableDays()}>
               {(d) => {
                 const isSel = d === selectedDay();
                 return (
@@ -237,14 +272,16 @@ export default function Leaderboard() {
                 );
               }}
             </For>
-            <button
-              type="button"
-              onClick={nextDay}
-              class="w-7 h-7 rounded grid place-items-center bg-[var(--paper)] border border-[var(--ink-soft)]/40 hover:border-[var(--ink)] hover:bg-[var(--pop-yellow)] cursor-pointer transition-all shrink-0"
-              aria-label="Next Day"
-            >
-              <ChevronRight size={14} strokeWidth={2.5} />
-            </button>
+            <Show when={availableDays().length > 1}>
+              <button
+                type="button"
+                onClick={nextDay}
+                class="w-7 h-7 rounded grid place-items-center bg-[var(--paper)] border border-[var(--ink-soft)]/40 hover:border-[var(--ink)] hover:bg-[var(--pop-yellow)] cursor-pointer transition-all shrink-0"
+                aria-label="Next Day"
+              >
+                <ChevronRight size={14} strokeWidth={2.5} />
+              </button>
+            </Show>
           </div>
         </Show>
       </div>

@@ -86,7 +86,10 @@ export function Nav() {
               >
                 <button
                   type="button"
-                  onClick={() => setDropdownOpen((prev) => !prev)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDropdownOpen((prev) => !prev);
+                  }}
                   class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-extrabold transition-all cursor-pointer bg-[var(--paper-2)] hover:bg-[var(--pop-yellow)]"
                   style={{
                     border: "2px solid var(--ink)",
@@ -140,7 +143,10 @@ export function Nav() {
               >
                 <button
                   type="button"
-                  onClick={() => setDropdownOpen((prev) => !prev)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDropdownOpen((prev) => !prev);
+                  }}
                   class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-extrabold transition-all cursor-pointer bg-[var(--paper-2)] hover:bg-[var(--pop-yellow)]"
                   style={{
                     border: "2px solid var(--ink)",
@@ -163,7 +169,9 @@ export function Nav() {
         <Show when={dropdownOpen() && me()}>
           <div
             ref={(el) => (dropdownRef = el)}
+            onClick={(e) => e.stopPropagation()}
             class="absolute right-4 top-full mt-1.5 w-64 sm:w-72 rounded-lg p-3.5 bg-[var(--paper-2)] shadow-2xl z-50 space-y-3"
+
             style={{
               border: "var(--ink-w-bold) solid var(--ink)",
             }}
