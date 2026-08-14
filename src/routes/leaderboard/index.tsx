@@ -190,9 +190,7 @@ export default function Leaderboard() {
       </Show>
 
       <Show when={daily() && !daily()!.settled && daily()!.entries.length > 0}>
-        <p class="comment">
-          still live — the points are a projection and settle when the day closes.
-        </p>
+        <p class="comment">still live — positions can still move.</p>
       </Show>
 
       <Show when={isEmpty()}>
@@ -247,7 +245,7 @@ export default function Leaderboard() {
                     <td
                       class="py-2 text-right font-mono font-extrabold tabular-nums"
                       style={{ color: entry.isProvisional ? "var(--ink-soft)" : "var(--ink)" }}
-                      title={entry.isProvisional ? "Projected — settles when the day closes" : ""}
+                      title={entry.isProvisional ? "Not final while the day is still running" : ""}
                     >
                       {entry.points}
                       {entry.isProvisional ? "*" : ""}

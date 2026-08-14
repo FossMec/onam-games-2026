@@ -26,11 +26,11 @@ export const EVENT = {
     },
     {
       title: "Everyone gets the same puzzle",
-      body: "Same difficulty for everybody, shuffled so you can't win by copying a screenshot from the group chat.",
+      body: "Same puzzle, same difficulty, for everybody. Nobody gets an easier draw than you did.",
     },
     {
-      title: "The clock is ours",
-      body: "The timer runs on the server. Refresh, close the tab, throw your phone — it keeps counting.",
+      title: "The clock does not stop",
+      body: "Refresh, close the tab, throw your phone — the timer keeps counting. Finish the run you started.",
     },
     {
       title: "Points, not seconds",
@@ -53,11 +53,10 @@ export const EVENT = {
   ],
 
   rules: [
-    "One account per person. One account per device. We check both.",
-    "Don't script it. The server can tell, and it keeps receipts.",
+    "One account per person, one account per device.",
+    "Play it yourself. Don't automate it.",
     "Sharing answers ruins the day for everyone, including you, because it's ranked.",
-    "Getting caught means a warning, then a bench, then you're out.",
-    "Organisers and testers play early and never appear on your leaderboard.",
+    "Breaking these means a warning, then a bench, then you're out.",
   ],
 
   faq: [
@@ -103,7 +102,7 @@ export const POOKALAM = {
     "Any language, any framework, any renderer. Canvas, SVG, p5, turtle, shader, ASCII — your call.",
     "The output must be a pookalam: radial and symmetric. A gradient square is not a pookalam.",
     "Submit the source, not just the picture. We run it.",
-    "Original work only. We will notice if it's a lightly recoloured tutorial.",
+    "Original work only. A lightly recoloured tutorial is not your pookalam.",
   ],
 
   judging: [

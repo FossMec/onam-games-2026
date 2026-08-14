@@ -192,11 +192,12 @@ export const GAMES: readonly GameDef[] = [
     maxSubmissionBytes: 16_000,
     public: {
       title: "Wend",
-      tagline: "Words about software freedom, arranged to ruin your evening.",
-      hint: "Four groups. One of them is not what you think it is.",
+      tagline: "Six words, one grid, and absolutely no room to spare.",
+      hint: "If a word leaves a tile stranded, it's the wrong word.",
       howTo: [
-        "Find the groups hiding on the board.",
-        "Your board is presented differently to every player — a screenshot will not save you.",
+        "Tap a tile, then tap next to it to trace a word. Paths bend — up, down, left, right, never diagonally.",
+        "Six words are hiding: one of every length from three to eight letters.",
+        "Every tile belongs to exactly one word. Nothing may be left over.",
         "Fastest correct board wins.",
       ],
     },

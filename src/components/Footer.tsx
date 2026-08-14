@@ -1,9 +1,12 @@
 import { Confetti } from "./art/Confetti";
 
 /**
- * There was no footer at all before this. It closes the page, carries the
- * club credit, and is the natural home for the two lines of small print that
- * are also jokes.
+ * Closes the page and carries the club credit.
+ *
+ * It used to end on a line boasting that timers are server-side and that we
+ * would notice. Removed: naming what we check is a hint sheet for anyone
+ * planning to get around it, and players who are not cheating gain nothing
+ * from reading it.
  */
 export function Footer() {
   return (
@@ -25,9 +28,6 @@ export function Footer() {
         </p>
         <p class="comment">
           every font here is free software. so is the site. so is your soul, probably.
-        </p>
-        <p class="text-xs" style={{ color: "var(--ink-soft)" }}>
-          Timers are server-side. Yes, we checked. Yes, we will notice.
         </p>
       </div>
     </footer>

@@ -384,7 +384,7 @@ export default function GamePage() {
               <p class="text-3xl font-bold tabular-nums">
                 {Math.floor(elapsed() / 60)}m {elapsed() % 60}s
               </p>
-              <p class="text-xs text-muted">Timer is server-side; refreshing does not reset it.</p>
+              <p class="text-xs text-muted">Refreshing won't reset the clock — finish the run.</p>
 
               <Show when={isHunt()}>
                 <div class="space-y-3">

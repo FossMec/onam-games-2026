@@ -32,6 +32,60 @@ import type { VallamView } from "../src/server/games/impl/vallam";
 import type { WendView } from "../src/server/games/impl/wend";
 
 const SEED = "attack-seed-0123456789abcdef";
+
+/** Minimal Wend solver, so the harness can produce a genuinely valid board. */
+function solveWend(grid: string[][]): { word: string; cells: { r: number; c: number }[] }[] {
+  const n = grid.length;
+  const used = new Set<string>();
+  const open: { r: number; c: number }[] = [];
+  for (let r = 0; r < n; r += 1)
+    for (let c = 0; c < n; c += 1) if (grid[r][c] !== "") open.push({ r, c });
+  const near = (a: { r: number; c: number }, b: { r: number; c: number }) =>
+    Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1;
+  const order = [...wend.WORDS].sort((a, b) => b.length - a.length);
+  const out: { word: string; cells: { r: number; c: number }[] }[] = [];
+
+  const extend = (
+    word: string,
+    cells: { r: number; c: number }[],
+    then: () => boolean,
+  ): boolean => {
+    if (cells.length === word.length) return then();
+    for (const cell of open) {
+      if (!near(cells[cells.length - 1], cell)) continue;
+      const k = `${cell.r},${cell.c}`;
+      if (used.has(k) || grid[cell.r][cell.c] !== word[cells.length]) continue;
+      used.add(k);
+      cells.push(cell);
+      if (extend(word, cells, then)) return true;
+      cells.pop();
+      used.delete(k);
+    }
+    return false;
+  };
+  const place = (i: number): boolean => {
+    if (i === order.length) return used.size === open.length;
+    for (const start of open) {
+      const k = `${start.r},${start.c}`;
+      if (used.has(k) || grid[start.r][start.c] !== order[i][0]) continue;
+      used.add(k);
+      const cells = [start];
+      if (
+        extend(order[i], cells, () => {
+          out.push({ word: order[i], cells: [...cells] });
+          if (place(i + 1)) return true;
+          out.pop();
+          return false;
+        })
+      )
+        return true;
+      used.delete(k);
+    }
+    return false;
+  };
+  place(0);
+  return out;
+}
 let failures = 0;
 
 /** `expectRejected` is the whole point: every case here MUST come back invalid. */
@@ -72,20 +126,29 @@ console.log("\n\x1b[1mWend\x1b[0m — one canonical board, per-player orientatio
       },
     }),
   );
-  // The screenshot-sharing attack: correct answers, wrong orientation.
+  // The screenshot-sharing attack: a real solution traced on someone else's board.
   const other = Array.from({ length: 20 }, (_, i) => `rival-${i}`).find(
     (s) => JSON.stringify(wend.transformFor(s)) !== JSON.stringify(wend.transformFor(SEED)),
   )!;
-  const t = wend.transformFor(other);
+  const rival = wend.generate(other).view as WendView;
   expectRejected(
     "another player's screenshot, replayed on my board",
+    wend.verify({ ...base, submission: { found: solveWend(rival.grid) } }),
+  );
+  expectRejected(
+    "a diagonal path — this is not a word search",
     wend.verify({
       ...base,
       submission: {
-        found: wend.canonicalBoardForTest().placements.map((p) => ({
-          word: p.word,
-          cells: p.cells.map((cell) => wend.applyTransform(cell, t)),
-        })),
+        found: [
+          {
+            word: view.words[0],
+            cells: [
+              { r: 0, c: 0 },
+              { r: 1, c: 1 },
+            ],
+          },
+        ],
       },
     }),
   );

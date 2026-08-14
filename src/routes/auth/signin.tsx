@@ -31,7 +31,7 @@ export default function SignIn() {
           <button type="button" onClick={signIn} class="btn-brand w-full">
             Continue with Google
           </button>
-          <p class="comment">one account per device. cheaters get ratioed on the board.</p>
+          <p class="comment">one account per person. play nice.</p>
         </div>
       </div>
     </main>
