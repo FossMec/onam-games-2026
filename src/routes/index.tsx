@@ -324,53 +324,19 @@ export default function Home() {
                 </span>
               </div>
 
-              {/* 2-column action buttons grid on mobile */}
-              <div class="grid grid-cols-2 gap-2 pt-1 max-w-sm mx-auto sm:mx-0">
-                <a
-                  href="/code-a-pookalam/submit"
-                  class="btn-brand text-xs sm:text-sm py-2 px-3 text-center"
-                >
-                  Submit Pookalam →
-                </a>
+              {/* Single action button */}
+              <div class="pt-1">
                 <a
                   href="/code-a-pookalam"
-                  class="btn-ghost text-xs sm:text-sm py-2 px-3 text-center"
+                  class="btn-brand text-xs sm:text-sm py-2 px-4 inline-flex items-center gap-1.5"
                 >
-                  Rules & judging →
+                  <span>Explore Code-a-Pookalam</span>
+                  <span>→</span>
                 </a>
               </div>
               <p class="comment text-xs">{POOKALAM.aside}</p>
             </div>
           </div>
-        </div>
-      </Section>
-
-      {/* ---------------------------------------------------------- prizes */}
-      <Section title="Prizes & Rewards">
-        <div class="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-          <For each={EVENT.prizes}>
-            {(prize, index) => {
-              const prizeIcons = [
-                "tux-king",
-                "pookalam-flower",
-                "gopher-king",
-                "nilavilakku",
-                "burst-yellow",
-              ] as const;
-              const pIcon = prizeIcons[index() % prizeIcons.length];
-              return (
-                <div class={`card ${DAY_POPS[index() % DAY_POPS.length]} flex items-start gap-3`}>
-                  <SpriteIcon name={pIcon} size={36} animate="wobble" interactive class="mt-0.5" />
-                  <div>
-                    <p class="font-extrabold text-base">{prize.rank}</p>
-                    <p class="text-sm font-semibold pt-0.5" style={{ color: "var(--ink-soft)" }}>
-                      {prize.detail}
-                    </p>
-                  </div>
-                </div>
-              );
-            }}
-          </For>
         </div>
       </Section>
 
@@ -390,7 +356,8 @@ export default function Home() {
               icon: "tux-king",
             };
             const isDay7 = current.day === 7;
-            const playHref = isDay7 ? "/code-a-pookalam/vote" : `/games/${current.slug}`;
+            const targetHref = isDay7 ? "/code-a-pookalam/vote" : `/games/${current.slug}`;
+            const playHref = me() ? targetHref : "/auth/signin";
 
             return (
               <div class="space-y-6 max-w-4xl mx-auto">
@@ -560,7 +527,16 @@ export default function Home() {
                             href={playHref}
                             class="btn-brand w-full text-center text-lg py-3 block"
                           >
-                            {isDay7 ? "Vote in ELO Showdown →" : `Play Day ${current.day} Now →`}
+                            <Show
+                              when={me()}
+                              fallback={
+                                isDay7
+                                  ? "Sign in to Vote in ELO Showdown →"
+                                  : `Sign in & Play Day ${current.day} →`
+                              }
+                            >
+                              {isDay7 ? "Vote in ELO Showdown →" : `Play Day ${current.day} Now →`}
+                            </Show>
                           </a>
                         </Show>
 
@@ -569,7 +545,14 @@ export default function Home() {
                             href={playHref}
                             class="btn-ghost w-full text-center text-base py-2.5 block"
                           >
-                            {isDay7 ? "View Results →" : `Play Catch-up (Unranked) →`}
+                            <Show
+                              when={me()}
+                              fallback={
+                                isDay7 ? "Sign in to View Results →" : "Sign in to Play Catch-up →"
+                              }
+                            >
+                              {isDay7 ? "View Results →" : `Play Catch-up (Unranked) →`}
+                            </Show>
                           </a>
                         </Show>
                       </div>
@@ -671,6 +654,35 @@ export default function Home() {
             );
           })()}
         </Show>
+      </Section>
+
+      {/* ---------------------------------------------------------- prizes */}
+      <Section title="Prizes & Rewards">
+        <div class="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          <For each={EVENT.prizes}>
+            {(prize, index) => {
+              const prizeIcons = [
+                "tux-king",
+                "pookalam-flower",
+                "gopher-king",
+                "nilavilakku",
+                "burst-yellow",
+              ] as const;
+              const pIcon = prizeIcons[index() % prizeIcons.length];
+              return (
+                <div class={`card ${DAY_POPS[index() % DAY_POPS.length]} flex items-start gap-3`}>
+                  <SpriteIcon name={pIcon} size={36} animate="wobble" interactive class="mt-0.5" />
+                  <div>
+                    <p class="font-extrabold text-base">{prize.rank}</p>
+                    <p class="text-sm font-semibold pt-0.5" style={{ color: "var(--ink-soft)" }}>
+                      {prize.detail}
+                    </p>
+                  </div>
+                </div>
+              );
+            }}
+          </For>
+        </div>
       </Section>
 
       {/* ---------------------------------------------------- how it works (8 items) */}
