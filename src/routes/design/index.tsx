@@ -1,5 +1,5 @@
 import { Title } from "@solidjs/meta";
-import { For, createSignal } from "solid-js";
+import { For } from "solid-js";
 import { Bubble, Halftone, ShoutBurst } from "~/components/art/Burst";
 import { Confetti, ConfettiShape } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
@@ -118,22 +118,54 @@ const MEMPHIS_MOTIFS = [
   },
 ];
 
+const MEMES = [
+  {
+    title: "Root Privileges",
+    src: "/images/memes/sudo-mkdir-pookalam.png",
+    caption: "sudo mkdir -p /var/log/pookalam",
+    tag: "SYSADMIN ONAM",
+    color: "var(--pop-yellow)",
+  },
+  {
+    title: "Torvalds' Law",
+    src: "/images/memes/talk-is-cheap-sadya.png",
+    caption: "Talk is cheap. Show me the Sadya recipe.",
+    tag: "OPEN CUISINE",
+    color: "var(--pop-teal)",
+  },
+  {
+    title: "Compute Sovereign",
+    src: "/images/memes/need-more-tokens.png",
+    caption: "Maveli rejects closed APIs. Give me more open weights.",
+    tag: "OPEN AI",
+    color: "var(--pop-purple)",
+  },
+  {
+    title: "Production Ready",
+    src: "/images/memes/failure-is-not-an-option.png",
+    caption: "Failure is not an option. It is bundled in the default build.",
+    tag: "DEPLOYMENT",
+    color: "var(--pop-red)",
+  },
+];
+
 const ALL_SHOUTS: { mood: ShoutMood; label: string; shouts: string[] }[] = [
   {
     mood: "triumph",
     label: "Triumph (#1 Rank / Personal Best)",
-    shouts: ["THEE THANNE NEE!", "THAKARPPAN!", "ADIPOLI!"],
+    shouts: ["THEE THANNE NEE!", "THAKARPPAN!", "ADIPOLI!", "YAYYYY!"],
   },
   {
     mood: "great",
     label: "Great (High Score / Victory)",
-    shouts: ["PWOLI!", "ADIPOLI!", "THAKARPPAN!"],
+    shouts: ["PWOLI!", "ADIPOLI!", "THAKARPPAN!", "YAYYYY!"],
   },
   {
     mood: "decent",
     label: "Decent (Solid Attempt)",
     shouts: ["KOLLALO ATH!", "OK-ish!"],
   },
+
   {
     mood: "mid",
     label: "Mid-Table (Encouraging Poke)",
@@ -201,21 +233,6 @@ export default function DesignLanguage() {
     SpriteName,
     (typeof SPRITE_REGISTRY)[SpriteName],
   ][];
-  const [selectedTag, setSelectedTag] = createSignal<string>("all");
-
-  const allTags = () => {
-    const set = new Set<string>();
-    for (const [, info] of spriteEntries) {
-      for (const t of info.tags) set.add(t);
-    }
-    return ["all", ...Array.from(set).sort()];
-  };
-
-  const filteredSprites = () => {
-    const t = selectedTag();
-    if (t === "all") return spriteEntries;
-    return spriteEntries.filter(([, info]) => info.tags.includes(t));
-  };
 
   return (
     <main class="container space-y-12 py-6">
@@ -303,7 +320,6 @@ export default function DesignLanguage() {
                       <ConfettiShape kind={motif.shape} color={motif.color} />
                     </div>
                   </div>
-
                   <div class="min-w-0 flex-1">
                     <p class="font-extrabold text-base">{motif.name}</p>
                     <p class="text-xs font-semibold pt-1 leading-relaxed text-[var(--ink-soft)]">
@@ -317,37 +333,65 @@ export default function DesignLanguage() {
         </div>
       </Section>
 
-      {/* Sprite System Showcase */}
-      <Section title="The Sprite System (FOSS × Onam Collages)">
+      {/* Comic Memes & Visual Humour */}
+      <Section title="FOSS × Onam Comic Memes & Visual Humour">
         <div class="space-y-4">
           <p class="font-semibold text-sm sm:text-base">
-            30+ custom handcrafted sprites blending open-source mascots with traditional Onam
-            festival elements — Tux wearing a Mahabali crown, Linus Torvalds with Sadya, Docker
-            whale carrying a flower pookalam, and Ferris crab with a Kerala caparison.
+            Handcrafted comic artworks and memes capturing the mischievous overlap between Linux
+            sysadmin life and Kerala Onam festivities:
           </p>
 
-          {/* Filter Chips (Correct reactive selection) */}
-          <div class="flex items-center gap-1.5 flex-wrap">
-            <For each={allTags()}>
-              {(tag) => (
-                <button
-                  type="button"
-                  onClick={() => setSelectedTag(tag)}
-                  class={`px-3 py-1 rounded-full text-xs font-black uppercase transition-all cursor-pointer ${
-                    selectedTag() === tag
-                      ? "bg-[var(--pop-yellow)] border-2 border-[var(--ink)] scale-105 shadow-xs"
-                      : "bg-[var(--paper-2)] border border-[var(--ink)]/30 hover:border-[var(--ink)] hover:bg-[var(--paper)]"
-                  }`}
-                >
-                  {tag}
-                </button>
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <For each={MEMES}>
+              {(meme) => (
+                <div class="card card-plain overflow-hidden p-0 flex flex-col bg-[var(--paper-2)] border-2 border-[var(--ink)] hover:translate-y-[-2px] transition-transform">
+                  <div class="relative bg-[var(--paper-3)] border-b-2 border-[var(--ink)] overflow-hidden aspect-[4/3]">
+                    <img
+                      src={meme.src}
+                      alt={meme.title}
+                      class="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                    <span
+                      class="badge absolute top-2 right-2 text-[10px] font-black uppercase"
+                      style={{ "--pop": meme.color }}
+                    >
+                      {meme.tag}
+                    </span>
+                  </div>
+                  <div class="p-3.5 space-y-1 flex-1 flex flex-col justify-between">
+                    <p class="font-extrabold text-sm">{meme.title}</p>
+                    <p class="text-xs font-semibold text-[var(--ink-soft)] leading-snug">
+                      "{meme.caption}"
+                    </p>
+                  </div>
+                </div>
               )}
             </For>
+          </div>
+        </div>
+      </Section>
+
+      {/* Sprite System Showcase (Clean All-Sprite Grid) */}
+      <Section title="The Sprite System (All 30+ FOSS × Onam Collages)">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <p class="font-semibold text-sm sm:text-base">
+              Custom sprites blending open-source mascots with traditional Onam festival elements —
+              Tux wearing a Mahabali crown, Linus Torvalds with Sadya, Docker whale carrying a
+              flower pookalam, and Ferris crab in a lotus.
+            </p>
+            <span
+              class="badge text-xs font-black uppercase"
+              style={{ "--pop": "var(--pop-yellow)" }}
+            >
+              {spriteEntries.length} Handcrafted Sprites
+            </span>
           </div>
 
           {/* Sprites Grid */}
           <div class="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-            <For each={filteredSprites()}>
+            <For each={spriteEntries}>
               {([name, info]) => (
                 <div class="card card-plain p-3 text-center flex flex-col items-center justify-between gap-2 hover:bg-[var(--paper)] transition-all group">
                   <div class="h-14 w-14 grid place-items-center relative">
