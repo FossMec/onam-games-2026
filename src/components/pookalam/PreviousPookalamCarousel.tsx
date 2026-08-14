@@ -62,30 +62,25 @@ export function PreviousPookalamCarousel() {
 
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
         <div>
-          <div class="inline-flex items-center gap-1.5 text-xs font-black uppercase px-2.5 py-0.5 rounded bg-[var(--pop-yellow)] border-2 border-[var(--ink)] shadow-[2px_2px_0px_0px_var(--ink)] mb-1.5">
+          <div class="inline-flex items-center gap-1.5 text-xs font-black uppercase px-2.5 py-0.5 rounded bg-[var(--pop-yellow)] border border-[length:var(--ink-w)] border-[var(--ink)] mb-1.5">
             <Sparkles size={12} />
             <span>Community Gallery</span>
           </div>
-          <h2
-            class="text-2xl sm:text-3xl font-black tracking-tight"
-            style={{ "font-family": "var(--font-stack-display)" }}
-          >
-            Previous Coded Pookalams
-          </h2>
-          <p class="text-sm font-semibold" style={{ color: "var(--ink-soft)" }}>
+          <h2 class="text-2xl sm:text-3xl font-black">Previous Coded Pookalams</h2>
+          <p class="comment">
             Real geometric & algorithmic pookalams created by students and hackers from past
             editions!
           </p>
         </div>
       </div>
 
-      {/* Infinite Seamless Scrolling Marquee without hover transform/scale */}
+      {/* Infinite Seamless Scrolling Marquee without hover transform/scale or shadows */}
       <div class="relative w-full overflow-hidden py-2 select-none [mask-image:linear-gradient(to_right,transparent,black_4%,black_96%,transparent)]">
         <div class="pookalam-marquee flex gap-4">
           <For each={[...PREVIOUS_GALLERY, ...PREVIOUS_GALLERY]}>
             {(item) => (
               <div
-                class="shrink-0 w-60 sm:w-68 rounded-xl bg-[var(--paper-2)] border-3 border-[var(--ink)] shadow-[4px_4px_0px_0px_var(--ink)] overflow-hidden flex flex-col cursor-pointer"
+                class="shrink-0 w-56 sm:w-64 card card-plain bg-surface-2 p-0 overflow-hidden flex flex-col cursor-pointer"
                 onClick={() => setSelectedItem(item)}
               >
                 {/* Image Frame */}
@@ -99,9 +94,9 @@ export function PreviousPookalamCarousel() {
                 </div>
 
                 {/* Card Footer */}
-                <div class="p-3 border-t-2 border-[var(--ink)] flex items-center justify-between gap-2 bg-[var(--paper)]">
-                  <p class="font-extrabold text-sm truncate">{item.name}</p>
-                  <span class="text-[9px] font-mono uppercase font-bold text-[var(--ink-soft)] px-1.5 py-0.5 rounded bg-[var(--paper-2)] border border-[var(--ink)]/20 shrink-0">
+                <div class="p-2.5 border-t border-[length:var(--ink-w)] border-[var(--ink)] flex items-center justify-between gap-2 bg-surface">
+                  <p class="font-extrabold text-xs sm:text-sm truncate">{item.name}</p>
+                  <span class="badge text-[9px] uppercase font-bold text-muted shrink-0">
                     Submission
                   </span>
                 </div>
@@ -118,30 +113,28 @@ export function PreviousPookalamCarousel() {
           onClick={() => setSelectedItem(null)}
         >
           <div
-            class="relative max-w-2xl w-full rounded-2xl bg-[var(--paper)] border-4 border-[var(--ink)] shadow-[8px_8px_0px_0px_var(--ink)] p-4 sm:p-6 space-y-4"
+            class="relative max-w-2xl w-full card pop-yellow space-y-4 p-4 sm:p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <div class="flex items-center justify-between border-b-2 border-[var(--ink)] pb-3">
+            <div class="flex items-center justify-between border-b border-[length:var(--ink-w)] border-[var(--ink)] pb-3">
               <div>
                 <h3 class="text-xl font-black">{selectedItem()!.name}</h3>
-                <p class="text-xs font-bold text-[var(--ink-soft)]">
-                  Past Code-a-Pookalam Submission
-                </p>
+                <p class="comment">Past Code-a-Pookalam Submission</p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedItem(null)}
-                class="w-8 h-8 rounded-lg bg-[var(--paper-2)] border-2 border-[var(--ink)] grid place-items-center hover:bg-[var(--pop-yellow)] transition-colors cursor-pointer"
+                class="w-8 h-8 rounded bg-surface-2 inked grid place-items-center hover:bg-[var(--pop-yellow)] transition-colors cursor-pointer"
               >
                 <X size={18} strokeWidth={2.5} />
               </button>
             </div>
 
-            <div class="rounded-xl overflow-hidden bg-[#1F2937] border-2 border-[var(--ink)] p-4 flex items-center justify-center max-h-[60vh]">
+            <div class="rounded overflow-hidden bg-[#1F2937] inked p-4 flex items-center justify-center max-h-[60vh]">
               <img
                 src={selectedItem()!.src}
                 alt={`Pookalam by ${selectedItem()!.name}`}
-                class="max-h-[55vh] w-auto object-contain rounded-lg"
+                class="max-h-[55vh] w-auto object-contain rounded"
               />
             </div>
           </div>

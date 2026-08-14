@@ -1,6 +1,6 @@
 import { Title } from "@solidjs/meta";
 import { createAsync } from "@solidjs/router";
-import { ChevronLeft, ChevronRight, Clock, HelpCircle } from "lucide-solid";
+import { ChevronLeft, ChevronRight, Clock, HelpCircle, Lock } from "lucide-solid";
 import { For, Show, createEffect, createSignal } from "solid-js";
 
 import { Countdown } from "~/components/Countdown";
@@ -482,8 +482,12 @@ export default function Home() {
                               >
                                 ? ? ? ?
                               </p>
-                              <span class="sticker" style={{ "--pop": "var(--pop-red)" }}>
-                                🔒 Classified
+                              <span
+                                class="sticker inline-flex items-center gap-1"
+                                style={{ "--pop": "var(--pop-red)" }}
+                              >
+                                <Lock size={12} strokeWidth={2.5} />
+                                <span>Classified</span>
                               </span>
                             </div>
                           </div>
@@ -665,7 +669,9 @@ export default function Home() {
                                       alt="Locked preview"
                                       class="absolute inset-0 w-full h-full object-cover blur-sm opacity-40 grayscale"
                                     />
-                                    <span class="relative z-10 text-xs font-black">🔒</span>
+                                    <div class="relative z-10 w-6 h-6 rounded-full bg-[var(--paper-2)] border border-[var(--ink)] grid place-items-center text-[var(--ink)]">
+                                      <Lock size={12} strokeWidth={2.5} />
+                                    </div>
                                   </div>
                                 }
                               >

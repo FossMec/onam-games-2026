@@ -272,8 +272,8 @@ export function PookalamTutorials() {
       </div>
 
       {/* Active Tutorial Content Box */}
-      <div class="rounded-2xl bg-[var(--paper-2)] border-3 border-[var(--ink)] shadow-[6px_6px_0px_0px_var(--ink)] p-5 sm:p-7 space-y-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-[var(--ink)] pb-4">
+      <div class="card pop-teal space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-dashed border-[var(--ink)]/25 pb-4">
           <div class="space-y-1">
             <div class="flex items-center gap-2">
               <span
@@ -284,23 +284,21 @@ export function PookalamTutorials() {
               </span>
             </div>
             <h3 class="text-xl sm:text-2xl font-black">{activeTutorial().title}</h3>
-            <p class="text-xs sm:text-sm font-semibold" style={{ color: "var(--ink-soft)" }}>
-              {activeTutorial().tagline}
-            </p>
+            <p class="comment">{activeTutorial().tagline}</p>
           </div>
         </div>
 
-        <p class="text-sm font-semibold leading-relaxed">{activeTutorial().description}</p>
+        <p class="text-sm font-semibold leading-relaxed text-ink">{activeTutorial().description}</p>
 
         {/* Tips List */}
         <div class="space-y-2">
-          <h4 class="text-xs font-black uppercase tracking-wider text-[var(--ink-soft)]">
+          <h4 class="text-xs font-black uppercase tracking-wider text-muted">
             Pro-Tips & Starter Concepts
           </h4>
           <ul class="grid gap-2 sm:grid-cols-3">
             <For each={activeTutorial().tips}>
               {(tip) => (
-                <li class="p-3 rounded-lg bg-[var(--paper)] border-2 border-[var(--ink)] text-xs font-bold leading-snug flex items-start gap-2 shadow-[2px_2px_0px_0px_var(--ink)]">
+                <li class="card card-plain bg-surface p-3 text-xs font-bold leading-snug flex items-start gap-2">
                   <span class="text-[var(--pop-pink)] shrink-0 font-black">▸</span>
                   <span>{tip}</span>
                 </li>
@@ -312,13 +310,13 @@ export function PookalamTutorials() {
         {/* Code Snippet Box */}
         <div class="space-y-2">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-black uppercase tracking-wider text-[var(--ink-soft)]">
+            <span class="text-xs font-black uppercase tracking-wider text-muted">
               Starter Recipe Code
             </span>
             <button
               type="button"
               onClick={() => copyCode(activeTutorial().starterSnippet, activeTutorial().id)}
-              class="px-2.5 py-1 rounded bg-[var(--paper)] border-2 border-[var(--ink)] text-xs font-black hover:bg-[var(--pop-teal)] transition-all cursor-pointer flex items-center gap-1.5 shadow-[2px_2px_0px_0px_var(--ink)] active:translate-y-0.5"
+              class="btn-ghost py-1.5 px-3 text-xs min-h-0"
             >
               <Copy size={12} strokeWidth={2.5} />
               <span>{copiedId() === activeTutorial().id ? "Copied!" : "Copy Code"}</span>
@@ -326,7 +324,7 @@ export function PookalamTutorials() {
           </div>
 
           <pre
-            class="p-4 rounded-xl bg-[#1F2937] text-white font-mono text-xs overflow-x-auto leading-relaxed border-2 border-[var(--ink)] shadow-inner"
+            class="p-4 rounded bg-[#1F2937] text-white font-mono text-xs overflow-x-auto leading-relaxed inked"
             style={{ "tab-size": 2 }}
           >
             <code>{activeTutorial().starterSnippet}</code>

@@ -17,10 +17,9 @@ export function MaveliLetter() {
       {/* Postcard Container with Folded Corner Effect & Inset Badges */}
 
       <div
-        class="relative w-full rounded-2xl p-4 sm:p-6 bg-[#fffdf5] text-[var(--ink)] shadow-xl transition-all"
+        class="relative w-full rounded-2xl p-4 sm:p-6 bg-[#fffdf5] text-[var(--ink)] transition-all"
         style={{
           border: "var(--ink-w-bold) solid var(--ink)",
-          "box-shadow": "5px 5px 0 var(--ink)",
         }}
       >
         {/* Top Header Bar: Postal Header + Inset Stamp + Postmark SVG */}
@@ -74,7 +73,7 @@ export function MaveliLetter() {
             </svg>
 
             {/* Inset Royal Stamp */}
-            <span class="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 rounded bg-[var(--pop-yellow)] border border-[var(--ink)] shadow-xs">
+            <span class="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 rounded bg-[var(--pop-yellow)] border border-[var(--ink)]">
               <SpriteIcon name="tux-king" size={16} class="shrink-0" />
               <span>Royal Dispatch</span>
             </span>
@@ -89,7 +88,6 @@ export function MaveliLetter() {
               class="relative rounded-lg overflow-hidden aspect-square w-full bg-[var(--paper-3)]"
               style={{
                 border: "var(--ink-w) solid var(--ink)",
-                "box-shadow": "2.5px 2.5px 0 var(--ink)",
               }}
             >
               <img
@@ -228,7 +226,7 @@ export function MaveliLetter() {
                 <button
                   type="button"
                   onClick={() => setIsExpanded((prev) => !prev)}
-                  class="btn-brand py-1 px-3 text-[11px] font-extrabold rounded-full inline-flex items-center gap-1 cursor-pointer shadow-xs"
+                  class="btn-brand py-1 px-3 text-[11px] font-extrabold rounded-full inline-flex items-center gap-1 cursor-pointer"
                 >
                   <span>{isExpanded() ? "Fold Letter ↑" : "Read Full Letter from Maveli ↓"}</span>
                   <Show when={isExpanded()} fallback={<ChevronDown size={13} strokeWidth={2.5} />}>
