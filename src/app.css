@@ -218,20 +218,42 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   font-family: var(--font-stack-body);
+  overflow-x: hidden;
+  position: relative;
+}
+
+@keyframes rotate-rays-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.bg-radial-spin {
+  position: fixed;
+  top: -100vmax;
+  left: -100vmax;
+  width: 300vmax;
+  height: 300vmax;
+  pointer-events: none;
+  z-index: -10;
+  transform-origin: center center;
+  animation: rotate-rays-slow 240s linear infinite;
+  will-change: transform;
 
   /*
-   * The pookalam halftone. Two conic rings of dots radiating from the top
-   * centre, plus a faint terrazzo speckle. Pure gradients — zero requests,
-   * scales to any viewport, and it is the page's only "shading".
+   * The pookalam halftone. Conic rays radiating from the center,
+   * plus concentric dots. Rotates smoothly in the background.
    */
   background-image:
     repeating-conic-gradient(
-      from 0deg at 50% -10%,
+      from 0deg at 50% 50%,
       var(--pop-yellow-soft) 0deg 0.9deg,
       transparent 0.9deg 9deg
     ),
-    repeating-radial-gradient(circle at 50% -10%, rgb(34 32 43 / 0.05) 0 2px, transparent 2px 46px);
-  background-attachment: fixed;
+    repeating-radial-gradient(circle at 50% 50%, rgb(34 32 43 / 0.04) 0 2px, transparent 2px 46px);
 }
 
 /* Display face is the loud one: heavy, tight, a touch oversized. */

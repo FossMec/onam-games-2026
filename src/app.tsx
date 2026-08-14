@@ -14,9 +14,11 @@ export default function App() {
       root={(props) => (
         <MetaProvider>
           <Title>FOSS Onam Games</Title>
+          {/* Slow rotating pookalam background rays */}
+          <div class="bg-radial-spin" aria-hidden="true" />
           {/* Filter defs, mounted once for the whole app. */}
           <InkFilter />
-          <div class="flex min-h-screen flex-col">
+          <div class="flex min-h-screen flex-col relative z-0">
             <Nav />
             {/* Every page, not just the game page — a warning nobody sees is not a warning. */}
             <BanNotice />

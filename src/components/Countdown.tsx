@@ -26,19 +26,19 @@ function Segment(props: { value: string; unit: string }) {
   return (
     <span class="inline-flex flex-col items-center gap-0.5">
       <span
-        class="rounded px-1.5 py-0.5 text-lg tabular-nums"
+        class="rounded px-2 py-0.5 text-base sm:text-lg tabular-nums text-center"
         style={{
           background: "var(--paper-2)",
           border: "2px solid var(--ink)",
-          "font-weight": 700,
-          "min-width": "2.1rem",
+          "font-weight": 800,
+          "min-width": "2.25rem",
         }}
       >
         {props.value}
       </span>
       <span
-        class="text-[0.6rem] uppercase"
-        style={{ "font-family": "var(--font-stack-display)", "font-weight": 800, opacity: 0.65 }}
+        class="text-[0.62rem] uppercase tracking-wider font-extrabold"
+        style={{ "font-family": "var(--font-stack-display)", opacity: 0.75 }}
       >
         {props.unit}
       </span>
@@ -69,7 +69,7 @@ export function Countdown(props: CountdownProps) {
         </span>
       }
     >
-      <span class="inline-flex items-start gap-1.5">
+      <span class="inline-flex items-center justify-center gap-2 sm:gap-2.5 px-2 py-0.5">
         <Show when={!props.compact || days() > 0}>
           <Segment value={pad(days())} unit="days" />
         </Show>

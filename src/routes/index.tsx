@@ -337,11 +337,11 @@ export default function Home() {
               <p class="comment text-xs">{POOKALAM.aside}</p>
             </div>
 
-            {/* Tux Kasavu Meme Sticker on larger screens */}
+            {/* Tux Kasavu Meme Sticker visible on mobile & desktop */}
             <img
               src="/images/memes/sudo-mkdir-pookalam.png"
               alt="Sudo mkdir pookalam meme"
-              class="w-32 lg:w-40 h-auto object-contain select-none shrink-0 self-center hidden lg:block"
+              class="w-28 xs:w-32 sm:w-36 md:w-40 h-auto object-contain select-none shrink-0 self-center block"
               style={{ filter: "drop-shadow(3px 3px 0 var(--ink))" }}
             />
           </div>
@@ -516,7 +516,7 @@ export default function Home() {
                       {/* Main Action Area */}
                       <div class="pt-3 space-y-2">
                         <Show when={locked && current.releaseAt}>
-                          <div class="card card-plain space-y-1 text-center">
+                          <div class="card card-plain flex flex-col items-center justify-center gap-2 p-3 text-center">
                             <p class="comment text-sm">Unlocks in</p>
                             <Countdown target={new Date(current.releaseAt!)} />
                           </div>
@@ -669,13 +669,13 @@ export default function Home() {
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-lg bg-[var(--paper-2)] border-2 border-[var(--ink)]">
           <div class="space-y-1 text-center sm:text-left">
             <p
-              class="font-extrabold text-lg"
+              class="font-extrabold text-lg sm:text-xl"
               style={{ "font-family": "var(--font-stack-display)" }}
             >
-              ₹4,600+ Total Cash Prizes
+              Celebrate this Onam with fossmec and earn big
             </p>
             <p class="text-xs sm:text-sm font-semibold" style={{ color: "var(--ink-soft)" }}>
-              ₹200 daily winners · ₹3,000 Code-a-Pookalam podium · ₹200 lucky voter bounty!
+              Daily mini-game cash winners · ₹3,000 Code-a-Pookalam podium · Lucky voter bounties!
             </p>
           </div>
           <img
