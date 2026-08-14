@@ -8,9 +8,8 @@ export default createHandler(() => (
         <head>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <meta name="theme-color" content="#FBF3E4" />
-          <link rel="icon" type="image/x-icon" href="/favicon.ico" />
           <link rel="icon" type="image/png" sizes="32x32" href="/foss-logo-original.png" />
+          <link rel="icon" type="image/x-icon" href="/favicon.ico" />
           <link rel="apple-touch-icon" href="/foss-logo-original.png" />
           {/*
             Only the two faces that carry every page are preloaded. The other

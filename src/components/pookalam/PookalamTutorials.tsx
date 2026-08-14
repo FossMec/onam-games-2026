@@ -1,5 +1,5 @@
-import { Bot, Code2, Copy, Globe, Network, Sparkles, Terminal } from "lucide-solid";
-import { For, createSignal } from "solid-js";
+import { Code2, Copy, Cpu, Globe, Network, Sparkles, Terminal } from "lucide-solid";
+import { For, Show, createSignal } from "solid-js";
 
 interface TutorialCategory {
   id: string;
@@ -116,7 +116,7 @@ graph Pookalam {
     id: "shaders",
     title: "Creative Coding: p5.js & GLSL Shaders",
     badge: "GPU Powerhouse",
-    icon: Sparkles,
+    icon: Cpu,
     color: "var(--pop-pink)",
     tagline: "Push millions of pixels concurrently with trigonometric shaders.",
     description:
@@ -156,7 +156,7 @@ function draw() {
     id: "ai-hybrid",
     title: "AI + Code: Collaborative Generation",
     badge: "AI Allowed & Welcomed",
-    icon: Bot,
+    icon: Sparkles,
     color: "var(--pop-yellow)",
     tagline: "Prompt LLMs for math formulas, refine the code, and make it your own.",
     description:
@@ -187,11 +187,11 @@ Include 5 concentric layers:
     description:
       "Create a CLI binary in Rust, C, Go, or Python that calculates character density and renders a full-color 24-bit ANSI Pookalam right in your terminal window.",
     tips: [
-      "Use Truecolor ANSI escape sequence `\\x1b[38;2;R;G;Bm` for vibrant 16-million color terminal art",
-      "Character density ramp ` .:-=+*#%@` works great for radial light gradients",
+      "Use Truecolor ANSI escape sequence \\x1b[38;2;R;G;Bm for vibrant 16-million color terminal art",
+      "Character density ramp ' .:-=+*#%@' works great for radial light gradients",
       "Share your terminal recording using tools like asciinema!",
     ],
-    starterSnippet: `// Python ANSI Terminal Radial Flower
+    starterSnippet: `# Python ANSI Terminal Radial Flower
 import math
 
 W, H = 80, 40
@@ -200,18 +200,17 @@ colors = [(244, 124, 72), (253, 200, 68), (37, 161, 142)]
 for y in range(H):
     row = ""
     for x in range(W):
-        nx, ny = (x - W/2) / (W/4), (y - H/2) / (H/4)
-        r = math.sqrt(nx*nx + ny*ny)
+        nx = (x - W / 2) / (W / 4)
+        ny = (y - H / 2) / (H / 4)
+        r = math.sqrt(nx * nx + ny * ny)
         theta = math.atan2(ny, nx)
-        petal = math.cos(8 * theta)
-        
-        if r < 1.0 + 0.3 * petal:
+        petal = math.sin(theta * 8) * 0.3 + 0.7
+        if r < petal:
             c = colors[int(r * len(colors)) % len(colors)]
-            row += f"\\033[38;2;{c[0]};{c[1]};{c[2]}m🌸"
+            row += f"\\x1b[38;2;{c[0]};{c[1]};{c[2]}m*\\x1b[0m"
         else:
-            row += "  "
-    print(row)
-print("\\033[0m")`,
+            row += " "
+    print(row)`,
     language: "python",
   },
 ];
@@ -229,26 +228,9 @@ export function PookalamTutorials() {
   };
 
   return (
-    <div class="space-y-6">
-      <div>
-        <div class="inline-flex items-center gap-1.5 text-xs font-black uppercase px-2.5 py-0.5 rounded bg-[var(--pop-teal)] border-2 border-[var(--ink)] shadow-[2px_2px_0px_0px_var(--ink)] mb-1.5">
-          <Code2 size={12} />
-          <span>Starter Kit & Ideas</span>
-        </div>
-        <h2
-          class="text-2xl sm:text-3xl font-black tracking-tight"
-          style={{ "font-family": "var(--font-stack-display)" }}
-        >
-          Ways to Code a Pookalam
-        </h2>
-        <p class="text-sm font-semibold" style={{ color: "var(--ink-soft)" }}>
-          Pick your favourite medium! Whether you love pure JavaScript, Python scripts, GPU shaders,
-          Graphviz trees, or AI prompt engineering — here's how to kickstart your entry.
-        </p>
-      </div>
-
-      {/* Tabs */}
-      <div class="px-1 py-1.5 flex gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+    <div class="space-y-4">
+      {/* Category Tabs using standard btn-brand / btn-ghost styling with 0 drop shadow */}
+      <div class="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         <For each={TUTORIALS}>
           {(t) => {
             const Icon = t.icon;
@@ -257,10 +239,8 @@ export function PookalamTutorials() {
               <button
                 type="button"
                 onClick={() => setActiveId(t.id)}
-                class={`px-3.5 py-2 rounded-xl border-2 border-[var(--ink)] text-xs font-black shrink-0 transition-all cursor-pointer flex items-center gap-2 ${
-                  isSel()
-                    ? "bg-[var(--pop-yellow)] scale-105 shadow-[3px_3px_0px_0px_var(--ink)]"
-                    : "bg-[var(--paper-2)] opacity-80 hover:opacity-100 hover:bg-[var(--paper)]"
+                class={`btn-ghost text-xs shrink-0 flex items-center gap-1.5 py-1.5 px-3 min-h-0 ${
+                  isSel() ? "bg-[var(--pop-yellow)] font-black" : ""
                 }`}
               >
                 <Icon size={14} strokeWidth={2.5} />
@@ -272,33 +252,33 @@ export function PookalamTutorials() {
       </div>
 
       {/* Active Tutorial Content Box */}
-      <div class="card pop-teal space-y-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-dashed border-[var(--ink)]/25 pb-4">
-          <div class="space-y-1">
-            <div class="flex items-center gap-2">
-              <span
-                class="badge text-[10px] font-black uppercase"
-                style={{ "--pop": activeTutorial().color }}
-              >
-                {activeTutorial().badge}
-              </span>
-            </div>
-            <h3 class="text-xl sm:text-2xl font-black">{activeTutorial().title}</h3>
-            <p class="comment">{activeTutorial().tagline}</p>
+      <div class="card pop-teal space-y-4">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span
+              class="badge text-[10px] font-black uppercase"
+              style={{ "--pop": activeTutorial().color }}
+            >
+              {activeTutorial().badge}
+            </span>
           </div>
+          <h3 class="text-lg sm:text-xl font-black">{activeTutorial().title}</h3>
+          <p class="comment text-xs">{activeTutorial().tagline}</p>
         </div>
 
-        <p class="text-sm font-semibold leading-relaxed text-ink">{activeTutorial().description}</p>
+        <p class="text-xs sm:text-sm font-semibold leading-relaxed text-ink">
+          {activeTutorial().description}
+        </p>
 
         {/* Tips List */}
-        <div class="space-y-2">
+        <div class="space-y-1.5">
           <h4 class="text-xs font-black uppercase tracking-wider text-muted">
             Pro-Tips & Starter Concepts
           </h4>
           <ul class="grid gap-2 sm:grid-cols-3">
             <For each={activeTutorial().tips}>
               {(tip) => (
-                <li class="card card-plain bg-surface p-3 text-xs font-bold leading-snug flex items-start gap-2">
+                <li class="card card-plain bg-surface p-2.5 text-xs font-bold leading-snug flex items-start gap-1.5">
                   <span class="text-[var(--pop-pink)] shrink-0 font-black">▸</span>
                   <span>{tip}</span>
                 </li>
@@ -308,7 +288,7 @@ export function PookalamTutorials() {
         </div>
 
         {/* Code Snippet Box */}
-        <div class="space-y-2">
+        <div class="space-y-1.5">
           <div class="flex items-center justify-between">
             <span class="text-xs font-black uppercase tracking-wider text-muted">
               Starter Recipe Code
@@ -316,17 +296,23 @@ export function PookalamTutorials() {
             <button
               type="button"
               onClick={() => copyCode(activeTutorial().starterSnippet, activeTutorial().id)}
-              class="btn-ghost py-1.5 px-3 text-xs min-h-0"
+              class="btn-ghost py-1 px-2.5 text-xs min-h-0"
             >
-              <Copy size={12} strokeWidth={2.5} />
-              <span>{copiedId() === activeTutorial().id ? "Copied!" : "Copy Code"}</span>
+              <Show
+                when={copiedId() === activeTutorial().id}
+                fallback={
+                  <>
+                    <Copy size={12} />
+                    <span>Copy Code</span>
+                  </>
+                }
+              >
+                <span>Copied!</span>
+              </Show>
             </button>
           </div>
 
-          <pre
-            class="p-4 rounded bg-[#1F2937] text-white font-mono text-xs overflow-x-auto leading-relaxed inked"
-            style={{ "tab-size": 2 }}
-          >
+          <pre class="inked bg-[#181511] text-[#fbf3e4] rounded p-3 font-mono text-xs overflow-x-auto select-text">
             <code>{activeTutorial().starterSnippet}</code>
           </pre>
         </div>

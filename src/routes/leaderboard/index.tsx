@@ -304,7 +304,13 @@ export default function Leaderboard() {
       </Show>
 
       {/* ---------------------------------------------------- Compact Top #1 Winner Callout */}
-      <Show when={tab() === "daily" && topDailyWinner()}>
+      <Show
+        when={
+          tab() === "daily" &&
+          topDailyWinner() &&
+          (daily()?.settled || selectedGame()?.status === "closed")
+        }
+      >
         {(() => {
           const top = topDailyWinner()!;
           const isSettled = daily()?.settled || selectedGame()?.status === "closed";

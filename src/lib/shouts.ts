@@ -30,8 +30,8 @@ export type ShoutMood =
  * is not read the same line twelve times.
  */
 const SHOUTS: Record<ShoutMood, readonly string[]> = {
-  triumph: ["THEE THANNE NEE!", "THAKARPPAN!", "ADIPOLI!", "YAYYYY!"],
-  great: ["ADIPOLI!", "PWOLI!", "THAKARPPAN!", "YAYYYY!"],
+  triumph: ["THEE THANNE NEE!", "ADIPOLI!", "PWOLI!", "YAYYYY!"],
+  great: ["ADIPOLI!", "PWOLI!", "KIDILAN!", "YAYYYY!"],
   decent: ["KOLLALO ATH!", "OK-ish!"],
   mid: ["MWONEEE...", "PAAVAM."],
   fail: ["DWAAAA...", "AYYO"],

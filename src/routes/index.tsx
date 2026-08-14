@@ -350,7 +350,7 @@ export default function Home() {
                 </span>
               </div>
 
-              {/* Countdown until final submission deadline */}
+              {/* Countdown and Action Button row */}
               <div class="space-y-1.5 pt-1">
                 <div
                   class="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-black uppercase tracking-wider"
@@ -359,22 +359,20 @@ export default function Home() {
                   <Clock size={13} strokeWidth={2.5} />
                   <span>Submissions Close In:</span>
                 </div>
-                <div class="flex justify-center sm:justify-start">
+
+                <div class="flex flex-wrap items-start justify-center sm:justify-start gap-3.5">
                   <Countdown target={pookalamDeadline()} doneLabel="Submissions Closed" />
+                  <a
+                    href="/code-a-pookalam"
+                    class="btn-brand text-xs sm:text-sm px-4 h-[35px] sm:h-[37px] inline-flex items-center gap-1.5 shrink-0"
+                  >
+                    <span>Explore Code-a-Pookalam</span>
+                    <span>→</span>
+                  </a>
                 </div>
               </div>
 
-              {/* Single action button */}
-              <div class="pt-1">
-                <a
-                  href="/code-a-pookalam"
-                  class="btn-brand text-xs sm:text-sm py-2 px-4 inline-flex items-center gap-1.5"
-                >
-                  <span>Explore Code-a-Pookalam</span>
-                  <span>→</span>
-                </a>
-              </div>
-              <p class="comment text-xs">{POOKALAM.aside}</p>
+              <p class="comment text-sm sm:text-base font-bold pt-1">{POOKALAM.aside}</p>
             </div>
 
             {/* Tux Kasavu Meme Sticker visible on mobile & desktop */}

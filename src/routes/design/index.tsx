@@ -154,12 +154,12 @@ const ALL_SHOUTS: { mood: ShoutMood; label: string; shouts: string[] }[] = [
   {
     mood: "triumph",
     label: "Triumph (#1 Rank / Personal Best)",
-    shouts: ["THEE THANNE NEE!", "THAKARPPAN!", "ADIPOLI!", "YAYYYY!"],
+    shouts: ["THEE THANNE NEE!", "ADIPOLI!", "PWOLI!", "YAYYYY!"],
   },
   {
     mood: "great",
     label: "Great (High Score / Victory)",
-    shouts: ["PWOLI!", "ADIPOLI!", "THAKARPPAN!", "YAYYYY!"],
+    shouts: ["PWOLI!", "ADIPOLI!", "KIDILAN!", "YAYYYY!"],
   },
   {
     mood: "decent",
@@ -204,7 +204,7 @@ const RULES = [
   },
   {
     title: "Cultural Manglish Feedback.",
-    body: "Game reactions speak the native dialect: THAKARPPAN for high scores, MWONEEE for close calls, and DWAAAA for game overs.",
+    body: "Game reactions speak the native dialect: KIDILAN for high scores, MWONEEE for close calls, and DWAAAA for game overs.",
   },
   {
     title: "Confident Ink Hierarchy.",

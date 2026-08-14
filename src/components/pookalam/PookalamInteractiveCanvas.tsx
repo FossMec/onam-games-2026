@@ -5,6 +5,7 @@ import {
   Layers,
   Play,
   RotateCcw,
+  Shuffle,
   Sliders,
   Sparkles,
 } from "lucide-solid";
@@ -145,7 +146,9 @@ export function PookalamInteractiveCanvas() {
   const [activeTab, setActiveTab] = createSignal<"layers" | "quick">("layers");
   const [isPaused, setIsPaused] = createSignal(false);
   const [isComplete, setIsComplete] = createSignal(false);
-  const [isCollapsed, setIsCollapsed] = createSignal(false);
+  const [isCollapsed, setIsCollapsed] = createSignal(
+    typeof window !== "undefined" ? window.innerWidth < 768 : false,
+  );
 
   // Configurable options
   const [speedMultiplier, setSpeedMultiplier] = createSignal<number>(1);
@@ -714,6 +717,36 @@ export function PookalamInteractiveCanvas() {
     onSettingsChange();
   };
 
+  const randomizeDesign = () => {
+    const newShapes: Record<string, ElementType> = {};
+    const newColors: Record<string, string> = {};
+    const availableShapes = SHAPES.map((s) => s.type);
+    const availableColors = THEME_PALETTE_16.map((c) => c.hex);
+
+    for (const l of layerConfigs) {
+      for (const slot of l.slots) {
+        const randomShape = availableShapes[Math.floor(Math.random() * availableShapes.length)];
+        const randomColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+        newShapes[`${l.id}_${slot.idx}`] = randomShape;
+        newColors[`${l.id}_${slot.idx}`] = randomColor;
+      }
+    }
+
+    setSlotOverrides(newShapes);
+    setColorOverrides(newColors);
+    setEnabledLayers({
+      0: true,
+      1: true,
+      2: true,
+      3: true,
+      4: true,
+      5: true,
+      6: true,
+      7: true,
+    });
+    onSettingsChange();
+  };
+
   const downloadPNG = () => {
     const size = 1600;
     const exportCanvas = document.createElement("canvas");
@@ -882,106 +915,102 @@ export function PookalamInteractiveCanvas() {
   ];
 
   return (
-    <div class="card card-plain p-3 sm:p-4 lg:p-5 flex flex-col lg:flex-row items-center justify-between gap-5 bg-[var(--paper-2)]">
-      {/* ---------------------------------------------------- LEFT / CENTER: LIVE CANVAS */}
+    <div class="flex flex-col md:flex-row items-center justify-center gap-5 w-full my-2">
+      {/* ---------------------------------------------------- LEFT: LIVE CANVAS */}
       <div
         ref={(el) => (containerRef = el)}
-        class="relative flex-1 flex items-center justify-center w-full min-w-0 max-w-[480px] aspect-square mx-auto rounded-xl p-2 bg-[#121b44] border-2 border-[var(--ink)]"
+        class="relative w-full max-w-[490px] h-[340px] sm:h-[440px] md:h-[490px] aspect-square mx-auto rounded p-2.5 bg-[#121b44] inked flex items-center justify-center shrink-0"
       >
         <canvas
           ref={(el) => (canvasRef = el)}
-          class="object-contain cursor-pointer select-none rounded-full"
+          class="object-contain cursor-pointer select-none rounded-full max-h-full max-w-full"
           onClick={() => setIsPaused((prev) => !prev)}
           title="Click to Pause / Resume"
         />
       </div>
 
-      {/* ---------------------------------------------------- RIGHT / BOTTOM: COLLAPSIBLE CONTROLS */}
+      {/* ---------------------------------------------------- RIGHT: CONTROLS PANEL */}
       <Show
         when={!isCollapsed()}
         fallback={
-          /* Collapsed Pill in regular layout flow */
-          <div class="w-full lg:w-auto flex justify-center py-2">
+          <div class="w-full md:w-auto flex justify-center py-1">
             <button
               type="button"
               onClick={() => setIsCollapsed(false)}
-              class="w-full lg:w-auto py-2.5 px-5 rounded-lg bg-[var(--paper-3)] border-2 border-[var(--ink)] text-[var(--ink)] font-black text-xs flex items-center justify-center gap-2 hover:bg-[var(--pop-yellow)] cursor-pointer"
+              class="btn-ghost text-xs py-2 px-4"
             >
-              <Sliders size={14} class="text-[var(--ink)]" />
+              <Sliders size={14} />
               <span>Open Studio Controls</span>
             </button>
           </div>
         }
       >
-        <div class="w-full lg:w-[420px] rounded-xl p-4 bg-[var(--paper-3)] border-2 border-[var(--ink)] text-[var(--ink)] flex flex-col justify-between space-y-4 shrink-0 transition-all duration-300">
-          <div>
+        <div class="w-full md:w-[410px] h-[490px] rounded bg-surface-2 inked p-4 flex flex-col justify-between shrink-0">
+          <div class="flex-1 flex flex-col min-h-0">
             {/* Header, Tabs & Collapse Toggle */}
-            <div class="flex items-center justify-between gap-2 border-b-2 border-[var(--ink)] pb-3 mb-3">
+            <div class="flex items-center justify-between gap-2 border-b border-[var(--ink)]/20 pb-2.5 mb-2.5 shrink-0">
               <div class="flex items-center gap-1.5">
                 <Sparkles size={16} class="text-[var(--pop-yellow-deep)]" />
-                <h3
-                  class="text-sm font-black text-[var(--ink)] uppercase tracking-tight"
-                  style={{ "font-family": "var(--font-stack-display)" }}
-                >
+                <h3 class="text-xs font-black uppercase tracking-tight text-ink">
                   Studio Controls
                 </h3>
               </div>
 
               <div class="flex items-center gap-1.5">
                 {/* Inline Navigation Tabs */}
-                <div class="flex items-center p-0.5 rounded-lg bg-[var(--paper-2)] border-2 border-[var(--ink)] text-xs font-bold">
+                <div class="flex items-center p-0.5 rounded bg-surface border border-[var(--ink)]/30 text-xs font-bold">
                   <button
                     type="button"
                     onClick={() => setActiveTab("layers")}
-                    class={`px-2.5 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+                    class={`px-2.5 py-0.5 rounded transition-all cursor-pointer flex items-center gap-1 ${
                       activeTab() === "layers"
-                        ? "bg-[var(--pop-yellow)] text-[var(--ink)] font-black"
-                        : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                        ? "bg-[var(--pop-yellow)] text-ink font-black"
+                        : "text-muted hover:text-ink"
                     }`}
                   >
-                    <Layers size={12} />
+                    <Layers size={11} />
                     <span>Layers</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setActiveTab("quick")}
-                    class={`px-2.5 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+                    class={`px-2.5 py-0.5 rounded transition-all cursor-pointer flex items-center gap-1 ${
                       activeTab() === "quick"
-                        ? "bg-[var(--pop-yellow)] text-[var(--ink)] font-black"
-                        : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                        ? "bg-[var(--pop-yellow)] text-ink font-black"
+                        : "text-muted hover:text-ink"
                     }`}
                   >
-                    <Sliders size={12} />
+                    <Sliders size={11} />
                     <span>Speed</span>
                   </button>
                 </div>
 
-                {/* Collapse Button (Desktop: ChevronRight, Mobile: ChevronDown) */}
+                {/* Collapse Button */}
                 <button
                   type="button"
                   onClick={() => setIsCollapsed(true)}
-                  class="p-1 rounded-lg bg-[var(--paper-2)] border-2 border-[var(--ink)] text-[var(--ink)] hover:bg-[var(--pop-yellow)] transition-colors cursor-pointer"
+                  class="p-1 rounded bg-surface border border-[var(--ink)]/30 text-ink hover:bg-[var(--pop-yellow)] cursor-pointer"
                   title="Collapse Controls Panel"
                 >
-                  <span class="hidden lg:inline-block">
-                    <ChevronRight size={15} />
+                  <span class="hidden md:inline-block">
+                    <ChevronRight size={13} />
                   </span>
-                  <span class="inline-block lg:hidden">
-                    <ChevronDown size={15} />
+                  <span class="inline-block md:hidden">
+                    <ChevronDown size={13} />
                   </span>
                 </button>
               </div>
             </div>
 
-            {/* TAB 1: LAYER ITEM SHAPE & THEMED 16-COLOR PALETTE (LAYERS 1 TO 7) */}
+            {/* TAB 1: LAYER ITEM SHAPE & THEMED 16-COLOR PALETTE */}
             <Show when={activeTab() === "layers"}>
-              <div class="space-y-2.5 max-h-[320px] overflow-y-auto pr-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                <div class="flex items-center justify-between text-[11px] uppercase font-black text-[var(--ink-soft)] pb-1">
+              <div class="flex-1 min-h-0 overflow-y-auto pr-1 space-y-2 [scrollbar-width:thin]">
+                <div class="flex items-center justify-between text-[10px] uppercase font-black text-muted pb-0.5">
                   <span>Customise Shapes & Colors</span>
                   <button
                     type="button"
                     onClick={resetToPeak}
-                    class="text-[10px] text-[var(--pop-teal-deep)] font-extrabold underline hover:text-[var(--ink)] cursor-pointer"
+                    class="text-[9px] text-[var(--pop-teal-deep)] font-extrabold underline hover:text-ink cursor-pointer"
                   >
                     Reset Defaults
                   </button>
@@ -994,10 +1023,10 @@ export function PookalamInteractiveCanvas() {
 
                     return (
                       <div
-                        class={`p-2.5 rounded-lg border-2 transition-all space-y-2 ${
+                        class={`p-2 rounded border space-y-1.5 transition-all ${
                           isEnabled()
-                            ? "bg-[var(--paper-2)] border-[var(--ink)] text-[var(--ink)]"
-                            : "bg-[var(--paper-3)] border-[var(--ink)]/40 text-[var(--ink-soft)] opacity-60"
+                            ? "bg-surface border-[var(--ink)]/30 text-ink"
+                            : "bg-surface-3 border-[var(--ink)]/15 text-muted opacity-60"
                         }`}
                       >
                         <div class="flex items-center justify-between text-xs font-bold">
@@ -1005,10 +1034,10 @@ export function PookalamInteractiveCanvas() {
                           <button
                             type="button"
                             onClick={() => toggleLayer(l.id)}
-                            class={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border border-[var(--ink)] cursor-pointer ${
+                            class={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border border-[var(--ink)]/40 cursor-pointer ${
                               isEnabled()
-                                ? "bg-[var(--pop-yellow)] text-[var(--ink)]"
-                                : "bg-[var(--paper-3)] text-[var(--ink-soft)]"
+                                ? "bg-[var(--pop-yellow)] text-ink"
+                                : "bg-surface-3 text-muted"
                             }`}
                           >
                             {isEnabled() ? "Active" : "Hidden"}
@@ -1017,7 +1046,7 @@ export function PookalamInteractiveCanvas() {
 
                         {/* Repeating / Alternating Shape & Color Slots */}
                         <Show when={isEnabled()}>
-                          <div class="space-y-2 pt-0.5">
+                          <div class="space-y-1.5 pt-0.5">
                             <For each={l.slots}>
                               {(slot) => {
                                 const currentShape = () => getSlot(l.id, slot.idx, slot.default);
@@ -1025,13 +1054,13 @@ export function PookalamInteractiveCanvas() {
                                   getColor(l.id, slot.idx, slot.defaultColor);
 
                                 return (
-                                  <div class="space-y-1.5 bg-[var(--paper)] p-2 rounded-md border border-[var(--ink)]">
+                                  <div class="space-y-1 bg-surface-2 p-1.5 rounded border border-[var(--ink)]/20">
                                     {/* Slot Title & Active Color Indicator */}
-                                    <div class="flex items-center justify-between text-[10px] font-bold text-[var(--ink)]">
+                                    <div class="flex items-center justify-between text-[10px] font-bold text-ink">
                                       <span class="truncate">{slot.label}</span>
                                       <div class="flex items-center gap-1.5">
                                         <span
-                                          class="w-2.5 h-2.5 rounded-full border border-[var(--ink)]"
+                                          class="w-2.5 h-2.5 rounded-full border border-[var(--ink)]/50"
                                           style={{ "background-color": currentColor() }}
                                         />
                                         <span class="font-mono text-[9px] text-[var(--pop-teal-deep)] uppercase font-black">
@@ -1040,7 +1069,7 @@ export function PookalamInteractiveCanvas() {
                                       </div>
                                     </div>
 
-                                    {/* 1. Shape Picker Row with Exact SVG Vectors */}
+                                    {/* Shape Picker Row with Exact SVG Vectors */}
                                     <div class="grid grid-cols-6 gap-1">
                                       <For each={SHAPES}>
                                         {(s) => {
@@ -1049,10 +1078,10 @@ export function PookalamInteractiveCanvas() {
                                             <button
                                               type="button"
                                               onClick={() => setSlotShape(l.id, slot.idx, s.type)}
-                                              class={`py-1 px-0.5 rounded border border-[var(--ink)] flex flex-col items-center justify-center transition-all cursor-pointer ${
+                                              class={`py-1 px-0.5 rounded border flex flex-col items-center justify-center cursor-pointer transition-colors ${
                                                 isSelected()
-                                                  ? "bg-[var(--pop-teal)] text-[var(--ink)] font-black"
-                                                  : "bg-[var(--paper-2)] hover:bg-[var(--pop-yellow)] text-[var(--ink)]"
+                                                  ? "bg-[var(--pop-teal)] border-[var(--ink)] text-ink font-black"
+                                                  : "bg-surface border-transparent hover:bg-[var(--pop-yellow)] text-ink"
                                               }`}
                                               title={s.label}
                                             >
@@ -1068,8 +1097,8 @@ export function PookalamInteractiveCanvas() {
                                       </For>
                                     </div>
 
-                                    {/* 2. Tiny Color Palette Dots */}
-                                    <div class="flex items-center justify-between gap-1 pt-1 border-t border-[var(--ink)]/20">
+                                    {/* Tiny Color Palette Dots */}
+                                    <div class="flex items-center justify-between gap-1 pt-1 border-t border-[var(--ink)]/15">
                                       <For each={THEME_PALETTE_16}>
                                         {(c) => {
                                           const isSelected = () =>
@@ -1078,10 +1107,10 @@ export function PookalamInteractiveCanvas() {
                                             <button
                                               type="button"
                                               onClick={() => setSlotColor(l.id, slot.idx, c.hex)}
-                                              class={`w-2.5 h-2.5 rounded-full transition-transform cursor-pointer shrink-0 ${
+                                              class={`w-2.5 h-2.5 rounded-full cursor-pointer shrink-0 ${
                                                 isSelected()
                                                   ? "ring-2 ring-[var(--ink)] scale-125 border border-white"
-                                                  : "border border-[var(--ink)]/40 hover:scale-125 opacity-85 hover:opacity-100"
+                                                  : "border border-[var(--ink)]/30 hover:scale-125 opacity-85 hover:opacity-100"
                                               }`}
                                               style={{ "background-color": c.hex }}
                                               title={c.label}
@@ -1105,16 +1134,16 @@ export function PookalamInteractiveCanvas() {
 
             {/* TAB 2: SPEED & DENSITY */}
             <Show when={activeTab() === "quick"}>
-              <div class="space-y-3.5 text-xs">
+              <div class="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3 text-xs">
                 {/* Draw Speed */}
-                <div class="space-y-1.5">
-                  <div class="flex justify-between text-[11px] uppercase font-black text-[var(--ink)]">
-                    <span>Draw / Bloom Speed</span>
+                <div class="space-y-1">
+                  <div class="flex justify-between text-[10px] uppercase font-black text-ink">
+                    <span>Draw Speed</span>
                     <span class="font-mono text-[var(--pop-yellow-deep)] font-black">
                       {speedMultiplier()}x
                     </span>
                   </div>
-                  <div class="grid grid-cols-4 gap-1.5 font-bold">
+                  <div class="grid grid-cols-4 gap-1 font-bold">
                     {[0.5, 1, 2, 4].map((spd) => (
                       <button
                         type="button"
@@ -1122,10 +1151,10 @@ export function PookalamInteractiveCanvas() {
                           setSpeedMultiplier(spd);
                           onSettingsChange();
                         }}
-                        class={`py-1 rounded-md border border-[var(--ink)] text-center transition-all cursor-pointer ${
+                        class={`py-1 rounded border text-center cursor-pointer ${
                           speedMultiplier() === spd
-                            ? "bg-[var(--pop-yellow)] text-[var(--ink)] font-black"
-                            : "bg-[var(--paper-2)] text-[var(--ink)] hover:bg-[var(--paper)]"
+                            ? "bg-[var(--pop-yellow)] border-[var(--ink)] text-ink font-black"
+                            : "bg-surface border-[var(--ink)]/20 text-ink hover:bg-surface-3"
                         }`}
                       >
                         {spd}x
@@ -1135,14 +1164,14 @@ export function PookalamInteractiveCanvas() {
                 </div>
 
                 {/* Petal Density Multiplier */}
-                <div class="space-y-1.5">
-                  <div class="flex justify-between text-[11px] uppercase font-black text-[var(--ink)]">
-                    <span>Petal Density Multiplier</span>
+                <div class="space-y-1">
+                  <div class="flex justify-between text-[10px] uppercase font-black text-ink">
+                    <span>Petal Density</span>
                     <span class="font-mono text-[var(--pop-teal-deep)] font-black">
                       {countMultiplier()}x
                     </span>
                   </div>
-                  <div class="grid grid-cols-4 gap-1.5 font-bold">
+                  <div class="grid grid-cols-4 gap-1 font-bold">
                     {[0.5, 1, 1.5, 2].map((mul) => (
                       <button
                         type="button"
@@ -1150,10 +1179,10 @@ export function PookalamInteractiveCanvas() {
                           setCountMultiplier(mul);
                           onSettingsChange();
                         }}
-                        class={`py-1 rounded-md border border-[var(--ink)] text-center transition-all cursor-pointer ${
+                        class={`py-1 rounded border text-center cursor-pointer ${
                           countMultiplier() === mul
-                            ? "bg-[var(--pop-pink)] text-[var(--ink)] font-black"
-                            : "bg-[var(--paper-2)] text-[var(--ink)] hover:bg-[var(--paper)]"
+                            ? "bg-[var(--pop-pink)] border-[var(--ink)] text-ink font-black"
+                            : "bg-surface border-[var(--ink)]/20 text-ink hover:bg-surface-3"
                         }`}
                       >
                         {mul}x
@@ -1163,11 +1192,11 @@ export function PookalamInteractiveCanvas() {
                 </div>
 
                 {/* Spin Mode */}
-                <div class="space-y-1.5">
-                  <div class="flex justify-between text-[11px] uppercase font-black text-[var(--ink)]">
+                <div class="space-y-1">
+                  <div class="flex justify-between text-[10px] uppercase font-black text-ink">
                     <span>Harmonic Rotation</span>
                   </div>
-                  <div class="grid grid-cols-3 gap-1.5 font-bold">
+                  <div class="grid grid-cols-3 gap-1 font-bold">
                     {[
                       { val: 0, label: "Off" },
                       { val: 1, label: "Serene" },
@@ -1179,10 +1208,10 @@ export function PookalamInteractiveCanvas() {
                           setRotationSpeedFactor(rot.val);
                           onSettingsChange();
                         }}
-                        class={`py-1 rounded-md border border-[var(--ink)] text-center transition-all cursor-pointer ${
+                        class={`py-1 rounded border text-center cursor-pointer ${
                           rotationSpeedFactor() === rot.val
-                            ? "bg-[var(--pop-yellow)] text-[var(--ink)] font-black"
-                            : "bg-[var(--paper-2)] text-[var(--ink)] hover:bg-[var(--paper)]"
+                            ? "bg-[var(--pop-yellow)] border-[var(--ink)] text-ink font-black"
+                            : "bg-surface border-[var(--ink)]/20 text-ink hover:bg-surface-3"
                         }`}
                       >
                         {rot.label}
@@ -1195,12 +1224,12 @@ export function PookalamInteractiveCanvas() {
           </div>
 
           {/* Action Buttons */}
-          <div class="space-y-2 pt-2 border-t-2 border-[var(--ink)]">
+          <div class="space-y-2 pt-2.5 border-t border-[var(--ink)]/20 shrink-0">
             <div class="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setIsPaused((prev) => !prev)}
-                class="flex-1 py-2 px-3 rounded-lg bg-[var(--paper-2)] hover:bg-[var(--paper)] border-2 border-[var(--ink)] text-xs font-black text-[var(--ink)] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                class="btn-ghost flex-1 py-1.5 text-xs min-h-0"
               >
                 <Show when={!isPaused()} fallback={<Play size={12} fill="currentColor" />}>
                   <span class="w-2 h-2 rounded-full bg-[var(--pop-teal)]" />
@@ -1210,19 +1239,28 @@ export function PookalamInteractiveCanvas() {
 
               <button
                 type="button"
+                onClick={randomizeDesign}
+                class="btn-ghost py-1.5 px-2.5 text-xs min-h-0"
+                title="Randomize shapes & colors"
+              >
+                <Shuffle size={13} strokeWidth={2.5} />
+                <span>Randomize</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={restart}
-                class="py-2 px-3 rounded-lg bg-[var(--paper-2)] hover:bg-[var(--paper)] border-2 border-[var(--ink)] text-xs font-black text-[var(--ink)] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                class="btn-ghost py-1.5 px-2 text-xs min-h-0"
                 title="Replay drawing animation"
               >
                 <RotateCcw size={13} strokeWidth={2.5} />
-                <span>Replay</span>
               </button>
             </div>
 
             <button
               type="button"
               onClick={downloadPNG}
-              class="w-full btn-brand py-2.5 px-4 rounded-lg text-xs sm:text-sm font-black flex items-center justify-center gap-2 cursor-pointer"
+              class="btn-brand w-full py-2 text-xs sm:text-sm"
             >
               <Download size={15} strokeWidth={2.5} />
               <span>Download 1600px PNG</span>

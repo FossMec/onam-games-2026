@@ -1,5 +1,5 @@
 import { createAsync, useLocation } from "@solidjs/router";
-import { ChevronDown, GraduationCap, LogOut, Mail, User } from "lucide-solid";
+import { ChevronDown, GraduationCap, LogOut, Mail, Send, User } from "lucide-solid";
 import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
 import { signOutAndReload } from "~/lib/sign-out";
 import { getMe } from "~/server/auth/actions";
@@ -99,13 +99,30 @@ function ProfileMenu(props: {
               </div>
             </Show>
           </div>
-          <div class="space-y-1">
+
+          <div class="space-y-1 text-xs font-bold">
+            <a
+              href="/onboarding"
+              class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-[var(--pop-yellow)] transition-colors"
+            >
+              <User size={13} strokeWidth={2.5} />
+              <span>Edit Profile</span>
+            </a>
+            <Show when={props.me.role === "admin"}>
+              <a
+                href="/admin"
+                class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-[var(--pop-yellow)] transition-colors text-[var(--pop-purple-deep)] font-extrabold"
+              >
+                <SpriteIcon name="arch-crown" size={13} />
+                <span>Admin Panel</span>
+              </a>
+            </Show>
             <button
               type="button"
               onClick={() => void signOutAndReload()}
-              class="w-full text-left font-extrabold text-xs py-2 px-2.5 rounded-md text-[var(--pop-red)] hover:bg-[var(--pop-red)] hover:text-[var(--ink)] transition-colors inline-flex items-center gap-2 cursor-pointer border border-transparent hover:border-[var(--ink)]"
+              class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-[var(--pop-red)] hover:text-white transition-colors text-left cursor-pointer text-[var(--pop-red-deep)]"
             >
-              <LogOut size={14} strokeWidth={2.5} />
+              <LogOut size={13} strokeWidth={2.5} />
               <span>Sign Out</span>
             </button>
           </div>
@@ -116,109 +133,153 @@ function ProfileMenu(props: {
 }
 
 export function Nav() {
-  const location = useLocation();
+  const loc = useLocation();
   const me = createAsync(() => getMe());
 
-  const isActive = (href: string) =>
-    href === "/" ? location.pathname === "/" : location.pathname.startsWith(href);
+  const isActive = (href: string) => {
+    if (href === "/") return loc.pathname === "/";
+    return loc.pathname.startsWith(href);
+  };
+
+  const isPookalamPage = () =>
+    loc.pathname.startsWith("/code-a-pookalam") && loc.pathname !== "/code-a-pookalam/submit";
 
   return (
-    <header
-      class="sticky top-0 z-30"
-      style={{
-        background: "var(--paper)",
-        "border-bottom": "var(--ink-w-bold) solid var(--ink)",
-      }}
-    >
-      <div class="container py-2 sm:py-2.5">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
-          {/* Top Row on Mobile: Brand on Left, User Profile on Right */}
-          <div class="flex items-center justify-between w-full sm:w-auto">
-            <a href="/" class="flex items-center gap-2 group shrink-0">
-              <SpriteIcon
-                name="foss-mec-badge"
-                size={28}
-                animate="wobble"
-                interactive
-                class="sm:h-8 sm:w-8 transition-transform group-hover:rotate-12"
-              />
-              <div class="flex items-baseline gap-1.5">
-                <span class="wordmark text-lg sm:text-2xl" data-text="FOSS ONAM">
-                  FOSS ONAM
-                </span>
-                <span
-                  class="text-[11px] sm:text-xs font-extrabold tracking-tight uppercase hidden xs:inline"
-                  style={{
-                    "font-family": "var(--font-stack-display)",
-                    color: "var(--ink)",
-                    opacity: "0.85",
-                  }}
-                >
-                  by fossmec
-                </span>
-              </div>
-            </a>
-
-            {/* Mobile-only User Profile */}
-            <div class="sm:hidden shrink-0">
-              <Show
-                when={me()}
-                fallback={
-                  <a
-                    href="/auth/signin"
-                    class="btn-brand py-1 px-3 text-xs rounded-full font-extrabold cursor-pointer inline-flex items-center gap-1"
-                  >
-                    <User size={12} strokeWidth={2.5} />
-                    <span>Sign In</span>
-                  </a>
-                }
+    <>
+      <header
+        class="sticky top-0 z-30 w-full backdrop-blur-md"
+        style={{
+          background: "color-mix(in srgb, var(--paper) 92%, transparent)",
+          "border-bottom": "var(--ink-w) solid var(--ink)",
+        }}
+      >
+        <div class="container py-2 sm:py-2.5">
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4">
+            {/* Top row on mobile: Logo + Auth */}
+            <div class="flex items-center justify-between w-full sm:w-auto">
+              <a
+                href="/"
+                class="flex items-center gap-2.5 transition-transform hover:-rotate-1 select-none"
               >
-                {(user) => <ProfileMenu me={user()} compact />}
-              </Show>
-            </div>
-          </div>
-
-          {/* Nav Links + Desktop User Profile */}
-          <div class="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full sm:w-auto">
-            <nav class="flex items-center justify-center gap-1.5 sm:gap-2 w-full sm:w-auto">
-              <For each={LINKS}>
-                {(link) => (
-                  <a
-                    href={link.href}
-                    class="flex-1 sm:flex-initial text-center inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 text-xs sm:px-3.5 sm:py-1.5 sm:text-sm transition-transform active:translate-y-0.5"
+                <SpriteIcon
+                  name="foss-mec-badge"
+                  size={32}
+                  animate="wobble"
+                  interactive
+                  class="shrink-0"
+                />
+                <div class="flex items-baseline gap-1.5">
+                  <span class="wordmark text-lg sm:text-2xl" data-text="FOSS ONAM">
+                    FOSS ONAM
+                  </span>
+                  <span
+                    class="text-[11px] sm:text-xs font-extrabold tracking-tight uppercase"
                     style={{
                       "font-family": "var(--font-stack-display)",
-                      "font-weight": 800,
-                      border: "2px solid var(--ink)",
-                      background: isActive(link.href) ? "var(--pop-teal)" : "var(--paper-2)",
+                      color: "var(--ink)",
+                      opacity: "0.85",
                     }}
                   >
-                    <span>{link.label}</span>
-                  </a>
-                )}
-              </For>
-            </nav>
+                    by fossmec
+                  </span>
+                </div>
+              </a>
 
-            {/* Desktop User Profile */}
-            <div class="hidden sm:block shrink-0">
-              <Show
-                when={me()}
-                fallback={
+              {/* Mobile-only User Profile or Submit */}
+              <div class="sm:hidden flex items-center gap-2 shrink-0">
+                <Show when={isPookalamPage()}>
                   <a
-                    href="/auth/signin"
-                    class="btn-brand py-1.5 px-3.5 text-sm rounded-full font-extrabold cursor-pointer inline-flex items-center gap-1.5"
+                    href="/code-a-pookalam/submit"
+                    class="btn-brand py-1 px-2.5 text-xs rounded-full font-black cursor-pointer inline-flex items-center gap-1"
                   >
-                    <User size={14} strokeWidth={2.5} />
-                    <span>Sign In</span>
+                    <Send size={11} strokeWidth={2.5} />
+                    <span>Submit</span>
                   </a>
-                }
-              >
-                {(user) => <ProfileMenu me={user()} />}
-              </Show>
+                </Show>
+
+                <Show
+                  when={me()}
+                  fallback={
+                    <a
+                      href="/auth/signin"
+                      class="btn-brand py-1 px-3 text-xs rounded-full font-extrabold cursor-pointer inline-flex items-center gap-1"
+                    >
+                      <User size={12} strokeWidth={2.5} />
+                      <span>Sign In</span>
+                    </a>
+                  }
+                >
+                  {(user) => <ProfileMenu me={user()} compact />}
+                </Show>
+              </div>
+            </div>
+
+            {/* Nav Links + Desktop User Profile */}
+            <div class="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full sm:w-auto">
+              <nav class="flex items-center justify-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+                <For each={LINKS}>
+                  {(link) => (
+                    <a
+                      href={link.href}
+                      class="flex-1 sm:flex-initial text-center inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 text-xs sm:px-3.5 sm:py-1.5 sm:text-sm transition-transform active:translate-y-0.5"
+                      style={{
+                        "font-family": "var(--font-stack-display)",
+                        "font-weight": 800,
+                        border: "2px solid var(--ink)",
+                        background: isActive(link.href) ? "var(--pop-teal)" : "var(--paper-2)",
+                      }}
+                    >
+                      <span>{link.label}</span>
+                    </a>
+                  )}
+                </For>
+
+                {/* Submit button in header on desktop when on code-a-pookalam */}
+                <Show when={isPookalamPage()}>
+                  <a
+                    href="/code-a-pookalam/submit"
+                    class="hidden sm:inline-flex btn-brand py-1.5 px-3.5 text-sm rounded-full font-black cursor-pointer items-center gap-1.5 shrink-0"
+                  >
+                    <Send size={14} strokeWidth={2.5} />
+                    <span>Submit</span>
+                  </a>
+                </Show>
+              </nav>
+
+              {/* Desktop User Profile */}
+              <div class="hidden sm:block shrink-0">
+                <Show
+                  when={me()}
+                  fallback={
+                    <a
+                      href="/auth/signin"
+                      class="btn-brand py-1.5 px-3.5 text-sm rounded-full font-extrabold cursor-pointer inline-flex items-center gap-1.5"
+                    >
+                      <User size={14} strokeWidth={2.5} />
+                      <span>Sign In</span>
+                    </a>
+                  }
+                >
+                  {(user) => <ProfileMenu me={user()} />}
+                </Show>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Floating Toolbar on mobile when on code-a-pookalam */}
+      <Show when={isPookalamPage()}>
+        <div class="sm:hidden fixed bottom-4 right-4 z-40">
+          <a
+            href="/code-a-pookalam/submit"
+            class="btn-brand py-2.5 px-4 rounded-full font-black text-xs inline-flex items-center gap-1.5"
+          >
+            <Send size={14} strokeWidth={2.5} />
+            <span>Submit Pookalam</span>
+          </a>
+        </div>
+      </Show>
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { Sparkles, X } from "lucide-solid";
+import { X } from "lucide-solid";
 import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
 
 export interface PreviousPookalam {
@@ -59,20 +59,6 @@ export function PreviousPookalamCarousel() {
           animation: pookalamInfiniteScroll 150s linear infinite;
         }
       `}</style>
-
-      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
-        <div>
-          <div class="inline-flex items-center gap-1.5 text-xs font-black uppercase px-2.5 py-0.5 rounded bg-[var(--pop-yellow)] border border-[length:var(--ink-w)] border-[var(--ink)] mb-1.5">
-            <Sparkles size={12} />
-            <span>Community Gallery</span>
-          </div>
-          <h2 class="text-2xl sm:text-3xl font-black">Previous Coded Pookalams</h2>
-          <p class="comment">
-            Real geometric & algorithmic pookalams created by students and hackers from past
-            editions!
-          </p>
-        </div>
-      </div>
 
       {/* Infinite Seamless Scrolling Marquee without hover transform/scale or shadows */}
       <div class="relative w-full overflow-hidden py-2 select-none [mask-image:linear-gradient(to_right,transparent,black_4%,black_96%,transparent)]">

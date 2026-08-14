@@ -206,9 +206,10 @@ export function MaveliLetter() {
                   </div>
 
                   <p class="leading-relaxed text-[11px]">
-                    <strong>PS:</strong> If you know how to exit Vim:{" "}
-                    <code class="px-1.5 py-0.5 rounded bg-[var(--paper-2)] border border-[var(--ink)] font-bold text-[10.5px] select-all">
-                      ssh pathalam@mahali.local -p 22
+                    <strong>PS:</strong> If anyone knows how to exit Vim, please ssh into pathalam
+                    at:{" "}
+                    <code class="px-1.5 py-0.5 rounded bg-[var(--paper-2)] border border-[var(--ink)] font-bold text-[10.5px] select-all whitespace-nowrap inline-block">
+                      maveli@pathalam.btw
                     </code>
                   </p>
 
