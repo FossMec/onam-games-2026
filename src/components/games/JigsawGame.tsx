@@ -1,17 +1,24 @@
-import { For, Show, createMemo, createSignal, onMount } from "solid-js";
+import { For, createMemo, createSignal, onMount } from "solid-js";
 
 /**
  * Pookalam Jigsaw board.
  *
- * Piece outlines are built from the seeded edge specs the server sends, so
- * every player gets differently-shaped tabs over the same artwork. The image
- * is painted through a clip path — it is only a texture, which is what makes
- * swapping the artwork a one-line change.
+ * A real jigsaw: every piece is loose on one board, you drag them around, and
+ * when two pieces that genuinely belong together come close enough they snap
+ * and from then on move as one lump. Finish when everything is a single lump.
  *
- * Interaction is tap-to-select then tap-to-place, not free drag. On a phone,
- * dragging 25 small pieces around a 5x5 board is miserable and drops pieces
- * behind the tray; tapping is unambiguous, works with one thumb, and is
- * accessible for free.
+ * This replaces a tray-and-slots version where you tapped a piece and then
+ * tapped a grid cell. That was easier to build and easier to verify, and it
+ * was not a jigsaw — it never connected anything, so none of the satisfaction
+ * of a jigsaw was there. Groups are the whole point.
+ *
+ * The win condition is "one group", not "pieces at the correct absolute
+ * position". A finished jigsaw can sit anywhere on the table.
+ *
+ * Piece outlines come from the seeded edge specs the server sends, so tabs
+ * differ per player over the same artwork. The image is painted through a clip
+ * path — it is only a texture, which is what keeps swapping the artwork a
+ * one-line change.
  */
 
 export interface JigsawTab {
@@ -29,32 +36,50 @@ export interface JigsawViewData {
   imageUrl: string;
   hEdges: JigsawTab[][];
   vEdges: JigsawTab[][];
-  trayOrder: number[];
+  /** Starting position of each piece, in cell units. */
+  scatter: { id: number; x: number; y: number }[];
 }
 
+/** A drag that ended. Timing evidence, not a correctness record. */
 interface Move {
   p: number;
-  s: number;
   t: number;
 }
 
+interface Piece {
+  id: number;
+  /** Pieces sharing a groupId move together and are already joined. */
+  groupId: number;
+  /** Position of the piece's top-left, in cell units. */
+  x: number;
+  y: number;
+}
+
 export interface JigsawProgress {
-  placement: (number | null)[];
+  pieces: Piece[];
   moveLog: Move[];
 }
 
 export interface JigsawGameProps {
   view: JigsawViewData;
   startedAt: number;
-  onFinish: (submission: { placement: (number | null)[]; moveLog: Move[] }) => void;
+  onFinish: (submission: {
+    layout: { id: number; gx: number; gy: number }[];
+    moveLog: Move[];
+  }) => void;
   disabled?: boolean;
-  /** Placement and moves from a previous visit. */
   initialProgress?: JigsawProgress | null;
   onProgress?: (progress: JigsawProgress) => void;
 }
 
-/** Unit cell; the SVG is scaled by viewBox so this never needs pixels. */
+/** Unit cell for the SVG; the viewBox scales it, so this never needs pixels. */
 const CELL = 100;
+
+/** How much bigger the board is than the finished picture. Matches the server. */
+const SPREAD = 1.6;
+
+/** How close two pieces must be to snap, in cell units. */
+const SNAP = 0.3;
 
 /**
  * One edge of a piece, from `from` to `to` in unit space.
@@ -104,112 +129,188 @@ function edgePath(
 }
 
 export function JigsawGame(props: JigsawGameProps) {
+  let board: HTMLDivElement | undefined;
+
   const cols = () => props.view.cols;
   const rows = () => props.view.rows;
   const count = () => cols() * rows();
 
-  const [placement, setPlacement] = createSignal<(number | null)[]>([]);
-  const [tray, setTray] = createSignal<number[]>([]);
-  const [selected, setSelected] = createSignal<number | null>(null);
+  const [pieces, setPieces] = createSignal<Piece[]>([]);
   const [moveLog, setMoveLog] = createSignal<Move[]>([]);
+  /** The group currently under the finger, drawn on top of everything else. */
+  const [activeGroup, setActiveGroup] = createSignal<number | null>(null);
 
   onMount(() => {
     const saved = props.initialProgress;
-    if (saved && saved.placement.length === count()) {
-      // Tray is derived rather than stored: it is exactly the pieces not on the
-      // board, so keeping a second copy would only create a way for the two to
-      // disagree after a restore.
-      const placed = new Set(saved.placement.filter((id): id is number => id !== null));
-      setPlacement(saved.placement.slice());
+    if (saved && saved.pieces.length === count()) {
+      setPieces(saved.pieces.map((p) => ({ ...p })));
       setMoveLog(saved.moveLog.slice());
-      setTray(props.view.trayOrder.filter((id) => !placed.has(id)));
       return;
     }
-    setPlacement(Array.from<number | null>({ length: count() }).fill(null));
-    setTray(props.view.trayOrder.slice());
+    // Each piece starts in its own group, which is what "loose on the board"
+    // means: no two pieces are joined yet.
+    setPieces(props.view.scatter.map((s) => ({ id: s.id, groupId: s.id, x: s.x, y: s.y })));
   });
 
-  /**
-   * Outline for piece `id`, in its own local box. Each of the four edges is
-   * looked up from the shared edge grid so neighbours always interlock.
-   */
-  const piecePath = (id: number): string => {
-    const c = id % cols();
-    const r = Math.floor(id / cols());
-    const x0 = 0;
-    const y0 = 0;
-    const x1 = CELL;
-    const y1 = CELL;
+  const homeOf = (id: number) => ({ x: id % cols(), y: Math.floor(id / cols()) });
 
-    const top = r > 0 ? props.view.hEdges[r - 1][c] : null;
-    const bottom = r < rows() - 1 ? props.view.hEdges[r][c] : null;
-    const left = c > 0 ? props.view.vEdges[r][c - 1] : null;
-    const right = c < cols() - 1 ? props.view.vEdges[r][c] : null;
+  const groupCount = createMemo(() => new Set(pieces().map((p) => p.groupId)).size);
+  const solved = () => pieces().length > 0 && groupCount() === 1;
 
-    // Signs chosen so a shared edge is drawn as exact negatives from each side.
-    return (
-      `M ${x0} ${y0} ` +
-      edgePath([x0, y0], [x1, y0], top, -1) +
-      edgePath([x1, y0], [x1, y1], right, 1) +
-      edgePath([x1, y1], [x0, y1], bottom, 1) +
-      edgePath([x0, y1], [x0, y0], left, -1) +
-      "Z"
+  const report = (next: Piece[], log: Move[]) => {
+    props.onProgress?.({ pieces: next, moveLog: log });
+  };
+
+  /* ------------------------------------------------------------ dragging */
+
+  let pointerId: number | null = null;
+  let origin = { x: 0, y: 0 };
+  let startPositions: Piece[] = [];
+
+  /** Board width in px per cell unit — everything is stored in cell units. */
+  const unit = () => (board?.getBoundingClientRect().width ?? 1) / (cols() * SPREAD);
+
+  const onPointerDown = (event: PointerEvent, piece: Piece) => {
+    if (props.disabled || solved()) return;
+    event.preventDefault();
+    pointerId = event.pointerId;
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    origin = { x: event.clientX, y: event.clientY };
+    startPositions = pieces().map((p) => ({ ...p }));
+    setActiveGroup(piece.groupId);
+  };
+
+  const onPointerMove = (event: PointerEvent) => {
+    if (pointerId !== event.pointerId || activeGroup() === null) return;
+    const scale = unit();
+    const dx = (event.clientX - origin.x) / scale;
+    const dy = (event.clientY - origin.y) / scale;
+    const group = activeGroup();
+    setPieces(
+      startPositions.map((p) => (p.groupId === group ? { ...p, x: p.x + dx, y: p.y + dy } : p)),
     );
   };
 
-  const paths = createMemo(() => Array.from({ length: count() }, (_, id) => piecePath(id)));
+  /**
+   * Looks for a join and, if it finds one, snaps the dragged group onto it.
+   *
+   * For every piece in the moved group, check every piece outside it: if the
+   * two are grid neighbours and the outside one is sitting close to where it
+   * would be if they were joined, that is a match. The whole dragged group then
+   * shifts by the offset that makes the join exact, so the pieces already stuck
+   * to it come along and stay aligned.
+   */
+  const trySnap = (current: Piece[], group: number): Piece[] | null => {
+    const inGroup = current.filter((p) => p.groupId === group);
+    for (const active of inGroup) {
+      const activeHome = homeOf(active.id);
+      for (const other of current) {
+        if (other.groupId === group) continue;
+        const otherHome = homeOf(other.id);
+        const dRow = otherHome.y - activeHome.y;
+        const dCol = otherHome.x - activeHome.x;
+        // Grid neighbours only — pieces that do not touch cannot join.
+        if (Math.abs(dRow) + Math.abs(dCol) !== 1) continue;
 
-  const place = (slot: number) => {
-    const piece = selected();
-    if (props.disabled || piece === null) return;
+        // Where `other` would sit if the two were correctly joined.
+        const wantX = active.x + dCol;
+        const wantY = active.y + dRow;
+        if (Math.hypot(other.x - wantX, other.y - wantY) > SNAP) continue;
 
-    const next = placement().slice();
-    // Moving a piece vacates wherever it was; the server replay assumes this.
-    const previous = next.indexOf(piece);
-    if (previous !== -1) next[previous] = null;
+        const offsetX = other.x - wantX;
+        const offsetY = other.y - wantY;
+        return current.map((p) =>
+          p.groupId === group
+            ? { ...p, x: p.x + offsetX, y: p.y + offsetY, groupId: other.groupId }
+            : p,
+        );
+      }
+    }
+    return null;
+  };
 
-    const displaced = next[slot];
-    next[slot] = piece;
-    setPlacement(next);
-    setTray((t) => {
-      const without = t.filter((p) => p !== piece);
-      return displaced != null ? [...without, displaced] : without;
-    });
-    setSelected(null);
+  const onPointerUp = (event: PointerEvent) => {
+    if (pointerId !== event.pointerId) return;
+    pointerId = null;
+    const group = activeGroup();
+    setActiveGroup(null);
+    if (group === null) return;
 
-    // Build the log explicitly rather than reading the signal back after
-    // setting it — that read already includes this move, so appending again
-    // double-counted the final placement.
-    const nextLog = [...moveLog(), { p: piece, s: slot, t: Date.now() - props.startedAt }];
-    setMoveLog(nextLog);
+    let next = pieces();
+    // Keep snapping: one drag can close two joins at once, and leaving the
+    // second one unmade would look broken.
+    for (let pass = 0; pass < count(); pass += 1) {
+      const snapped = trySnap(next, next.find((p) => p.groupId === group)?.groupId ?? group);
+      if (!snapped) break;
+      next = snapped;
+    }
+    setPieces(next);
 
-    if (next.every((p, i) => p === i)) {
-      props.onFinish({ placement: next, moveLog: nextLog });
+    const log = [...moveLog(), { p: group, t: Math.max(0, Date.now() - props.startedAt) }];
+    setMoveLog(log);
+    report(next, log);
+
+    if (new Set(next.map((p) => p.groupId)).size === 1) {
+      /*
+       * Positions are floats — the assembled picture sits wherever the player
+       * left it. They are reported relative to piece 0 and rounded, which is
+       * exact because every piece in a group shares the same fractional offset.
+       */
+      const anchor = next.find((p) => p.id === 0)!;
+      props.onFinish({
+        layout: next.map((p) => ({
+          id: p.id,
+          gx: Math.round(p.x - anchor.x),
+          gy: Math.round(p.y - anchor.y),
+        })),
+        moveLog: log,
+      });
     }
   };
 
-  const takeBack = (slot: number) => {
-    if (props.disabled) return;
-    const piece = placement()[slot];
-    if (piece == null) return;
-    const next = placement().slice();
-    next[slot] = null;
-    setPlacement(next);
-    setTray((t) => [...t, piece]);
-    setSelected(piece);
-  };
+  /* ---------------------------------------------------------------- art */
 
-  /** The piece's own window onto the artwork. */
-  const PieceImage = (p: { id: number; interactive: boolean }) => {
+  const paths = createMemo(() => {
+    const out: string[] = [];
+    for (let id = 0; id < count(); id += 1) {
+      const c = id % cols();
+      const r = Math.floor(id / cols());
+      const top = r > 0 ? props.view.hEdges[r - 1][c] : null;
+      const bottom = r < rows() - 1 ? props.view.hEdges[r][c] : null;
+      const left = c > 0 ? props.view.vEdges[r][c - 1] : null;
+      const right = c < cols() - 1 ? props.view.vEdges[r][c] : null;
+      out.push(
+        `M 0 0 ` +
+          edgePath([0, 0], [CELL, 0], top, -1) +
+          edgePath([CELL, 0], [CELL, CELL], right, 1) +
+          edgePath([CELL, CELL], [0, CELL], bottom, 1) +
+          edgePath([0, CELL], [0, 0], left, -1) +
+          "Z",
+      );
+    }
+    return out;
+  });
+
+  const PieceArt = (p: { id: number }) => {
     const c = p.id % cols();
     const r = Math.floor(p.id / cols());
-    const clipId = `clip-${p.id}`;
-    // Overdraw so tabs that bulge outside the cell still show artwork.
+    const clipId = `jig-clip-${p.id}`;
+    // Overdraw so tabs bulging outside the cell still carry artwork.
     const pad = CELL * 0.35;
     return (
       <svg
         viewBox={`${-pad} ${-pad} ${CELL + pad * 2} ${CELL + pad * 2}`}
-        style={{ width: "100%", height: "100%", overflow: "visible", display: "block" }}
+        style={{
+          position: "absolute",
+          // The SVG is bigger than the cell so the tabs have somewhere to go;
+          // it is offset back by exactly the padding to stay aligned.
+          left: `${(-pad / CELL) * 100}%`,
+          top: `${(-pad / CELL) * 100}%`,
+          width: `${((CELL + pad * 2) / CELL) * 100}%`,
+          height: `${((CELL + pad * 2) / CELL) * 100}%`,
+          overflow: "visible",
+          "pointer-events": "none",
+        }}
         aria-hidden="true"
       >
         <defs>
@@ -231,102 +332,78 @@ export function JigsawGame(props: JigsawGameProps) {
           d={paths()[p.id]}
           fill="none"
           stroke="var(--ink)"
-          stroke-width={p.interactive ? 3 : 2}
+          stroke-width={3}
+          stroke-linejoin="round"
         />
       </svg>
     );
   };
 
-  const remaining = () => placement().filter((p) => p === null).length;
+  /** Pieces in draw order, with the dragged group last so it sits on top. */
+  const drawOrder = createMemo(() => {
+    const group = activeGroup();
+    return [...pieces()].sort((a, b) => {
+      const ay = a.groupId === group ? 1 : 0;
+      const by = b.groupId === group ? 1 : 0;
+      return ay - by;
+    });
+  });
 
   return (
-    <div class="space-y-4">
-      <div class="flex items-center justify-between gap-2">
+    <div class="space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-2">
         <span class="badge" style={{ "--pop": "var(--pop-blue)" }}>
-          {cols()}x{rows()}
+          {count() - groupCount() + 1}/{count()} joined
         </span>
-        <span class="badge" style={{ "--pop": "var(--pop-yellow)" }}>
-          {remaining()} to place
+        <span class="badge" style={{ "--pop": "var(--paper-3)" }}>
+          {solved() ? "done" : "drag pieces together"}
         </span>
       </div>
 
-      {/* Board. Square, so it never reflows as pieces land. */}
       <div
-        class="mx-auto grid w-full max-w-md"
+        ref={(el) => (board = el)}
+        class="relative mx-auto w-full"
         style={{
-          "grid-template-columns": `repeat(${cols()}, 1fr)`,
-          "aspect-ratio": "1 / 1",
-          background: "var(--paper-3)",
+          "max-width": "min(100%, 34rem)",
+          "aspect-ratio": `${cols() * SPREAD} / ${rows() * SPREAD}`,
+          background: "var(--paper-2)",
           border: "var(--ink-w-bold) solid var(--ink)",
+          "border-radius": "var(--radius)",
+          // Without this the browser takes the drag for scrolling and pieces
+          // simply never move on a phone.
+          "touch-action": "none",
+          overflow: "hidden",
         }}
       >
-        <For each={placement()}>
-          {(piece, slot) => (
-            <button
-              type="button"
-              class="relative"
+        <For each={drawOrder()}>
+          {(piece) => (
+            <div
+              role="button"
+              tabindex="0"
+              aria-label={`Piece ${piece.id + 1}`}
+              onPointerDown={(e) => onPointerDown(e, piece)}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerCancel={onPointerUp}
               style={{
-                "aspect-ratio": "1 / 1",
-                background: "transparent",
-                border: "1px dashed rgb(34 32 43 / 0.25)",
-                padding: 0,
-                cursor: props.disabled ? "default" : "pointer",
+                position: "absolute",
+                left: `${(piece.x / (cols() * SPREAD)) * 100}%`,
+                top: `${(piece.y / (rows() * SPREAD)) * 100}%`,
+                width: `${(1 / (cols() * SPREAD)) * 100}%`,
+                height: `${(1 / (rows() * SPREAD)) * 100}%`,
+                cursor: props.disabled || solved() ? "default" : "grab",
+                "z-index": piece.groupId === activeGroup() ? 10 : 1,
+                "touch-action": "none",
               }}
-              onClick={() => (piece == null ? place(slot()) : takeBack(slot()))}
-              aria-label={
-                piece == null ? `Empty slot ${slot() + 1}` : `Piece in slot ${slot() + 1}`
-              }
             >
-              <Show when={piece != null}>
-                <PieceImage id={piece!} interactive={false} />
-              </Show>
-            </button>
+              <PieceArt id={piece.id} />
+            </div>
           )}
         </For>
       </div>
 
-      {/* Tray */}
-      <div
-        class="flex flex-wrap justify-center gap-1.5 rounded p-2"
-        style={{ background: "var(--paper-3)", border: "var(--ink-w) solid var(--ink)" }}
-      >
-        <Show
-          when={tray().length > 0}
-          fallback={
-            <p class="comment">tray empty. if the board looks wrong, tap a piece to lift it.</p>
-          }
-        >
-          <For each={tray()}>
-            {(piece) => (
-              <button
-                type="button"
-                class="anim-wiggle"
-                style={{
-                  width: "clamp(40px, 13vw, 62px)",
-                  height: "clamp(40px, 13vw, 62px)",
-                  background: selected() === piece ? "var(--pop-yellow)" : "transparent",
-                  border:
-                    selected() === piece
-                      ? "var(--ink-w) solid var(--ink)"
-                      : "2px solid transparent",
-                  "border-radius": "6px",
-                  padding: "2px",
-                }}
-                onClick={() => setSelected(selected() === piece ? null : piece)}
-                aria-label={`Piece ${piece + 1}`}
-                aria-pressed={selected() === piece}
-              >
-                <PieceImage id={piece} interactive />
-              </button>
-            )}
-          </For>
-        </Show>
-      </div>
-
       <p class="comment">
-        {selected() === null
-          ? "tap a piece, then tap where it goes"
-          : "now tap a slot on the board"}
+        drag a piece onto its neighbour — when they fit they lock together and move as one.
       </p>
     </div>
   );

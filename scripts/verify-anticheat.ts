@@ -172,12 +172,31 @@ console.log("\n\x1b[1mEscape the Vallam\x1b[0m — server replays every move");
 }
 
 /* ---------------------------------------------------------------- jigsaw */
-console.log("\n\x1b[1mPookalam Jigsaw\x1b[0m — placement replay + monotonic clock");
+console.log("\n\x1b[1mPookalam Jigsaw\x1b[0m — relative-assembly check + monotonic clock");
 {
-  expectRejected("nothing placed", jigsaw.verify({ ...base, submission: { moves: [] } }));
+  expectRejected("nothing placed", jigsaw.verify({ ...base, submission: { layout: [] } }));
   expectRejected(
     "junk payload",
-    jigsaw.verify({ ...base, submission: { moves: "everything is correct" } }),
+    jigsaw.verify({ ...base, submission: { layout: "everything is correct" } }),
+  );
+  // The assembled-but-instantly case: correct layout, forged timing.
+  const assembled = {
+    layout: Array.from({ length: 25 }, (_, id) => ({ id, gx: id % 5, gy: Math.floor(id / 5) })),
+    moveLog: Array.from({ length: 25 }, (_, i) => ({ p: i, t: (i + 1) * 400 })),
+  };
+  expectRejected(
+    "a solved board claiming more elapsed time than the attempt lasted",
+    jigsaw.verify({ ...base, submission: assembled, durationMs: 500 }),
+  );
+  expectAccepted(
+    "a genuinely assembled board, anywhere on the table",
+    jigsaw.verify({
+      ...base,
+      submission: {
+        ...assembled,
+        layout: assembled.layout.map((p) => ({ ...p, gx: p.gx + 7, gy: p.gy - 3 })),
+      },
+    }),
   );
 }
 

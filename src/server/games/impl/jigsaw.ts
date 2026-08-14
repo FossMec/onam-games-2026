@@ -45,16 +45,33 @@ export interface JigsawView {
   hEdges: JigsawTab[][];
   /** rows x (cols-1) — edges between horizontally adjacent pieces. */
   vEdges: JigsawTab[][];
-  /** Shuffled tray order, so pieces do not arrive pre-sorted. */
-  trayOrder: number[];
+  /**
+   * Where each piece starts, in cell units relative to the board origin.
+   * Seeded so a resumed attempt scatters identically, and so two players get
+   * the same scatter — the layout is part of the difficulty.
+   */
+  scatter: { id: number; x: number; y: number }[];
 }
 
 export interface JigsawSubmission {
-  /** placement[slot] = piece id. Solved when placement[i] === i for all i. */
-  placement: number[];
-  /** Every drop: piece, slot, ms since start. Replayed to confirm consistency. */
-  moveLog: { p: number; s: number; t: number }[];
+  /**
+   * Where each piece ended up, in whole cells.
+   *
+   * A free-placement jigsaw has no slots — the assembled picture can sit
+   * anywhere on the board — so the submission is each piece's grid coordinate
+   * and the check is on the *relative* layout. `gx`/`gy` are integers because
+   * snapping aligns pieces exactly; there is no tolerance to argue about.
+   */
+  layout: { id: number; gx: number; gy: number }[];
+  /** Every snap: piece, ms since start. Replayed against the server's clock. */
+  moveLog: { p: number; t: number }[];
 }
+
+/**
+ * How much bigger the scatter area is than the finished picture, per axis.
+ * Enough room to spread out without making the board a scrolling expedition.
+ */
+export const SCATTER_SPREAD = 1.6;
 
 /** Grid size by difficulty. 5x5 is a real fight on a phone; 6x6 is punishment. */
 function gridFor(difficulty: string): { cols: number; rows: number } {
@@ -92,10 +109,32 @@ export function generate(seed: string, difficulty: string, imageUrl: string): Ge
   }
 
   const count = cols * rows;
-  const trayOrder = rng.shuffle(Array.from({ length: count }, (_, i) => i));
+  /*
+   * Pieces are scattered across a board wider and taller than the finished
+   * picture, so there is somewhere to put them. Positions are in cell units;
+   * the client scales to pixels.
+   *
+   * Nothing is placed in its solved spot at the start — a piece that happens to
+   * begin correctly is a free move, and on a ranked day free moves are not free.
+   */
+  const scatter = rng.shuffle(Array.from({ length: count }, (_, i) => i)).map((id) => {
+    const home = { x: id % cols, y: Math.floor(id / cols) };
+    for (let tries = 0; tries < 12; tries += 1) {
+      const x = rng.next() * (cols * SCATTER_SPREAD - 1);
+      const y = rng.next() * (rows * SCATTER_SPREAD - 1);
+      if (Math.abs(x - home.x) > 0.75 || Math.abs(y - home.y) > 0.75) {
+        return { id, x, y };
+      }
+    }
+    return {
+      id,
+      x: rng.next() * (cols * SCATTER_SPREAD - 1),
+      y: rng.next() * (rows * SCATTER_SPREAD - 1),
+    };
+  });
 
   return {
-    view: { kind: "jigsaw", cols, rows, imageUrl, hEdges, vEdges, trayOrder } satisfies JigsawView,
+    view: { kind: "jigsaw", cols, rows, imageUrl, hEdges, vEdges, scatter } satisfies JigsawView,
     // The "solution" is the identity permutation — see the note above about
     // why there is nothing here worth hiding.
     solution: { count },
@@ -107,43 +146,78 @@ export function verify(input: VerifyInput): VerifyResult {
   const { cols, rows } = gridFor(input.difficulty);
   const count = cols * rows;
 
-  if (!submission || !Array.isArray(submission.placement)) {
+  if (!submission || !Array.isArray(submission.layout)) {
     return { valid: false, reason: "Nothing submitted." };
   }
-  if (submission.placement.length !== count) {
+  if (submission.layout.length !== count) {
     return { valid: false, reason: "That is not this puzzle." };
   }
 
-  // Every slot filled by exactly the piece cut from it.
-  for (let slot = 0; slot < count; slot += 1) {
-    if (submission.placement[slot] !== slot) {
+  /*
+   * The assembly check.
+   *
+   * A finished jigsaw can sit anywhere on the board, so absolute positions mean
+   * nothing — what matters is that every piece sits in the right place relative
+   * to the others. Anchor on piece 0 and require every other piece to be at
+   * exactly its true grid offset from it.
+   *
+   * Integers throughout: snapping aligns pieces cell-exactly, so a float
+   * tolerance here would only be a place for rounding error to hide.
+   */
+  const at = new Map<number, { gx: number; gy: number }>();
+  for (const piece of submission.layout) {
+    if (
+      typeof piece?.id !== "number" ||
+      typeof piece?.gx !== "number" ||
+      typeof piece?.gy !== "number" ||
+      !Number.isInteger(piece.id) ||
+      !Number.isInteger(piece.gx) ||
+      !Number.isInteger(piece.gy) ||
+      piece.id < 0 ||
+      piece.id >= count
+    ) {
+      return { valid: false, reason: "Malformed layout." };
+    }
+    if (at.has(piece.id)) return { valid: false, reason: "A piece is in two places." };
+    at.set(piece.id, { gx: piece.gx, gy: piece.gy });
+  }
+  if (at.size !== count) return { valid: false, reason: "Pieces are missing." };
+
+  const anchor = at.get(0)!;
+  for (let id = 0; id < count; id += 1) {
+    const here = at.get(id)!;
+    const wantX = id % cols;
+    const wantY = Math.floor(id / cols);
+    if (here.gx - anchor.gx !== wantX || here.gy - anchor.gy !== wantY) {
       return { valid: false, reason: "Not solved yet. Keep going." };
     }
   }
 
+  /*
+   * The move log does not prove correctness — the layout above does that. It
+   * exists to make a completion *take time*, which for a game whose answer the
+   * browser necessarily knows is the only defence worth having. See the note
+   * at the top of this file.
+   */
   const log = submission.moveLog;
-  if (!Array.isArray(log) || log.length < count) {
+  // Assembling N pieces takes at least N-1 joins, so a shorter log did not
+  // happen. This is a floor on effort, not a correctness check.
+  if (!Array.isArray(log) || log.length < count - 1) {
     return { valid: false, reason: "Move log missing or too short." };
   }
-  // Bound the replay so a huge log cannot buy CPU time.
   if (log.length > count * 60) {
     return { valid: false, reason: "Move log is implausibly long." };
   }
 
-  // Replay the log and confirm it actually produces the submitted board.
-  const board = Array.from<number | null>({ length: count }).fill(null);
   let lastT = -1;
   const slack = 5_000;
-
   for (const move of log) {
     if (
       typeof move?.p !== "number" ||
-      typeof move?.s !== "number" ||
       typeof move?.t !== "number" ||
+      !Number.isInteger(move.p) ||
       move.p < 0 ||
-      move.p >= count ||
-      move.s < 0 ||
-      move.s >= count
+      move.p >= count
     ) {
       return { valid: false, reason: "Malformed move log." };
     }
@@ -152,17 +226,6 @@ export function verify(input: VerifyInput): VerifyResult {
       return { valid: false, reason: "Move log does not match the clock." };
     }
     lastT = move.t;
-
-    // A piece can only be in one slot; moving it vacates the old one.
-    const previous = board.indexOf(move.p);
-    if (previous !== -1) board[previous] = null;
-    board[move.s] = move.p;
-  }
-
-  for (let slot = 0; slot < count; slot += 1) {
-    if (board[slot] !== submission.placement[slot]) {
-      return { valid: false, reason: "Move log does not match the final board." };
-    }
   }
 
   return { valid: true, movesCount: log.length };
