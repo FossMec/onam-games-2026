@@ -1,5 +1,7 @@
 import { Title } from "@solidjs/meta";
 import { createAsync } from "@solidjs/router";
+import { ChevronLeft, ChevronRight, HelpCircle } from "lucide-solid";
+
 import { For, Show, createEffect, createSignal } from "solid-js";
 import { Countdown } from "~/components/Countdown";
 import { Bubble, Burst, Halftone } from "~/components/art/Burst";
@@ -7,9 +9,9 @@ import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { SpriteScatter } from "~/components/art/SpriteScatter";
 import { EVENT, POOKALAM } from "~/lib/event-content";
+import { signOutAndReload } from "~/lib/sign-out";
 import { type SpriteName } from "~/lib/sprites";
 import { getMe } from "~/server/auth/actions";
-import { signOutAndReload } from "~/lib/sign-out";
 import { getGames } from "~/server/games/actions";
 
 /** Each day gets its own pop colour so the week reads as a strip of panels. */
@@ -364,20 +366,20 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => setSelectedDay((prev) => (prev > 1 ? prev - 1 : 7))}
-                      class="btn-ghost px-3.5 py-1.5 text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer"
+                      class="btn-ghost px-3 py-1.5 text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer"
                       aria-label="Previous Day"
                     >
-                      <span>←</span>
+                      <ChevronLeft size={16} strokeWidth={2.5} />
                       <span class="font-extrabold">Prev Day</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setSelectedDay((prev) => (prev < 7 ? prev + 1 : 1))}
-                      class="btn-ghost px-3.5 py-1.5 text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer"
+                      class="btn-ghost px-3 py-1.5 text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer"
                       aria-label="Next Day"
                     >
                       <span class="font-extrabold">Next Day</span>
-                      <span>→</span>
+                      <ChevronRight size={16} strokeWidth={2.5} />
                     </button>
                   </div>
 
@@ -393,10 +395,11 @@ export default function Home() {
                     </span>
                     <a
                       href="#how-it-works"
-                      class="text-xs font-extrabold underline decoration-2 underline-offset-4 px-2 py-1"
+                      class="text-xs font-extrabold underline decoration-2 underline-offset-4 px-2 py-1 inline-flex items-center gap-1"
                       style={{ color: "var(--ink)" }}
                     >
-                      Rules & Help ↓
+                      <HelpCircle size={14} strokeWidth={2.5} />
+                      <span>Rules & Help ↓</span>
                     </a>
                   </div>
                 </div>
