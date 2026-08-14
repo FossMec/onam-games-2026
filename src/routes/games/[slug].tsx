@@ -16,7 +16,7 @@ import {
 } from "~/components/games/TinderGame";
 import { VallamGame, type VallamMove, type VallamViewData } from "~/components/games/VallamGame";
 import { WendGame, type Cell as WendCell, type WendViewData } from "~/components/games/WendGame";
-import { ackWarningAction, getMe, getMyBanState } from "~/server/auth/actions";
+import { getMe, getMyBanState } from "~/server/auth/actions";
 import { getGame, getMyAttempt } from "~/server/games/actions";
 import {
   clearAttempt,
@@ -70,7 +70,6 @@ export default function GamePage() {
   const [now, setNow] = createSignal(Date.now());
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal("");
-  const [warningDismissed, setWarningDismissed] = createSignal(false);
   const [result, setResult] = createSignal<FinishPayload | null>(null);
   const [huntToken, setHuntToken] = createSignal("");
   /** The playable board from the server. Never contains the solution. */
@@ -314,8 +313,6 @@ export default function GamePage() {
     }
   });
 
-  const showWarning = () => banState()?.level === 1 && banState()!.needsAck && !warningDismissed();
-
   /** Stable per-result so the shout and burst don't reshuffle on re-render. */
   const attemptKey = () => `${slug()}-${result()?.durationMs ?? 0}-${result()?.score ?? 0}`;
 
@@ -349,28 +346,15 @@ export default function GamePage() {
           </Show>
         </section>
 
-        {/* Level-1 warning: acknowledge before anything else on the page works. */}
-        <Show when={showWarning()}>
-          <div class="card space-y-3 border-warn/40 bg-warn/10">
-            <p class="font-semibold text-warn">Heads up</p>
-            <p class="text-sm">{banState()!.message}</p>
-            <button
-              type="button"
-              class="btn-ghost"
-              onClick={() => {
-                setWarningDismissed(true);
-                void ackWarningAction();
-              }}
-            >
-              OK, understood
-            </button>
-          </div>
-        </Show>
-
+        {/*
+          The warning modal and the benched banner both live in the app shell
+          now, so they show on every page. All this page still does is refuse to
+          hand out a board — which is the part that has to be here.
+        */}
         <Show when={banState()?.blocksPlay}>
-          <div class="card border-danger/40 bg-danger/10">
-            <p class="text-sm text-danger">{banState()!.message}</p>
-            <a href="/leaderboard" class="btn-ghost mt-3">
+          <div class="card pop-red space-y-2">
+            <p class="font-extrabold">{banState()!.message}</p>
+            <a href="/leaderboard" class="btn-ghost inline-block">
               View leaderboard
             </a>
           </div>
@@ -418,7 +402,7 @@ export default function GamePage() {
           </div>
         </Show>
 
-        <Show when={playable() && !banState()?.blocksPlay && !showWarning()}>
+        <Show when={playable() && !banState()?.blocksPlay}>
           <Show when={!me()}>
             <div class="card flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p class="text-muted">Sign in to play this game.</p>
