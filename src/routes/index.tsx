@@ -1,8 +1,8 @@
 import { Title } from "@solidjs/meta";
 import { createAsync } from "@solidjs/router";
-import { ChevronLeft, ChevronRight, HelpCircle } from "lucide-solid";
-
+import { ChevronLeft, ChevronRight, Clock, HelpCircle } from "lucide-solid";
 import { For, Show, createEffect, createSignal } from "solid-js";
+
 import { Countdown } from "~/components/Countdown";
 import { Bubble, Burst, Halftone } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
@@ -127,6 +127,19 @@ export default function Home() {
   const activeGame = () => {
     const sched = fullSchedule();
     return sched.find((g) => g.day === selectedDay()) ?? sched[0];
+  };
+
+  const pookalamDeadline = () => {
+    const list = games();
+    if (list && list.length > 0) {
+      const day6 = list.find((g) => g.day === 6);
+      if (day6?.endAt) return new Date(day6.endAt);
+      const day1 = list.find((g) => g.day === 1);
+      if (day1?.releaseAt) {
+        return new Date(new Date(day1.releaseAt).getTime() + 6 * 24 * 3600 * 1000);
+      }
+    }
+    return new Date(Date.now() + 6 * 24 * 3600 * 1000);
   };
 
   return (
@@ -307,12 +320,26 @@ export default function Home() {
 
               {/* Inline badges row */}
               <div class="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 pt-0.5">
-                <span class="badge text-[11px]" style={{ "--pop": "var(--paper-2)" }}>
-                  Submit by {POOKALAM.submitBy}
-                </span>
                 <span class="badge text-[11px]" style={{ "--pop": "var(--pop-teal)" }}>
                   ₹3,000 Prize Pool
                 </span>
+                <span class="badge text-[11px]" style={{ "--pop": "var(--paper-2)" }}>
+                  Canvas · SVG · CSS · Shader
+                </span>
+              </div>
+
+              {/* Countdown until final submission deadline */}
+              <div class="space-y-1.5 pt-1">
+                <div
+                  class="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-black uppercase tracking-wider"
+                  style={{ color: "var(--ink)" }}
+                >
+                  <Clock size={13} strokeWidth={2.5} />
+                  <span>Submissions Close In:</span>
+                </div>
+                <div class="flex justify-center sm:justify-start">
+                  <Countdown target={pookalamDeadline()} doneLabel="Submissions Closed" />
+                </div>
               </div>
 
               {/* Single action button */}

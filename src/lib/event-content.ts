@@ -86,24 +86,48 @@ export const EVENT = {
 
   faq: [
     {
+      q: "How can I join FOSS MEC?",
+      a: "Join our community WhatsApp groups! The next recruitment will take place in the upcoming semester. Follow foss.mec.ac.in and our community channels for announcements.",
+    },
+    {
+      q: "How and when do I get my cash prize if I win?",
+      a: "Daily winners (₹200) and Code-a-Pookalam winners (up to ₹1,500) will be contacted directly through their WhatsApp number or email registered on their account right after results are verified. Payouts are made via UPI.",
+    },
+    {
       q: "Do I need to know how to code?",
-      a: "For the games, no. Not even slightly. For Code-a-Pookalam, yes — that one's the whole point.",
+      a: "For the daily games, no. Not even slightly — they're pure arcade reflex, puzzle, and mini-game fun. For Code-a-Pookalam, yes — that one is all about algorithmic pookalam generation.",
+    },
+    {
+      q: "Is it true that the lore behind Maveli is that he got stuck in Vim?",
+      a: "Legend has it Maveli accidentally typed `vim onam.txt` in 800 AD and couldn't figure out how to exit. Every year on Thiruvonam he manages a brief `:wq!` escape to visit Kerala, only to end up right back in Vim again.",
     },
     {
       q: "I missed a day. Am I finished?",
-      a: "Not finished, just behind. A missed day is zero points and there's no make-up round, but the week is long and people fall off constantly.",
+      a: "Not finished, just behind. A missed day is zero points for that day's prize, but you can still win daily cash prizes on subsequent days and climb back up the overall leaderboard.",
     },
     {
       q: "Can I play on my phone?",
-      a: "That's mostly what we built it for. Every game works on a phone.",
+      a: "Yes! Every single mini-game and the entire platform is responsive and optimized for mobile browsers.",
     },
     {
       q: "Is this only for MEC students?",
-      a: "No. Anyone can play — pick 'Other' when you sign up and tell us where you're from.",
+      a: "No, anyone can participate! Select 'Other' during registration and mention your college.",
+    },
+    {
+      q: "Can I play while in a post-Sadya food coma?",
+      a: "Scientifically proven to reduce reaction times by 40%, but highly encouraged. If you can top the daily leaderboard after 3 rounds of Payasam and Pappadam, you deserve legendary status.",
+    },
+    {
+      q: "Does Maveli run Linux?",
+      a: "Maveli runs Arch Linux (btw), Linus Torvalds loves Sadya, and Tux is officially the open-source mascot of Kerala.",
+    },
+    {
+      q: "Can I submit an AI-generated image for Code-a-Pookalam?",
+      a: "Zero tolerance. No prompts, no Photoshop, no PNG imports. Code-a-Pookalam must be 100% written in code (Canvas, SVG, CSS, p5, or Shader) — we inspect and run the code.",
     },
     {
       q: "What if I find a bug?",
-      a: "Tell us. Finding a bug is fine. Quietly farming one is not, and it's the fastest route to a ban.",
+      a: "Tell us immediately on our community channels! Finding and reporting a bug is appreciated; exploiting one for unfair score advantage leads to immediate disqualification.",
     },
   ],
 } as const;
