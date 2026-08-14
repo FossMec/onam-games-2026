@@ -156,8 +156,8 @@ export default function Home() {
           opacity={0.9}
           animate
         />
-        <div class="art-over space-y-4">
-          <div class="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
+        <div class="art-over space-y-4 max-w-3xl mx-auto">
+          <div class="flex items-center justify-center gap-3 sm:gap-5 flex-wrap">
             <SpriteIcon
               name="maveli-laptop"
               size={56}
@@ -168,14 +168,6 @@ export default function Home() {
             <p class="wordmark text-4xl sm:text-6xl" data-text="FOSS ONAM">
               FOSS ONAM
             </p>
-            <SpriteIcon
-              name="linus-torvalds"
-              size={64}
-              animate="wobble"
-              delay={0.4}
-              interactive
-              class="inline-flex"
-            />
             <SpriteIcon
               name="tux-king"
               size={56}
@@ -193,7 +185,17 @@ export default function Home() {
           </p>
           <p class="mx-auto max-w-2xl font-semibold leading-relaxed">{EVENT.blurb}</p>
 
-          <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
+          {/* Linus Sadya Meme Sticker in Hero */}
+          <div class="flex justify-center py-1">
+            <img
+              src="/images/memes/talk-is-cheap-sadya.png"
+              alt="Talk is cheap. Give me Sadya."
+              class="w-36 xs:w-44 sm:w-52 h-auto object-contain select-none transition-transform hover:rotate-1"
+              style={{ filter: "drop-shadow(3px 3px 0 var(--ink))" }}
+            />
+          </div>
+
+          <div class="flex flex-wrap items-center justify-center gap-3 pt-1">
             <Show
               when={me()}
               fallback={
