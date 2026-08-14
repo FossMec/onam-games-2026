@@ -120,6 +120,13 @@ const SHAPES: { type: ElementType; label: string }[] = [
   { type: "woven", label: "Mesh" },
 ];
 
+const MOTIFS: { id: CenterMotif; label: string; icon: string }[] = [
+  { id: "foss", label: "FOSS MEC", icon: "⚙️" },
+  { id: "tux", label: "Tux Linux", icon: "🐧" },
+  { id: "crab", label: "Ferris Rust", icon: "🦀" },
+  { id: "lamp", label: "Nilavilakku", icon: "🪔" },
+];
+
 export function PookalamInteractiveCanvas() {
   let canvasRef: HTMLCanvasElement | undefined;
   let containerRef: HTMLDivElement | undefined;
@@ -135,7 +142,7 @@ export function PookalamInteractiveCanvas() {
   const [rotationSpeedFactor, setRotationSpeedFactor] = createSignal<number>(1);
   const [countMultiplier, setCountMultiplier] = createSignal<number>(1);
 
-  // Layer custom element shape slot overrides (Slot 0 = Primary, Slot 1 = Secondary)
+  // Layer custom element shape slot overrides
   const [slotOverrides, setSlotOverrides] = createSignal<Record<string, ElementType>>({});
   const [enabledLayers, setEnabledLayers] = createSignal<Record<number, boolean>>({
     0: true,
@@ -322,11 +329,11 @@ export function PookalamInteractiveCanvas() {
     const allLayers: Layer[] = [
       {
         id: 0,
-        name: "Center Medallion",
+        name: "Center Emblem",
         enabled: enabled[0] ?? true,
         spec: [
           {
-            type: getSlot(0, 0, "woven"),
+            type: "woven",
             size: 35 * scale,
             color: PALETTE.darkBlue,
             strokeColor: PALETTE.white,
@@ -782,11 +789,6 @@ export function PookalamInteractiveCanvas() {
 
   const layerConfigs = [
     {
-      id: 0,
-      name: "Center Emblem",
-      slots: [{ idx: 0, label: "Core Mesh", default: "woven" as ElementType }],
-    },
-    {
       id: 1,
       name: "Layer 1: Inner Rosette Ring",
       slots: [
@@ -900,7 +902,7 @@ export function PookalamInteractiveCanvas() {
                     }`}
                   >
                     <Layers size={12} />
-                    <span>Layer Items</span>
+                    <span>Layers</span>
                   </button>
                   <button
                     type="button"
@@ -933,11 +935,11 @@ export function PookalamInteractiveCanvas() {
               </div>
             </div>
 
-            {/* TAB 1: MULTI-SLOT LAYER ITEM SHAPE PICKERS */}
+            {/* TAB 1: CENTER LOGO & LAYER ITEM SHAPE PICKERS */}
             <Show when={activeTab() === "layers"}>
               <div class="space-y-2.5 max-h-[310px] overflow-y-auto pr-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 <div class="flex items-center justify-between text-[11px] uppercase font-black text-gray-300 pb-1">
-                  <span>Customise Concentric Motifs</span>
+                  <span>Customise Motifs & Rings</span>
                   <button
                     type="button"
                     onClick={resetToPeak}
@@ -947,6 +949,60 @@ export function PookalamInteractiveCanvas() {
                   </button>
                 </div>
 
+                {/* 1. CENTER LOGO EMBLEM SELECTOR */}
+                <div
+                  class={`p-2.5 rounded-lg border transition-all space-y-2 ${
+                    (enabledLayers()[0] ?? true)
+                      ? "bg-[#25306d] border-white/25 text-white"
+                      : "bg-[#141b40] border-white/10 text-gray-400 opacity-60"
+                  }`}
+                >
+                  <div class="flex items-center justify-between text-xs font-bold">
+                    <span class="text-[11px] font-black">Center Logo Emblem</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleLayer(0)}
+                      class={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded cursor-pointer ${
+                        (enabledLayers()[0] ?? true)
+                          ? "bg-[var(--pop-yellow)] text-[var(--ink)]"
+                          : "bg-white/10 text-gray-400"
+                      }`}
+                    >
+                      {(enabledLayers()[0] ?? true) ? "Active" : "Hidden"}
+                    </button>
+                  </div>
+
+                  <Show when={enabledLayers()[0] ?? true}>
+                    <div class="grid grid-cols-4 gap-1.5 pt-0.5">
+                      <For each={MOTIFS}>
+                        {(m) => {
+                          const isSelected = () => motif() === m.id;
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMotif(m.id);
+                                onSettingsChange();
+                              }}
+                              class={`py-1.5 px-1 rounded flex flex-col items-center justify-center transition-all cursor-pointer ${
+                                isSelected()
+                                  ? "bg-[var(--pop-teal)] text-[var(--ink)] font-black scale-105 shadow-sm"
+                                  : "bg-[#121b44] hover:bg-[#202b66] text-gray-300 hover:text-white"
+                              }`}
+                            >
+                              <span class="text-sm leading-none">{m.icon}</span>
+                              <span class="text-[8px] font-bold leading-tight truncate mt-1">
+                                {m.label.split(" ")[0]}
+                              </span>
+                            </button>
+                          );
+                        }}
+                      </For>
+                    </div>
+                  </Show>
+                </div>
+
+                {/* 2. CONCENTRIC RINGS (1 to 7) */}
                 <For each={layerConfigs}>
                   {(l) => {
                     const isEnabled = () => enabledLayers()[l.id] ?? true;
@@ -1033,36 +1089,6 @@ export function PookalamInteractiveCanvas() {
             {/* TAB 2: SPEED & MOTIF */}
             <Show when={activeTab() === "quick"}>
               <div class="space-y-3.5 text-xs">
-                {/* Center Motif Selector */}
-                <div class="space-y-1.5">
-                  <label class="text-[11px] uppercase font-black text-gray-300 tracking-wider">
-                    Center Motif Emblem
-                  </label>
-                  <div class="grid grid-cols-4 gap-1.5 font-bold">
-                    {[
-                      { id: "foss", label: "⚙️ FOSS" },
-                      { id: "tux", label: "🐧 Tux" },
-                      { id: "crab", label: "🦀 Rust" },
-                      { id: "lamp", label: "🪔 Lamp" },
-                    ].map((m) => (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMotif(m.id as CenterMotif);
-                          onSettingsChange();
-                        }}
-                        class={`py-1.5 px-1 rounded-lg border text-center transition-all cursor-pointer text-xs ${
-                          motif() === m.id
-                            ? "bg-[var(--pop-teal)] text-[var(--ink)] border-[var(--ink)] font-black shadow-sm"
-                            : "bg-[#25306d] border-white/20 text-gray-200 hover:border-white/40"
-                        }`}
-                      >
-                        <span class="truncate block">{m.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 {/* Draw Speed */}
                 <div class="space-y-1.5">
                   <div class="flex justify-between text-[11px] uppercase font-black text-gray-300">
