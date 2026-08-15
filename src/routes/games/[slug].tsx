@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-solid";
 import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { Countdown } from "~/components/Countdown";
 
+import { ShoutBurst } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { HowToPlayModal, HowToPlayPanel } from "~/components/games/HowToPlay";
@@ -746,13 +747,19 @@ export default function GamePage() {
             <div class="card card-plain space-y-3">
               <div class="flex items-start justify-between gap-3">
                 <p class="rule flex-1">{hasFinishedBoard() ? "Your board" : "Your run"}</p>
+                {/*
+                  The shout keeps its own treatment here — burst, comic face,
+                  ink stroke — at a smaller size. It was briefly a plain badge,
+                  which threw away the entire design to save a few pixels.
+                */}
                 <Show when={settledResult()?.valid}>
-                  <span
-                    class="sticker shrink-0 text-sm"
-                    style={{ "--pop": SHOUT_COLOR[resultMood()], "white-space": "nowrap" }}
-                  >
-                    {shout(resultMood(), attemptKey())}
-                  </span>
+                  <ShoutBurst
+                    text={shout(resultMood(), attemptKey())}
+                    color={SHOUT_COLOR[resultMood()]}
+                    seed={attemptKey()}
+                    compact
+                    class="-my-2 shrink-0"
+                  />
                 </Show>
               </div>
 

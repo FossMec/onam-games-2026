@@ -151,16 +151,39 @@ export interface ShoutProps {
   color?: string;
   seed?: string;
   class?: string;
+  /**
+   * A smaller cut of the same thing, for a shout that sits inside a panel
+   * rather than owning the moment.
+   *
+   * It is scaled, never substituted. Standing a shout down to a plain badge
+   * loses the burst, the comic face and the ink stroke — which is to say all of
+   * it, since the treatment *is* the design. Both dimensions come down together
+   * so the proportions hold.
+   */
+  compact?: boolean;
 }
 
 /** A shout inside its burst — the standard win/fail moment. */
 export function ShoutBurst(props: ShoutProps) {
   return (
     <div class={`relative inline-grid place-items-center ${props.class ?? ""}`}>
-      <div class="col-start-1 row-start-1 h-40 w-full anim-pop">
+      <div class={`col-start-1 row-start-1 w-full anim-pop ${props.compact ? "h-20" : "h-40"}`}>
         <Burst color={props.color} seed={props.seed} double />
       </div>
-      <span class="shout col-start-1 row-start-1 anim-pop">{props.text}</span>
+      <span
+        class="shout col-start-1 row-start-1 anim-pop"
+        style={
+          props.compact
+            ? {
+                "font-size": "clamp(1rem, 4vw, 1.45rem)",
+                "-webkit-text-stroke": "1.5px var(--ink)",
+                padding: "0 0.4rem",
+              }
+            : undefined
+        }
+      >
+        {props.text}
+      </span>
     </div>
   );
 }

@@ -65,10 +65,8 @@ export interface TinderProgress {
   decisions: Decision[];
   transcript: Decision[][];
   passNumber: number;
-  /** Ids this pass that the server has already graded as wrong. */
-  wrongIds?: string[];
-  /** Ids this pass that have come back from the server at all. */
-  gradedIds?: string[];
+  /** Wrong swipes confirmed by a settled pass. Display only. */
+  confirmedWrong?: number;
   /** Running penalty, for display only — the server recomputes its own. */
   penaltyMs?: number;
 }
@@ -123,10 +121,18 @@ export function TinderGame(props: TinderGameProps) {
   const [decisions, setDecisions] = createSignal<Decision[]>(saved?.decisions ?? []);
   const [transcript, setTranscript] = createSignal<Decision[][]>(saved?.transcript ?? []);
   const [passNumber, setPassNumber] = createSignal(saved?.passNumber ?? 1);
-  const [wrongIds, setWrongIds] = createSignal<string[]>(saved?.wrongIds ?? []);
-  const [gradedIds, setGradedIds] = createSignal<string[]>(saved?.gradedIds ?? []);
+  /**
+   * Wrong swipes the server has confirmed, per closed pass. The display total
+   * is this plus whatever the current pass has charged so far — the server
+   * recomputes its own number from the transcript regardless, so this only ever
+   * has to be honest, not authoritative.
+   */
+  const [confirmedWrong, setConfirmedWrong] = createSignal(saved?.confirmedWrong ?? 0);
   const [penaltyMs, setPenaltyMs] = createSignal(saved?.penaltyMs ?? 0);
   const [inFlight, setInFlight] = createSignal(0);
+  const [settlingPass, setSettlingPass] = createSignal(false);
+  /** Non-reactive guard, so two effect runs cannot both start a settlement. */
+  let settling = false;
   const [error, setError] = createSignal("");
 
   /** Verdicts waiting to be shown, one penalty screen at a time. */
@@ -152,8 +158,7 @@ export function TinderGame(props: TinderGameProps) {
       decisions: decisions(),
       transcript: transcript(),
       passNumber: passNumber(),
-      wrongIds: wrongIds(),
-      gradedIds: gradedIds(),
+      confirmedWrong: confirmedWrong(),
       penaltyMs: penaltyMs(),
       ...patch,
     });
@@ -161,12 +166,17 @@ export function TinderGame(props: TinderGameProps) {
   /* --------------------------------------------------------------- grading */
 
   /**
-   * Posts a slice of this pass for grading. Called with a single card during
-   * normal play, and with a whole batch when a reload left swipes ungraded.
+   * Posts a slice of this pass to `/check`.
+   *
+   * Returns the ids the server says were wrong, or `null` if the call did not
+   * land. That distinction is the whole point: `null` means *we do not know*,
+   * which is a different thing from "nothing was wrong" and must never be
+   * treated as one. See `settlePass`.
    */
-  const grade = async (slice: Decision[], announce: boolean) => {
-    if (slice.length === 0) return;
-    setInFlight((n) => n + 1);
+  const check = async (
+    slice: Decision[],
+  ): Promise<{ wrongIds: string[]; wrong: Verdict[] } | null> => {
+    if (slice.length === 0) return { wrongIds: [], wrong: [] };
     try {
       const res = await fetch(`/api/game/${props.slug}/check`, {
         method: "POST",
@@ -184,38 +194,36 @@ export function TinderGame(props: TinderGameProps) {
       };
       if (!res.ok || !data.wrongIds) {
         setError(data.error ?? "Could not check that swipe");
-        return;
+        return null;
       }
       setError("");
-
-      const missed = data.wrongIds;
-      setGradedIds((ids) => [...ids, ...slice.map((d) => d.id)]);
-      if (missed.length > 0) {
-        setWrongIds((ids) => [...ids, ...missed]);
-        setPenaltyMs((ms) => ms + missed.length * PENALTY_MS);
-        // A re-grade after a reload is silent: the player has already lived
-        // through that swipe, and the time was charged the moment they made it.
-        if (announce && data.wrong) setPending((q) => [...q, ...data.wrong!]);
-      }
-      report();
+      return { wrongIds: data.wrongIds, wrong: data.wrong ?? [] };
     } catch {
-      setError("Network error — that swipe could not be checked.");
+      setError("Network trouble — retrying.");
+      return null;
+    }
+  };
+
+  /**
+   * Grades one swipe, purely so the penalty screen can appear immediately.
+   *
+   * Deliberately advisory. If this call is lost the player misses a penalty
+   * screen and a moment of teaching, which is a shame; what it must never do is
+   * decide which cards come back, because a dropped response would then silently
+   * drop a card from the recycled pass. That is `settlePass`'s job.
+   */
+  const gradeSwipe = async (decision: Decision) => {
+    setInFlight((n) => n + 1);
+    try {
+      const result = await check([decision]);
+      if (!result || result.wrongIds.length === 0) return;
+      setPenaltyMs((ms) => ms + PENALTY_MS);
+      setPending((q) => [...q, ...result.wrong]);
+      report();
     } finally {
       setInFlight((n) => n - 1);
     }
   };
-
-  /*
-   * A reload can land between a swipe and its verdict. Anything in this pass
-   * without a grade is re-posted on mount, in its original order, so the deck
-   * knows what to recycle. Order matters: `checkPass` rejects a pass answered
-   * out of sequence.
-   */
-  onMount(() => {
-    const graded = new Set(gradedIds());
-    const ungraded = decisions().filter((d) => !graded.has(d.id));
-    if (ungraded.length > 0) void grade(ungraded, false);
-  });
 
   /**
    * Shows queued penalties one at a time, three seconds each.
@@ -245,42 +253,81 @@ export function TinderGame(props: TinderGameProps) {
   /* ------------------------------------------------------------ pass logic */
 
   /**
-   * Ends a pass once the deck is empty, every swipe has been graded and every
-   * penalty has been read. Waiting for all three is what keeps the transcript
-   * the client submits identical to the one the server replays.
+   * Closes a pass, using one authoritative grading of the whole pass.
+   *
+   * This exists because the per-swipe grading is not allowed to decide which
+   * cards come back. It used to: the client accumulated wrong ids from each
+   * swipe's response and recycled those. Lose one response — a blip, a 429,
+   * a tab suspended mid-flight — and the client rebuilt the next pass without
+   * that card while the server's replay still expected it. The run then died at
+   * submission with "Cards answered out of order", after the player had done
+   * everything right. A dropped response is indistinguishable from "nothing was
+   * wrong" if you only ever add to a list.
+   *
+   * So the pass is regraded in full, in order, and the recycled deck is built
+   * from *that* answer — the same computation the server will run at
+   * verification, from the same input. If the call fails the pass does not
+   * advance; it retries, because guessing here is what caused the bug.
+   */
+  const settlePass = async () => {
+    const finishedPass = decisions();
+    if (finishedPass.length === 0 || settling) return;
+    settling = true;
+    setSettlingPass(true);
+    try {
+      let graded = await check(finishedPass);
+      // A pass is the whole run's worth of work; it is worth a few retries
+      // rather than losing it.
+      for (let tries = 0; !graded && tries < 4; tries += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 400 * (tries + 1)));
+        graded = await check(finishedPass);
+      }
+      if (!graded) {
+        setError("Could not reach the server to check that pass. It will retry.");
+        return;
+      }
+
+      const nextTranscript = [...transcript(), finishedPass];
+      // Misses recycle, keeping their relative order — the server replay
+      // reconstructs exactly this from the same list, so the orders agree.
+      const missed = passIds().filter((id) => graded.wrongIds.includes(id));
+
+      // The authoritative penalty for the pass, replacing whatever the
+      // per-swipe screens managed to charge.
+      setConfirmedWrong((n) => n + graded.wrongIds.length);
+      setTranscript(nextTranscript);
+      setDecisions([]);
+
+      if (missed.length === 0) {
+        report({ transcript: nextTranscript, decisions: [] });
+        props.onFinish({ passes: nextTranscript });
+        return;
+      }
+      setPassIds(missed);
+      setQueue(missed);
+      setPassNumber((n) => n + 1);
+      report({
+        transcript: nextTranscript,
+        decisions: [],
+        passIds: missed,
+        queue: missed,
+        passNumber: passNumber() + 1,
+      });
+    } finally {
+      settling = false;
+      setSettlingPass(false);
+    }
+  };
+
+  /**
+   * Fires once the deck is empty, every swipe's advisory check has come back,
+   * and every penalty screen has been read. Waiting for all three keeps the
+   * submitted transcript identical to the one the server replays.
    */
   createEffect(() => {
     if (remaining() > 0 || inFlight() > 0 || showing() || pending().length > 0) return;
-    if (decisions().length === 0) return;
-
-    const finishedPass = decisions();
-    const nextTranscript = [...transcript(), finishedPass];
-    const missed = passIds().filter((id) => wrongIds().includes(id));
-
-    setTranscript(nextTranscript);
-    setDecisions([]);
-    setGradedIds([]);
-    setWrongIds([]);
-
-    if (missed.length === 0) {
-      report({ transcript: nextTranscript, decisions: [], gradedIds: [], wrongIds: [] });
-      props.onFinish({ passes: nextTranscript });
-      return;
-    }
-    // Misses recycle, keeping their relative order — the server replay
-    // reconstructs exactly this, so the orders must agree.
-    setPassIds(missed);
-    setQueue(missed);
-    setPassNumber((n) => n + 1);
-    report({
-      transcript: nextTranscript,
-      decisions: [],
-      gradedIds: [],
-      wrongIds: [],
-      passIds: missed,
-      queue: missed,
-      passNumber: passNumber(),
-    });
+    if (decisions().length === 0 || settlingPass()) return;
+    void settlePass();
   });
 
   const commit = (open: boolean) => {
@@ -298,7 +345,7 @@ export function TinderGame(props: TinderGameProps) {
     const rest = queue().slice(1);
     setQueue(rest);
     report({ queue: rest, decisions: nextDecisions });
-    void grade([decision], true);
+    void gradeSwipe(decision);
 
     // Plain variable, for the same reason as the penalty timer: this runs from
     // an event handler, where there is no reactive owner to hang a cleanup on.
@@ -354,7 +401,15 @@ export function TinderGame(props: TinderGameProps) {
   const commitment = () =>
     Math.min(1, Math.max(0, (Math.abs(dragX()) - 20) / (SWIPE_THRESHOLD - 20)));
 
-  const penaltySeconds = () => (penaltyMs() / 1000).toFixed(0);
+  /**
+   * The penalty as shown. Confirmed passes are authoritative; the pass in hand
+   * contributes whatever its advisory checks have charged so far. Reconciled
+   * upward each time a pass settles, and the server's own figure — computed
+   * from the transcript at verification — is the one that actually counts.
+   */
+  const penaltySeconds = () =>
+    (Math.max(penaltyMs(), confirmedWrong() * PENALTY_MS) / 1000).toFixed(0);
+  const penaltyShown = () => Math.max(penaltyMs(), confirmedWrong() * PENALTY_MS);
 
   return (
     <div class="mx-auto w-full max-w-sm space-y-3 text-left">
@@ -376,7 +431,7 @@ export function TinderGame(props: TinderGameProps) {
           <span class="badge" style={{ "--pop": "var(--pop-yellow)" }}>
             {remaining()} left
           </span>
-          <Show when={penaltyMs() > 0}>
+          <Show when={penaltyShown() > 0}>
             <span class="badge" style={{ "--pop": "var(--pop-red)" }}>
               +{penaltySeconds()}s
             </span>

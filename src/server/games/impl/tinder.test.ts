@@ -175,6 +175,115 @@ describe("verify", () => {
   });
 });
 
+/**
+ * The client's half of the contract, simulated.
+ *
+ * A player only ever sees these two functions disagree at submission time, by
+ * which point they have played the whole run — so the agreement is worth
+ * testing directly rather than discovering in production.
+ */
+describe("client transcript contract", () => {
+  /** Which cards this imaginary player is bad at. */
+  const wrongAbout = (deck: { id: string }[]) => new Set([deck[2].id, deck[7].id, deck[11].id]);
+
+  /**
+   * Plays a full run the way the board does: swipe every card in the dealt
+   * order, then recycle. `dropGrades` models per-swipe `/check` responses that
+   * never arrived.
+   *
+   * `settleFromPass` picks the strategy: true regrades the whole pass (what the
+   * board does now), false accumulates per-swipe results (what it used to do).
+   */
+  function playRun(seed: string, settleFromPass: boolean, dropGrades: Set<string>) {
+    const deck = dealDeck(seed);
+    const bad = wrongAbout(deck);
+    const answer = new Map(deck.map((c) => [c.id, c.open]));
+
+    let passIds = deck.map((c) => c.id);
+    const passes: { id: string; open: boolean }[][] = [];
+    // Cards the player has since learned, so a recycled pass converges.
+    const learned = new Set<string>();
+
+    for (let pass = 0; pass < 10 && passIds.length > 0; pass += 1) {
+      const decisions = passIds.map((id) => ({
+        id,
+        open: bad.has(id) && !learned.has(id) ? !answer.get(id)! : answer.get(id)!,
+      }));
+      passes.push(decisions);
+
+      let perceivedWrong: string[];
+      if (settleFromPass) {
+        // One authoritative grading of the whole pass.
+        const graded = checkPass(seed, passIds, decisions);
+        perceivedWrong = graded.ok ? graded.wrongIds : [];
+      } else {
+        // Per-swipe results, accumulated — and some responses never arrived.
+        perceivedWrong = decisions
+          .filter((d) => !dropGrades.has(d.id))
+          .filter((d) => {
+            const one = checkPass(seed, [d.id], [d]);
+            return one.ok && one.wrongIds.length > 0;
+          })
+          .map((d) => d.id);
+      }
+      for (const id of perceivedWrong) learned.add(id);
+      passIds = passIds.filter((id) => perceivedWrong.includes(id));
+    }
+    return { passes };
+  }
+
+  const SEED2 = "c0ffee00c0ffee00c0ffee00c0ffee00";
+
+  it("accepts a run settled from a full-pass regrade, even with lost swipe checks", () => {
+    const deck = dealDeck(SEED2);
+    // Every per-swipe check for this card is lost.
+    const dropped = new Set([deck[7].id]);
+    const result = verify({
+      seed: SEED2,
+      difficulty: "normal",
+      submission: playRun(SEED2, true, dropped),
+      durationMs: 60_000,
+    });
+    expect(result.reason).toBeUndefined();
+    expect(result.valid).toBe(true);
+  });
+
+  /*
+   * The regression. Accumulating per-swipe results cannot tell "the response
+   * said nothing was wrong" from "the response never came", so one lost check
+   * dropped a card from the recycled pass and the replay rejected a run the
+   * player had played perfectly well.
+   *
+   * Which rejection you get depends on how the two transcripts diverge — a
+   * missing card shortens the pass, a swapped one reorders it — so the test
+   * pins the failure, not one of its faces.
+   */
+  it("shows why per-swipe accumulation broke: one lost check kills the run", () => {
+    const deck = dealDeck(SEED2);
+    const dropped = new Set([deck[7].id]);
+    const result = verify({
+      seed: SEED2,
+      difficulty: "normal",
+      submission: playRun(SEED2, false, dropped),
+      durationMs: 60_000,
+    });
+    expect(result.valid).toBe(false);
+    expect(result.reason).toMatch(/out of order|does not match the deck/);
+  });
+
+  it("agrees with the server for a clean run either way", () => {
+    for (const settle of [true, false]) {
+      const result = verify({
+        seed: SEED2,
+        difficulty: "normal",
+        submission: playRun(SEED2, settle, new Set()),
+        durationMs: 60_000,
+      });
+      expect(result.valid, `settleFromPass=${settle}`).toBe(true);
+    }
+  });
+});
+
 describe("explainCards", () => {
   it("explains the cards it is asked about, in order", () => {
     const deck = dealDeck(SEED);
