@@ -121,21 +121,21 @@ const MEMPHIS_MOTIFS = [
 const MEMES = [
   {
     title: "Root Privileges",
-    src: "/images/memes/sudo-mkdir-pookalam.png",
+    src: "/images/memes/sudo-mkdir-pookalam.webp",
     caption: "sudo mkdir -p /var/log/pookalam",
     tag: "SYSADMIN ONAM",
     color: "var(--pop-yellow)",
   },
   {
     title: "Torvalds' Law",
-    src: "/images/memes/talk-is-cheap-sadya.png",
+    src: "/images/memes/talk-is-cheap-sadya.webp",
     caption: "Talk is cheap. Show me the Sadya recipe.",
     tag: "OPEN CUISINE",
     color: "var(--pop-teal)",
   },
   {
     title: "Out of Tokens",
-    src: "/images/memes/need-more-tokens.png",
+    src: "/images/memes/need-more-tokens.webp",
     caption: "Maveli ran out of tokens right before Thiruvonam trying to vibecode a pookalam.",
     tag: "RATE LIMIT",
     color: "var(--pop-purple)",
@@ -143,7 +143,7 @@ const MEMES = [
 
   {
     title: "Rustaceans on Vallam",
-    src: "/images/memes/failure-is-not-an-option.png",
+    src: "/images/memes/failure-is-not-an-option.webp",
     caption: "Failure is not an Option<T>, it's a Result<T, E>.",
     tag: "RUST BORROW",
     color: "var(--pop-red)",

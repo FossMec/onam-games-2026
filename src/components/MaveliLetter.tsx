@@ -91,7 +91,7 @@ export function MaveliLetter() {
               }}
             >
               <img
-                src="/images/maveli-typing.jpeg"
+                src="/images/maveli-typing.webp"
                 alt="King Mahabali typing on laptop"
                 class="w-full h-full object-cover aspect-square"
                 loading="lazy"

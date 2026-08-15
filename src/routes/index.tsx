@@ -27,13 +27,13 @@ const DAY_POPS = [
 ];
 
 const GAME_IMAGES: Record<string, string> = {
-  "open-source-tinder": "/images/games/open-source-tinder.jpeg",
-  "pookalam-jigsaw": "/images/games/pookalam-jigsaw.jpeg",
-  wend: "/images/games/wend.jpeg",
-  "escape-the-vallam": "/images/games/escape-the-vallam.jpeg",
-  "maveli-jump": "/images/games/maveli-jump.jpeg",
-  "treasure-hunt": "/images/games/treasure-hunt.jpeg",
-  "code-a-pookalam-vote": "/images/games/code-a-pookalam.jpeg",
+  "open-source-tinder": "/images/games/open-source-tinder.webp",
+  "pookalam-jigsaw": "/images/games/pookalam-jigsaw.webp",
+  wend: "/images/games/wend.webp",
+  "escape-the-vallam": "/images/games/escape-the-vallam.webp",
+  "maveli-jump": "/images/games/maveli-jump.webp",
+  "treasure-hunt": "/images/games/treasure-hunt.webp",
+  "code-a-pookalam-vote": "/images/games/code-a-pookalam.webp",
 };
 
 const GAME_TEASERS: Record<number, { hint: string; icon: SpriteName }> = {
@@ -227,7 +227,7 @@ export default function Home() {
           {/* Linus Sadya Meme Sticker in Hero */}
           <div class="flex justify-center py-1">
             <img
-              src="/images/memes/talk-is-cheap-sadya.png"
+              src="/images/memes/talk-is-cheap-sadya.webp"
               alt="Talk is cheap. Give me Sadya."
               class="w-36 xs:w-44 sm:w-52 h-auto object-contain select-none transition-transform hover:rotate-1"
               style={{ filter: "drop-shadow(3px 3px 0 var(--ink))" }}
@@ -281,7 +281,7 @@ export default function Home() {
               }}
             >
               <img
-                src="/images/games/code-a-pookalam.jpeg"
+                src="/images/games/code-a-pookalam.webp"
                 alt="Code-a-Pookalam Artwork"
                 loading="lazy"
                 class="h-full w-full object-cover aspect-square"
@@ -350,7 +350,7 @@ export default function Home() {
 
             {/* Tux Kasavu Meme Sticker visible on mobile & desktop */}
             <img
-              src="/images/memes/sudo-mkdir-pookalam.png"
+              src="/images/memes/sudo-mkdir-pookalam.webp"
               alt="Sudo mkdir pookalam meme"
               class="w-28 xs:w-32 sm:w-36 md:w-40 h-auto object-contain select-none shrink-0 self-center block"
               style={{ filter: "drop-shadow(3px 3px 0 var(--ink))" }}
@@ -445,7 +445,7 @@ export default function Home() {
                           <div class="relative h-full w-full overflow-hidden flex flex-col items-center justify-center text-center p-4 bg-[var(--paper-3)]">
                             <img
                               src={
-                                GAME_IMAGES[current.slug] ?? "/images/games/open-source-tinder.jpeg"
+                                GAME_IMAGES[current.slug] ?? "/images/games/open-source-tinder.webp"
                               }
                               alt="Classified preview"
                               class="absolute inset-0 h-full w-full object-cover blur-xl opacity-40 grayscale"
@@ -470,7 +470,7 @@ export default function Home() {
                         }
                       >
                         <img
-                          src={GAME_IMAGES[current.slug] ?? "/images/games/open-source-tinder.jpeg"}
+                          src={GAME_IMAGES[current.slug] ?? "/images/games/open-source-tinder.webp"}
                           alt={current.title}
                           loading="lazy"
                           class="h-full w-full object-cover aspect-square"
@@ -640,7 +640,7 @@ export default function Home() {
                                     <img
                                       src={
                                         GAME_IMAGES[item.slug] ??
-                                        "/images/games/open-source-tinder.jpeg"
+                                        "/images/games/open-source-tinder.webp"
                                       }
                                       alt="Locked preview"
                                       class="absolute inset-0 w-full h-full object-cover blur-sm opacity-40 grayscale"
@@ -654,7 +654,7 @@ export default function Home() {
                                 <img
                                   src={
                                     GAME_IMAGES[item.slug] ??
-                                    "/images/games/open-source-tinder.jpeg"
+                                    "/images/games/open-source-tinder.webp"
                                   }
                                   alt={item.title}
                                   loading="lazy"
@@ -702,7 +702,7 @@ export default function Home() {
             </p>
           </div>
           <img
-            src="/images/memes/talk-is-cheap-sadya.png"
+            src="/images/memes/talk-is-cheap-sadya.webp"
             alt="Talk is cheap give me sadya meme"
             class="w-28 sm:w-36 h-auto object-contain select-none shrink-0"
             style={{ filter: "drop-shadow(2px 2px 0 var(--ink))" }}

@@ -41,12 +41,12 @@ export const EVENT = {
       body: "Refresh, close the tab, throw your phone — the timer keeps ticking server-side. Finish the run you started.",
     },
     {
-      title: "Points over raw seconds",
-      body: "Each day you score based on your relative ranking, not raw milliseconds. Consistency across all 7 days wins the crown.",
+      title: "Daily cash prizes",
+      body: "Top the daily leaderboard each evening to take home ₹200 cash for that day's challenge.",
     },
     {
-      title: "Daily & pookalam cash prizes",
-      body: "Daily winners receive ₹200 each day. Code-a-Pookalam winners take home ₹1,500, ₹1,000, and ₹500!",
+      title: "Code-a-Pookalam contest",
+      body: "Code-a-Pookalam winners take home ₹1,500 (1st), ₹1,000 (2nd), and ₹500 (3rd) in cash prizes!",
     },
     {
       title: "Fair play & server verification",
@@ -55,25 +55,27 @@ export const EVENT = {
   ],
 
   scoring: {
-    title: "How scoring actually works",
-    body: "Every game gives up to 1050 points, based on how much of the field you beat that day. Finish first out of 200 and you get the lot. Finish dead last and you still get 50 for turning up. Miss a day and you get nothing, which is the entire retention strategy.",
-    aside: "yes we thought about this way too hard",
+    title: "Daily Competition Rankings",
+    body: "Each day is an independent race against the clock. The player with the fastest verified solve time (or highest score in arcade mode) takes that day's ₹200 cash prize!",
+    aside: "seven days, seven independent chances to win",
   },
 
   prizes: [
-    { rank: "Overall Winner", detail: "1st Place Champion — Top of the 7-day points leaderboard" },
     {
-      rank: "Code-a-Pookalam 1st",
-      detail: "₹1,500 cash prize — Crowned best coded algorithmic pookalam",
-    },
-    { rank: "Code-a-Pookalam 2nd & 3rd", detail: "₹1,000 (2nd) & ₹500 (3rd) — Podium winners" },
-    {
-      rank: "Daily Game Winners",
-      detail: "₹200 cash each day (7 days) — Announced after each day's deadline",
+      rank: "Daily Game Champions (7 Days)",
+      detail: "₹200 cash each day — Awarded to the #1 verified player for that day's challenge",
     },
     {
-      rank: "Lucky Voter Winner",
-      detail: "₹200 prize drawn randomly among voters in the Day 7 Pookalam ELO showdown",
+      rank: "Code-a-Pookalam 1st Place",
+      detail: "₹1,500 cash prize — Crowned best algorithmic coded pookalam",
+    },
+    {
+      rank: "Code-a-Pookalam 2nd & 3rd",
+      detail: "₹1,000 (2nd) & ₹500 (3rd) — Podium runners-up cash prizes",
+    },
+    {
+      rank: "Lucky Voter Bounty",
+      detail: "₹200 prize drawn randomly among voters in the Day 7 Pookalam showdown",
     },
   ],
 
@@ -102,8 +104,8 @@ export const EVENT = {
       a: "Legend has it Maveli accidentally typed `vim onam.txt` in 800 AD and couldn't figure out how to exit. Every year on Thiruvonam he manages a brief `:wq!` escape to visit Kerala, only to end up right back in Vim again.",
     },
     {
-      q: "I missed a day. Am I finished?",
-      a: "Not finished, just behind. A missed day is zero points for that day's prize, but you can still win daily cash prizes on subsequent days and climb back up the overall leaderboard.",
+      q: "I missed a day. Can I still win?",
+      a: "Yes! Every day's game is an independent competition with its own ₹200 daily cash prize. Missed days don't hold you back from winning future days.",
     },
     {
       q: "Can I play on my phone?",
