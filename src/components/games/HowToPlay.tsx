@@ -245,8 +245,8 @@ function WendDemo() {
   const letters = ["O", "N", "A", "M", "K", "E", "R", "A", "L", "A", "S", "T", "V", "I", "P", "U"];
   return (
     <Stage seed="demo-wend">
-      <div class="absolute inset-0 grid place-items-center">
-        <svg viewBox="0 0 140 120" width="100%" height="100%" aria-hidden="true">
+      <div class="absolute inset-0 grid place-items-center pb-6">
+        <svg viewBox="0 0 140 130" width="100%" height="100%" aria-hidden="true">
           <For each={letters}>
             {(letter, i) => {
               const col = () => i() % 4;
@@ -254,22 +254,22 @@ function WendDemo() {
               return (
                 <>
                   <rect
-                    x={20 + col() * 26}
-                    y={12 + row() * 26}
-                    width="24"
-                    height="24"
+                    x={23 + col() * 24}
+                    y={8 + row() * 24}
+                    width="22"
+                    height="22"
                     rx="4"
                     fill={PAPER}
                     stroke={INK}
                     stroke-width="2"
                   />
                   <text
-                    x={32 + col() * 26}
-                    y={24 + row() * 26}
+                    x={34 + col() * 24}
+                    y={19 + row() * 24}
                     text-anchor="middle"
                     dominant-baseline="central"
                     fill={INK}
-                    style={{ font: "800 12px var(--font-stack-display)" }}
+                    style={{ font: "800 11px var(--font-stack-display)" }}
                   >
                     {letter}
                   </text>
@@ -280,10 +280,10 @@ function WendDemo() {
 
           {/* O-N-A-M, bending down at the end to show paths are not straight. */}
           <path
-            d="M32 24 H58 H84 V50"
+            d="M34 19 H58 H82 V43"
             fill="none"
             stroke="var(--pop-teal)"
-            stroke-width="9"
+            stroke-width="8"
             stroke-linecap="round"
             stroke-linejoin="round"
             opacity="0.55"
@@ -295,7 +295,7 @@ function WendDemo() {
           />
         </svg>
       </div>
-      <p class="absolute inset-x-0 bottom-1 text-center text-[0.65rem] font-extrabold uppercase tracking-wider text-muted">
+      <p class="absolute inset-x-0 bottom-1.5 text-center text-[0.65rem] font-extrabold uppercase tracking-wider text-muted">
         paths bend. every tile belongs to one word.
       </p>
     </Stage>
@@ -306,7 +306,7 @@ function WendDemo() {
 function VallamDemo() {
   return (
     <Stage seed="demo-vallam">
-      <div class="absolute inset-0 grid place-items-center">
+      <div class="absolute inset-0 grid place-items-center pb-6">
         <svg viewBox="0 0 180 120" width="100%" height="100%" aria-hidden="true">
           <rect
             x="20"

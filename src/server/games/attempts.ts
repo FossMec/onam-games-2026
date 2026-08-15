@@ -1,10 +1,9 @@
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { logActivity, logSuspicious } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
 import { dailyLeaderboard, devices, gameAttempts, games, globalScores } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
-import { rollUpGlobalScores } from "~/server/leaderboard/settle";
 import { revealDeck } from "./impl/tinder";
 import type { GameAssets, GameDef, GameMetric } from "./registry";
 import { requireGameDef } from "./registry";
@@ -604,6 +603,7 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
         });
     }
   } else if (result.valid) {
+    // Late / catch-up play is just for fun; no daily leaderboard entry or streak update.
     await logActivity({
       userId: input.userId,
       deviceId: input.deviceId,
@@ -611,29 +611,6 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
       eventType: "game_submit_late",
       meta: { durationMs, gameId: game.id },
     });
-
-    /*
-     * Catch-up play: no daily row, but the overall table owes them the
-     * completion floor. `rollUpGlobalScores` is a full recompute, so it is only
-     * worth running when this submission actually changed anything — that is,
-     * on the *first* valid late completion of this game by this player.
-     * Retrying Maveli Jump eleven more times after the day closed must not
-     * trigger eleven recomputes.
-     */
-    const [earlier] = await db
-      .select({ id: gameAttempts.id })
-      .from(gameAttempts)
-      .where(
-        and(
-          eq(gameAttempts.userId, input.userId),
-          eq(gameAttempts.gameId, game.id),
-          eq(gameAttempts.serverValid, true),
-          eq(gameAttempts.afterDeadline, true),
-          ne(gameAttempts.id, attempt.id),
-        ),
-      )
-      .limit(1);
-    if (!earlier) await rollUpGlobalScores();
   }
 
   await logActivity({

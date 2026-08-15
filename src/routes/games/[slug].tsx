@@ -530,7 +530,7 @@ export default function GamePage() {
       <Show when={!game()}>
         <div class="card pop-red space-y-2 text-center">
           <p class="font-extrabold">There is no game at this address.</p>
-          <a href="/" class="btn-ghost mt-2 inline-block">
+          <a href="/#games-arena" class="btn-ghost mt-2 inline-block">
             Back to the schedule
           </a>
         </div>
@@ -813,7 +813,7 @@ export default function GamePage() {
                     </p>
                   </Show>
                   <Show when={settledResult()!.afterDeadline}>
-                    <p class="comment">counts for the overall board, not this day's.</p>
+                    <p class="comment">Played for fun · this day’s leaderboard is closed.</p>
                   </Show>
                   <Show
                     when={isRetryGame() && settledResult()!.attemptsRemaining > 0 && !unlimited()}
@@ -966,10 +966,10 @@ function GameBar(props: {
   return (
     <div class="flex items-center gap-2.5">
       <a
-        href="/"
+        href="/#games-arena"
         class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5"
         style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
-        aria-label="All games"
+        aria-label="Back to games"
       >
         <ChevronLeft size={20} />
       </a>
@@ -1105,8 +1105,8 @@ function StartPanel(props: {
         {/* The day's caveat, when there is one. A line, not a panel. */}
         <Show when={props.isCatchUp}>
           <p class="mx-auto max-w-prose text-sm font-semibold" style={{ color: "var(--pop-blue)" }}>
-            This day has closed. You can still play it and it counts towards the overall board — but
-            not this day's leaderboard, and not for a rank.
+            This day has closed. You can still play just for fun — daily leaderboard rankings are
+            closed for this day.
           </p>
         </Show>
         <Show when={props.isTesterWindow}>

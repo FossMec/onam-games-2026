@@ -88,9 +88,7 @@ export function WinModal(props: WinModalProps) {
             </span>
           </Show>
           <Show when={props.afterDeadline}>
-            <p class="comment">
-              counts for the overall board, not this day's. you got there eventually.
-            </p>
+            <p class="comment">just for fun · this day’s leaderboard is closed. you got there!</p>
           </Show>
           <Show when={(props.runsLeft ?? 0) > 0}>
             <p class="text-sm font-semibold text-muted">

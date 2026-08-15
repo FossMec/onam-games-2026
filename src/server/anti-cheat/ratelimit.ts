@@ -34,7 +34,7 @@ export async function checkRateLimit(opts: {
         set: {
           windowStart,
           expiresAt,
-          count: sql`case when ${rateLimitWindows.windowStart} = ${windowStart} then ${rateLimitWindows.count} + 1 else 1 end`,
+          count: sql`case when ${rateLimitWindows.windowStart} = excluded.window_start then ${rateLimitWindows.count} + 1 else 1 end`,
         },
       })
       .returning({ count: rateLimitWindows.count, expiresAt: rateLimitWindows.expiresAt });
@@ -49,7 +49,8 @@ export async function checkRateLimit(opts: {
       remaining: Math.max(0, limit - count),
       reset: row?.expiresAt.getTime() ?? expiresAt.getTime(),
     };
-  } catch {
+  } catch (error) {
+    console.error("[ratelimit] Failed to check rate limit:", error);
     return { success: false, remaining: 0, reset: Date.now() + 1_000, unavailable: true };
   }
 }
