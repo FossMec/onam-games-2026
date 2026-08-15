@@ -209,9 +209,9 @@ export default function Home() {
             <div class="flex justify-end">
               <SpriteIcon name="maveli-laptop" size={48} animate="float" interactive />
             </div>
-            <p class="wordmark text-4xl sm:text-6xl" data-text="FOSS ONAM">
+            <h1 class="wordmark text-4xl sm:text-6xl" data-text="FOSS ONAM">
               FOSS ONAM
-            </p>
+            </h1>
             <div class="flex justify-start">
               <SpriteIcon name="tux-king" size={48} animate="float" delay={1.2} interactive />
             </div>

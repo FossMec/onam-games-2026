@@ -21,6 +21,8 @@ export default function App() {
           />
           <Meta name="author" content="Dijith Dinesh" />
           <Meta name="creator" content="Dijith Dinesh" />
+          <Meta name="application-name" content="FOSS ONAM" />
+          <Meta property="og:site_name" content="FOSS ONAM" />
           <Meta
             name="google-site-verification"
             content="-lINJGuul9m8kUB9WitBwq3UQZi8gWz52ncMnYWyc9I"
