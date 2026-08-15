@@ -1,73 +1,125 @@
 import { createAsync } from "@solidjs/router";
+import { AlertTriangle, Clock, ShieldAlert } from "lucide-solid";
 import { Show, createSignal } from "solid-js";
 import { ShoutBurst } from "~/components/art/Burst";
 import { SHOUT_COLOR } from "~/lib/shouts";
 import { ackWarningAction, getMyBanState } from "~/server/auth/actions";
 
 /**
- * Ban and warning state, on every page.
+ * Ban and warning state, mounted across the entire application.
  *
- * This used to live only on the game page, so a warned player saw nothing until
- * they happened to open a game — which is the one moment a warning is least
- * useful, because they are already about to play. Mounted in the app shell it
- * appears wherever they are.
- *
- * The two levels are shown differently on purpose:
- *
- *   Level 1  a modal that has to be dismissed. It is a warning; it is supposed
- *            to interrupt, and dismissing it is recorded so a repeat incident
- *            can raise it again.
- *   Level 2+ a banner, not a wall. A benched player keeps the leaderboard, the
- *            schedule and every other page — someone who can still watch has a
- *            reason to come back when the clock runs out. A wall does not.
- *
- * Soft bans expire on their own: `describeBan` compares `banUntil` to the clock
- * on every read, so nothing has to run to lift one.
+ * Provides:
+ * 1. A permanent top banner above the header reminding the player of active warnings,
+ *    temporary benches (Level 2/3), or account restrictions (Level 4) on every reload.
+ * 2. An interrupt modal for Level 1 warnings that the player must acknowledge.
  */
 export function BanNotice() {
   const state = createAsync(() => getMyBanState());
-  const [dismissed, setDismissed] = createSignal(false);
+  const [modalDismissed, setModalDismissed] = createSignal(false);
 
-  const warning = () => state()?.level === 1 && state()!.needsAck && !dismissed();
-  const benched = () => (state()?.level ?? 0) >= 2;
+  const isLevel1 = () => state()?.level === 1;
+  const isBenched = () => (state()?.level ?? 0) === 2 || (state()?.level ?? 0) === 3;
+  const isHardBanned = () => (state()?.level ?? 0) === 4;
+
+  const showModal = () => isLevel1() && state()!.needsAck && !modalDismissed();
 
   const acknowledge = () => {
-    setDismissed(true);
+    setModalDismissed(true);
     void ackWarningAction();
   };
 
   return (
     <>
-      <Show when={benched()}>
+      {/* ---------------------------------------------------- 1. Permanent Top Banner (Above Header) */}
+      <Show when={state() && state()!.level > 0}>
         <div
-          class="relative overflow-hidden"
+          class="w-full text-xs font-bold transition-all"
           style={{
-            background: state()!.level === 4 ? "var(--pop-red)" : "var(--pop-yellow)",
+            background: isHardBanned()
+              ? "var(--pop-red)"
+              : isBenched()
+                ? "var(--pop-yellow)"
+                : "var(--paper-3)",
+            color: "var(--ink)",
             "border-bottom": "var(--ink-w-bold) solid var(--ink)",
           }}
         >
-          <div class="container flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
-            <span class="sticker" style={{ "--pop": "var(--paper-2)" }}>
-              {state()!.level === 4 ? "OUT" : "BENCHED"}
-            </span>
-            <p class="font-extrabold">{state()!.message}</p>
+          <div class="container flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 py-1.5 px-4">
+            <div class="flex items-center gap-2 min-w-0">
+              <Show
+                when={isHardBanned()}
+                fallback={
+                  <Show
+                    when={isBenched()}
+                    fallback={<AlertTriangle size={14} class="text-amber-700 shrink-0" />}
+                  >
+                    <Clock size={14} class="shrink-0" />
+                  </Show>
+                }
+              >
+                <ShieldAlert size={14} class="text-white shrink-0" />
+              </Show>
+
+              <span
+                class="px-1.5 py-0.2 rounded font-black text-[10px] uppercase border"
+                style={{
+                  background: isHardBanned()
+                    ? "rgba(0,0,0,0.2)"
+                    : isBenched()
+                      ? "var(--pop-pink)"
+                      : "var(--pop-yellow)",
+                  border: "1px solid var(--ink)",
+                }}
+              >
+                {isHardBanned() ? "OUT" : isBenched() ? "BENCHED" : "WARNING"}
+              </span>
+
+              <p class="truncate text-[11px] sm:text-xs">
+                {isLevel1()
+                  ? "Account Warning: Irregular activity detected. Repeat incidents will lead to a gameplay timeout."
+                  : state()!.message}
+              </p>
+            </div>
+
+            <Show when={isBenched() && state()?.until}>
+              <span class="text-[10px] font-mono font-black opacity-80 shrink-0">
+                Resumes:{" "}
+                {new Date(state()!.until!).toLocaleTimeString("en-IN", {
+                  timeZone: "Asia/Kolkata",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}{" "}
+                IST
+              </span>
+            </Show>
           </div>
         </div>
       </Show>
 
-      <Show when={warning()}>
+      {/* ---------------------------------------------------- 2. Level 1 Warning Interrupt Modal */}
+      <Show when={showModal()}>
         <div
-          class="fixed inset-0 z-50 grid place-items-center p-4"
-          style={{ background: "rgb(34 32 43 / 0.72)" }}
+          class="fixed inset-0 z-50 grid place-items-center p-4 bg-black/70 backdrop-blur-xs"
           role="dialog"
           aria-modal="true"
         >
-          <div class="card pop-yellow w-full max-w-md space-y-4 text-center">
+          <div class="card pop-yellow w-full max-w-md space-y-4 text-center border-2 border-[var(--ink)] shadow-2xl p-6">
             <ShoutBurst text="ENTHUVA!" color={SHOUT_COLOR.confused} seed="ban-warning" />
-            <p class="font-extrabold">{state()!.message}</p>
-            <p class="comment">nothing's been taken away. yet.</p>
-            <button type="button" class="btn-brand w-full" onClick={acknowledge}>
-              Understood
+            <div class="space-y-2 text-left bg-[var(--paper-2)] p-3 rounded-md border border-[var(--ink)]">
+              <p class="font-extrabold text-sm text-[var(--ink)]">Official Account Warning</p>
+              <p class="text-xs leading-relaxed text-[var(--ink)] font-semibold">
+                {state()!.message}
+              </p>
+            </div>
+            <p class="comment text-xs font-bold">
+              nothing has been taken away yet. play fairly and enjoy the games!
+            </p>
+            <button
+              type="button"
+              class="btn-brand w-full py-2.5 font-black text-sm cursor-pointer"
+              onClick={acknowledge}
+            >
+              I Understand & Agree
             </button>
           </div>
         </div>

@@ -36,23 +36,15 @@ export default function App() {
           {/* Filter defs, mounted once for the whole app. */}
           <InkFilter />
           <div class="flex min-h-screen flex-col relative z-0">
-            <Suspense>
-              <Nav />
-            </Suspense>
             {/*
-              Every page, not just the game page — a warning nobody sees is not
+              Every page, above the navigation header — a warning nobody sees is not
               a warning.
-
-              Its own boundary, and it must have one: `BanNotice` reads an async
-              resource, and an async read with no Suspense above it has nothing
-              to defer into during SSR. The server sent no markup for the
-              warning modal while the client, once the ban state resolved, tried
-              to hydrate it — "unable to find DOM nodes for hydration key". The
-              boundary is separate from the page's so a slow ban lookup cannot
-              hold up the route, or the other way round.
             */}
             <Suspense>
               <BanNotice />
+            </Suspense>
+            <Suspense>
+              <Nav />
             </Suspense>
             <div class="flex-1">
               <Suspense>
