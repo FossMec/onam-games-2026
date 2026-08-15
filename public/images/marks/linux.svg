@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Tux Penguin Body -->
+  <ellipse cx="50" cy="54" rx="30" ry="34" fill="#22202b" />
+  <!-- White Belly -->
+  <ellipse cx="50" cy="59" rx="20" ry="24" fill="#fdfbf7" />
+  <!-- Head -->
+  <ellipse cx="50" cy="28" rx="20" ry="18" fill="#22202b" />
+  <!-- Eyes -->
+  <ellipse cx="44" cy="24" rx="4.5" ry="6" fill="#fdfbf7" />
+  <ellipse cx="56" cy="24" rx="4.5" ry="6" fill="#fdfbf7" />
+  <circle cx="45.5" cy="24" r="2.5" fill="#22202b" />
+  <circle cx="54.5" cy="24" r="2.5" fill="#22202b" />
+  <!-- Beak -->
+  <path d="M42 30 Q50 35 58 30 Q50 42 42 30 Z" fill="#f5a623" stroke="#22202b" stroke-width="1.5" />
+  <!-- Flippers -->
+  <ellipse cx="22" cy="52" rx="7" ry="18" fill="#22202b" transform="rotate(20 22 52)" />
+  <ellipse cx="78" cy="52" rx="7" ry="18" fill="#22202b" transform="rotate(-20 78 52)" />
+  <!-- Yellow Feet -->
+  <ellipse cx="38" cy="88" rx="12" ry="6" fill="#f5a623" stroke="#22202b" stroke-width="1.5" />
+  <ellipse cx="62" cy="88" rx="12" ry="6" fill="#f5a623" stroke="#22202b" stroke-width="1.5" />
+</svg>

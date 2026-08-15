@@ -246,9 +246,9 @@ export function WendGame(props: WendGameProps) {
       </div>
 
       <div
-        class="relative mx-auto my-auto aspect-square w-full max-w-[26rem] max-h-[min(50dvh,370px)] select-none overflow-hidden"
+        class="relative mx-auto my-auto aspect-square w-full max-w-[26rem] max-h-[min(50dvh,370px)] select-none overflow-hidden p-2.5 sm:p-3"
         style={{
-          background: "var(--paper)",
+          background: "var(--paper-3)",
           border: "var(--ink-w-bold) solid var(--ink)",
           "border-radius": "var(--radius)",
           "touch-action": "none",
@@ -272,251 +272,255 @@ export function WendGame(props: WendGameProps) {
           if (at) extend(at.r, at.c);
         }}
       >
-        {/* Underlay Grid Background Cells */}
-        <div
-          class="absolute inset-0 grid w-full h-full"
-          style={{
-            "grid-template-columns": `repeat(${props.view.size}, 1fr)`,
-            gap: "1px",
-            background: "rgba(34,32,43,0.15)",
-          }}
-        >
-          <For each={props.view.grid}>
-            {(row, r) => (
-              <For each={row}>
-                {(_, c) => {
-                  const wall = () => isWall(r(), c());
-                  return (
-                    <div
-                      style={{
-                        background: wall() ? "var(--ink)" : "var(--paper-2)",
-                      }}
-                    />
-                  );
-                }}
-              </For>
-            )}
-          </For>
-        </div>
-
-        {/* LinkedIn-Style Continuous Rounded Snake Paths SVG Layer */}
-        <svg
-          class="absolute inset-0 w-full h-full pointer-events-none"
-          viewBox={`0 0 ${props.view.size * 100} ${props.view.size * 100}`}
-          style={{ "z-index": 2 }}
-        >
-          {/* 1. Locked Found Words */}
-          <For each={found()}>
-            {(entry, i) => {
-              const color = PATH_POPS[i() % PATH_POPS.length];
-              const cells = entry.cells;
-              const pathD =
-                cells.length > 1
-                  ? `M ${cells[0].c * 100 + 50} ${cells[0].r * 100 + 50} ` +
-                    cells
-                      .slice(1)
-                      .map((c) => `L ${c.c * 100 + 50} ${c.r * 100 + 50}`)
-                      .join(" ")
-                  : "";
-
-              return (
-                <g>
-                  {/* Thick Rounded Path Pipe */}
-                  <Show
-                    when={cells.length > 1}
-                    fallback={
-                      <circle
-                        cx={cells[0].c * 100 + 50}
-                        cy={cells[0].r * 100 + 50}
-                        r="39"
-                        fill={color}
+        <div class="relative w-full h-full overflow-hidden rounded">
+          {/* Underlay Grid Background Cells */}
+          <div
+            class="absolute inset-0 grid w-full h-full"
+            style={{
+              "grid-template-columns": `repeat(${props.view.size}, 1fr)`,
+              gap: "1px",
+              background: "rgba(34,32,43,0.15)",
+            }}
+          >
+            <For each={props.view.grid}>
+              {(row, r) => (
+                <For each={row}>
+                  {(_, c) => {
+                    const wall = () => isWall(r(), c());
+                    return (
+                      <div
+                        style={{
+                          background: wall() ? "var(--ink)" : "var(--paper-2)",
+                        }}
                       />
-                    }
-                  >
-                    <path
-                      d={pathD}
-                      fill="none"
-                      stroke={color}
-                      stroke-width="78"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </Show>
+                    );
+                  }}
+                </For>
+              )}
+            </For>
+          </div>
 
-                  {/* Start Node Disc with Halo Outline */}
-                  <circle
-                    cx={cells[0].c * 100 + 50}
-                    cy={cells[0].r * 100 + 50}
-                    r="38"
-                    fill={color}
-                    stroke="#ffffff"
-                    stroke-width="5"
-                  />
+          {/* LinkedIn-Style Continuous Rounded Snake Paths SVG Layer */}
+          <svg
+            class="absolute inset-0 w-full h-full pointer-events-none"
+            viewBox={`0 0 ${props.view.size * 100} ${props.view.size * 100}`}
+            style={{ "z-index": 2 }}
+          >
+            {/* 1. Locked Found Words */}
+            <For each={found()}>
+              {(entry, i) => {
+                const color = PATH_POPS[i() % PATH_POPS.length];
+                const cells = entry.cells;
+                const pathD =
+                  cells.length > 1
+                    ? `M ${cells[0].c * 100 + 50} ${cells[0].r * 100 + 50} ` +
+                      cells
+                        .slice(1)
+                        .map((c) => `L ${c.c * 100 + 50} ${c.r * 100 + 50}`)
+                        .join(" ")
+                    : "";
 
-                  {/* Checkmark Badge at top-right of Start Node ONLY for verified target words */}
-                  <Show when={entry.isTarget !== false}>
-                    <g transform={`translate(${cells[0].c * 100 + 74}, ${cells[0].r * 100 + 26})`}>
-                      <circle r="12" fill="#ffffff" stroke="var(--ink)" stroke-width="2" />
+                return (
+                  <g>
+                    {/* Thick Rounded Path Pipe */}
+                    <Show
+                      when={cells.length > 1}
+                      fallback={
+                        <circle
+                          cx={cells[0].c * 100 + 50}
+                          cy={cells[0].r * 100 + 50}
+                          r="39"
+                          fill={color}
+                        />
+                      }
+                    >
                       <path
-                        d="M -4 0 L -1 3.5 L 5 -3"
+                        d={pathD}
                         fill="none"
-                        stroke="#06d6a0"
-                        stroke-width="2.5"
+                        stroke={color}
+                        stroke-width="78"
                         stroke-linecap="round"
                         stroke-linejoin="round"
                       />
-                    </g>
-                  </Show>
+                    </Show>
 
-                  {/* Directional Chevrons Along The Path */}
-                  <For each={cells.slice(0, -1)}>
-                    {(from, idx) => {
-                      const to = cells[idx() + 1];
-                      const midX = (from.c * 100 + 50 + to.c * 100 + 50) / 2;
-                      const midY = (from.r * 100 + 50 + to.r * 100 + 50) / 2;
-                      const rot =
-                        to.r > from.r ? 90 : to.r < from.r ? -90 : to.c > from.c ? 0 : 180;
-
-                      return (
-                        <path
-                          d="M -5 -7 L 4 0 L -5 7"
-                          fill="none"
-                          stroke="var(--ink)"
-                          stroke-width="3.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          transform={`translate(${midX}, ${midY}) rotate(${rot})`}
-                        />
-                      );
-                    }}
-                  </For>
-                </g>
-              );
-            }}
-          </For>
-
-          {/* 2. Live Active Drawing Path */}
-          <Show when={path().length > 0}>
-            {(() => {
-              const cells = path();
-              const color = "var(--pop-yellow)";
-              const pathD =
-                cells.length > 1
-                  ? `M ${cells[0].c * 100 + 50} ${cells[0].r * 100 + 50} ` +
-                    cells
-                      .slice(1)
-                      .map((c) => `L ${c.c * 100 + 50} ${c.r * 100 + 50}`)
-                      .join(" ")
-                  : "";
-
-              return (
-                <g>
-                  <Show
-                    when={cells.length > 1}
-                    fallback={
-                      <circle
-                        cx={cells[0].c * 100 + 50}
-                        cy={cells[0].r * 100 + 50}
-                        r="39"
-                        fill={color}
-                      />
-                    }
-                  >
-                    <path
-                      d={pathD}
-                      fill="none"
-                      stroke={color}
-                      stroke-width="78"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
+                    {/* Start Node Disc with Halo Outline */}
+                    <circle
+                      cx={cells[0].c * 100 + 50}
+                      cy={cells[0].r * 100 + 50}
+                      r="38"
+                      fill={color}
+                      stroke="#ffffff"
+                      stroke-width="5"
                     />
-                  </Show>
 
-                  {/* Start Node Disc */}
-                  <circle
-                    cx={cells[0].c * 100 + 50}
-                    cy={cells[0].r * 100 + 50}
-                    r="38"
-                    fill={color}
-                    stroke="#ffffff"
-                    stroke-width="5"
-                  />
-
-                  {/* Live Directional Chevrons */}
-                  <For each={cells.slice(0, -1)}>
-                    {(from, idx) => {
-                      const to = cells[idx() + 1];
-                      const midX = (from.c * 100 + 50 + to.c * 100 + 50) / 2;
-                      const midY = (from.r * 100 + 50 + to.r * 100 + 50) / 2;
-                      const rot =
-                        to.r > from.r ? 90 : to.r < from.r ? -90 : to.c > from.c ? 0 : 180;
-
-                      return (
+                    {/* Checkmark Badge at top-right of Start Node ONLY for verified target words */}
+                    <Show when={entry.isTarget !== false}>
+                      <g
+                        transform={`translate(${cells[0].c * 100 + 74}, ${cells[0].r * 100 + 26})`}
+                      >
+                        <circle r="12" fill="#ffffff" stroke="var(--ink)" stroke-width="2" />
                         <path
-                          d="M -5 -7 L 4 0 L -5 7"
+                          d="M -4 0 L -1 3.5 L 5 -3"
                           fill="none"
-                          stroke="var(--ink)"
-                          stroke-width="3.5"
+                          stroke="#06d6a0"
+                          stroke-width="2.5"
                           stroke-linecap="round"
                           stroke-linejoin="round"
-                          transform={`translate(${midX}, ${midY}) rotate(${rot})`}
                         />
-                      );
-                    }}
-                  </For>
-                </g>
-              );
-            })()}
-          </Show>
-        </svg>
+                      </g>
+                    </Show>
 
-        {/* Interactive Buttons & Letters Layer */}
-        <div
-          class="absolute inset-0 grid w-full h-full select-none"
-          style={{
-            "grid-template-columns": `repeat(${props.view.size}, 1fr)`,
-            "z-index": 5,
-          }}
-        >
-          <For each={props.view.grid}>
-            {(row, r) => (
-              <For each={row}>
-                {(letter, c) => {
-                  const wall = () => isWall(r(), c());
+                    {/* Directional Chevrons Along The Path */}
+                    <For each={cells.slice(0, -1)}>
+                      {(from, idx) => {
+                        const to = cells[idx() + 1];
+                        const midX = (from.c * 100 + 50 + to.c * 100 + 50) / 2;
+                        const midY = (from.r * 100 + 50 + to.r * 100 + 50) / 2;
+                        const rot =
+                          to.r > from.r ? 90 : to.r < from.r ? -90 : to.c > from.c ? 0 : 180;
 
-                  return (
-                    <button
-                      type="button"
-                      data-cell={`${r()},${c()}`}
-                      onClick={() => {
-                        if (!drawing() && path().length <= 1) tapCell(r(), c());
+                        return (
+                          <path
+                            d="M -5 -7 L 4 0 L -5 7"
+                            fill="none"
+                            stroke="var(--ink)"
+                            stroke-width="3.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            transform={`translate(${midX}, ${midY}) rotate(${rot})`}
+                          />
+                        );
                       }}
-                      disabled={props.disabled || wall()}
-                      aria-label={
-                        wall() ? "Wall" : `Row ${r() + 1} column ${c() + 1}, letter ${letter}`
+                    </For>
+                  </g>
+                );
+              }}
+            </For>
+
+            {/* 2. Live Active Drawing Path */}
+            <Show when={path().length > 0}>
+              {(() => {
+                const cells = path();
+                const color = "var(--pop-yellow)";
+                const pathD =
+                  cells.length > 1
+                    ? `M ${cells[0].c * 100 + 50} ${cells[0].r * 100 + 50} ` +
+                      cells
+                        .slice(1)
+                        .map((c) => `L ${c.c * 100 + 50} ${c.r * 100 + 50}`)
+                        .join(" ")
+                    : "";
+
+                return (
+                  <g>
+                    <Show
+                      when={cells.length > 1}
+                      fallback={
+                        <circle
+                          cx={cells[0].c * 100 + 50}
+                          cy={cells[0].r * 100 + 50}
+                          r="39"
+                          fill={color}
+                        />
                       }
-                      class="relative transition-transform select-none"
-                      style={{
-                        "aspect-ratio": "1 / 1",
-                        display: "grid",
-                        "place-items": "center",
-                        "font-family": "var(--font-stack-display)",
-                        "font-weight": 800,
-                        "font-size": "clamp(1.1rem, 5.5vw, 1.65rem)",
-                        color: "var(--ink)",
-                        background: "transparent",
-                        border: "none",
-                        padding: 0,
-                        cursor: props.disabled || wall() ? "default" : "pointer",
-                      }}
                     >
-                      <span class="relative select-none">{letter}</span>
-                    </button>
-                  );
-                }}
-              </For>
-            )}
-          </For>
+                      <path
+                        d={pathD}
+                        fill="none"
+                        stroke={color}
+                        stroke-width="78"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </Show>
+
+                    {/* Start Node Disc */}
+                    <circle
+                      cx={cells[0].c * 100 + 50}
+                      cy={cells[0].r * 100 + 50}
+                      r="38"
+                      fill={color}
+                      stroke="#ffffff"
+                      stroke-width="5"
+                    />
+
+                    {/* Live Directional Chevrons */}
+                    <For each={cells.slice(0, -1)}>
+                      {(from, idx) => {
+                        const to = cells[idx() + 1];
+                        const midX = (from.c * 100 + 50 + to.c * 100 + 50) / 2;
+                        const midY = (from.r * 100 + 50 + to.r * 100 + 50) / 2;
+                        const rot =
+                          to.r > from.r ? 90 : to.r < from.r ? -90 : to.c > from.c ? 0 : 180;
+
+                        return (
+                          <path
+                            d="M -5 -7 L 4 0 L -5 7"
+                            fill="none"
+                            stroke="var(--ink)"
+                            stroke-width="3.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            transform={`translate(${midX}, ${midY}) rotate(${rot})`}
+                          />
+                        );
+                      }}
+                    </For>
+                  </g>
+                );
+              })()}
+            </Show>
+          </svg>
+
+          {/* Interactive Buttons & Letters Layer */}
+          <div
+            class="absolute inset-0 grid w-full h-full select-none"
+            style={{
+              "grid-template-columns": `repeat(${props.view.size}, 1fr)`,
+              "z-index": 5,
+            }}
+          >
+            <For each={props.view.grid}>
+              {(row, r) => (
+                <For each={row}>
+                  {(letter, c) => {
+                    const wall = () => isWall(r(), c());
+
+                    return (
+                      <button
+                        type="button"
+                        data-cell={`${r()},${c()}`}
+                        onClick={() => {
+                          if (!drawing() && path().length <= 1) tapCell(r(), c());
+                        }}
+                        disabled={props.disabled || wall()}
+                        aria-label={
+                          wall() ? "Wall" : `Row ${r() + 1} column ${c() + 1}, letter ${letter}`
+                        }
+                        class="relative transition-transform select-none"
+                        style={{
+                          "aspect-ratio": "1 / 1",
+                          display: "grid",
+                          "place-items": "center",
+                          "font-family": "var(--font-stack-display)",
+                          "font-weight": 800,
+                          "font-size": "clamp(1.1rem, 5.5vw, 1.65rem)",
+                          color: "var(--ink)",
+                          background: "transparent",
+                          border: "none",
+                          padding: 0,
+                          cursor: props.disabled || wall() ? "default" : "pointer",
+                        }}
+                      >
+                        <span class="relative select-none">{letter}</span>
+                      </button>
+                    );
+                  }}
+                </For>
+              )}
+            </For>
+          </div>
         </div>
       </div>
 

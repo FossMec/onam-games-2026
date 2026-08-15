@@ -341,7 +341,7 @@ function VallamDemo() {
           </g>
 
           {/* The chundan vallam, out through the right edge. */}
-          <g style={{ "--slide": "94px", animation: "demo-slide-out 4s ease-in-out infinite" }}>
+          <g style={{ "--slide": "120px", animation: "demo-slide-out 4s ease-in-out infinite" }}>
             <g transform="translate(30, 52)">
               <image
                 href="/sprites/vallam/hero-vallam.webp"
@@ -660,11 +660,14 @@ function Steps(props: { steps: string[] }) {
   );
 }
 
+import { InteractiveTrial } from "./PracticeTrial";
+
 /* ------------------------------------------------------------------ panel */
 
 /** The always-there version, collapsed by default so it never eats the page. */
 export function HowToPlayPanel(props: { gameType: string; steps: string[]; title?: string }) {
   const [open, setOpen] = createSignal(false);
+  const [tab, setTab] = createSignal<"rules" | "trial">("rules");
 
   return (
     <section class="card card-plain space-y-3">
@@ -689,9 +692,43 @@ export function HowToPlayPanel(props: { gameType: string; steps: string[]; title
       </button>
 
       <Show when={open()}>
-        <div class="space-y-4">
-          <GameDemo gameType={props.gameType} />
-          <Steps steps={props.steps} />
+        <div class="space-y-3">
+          {/* Tab Switcher */}
+          <div class="flex gap-1.5 p-1 rounded-lg border-2 border-ink bg-paper-3">
+            <button
+              type="button"
+              class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all ${
+                tab() === "rules"
+                  ? "bg-pop-yellow text-ink border border-ink shadow-xs"
+                  : "text-muted hover:text-ink"
+              }`}
+              onClick={() => setTab("rules")}
+            >
+              📖 Rules & Demo
+            </button>
+            <button
+              type="button"
+              class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all ${
+                tab() === "trial"
+                  ? "bg-pop-teal text-ink border border-ink shadow-xs"
+                  : "text-muted hover:text-ink"
+              }`}
+              onClick={() => setTab("trial")}
+            >
+              🕹️ Play Trial
+            </button>
+          </div>
+
+          <Show when={tab() === "rules"}>
+            <div class="space-y-4">
+              <GameDemo gameType={props.gameType} />
+              <Steps steps={props.steps} />
+            </div>
+          </Show>
+
+          <Show when={tab() === "trial"}>
+            <InteractiveTrial gameType={props.gameType} />
+          </Show>
         </div>
       </Show>
     </section>
@@ -704,35 +741,20 @@ export interface HowToPlayModalProps {
   gameType: string;
   title: string;
   steps: string[];
-  /**
-   * Label for the confirm button — "Start game", "Go again", "Resume".
-   *
-   * Omit it, along with `onStart`, to open the same screen purely as
-   * reference. That is the mid-run case: a player who has already started and
-   * wants to re-read the rules must not be shown a button that looks like it
-   * might restart their attempt.
-   */
   startLabel?: string;
   busy?: boolean;
   onStart?: () => void;
   onClose: () => void;
 }
 
-/**
- * The pre-flight modal.
- *
- * Deliberately *not* dismissible by accident on the way to Start: the backdrop
- * and Escape both close it, but the confirm button is the only thing that
- * begins an attempt. The clock starts on that click and not a moment earlier,
- * which is the whole reason this screen exists.
- */
 export function HowToPlayModal(props: HowToPlayModalProps) {
+  const [tab, setTab] = createSignal<"rules" | "trial">("rules");
+
   onMount(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") props.onClose();
     };
     window.addEventListener("keydown", onKey);
-    // The page behind must not scroll while this is up.
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     onCleanup(() => {
@@ -752,11 +774,11 @@ export function HowToPlayModal(props: HowToPlayModalProps) {
         if (e.target === e.currentTarget) props.onClose();
       }}
     >
-      <div class="card pop-yellow anim-sheet-in my-auto w-full max-w-md space-y-4">
+      <div class="card pop-yellow anim-sheet-in my-auto w-full max-w-md space-y-3.5">
         <div class="flex items-start justify-between gap-3">
           <div>
             <p class="text-xs font-extrabold uppercase tracking-widest text-muted">How to play</p>
-            <h2 class="text-2xl leading-tight">{props.title}</h2>
+            <h2 class="text-2xl leading-tight font-black">{props.title}</h2>
           </div>
           <button
             type="button"
@@ -774,8 +796,42 @@ export function HowToPlayModal(props: HowToPlayModalProps) {
           </button>
         </div>
 
-        <GameDemo gameType={props.gameType} />
-        <Steps steps={props.steps} />
+        {/* Tab Switcher: Inline without any extra popup */}
+        <div class="flex gap-1.5 p-1 rounded-lg border-2 border-ink bg-paper-3">
+          <button
+            type="button"
+            class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all ${
+              tab() === "rules"
+                ? "bg-pop-yellow text-ink border border-ink shadow-xs"
+                : "text-muted hover:text-ink"
+            }`}
+            onClick={() => setTab("rules")}
+          >
+            📖 Rules & Demo
+          </button>
+          <button
+            type="button"
+            class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all ${
+              tab() === "trial"
+                ? "bg-pop-teal text-ink border border-ink shadow-xs"
+                : "text-muted hover:text-ink"
+            }`}
+            onClick={() => setTab("trial")}
+          >
+            🕹️ Play Trial
+          </button>
+        </div>
+
+        <Show when={tab() === "rules"}>
+          <div class="space-y-3.5">
+            <GameDemo gameType={props.gameType} />
+            <Steps steps={props.steps} />
+          </div>
+        </Show>
+
+        <Show when={tab() === "trial"}>
+          <InteractiveTrial gameType={props.gameType} />
+        </Show>
 
         <Show
           when={props.onStart}
@@ -795,7 +851,7 @@ export function HowToPlayModal(props: HowToPlayModalProps) {
           <div class="flex flex-col gap-2 sm:flex-row-reverse">
             <button
               type="button"
-              class="btn-brand flex-1 text-lg"
+              class="btn-brand flex-1 text-lg font-black"
               disabled={props.busy}
               onClick={props.onStart}
             >

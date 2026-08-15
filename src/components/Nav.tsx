@@ -190,10 +190,7 @@ export function Nav() {
           <div class="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4">
             {/* Top row on mobile: Logo + Auth */}
             <div class="flex items-center justify-between w-full sm:w-auto">
-              <a
-                href="/"
-                class="flex items-center gap-2.5 transition-transform hover:-rotate-1 select-none"
-              >
+              <a href="/" class="flex items-center gap-2.5 transition-transform  select-none">
                 <SpriteIcon
                   name="foss-mec-badge"
                   size={32}

@@ -41,7 +41,7 @@ export const onboardingSchema = z
   .object({
     occupation: z.enum(occupationValues).optional(),
     college: z.enum(collegeValues),
-    /** Required when `college = 'other'`. */
+    /** Required when `college = 'other'` or non-student occupations. */
     collegeOther: freeText(80),
     branch: z.enum(branchValues).optional(),
     /** Required when `branch = 'other'`. */
@@ -52,34 +52,47 @@ export const onboardingSchema = z
     whatsappNumber: optionalTrimmed(10, 15, /^\+?[0-9]+$/),
   })
   .superRefine((val, ctx) => {
-    if (val.college === "mec") {
-      if (!val.branch) {
+    if (val.occupation === "student") {
+      if (val.college === "mec") {
+        if (!val.branch) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["branch"],
+            message: "Branch is required for MEC students",
+          });
+        }
+        if (!val.batch) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["batch"],
+            message: "Batch / Graduation year is required",
+          });
+        }
+        if (val.branch === "other" && !val.branchOther) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["branchOther"],
+            message: "Tell us which branch",
+          });
+        }
+      } else if (val.college === "other" && !val.collegeOther) {
         ctx.addIssue({
           code: "custom",
-          path: ["branch"],
-          message: "Branch is required for MEC",
+          path: ["collegeOther"],
+          message: "Tell us your college name",
         });
       }
-      if (!val.batch && val.occupation === "student") {
-        ctx.addIssue({
-          code: "custom",
-          path: ["batch"],
-          message: "Batch / Graduation year is required",
-        });
-      }
-      // "Other" branch is only meaningful if they say which one.
-      if (val.branch === "other" && !val.collegeOther && !val.branchOther) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["branchOther"],
-          message: "Tell us which branch",
-        });
-      }
-    } else if (val.college === "other" && !val.collegeOther) {
+    } else if (val.occupation === "school_student" && !val.collegeOther) {
       ctx.addIssue({
         code: "custom",
         path: ["collegeOther"],
-        message: "Tell us where you're from — college, school, or organization",
+        message: "Tell us your school name",
+      });
+    } else if (val.occupation === "working_professional" && !val.collegeOther) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["collegeOther"],
+        message: "Tell us your company or organization name",
       });
     }
   });

@@ -40,10 +40,11 @@ export interface StandingInput {
  */
 export function tierFor(input: StandingInput): ShareTier {
   if (input.afterDeadline) return "late";
-  const { rank, fieldSize } = input;
-  if (!rank || !fieldSize || fieldSize < 1) return "unranked";
+  const rank = input.rank != null ? Number(input.rank) : null;
+  const fieldSize = input.fieldSize != null ? Number(input.fieldSize) : null;
   if (rank === 1) return "champion";
-  if (rank <= 3) return "podium";
+  if (!rank || !fieldSize || fieldSize < 1) return "unranked";
+  if (rank === 2 || rank === 3) return "podium";
   if (fieldSize <= 1) return "champion";
   const percentile = 1 - (rank - 1) / (fieldSize - 1);
   if (percentile >= 0.9) return "sharp";
@@ -72,7 +73,7 @@ const TAUNTS: Record<ShareTier, readonly string[]> = {
 const BRAGS: Record<ShareTier, readonly string[]> = {
   champion: [
     "rank one. sudo not required.",
-    "first place. i'll wait — htop is open.",
+    "first place. i'll wait  htop is open.",
     "topped the board and still made it to sadya.",
   ],
   podium: [
@@ -193,7 +194,10 @@ export interface FigureInput {
  * (`ResultFigures` in `routes/games/[slug].tsx`). Split into two strings
  * because the card sets them at wildly different sizes.
  */
-export function figureFor(input: FigureInput): { value: string; label: string } {
+export function figureFor(input: FigureInput): {
+  value: string;
+  label: string;
+} {
   if (input.metric === "score") {
     return {
       value: (input.score ?? 0).toLocaleString("en-IN"),
@@ -207,7 +211,10 @@ export function figureFor(input: FigureInput): { value: string; label: string } 
     seconds < 60
       ? `${seconds.toFixed(1)}s`
       : `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
-  return { value, label: input.metric === "fcfs" ? "FINISHED IN" : "ON THE CLOCK" };
+  return {
+    value,
+    label: input.metric === "fcfs" ? "FINISHED IN" : "ON THE CLOCK",
+  };
 }
 
 export interface CaptionInput {

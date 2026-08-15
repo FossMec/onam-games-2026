@@ -162,7 +162,17 @@ export function ShareCard(props: ShareCardProps) {
         "mx-auto": !props.compact,
       }}
       style={{
-        width: props.compact ? "118px" : "min(280px, 68vw)",
+        /*
+         * Width is capped by the height it implies, so the card can never make
+         * its dialog scroll.
+         *
+         * A 9:16 box given only a width is 1.78× as tall as it is wide, and at
+         * 280px that is ~498px of card before the title and three buttons are
+         * counted. On a short phone the modal overflowed and had to be
+         * scrolled to reach "Share". The third term keeps the rendered height
+         * inside whatever the viewport has left, and the card shrinks instead.
+         */
+        width: props.compact ? "118px" : "min(280px, 68vw, calc((100dvh - 21rem) * 9 / 16))",
         "aspect-ratio": "9 / 16",
         border: "var(--ink-w) solid var(--ink)",
         background: "var(--paper-3)",
@@ -212,9 +222,144 @@ export function ShareCard(props: ShareCardProps) {
     </div>
   );
 
+  const customizeDrawer = () => (
+    <Show when={showOptions()}>
+      <div class="card p-3 space-y-2.5 text-left bg-[var(--paper-2)] border-2 border-[var(--ink)] mb-2">
+        <p class="font-extrabold text-xs text-[var(--ink)]">Customize details on this card:</p>
+
+        {/* Toggle buttons for details */}
+        <div class="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => setHideAvatar((v) => !v)}
+            class={`px-2.5 py-1 rounded-md text-xs font-bold border flex items-center gap-1 cursor-pointer transition-all ${
+              !hideAvatar()
+                ? "bg-[var(--ink)] text-white border-[var(--ink)]"
+                : "bg-[var(--paper-1)] text-[var(--ink-soft)] border-[var(--ink-soft)] line-through"
+            }`}
+          >
+            <Show when={!hideAvatar()} fallback={<EyeOff size={13} />}>
+              <Eye size={13} />
+            </Show>
+            <span>Photo</span>
+          </button>
+
+          <Show when={props.data.college}>
+            <button
+              type="button"
+              onClick={() => setHideCollege((v) => !v)}
+              class={`px-2.5 py-1 rounded-md text-xs font-bold border flex items-center gap-1 cursor-pointer transition-all ${
+                !hideCollege()
+                  ? "bg-[var(--ink)] text-white border-[var(--ink)]"
+                  : "bg-[var(--paper-1)] text-[var(--ink-soft)] border-[var(--ink-soft)] line-through"
+              }`}
+            >
+              <Show when={!hideCollege()} fallback={<EyeOff size={13} />}>
+                <Eye size={13} />
+              </Show>
+              <span>College</span>
+            </button>
+          </Show>
+
+          <Show when={props.data.branch}>
+            <button
+              type="button"
+              onClick={() => setHideBranch((v) => !v)}
+              class={`px-2.5 py-1 rounded-md text-xs font-bold border flex items-center gap-1 cursor-pointer transition-all ${
+                !hideBranch()
+                  ? "bg-[var(--ink)] text-white border-[var(--ink)]"
+                  : "bg-[var(--paper-1)] text-[var(--ink-soft)] border-[var(--ink-soft)] line-through"
+              }`}
+            >
+              <Show when={!hideBranch()} fallback={<EyeOff size={13} />}>
+                <Eye size={13} />
+              </Show>
+              <span>Branch</span>
+            </button>
+          </Show>
+
+          <Show when={props.data.batch && props.data.batch !== "na"}>
+            <button
+              type="button"
+              onClick={() => setHideBatch((v) => !v)}
+              class={`px-2.5 py-1 rounded-md text-xs font-bold border flex items-center gap-1 cursor-pointer transition-all ${
+                !hideBatch()
+                  ? "bg-[var(--ink)] text-white border-[var(--ink)]"
+                  : "bg-[var(--paper-1)] text-[var(--ink-soft)] border-[var(--ink-soft)] line-through"
+              }`}
+            >
+              <Show when={!hideBatch()} fallback={<EyeOff size={13} />}>
+                <Eye size={13} />
+              </Show>
+              <span>Batch</span>
+            </button>
+          </Show>
+
+          <Show when={props.data.instagram}>
+            <button
+              type="button"
+              onClick={() => setHideInstagram((v) => !v)}
+              class={`px-2.5 py-1 rounded-md text-xs font-bold border flex items-center gap-1 cursor-pointer transition-all ${
+                !hideInstagram()
+                  ? "bg-[var(--ink)] text-white border-[var(--ink)]"
+                  : "bg-[var(--paper-1)] text-[var(--ink-soft)] border-[var(--ink-soft)] line-through"
+              }`}
+            >
+              <Show when={!hideInstagram()} fallback={<EyeOff size={13} />}>
+                <Eye size={13} />
+              </Show>
+              <span>Instagram</span>
+            </button>
+          </Show>
+        </div>
+
+        {/* Selfie camera attachment controls */}
+        <div class="flex items-center gap-2 pt-1 border-t border-[var(--ink-soft)]">
+          <label
+            for="card-photo-input"
+            class="btn-ghost py-1 px-2.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+          >
+            <Camera size={14} />
+            <span>{customPhoto() ? "Retake selfie" : "Take a selfie"}</span>
+          </label>
+          <input
+            id="card-photo-input"
+            type="file"
+            accept="image/*"
+            capture="user"
+            class="sr-only"
+            onChange={(e) => onPhotoSelect(e.currentTarget.files?.[0])}
+          />
+
+          <Show when={customPhoto()}>
+            <button
+              type="button"
+              onClick={() => setCustomPhoto(null)}
+              class="btn-ghost py-1 px-2 text-xs font-bold text-[var(--pop-red)] flex items-center gap-1"
+              title="Remove selfie"
+            >
+              <Trash2 size={13} />
+              <span>Remove selfie</span>
+            </button>
+          </Show>
+        </div>
+      </div>
+    </Show>
+  );
+
   const actions = () => (
     <Show when={phase() !== "failed"}>
       <div class="flex flex-1 flex-col justify-center gap-2">
+        <button
+          type="button"
+          class="btn-ghost flex items-center justify-center gap-1.5 text-xs py-1.5"
+          onClick={() => setShowOptions((v) => !v)}
+        >
+          <span>{showOptions() ? "Hide options ▲" : "Customize card ▼"}</span>
+        </button>
+
+        {customizeDrawer()}
+
         <button
           type="button"
           class="btn-brand flex items-center justify-center gap-2"
@@ -234,13 +379,6 @@ export function ShareCard(props: ShareCardProps) {
           <Download size={16} />
           Save image
         </button>
-        <button
-          type="button"
-          class="btn-ghost flex items-center justify-center gap-1.5 text-xs py-1"
-          onClick={() => setShowOptions((v) => !v)}
-        >
-          <span>{showOptions() ? "Hide options" : "Customize card"}</span>
-        </button>
       </div>
     </Show>
   );
@@ -256,129 +394,6 @@ export function ShareCard(props: ShareCardProps) {
         {preview()}
         {actions()}
       </div>
-
-      {/* Card Details Customization Controls */}
-      <Show when={showOptions()}>
-        <div class="card p-3 space-y-2.5 text-left bg-[var(--paper-2)] border-2 border-[var(--ink)]">
-          <p class="font-extrabold text-xs text-[var(--ink)]">Customize details on this card:</p>
-
-          {/* Toggle buttons for details */}
-          <div class="flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              onClick={() => setHideAvatar((v) => !v)}
-              class={`px-2.5 py-1 rounded-md text-xs font-bold border flex items-center gap-1 cursor-pointer transition-all ${
-                !hideAvatar()
-                  ? "bg-[var(--ink)] text-white border-[var(--ink)]"
-                  : "bg-[var(--paper-1)] text-[var(--ink-soft)] border-[var(--ink-soft)] line-through"
-              }`}
-            >
-              <Show when={!hideAvatar()} fallback={<EyeOff size={13} />}>
-                <Eye size={13} />
-              </Show>
-              <span>Photo</span>
-            </button>
-
-            <Show when={props.data.college}>
-              <button
-                type="button"
-                onClick={() => setHideCollege((v) => !v)}
-                class={`px-2.5 py-1 rounded-md text-xs font-bold border flex items-center gap-1 cursor-pointer transition-all ${
-                  !hideCollege()
-                    ? "bg-[var(--ink)] text-white border-[var(--ink)]"
-                    : "bg-[var(--paper-1)] text-[var(--ink-soft)] border-[var(--ink-soft)] line-through"
-                }`}
-              >
-                <Show when={!hideCollege()} fallback={<EyeOff size={13} />}>
-                  <Eye size={13} />
-                </Show>
-                <span>College</span>
-              </button>
-            </Show>
-
-            <Show when={props.data.branch}>
-              <button
-                type="button"
-                onClick={() => setHideBranch((v) => !v)}
-                class={`px-2.5 py-1 rounded-md text-xs font-bold border flex items-center gap-1 cursor-pointer transition-all ${
-                  !hideBranch()
-                    ? "bg-[var(--ink)] text-white border-[var(--ink)]"
-                    : "bg-[var(--paper-1)] text-[var(--ink-soft)] border-[var(--ink-soft)] line-through"
-                }`}
-              >
-                <Show when={!hideBranch()} fallback={<EyeOff size={13} />}>
-                  <Eye size={13} />
-                </Show>
-                <span>Branch</span>
-              </button>
-            </Show>
-
-            <Show when={props.data.batch && props.data.batch !== "na"}>
-              <button
-                type="button"
-                onClick={() => setHideBatch((v) => !v)}
-                class={`px-2.5 py-1 rounded-md text-xs font-bold border flex items-center gap-1 cursor-pointer transition-all ${
-                  !hideBatch()
-                    ? "bg-[var(--ink)] text-white border-[var(--ink)]"
-                    : "bg-[var(--paper-1)] text-[var(--ink-soft)] border-[var(--ink-soft)] line-through"
-                }`}
-              >
-                <Show when={!hideBatch()} fallback={<EyeOff size={13} />}>
-                  <Eye size={13} />
-                </Show>
-                <span>Batch</span>
-              </button>
-            </Show>
-
-            <Show when={props.data.instagram}>
-              <button
-                type="button"
-                onClick={() => setHideInstagram((v) => !v)}
-                class={`px-2.5 py-1 rounded-md text-xs font-bold border flex items-center gap-1 cursor-pointer transition-all ${
-                  !hideInstagram()
-                    ? "bg-[var(--ink)] text-white border-[var(--ink)]"
-                    : "bg-[var(--paper-1)] text-[var(--ink-soft)] border-[var(--ink-soft)] line-through"
-                }`}
-              >
-                <Show when={!hideInstagram()} fallback={<EyeOff size={13} />}>
-                  <Eye size={13} />
-                </Show>
-                <span>Instagram</span>
-              </button>
-            </Show>
-          </div>
-
-          {/* Photo attachment controls */}
-          <div class="flex items-center gap-2 pt-1 border-t border-[var(--ink-soft)]">
-            <label
-              for="card-photo-input"
-              class="btn-ghost py-1 px-2.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-            >
-              <Camera size={14} />
-              <span>{customPhoto() ? "Change card photo" : "Add custom photo"}</span>
-            </label>
-            <input
-              id="card-photo-input"
-              type="file"
-              accept="image/*"
-              class="sr-only"
-              onChange={(e) => onPhotoSelect(e.currentTarget.files?.[0])}
-            />
-
-            <Show when={customPhoto()}>
-              <button
-                type="button"
-                onClick={() => setCustomPhoto(null)}
-                class="btn-ghost py-1 px-2 text-xs font-bold text-[var(--pop-red)] flex items-center gap-1"
-                title="Reset to default avatar"
-              >
-                <Trash2 size={13} />
-                <span>Reset photo</span>
-              </button>
-            </Show>
-          </div>
-        </div>
-      </Show>
 
       <Show when={note()}>
         <p class="text-center font-mono text-xs text-muted">{note()}</p>

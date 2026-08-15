@@ -1,12 +1,20 @@
 import { Title } from "@solidjs/meta";
 import { createAsync, useNavigate } from "@solidjs/router";
-import { Briefcase, Camera, CheckCircle2, ExternalLink, GraduationCap, User } from "lucide-solid";
+import {
+  BookOpen,
+  Briefcase,
+  Camera,
+  CheckCircle2,
+  ExternalLink,
+  GraduationCap,
+  User,
+} from "lucide-solid";
 import { For, Show, createEffect, createSignal } from "solid-js";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { fileToWebpDataUrl } from "~/lib/avatar";
 import {
+  activeBatchValues,
   batchLabel,
-  batchValues,
   branchLabel,
   branchValues,
   collegeOptionLabel,
@@ -229,31 +237,40 @@ export default function Onboarding() {
           {/* 1. Occupation Selector */}
           <div>
             <label class="font-extrabold text-sm block mb-1.5">I am a *</label>
-            <div class="grid grid-cols-3 gap-2">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <For each={occupationValues}>
                 {(occ) => (
                   <button
                     type="button"
                     onClick={() => {
                       setOccupation(occ);
-                      if (occ !== "student" && !batch()) {
+                      if (occ !== "student") {
+                        setCollege("other");
+                        setBranch("");
+                        setBranchOther("");
                         setBatch("na");
+                        setDiv("none");
+                      } else if (!college()) {
+                        setCollege("mec");
                       }
                     }}
-                    class={`py-2 px-3 rounded-lg border-2 font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    class={`py-2 px-3 rounded-lg border-2 font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       occupation() === occ
                         ? "bg-[var(--ink)] text-white border-[var(--ink)] shadow-sm"
                         : "bg-[var(--paper-2)] text-[var(--ink)] border-[var(--ink-soft)] hover:border-[var(--ink)]"
                     }`}
                   >
                     <Show when={occ === "student"}>
-                      <GraduationCap size={16} />
+                      <GraduationCap size={15} />
+                    </Show>
+                    <Show when={occ === "school_student"}>
+                      <BookOpen size={15} />
                     </Show>
                     <Show when={occ === "working_professional"}>
-                      <Briefcase size={16} />
+                      <Briefcase size={15} />
                     </Show>
                     <Show when={occ === "other"}>
-                      <User size={16} />
+                      <User size={15} />
                     </Show>
                     <span>{occupationLabel(occ)}</span>
                   </button>
@@ -267,153 +284,262 @@ export default function Onboarding() {
             </Show>
           </div>
 
-          {/* 2. College Selection */}
-          <div>
-            <label for="college" class="font-extrabold text-sm block mb-1">
-              College / Institution *
-            </label>
-            <select
-              id="college"
-              value={college()}
-              onChange={(e) => setCollege(e.currentTarget.value)}
-              class="input font-bold"
-            >
-              <option value="" disabled>
-                Select your college / organization
-              </option>
-              <For each={collegeValues}>
-                {(value) => <option value={value}>{collegeOptionLabel(value)}</option>}
-              </For>
-            </select>
-            <Show when={fieldError("college")}>
-              <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
-                {fieldError("college")}
-              </p>
-            </Show>
-          </div>
-
-          {/* If Other College Selected */}
-          <Show when={college() === "other"}>
+          {/* ========================================================================= */}
+          {/* A. COLLEGE STUDENT FIELDS */}
+          {/* ========================================================================= */}
+          <Show when={occupation() === "student"}>
+            {/* College Selection */}
             <div>
-              <label for="collegeOther" class="font-extrabold text-sm block mb-1">
-                Where are you from? *
+              <label for="college" class="font-extrabold text-sm block mb-1">
+                College / Institution *
+              </label>
+              <select
+                id="college"
+                value={college()}
+                onChange={(e) => setCollege(e.currentTarget.value)}
+                class="input font-bold"
+              >
+                <option value="" disabled>
+                  Select your college
+                </option>
+                <For each={collegeValues}>
+                  {(value) => <option value={value}>{collegeOptionLabel(value)}</option>}
+                </For>
+              </select>
+              <Show when={fieldError("college")}>
+                <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
+                  {fieldError("college")}
+                </p>
+              </Show>
+            </div>
+
+            {/* Other College Name Input */}
+            <Show when={college() === "other"}>
+              <div>
+                <label for="collegeOther" class="font-extrabold text-sm block mb-1">
+                  College Name *
+                </label>
+                <input
+                  id="collegeOther"
+                  value={collegeOther()}
+                  onInput={(e) => setCollegeOther(e.currentTarget.value)}
+                  placeholder="e.g. CET, CUSAT, NIT Calicut, TKM"
+                  maxLength={80}
+                  class="input"
+                />
+                <Show when={fieldError("collegeOther")}>
+                  <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
+                    {fieldError("collegeOther")}
+                  </p>
+                </Show>
+              </div>
+
+              <div>
+                <label for="branchOtherNonMec" class="font-extrabold text-sm block mb-1">
+                  Branch / Major <span style={{ color: "var(--ink-soft)" }}>(optional)</span>
+                </label>
+                <input
+                  id="branchOtherNonMec"
+                  value={branchOther()}
+                  onInput={(e) => setBranchOther(e.currentTarget.value)}
+                  placeholder="e.g. Computer Science, Architecture, B.Com"
+                  maxLength={60}
+                  class="input"
+                />
+              </div>
+            </Show>
+
+            {/* MEC-specific Branch Selection */}
+            <Show when={college() === "mec"}>
+              <div>
+                <label for="branch" class="font-extrabold text-sm block mb-1">
+                  Branch *
+                </label>
+                <select
+                  id="branch"
+                  value={branch()}
+                  onChange={(e) => setBranch(e.currentTarget.value)}
+                  class="input font-bold"
+                >
+                  <option value="">Select your branch</option>
+                  <For each={branchValues}>
+                    {(value) => <option value={value}>{branchLabel(value)}</option>}
+                  </For>
+                </select>
+                <Show when={fieldError("branch")}>
+                  <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
+                    {fieldError("branch")}
+                  </p>
+                </Show>
+              </div>
+
+              {/* Custom Branch text if 'other' branch is picked in MEC */}
+              <Show when={branch() === "other"}>
+                <div>
+                  <label for="branchOther" class="font-extrabold text-sm block mb-1">
+                    Which branch? *
+                  </label>
+                  <input
+                    id="branchOther"
+                    value={branchOther()}
+                    onInput={(e) => setBranchOther(e.currentTarget.value)}
+                    placeholder="e.g. Postgraduate, Research"
+                    maxLength={60}
+                    class="input"
+                  />
+                  <Show when={fieldError("branchOther")}>
+                    <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
+                      {fieldError("branchOther")}
+                    </p>
+                  </Show>
+                </div>
+              </Show>
+            </Show>
+
+            {/* Batch / Graduation Year */}
+            <div>
+              <label for="batch" class="font-extrabold text-sm block mb-1">
+                Batch / Year {college() === "mec" ? "*" : "(optional)"}
+              </label>
+              <select
+                id="batch"
+                value={batch()}
+                onChange={(e) => setBatch(e.currentTarget.value)}
+                class="input font-bold"
+              >
+                <option value="">
+                  {college() === "mec" ? "Select your batch" : "Select year (optional)"}
+                </option>
+                <For each={activeBatchValues}>
+                  {(value) => <option value={value}>{batchLabel(value)}</option>}
+                </For>
+              </select>
+              <Show when={fieldError("batch")}>
+                <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
+                  {fieldError("batch")}
+                </p>
+              </Show>
+            </div>
+
+            {/* Division (Only for MEC students) */}
+            <Show when={college() === "mec"}>
+              <div>
+                <label for="div" class="font-extrabold text-sm block mb-1">
+                  Division <span style={{ color: "var(--ink-soft)" }}>(optional)</span>
+                </label>
+                <select
+                  id="div"
+                  value={div()}
+                  onChange={(e) => setDiv(e.currentTarget.value)}
+                  class="input font-bold"
+                >
+                  <For each={divValues}>
+                    {(value) => (
+                      <option value={value}>
+                        {value === "none"
+                          ? "None / Not Applicable"
+                          : `Division ${value.toUpperCase()}`}
+                      </option>
+                    )}
+                  </For>
+                </select>
+              </div>
+            </Show>
+          </Show>
+
+          {/* ========================================================================= */}
+          {/* B. SCHOOL STUDENT FIELDS */}
+          {/* ========================================================================= */}
+          <Show when={occupation() === "school_student"}>
+            <div>
+              <label for="schoolName" class="font-extrabold text-sm block mb-1">
+                School Name *
               </label>
               <input
-                id="collegeOther"
+                id="schoolName"
                 value={collegeOther()}
                 onInput={(e) => setCollegeOther(e.currentTarget.value)}
-                placeholder="College, company, or school name"
+                placeholder="e.g. Bhavans Vidya Mandir, Kendriya Vidyalaya"
                 maxLength={80}
                 class="input"
               />
-              <p class="comment mt-1">
-                This shows next to your name on the leaderboard and share cards.
-              </p>
               <Show when={fieldError("collegeOther")}>
                 <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
                   {fieldError("collegeOther")}
                 </p>
               </Show>
             </div>
-          </Show>
 
-          {/* 3. Branch Selection */}
-          <div>
-            <label for="branch" class="font-extrabold text-sm block mb-1">
-              Branch {college() === "mec" ? "*" : "(optional)"}
-            </label>
-            <select
-              id="branch"
-              value={branch()}
-              onChange={(e) => setBranch(e.currentTarget.value)}
-              class="input font-bold"
-            >
-              <option value="">
-                {college() === "mec" ? "Select your branch" : "Select branch (optional)"}
-              </option>
-              <For each={branchValues}>
-                {(value) => <option value={value}>{branchLabel(value)}</option>}
-              </For>
-            </select>
-            <Show when={fieldError("branch")}>
-              <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
-                {fieldError("branch")}
-              </p>
-            </Show>
-          </div>
-
-          {/* Custom Branch text if 'other' branch is picked */}
-          <Show when={branch() === "other"}>
             <div>
-              <label for="branchOther" class="font-extrabold text-sm block mb-1">
-                Which branch? *
+              <label for="classGrade" class="font-extrabold text-sm block mb-1">
+                Class / Grade <span style={{ color: "var(--ink-soft)" }}>(optional)</span>
               </label>
               <input
-                id="branchOther"
+                id="classGrade"
                 value={branchOther()}
                 onInput={(e) => setBranchOther(e.currentTarget.value)}
-                placeholder="e.g. Architecture, Biotechnology, MCA"
+                placeholder="e.g. Class 11, Class 12, 10th Grade"
                 maxLength={60}
                 class="input"
               />
-              <Show when={fieldError("branchOther")}>
-                <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
-                  {fieldError("branchOther")}
-                </p>
-              </Show>
             </div>
           </Show>
 
-          {/* 4. Batch / Graduation Year */}
-          <div>
-            <label for="batch" class="font-extrabold text-sm block mb-1">
-              Batch / Graduation Year{" "}
-              {occupation() === "student" && college() === "mec" ? "*" : "(optional)"}
-            </label>
-            <select
-              id="batch"
-              value={batch()}
-              onChange={(e) => setBatch(e.currentTarget.value)}
-              class="input font-bold"
-            >
-              <option value="">
-                {occupation() === "student"
-                  ? "Select graduation year / batch"
-                  : "Select batch (or Not Applicable)"}
-              </option>
-              <For each={batchValues}>
-                {(value) => <option value={value}>{batchLabel(value)}</option>}
-              </For>
-            </select>
-            <Show when={fieldError("batch")}>
-              <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
-                {fieldError("batch")}
-              </p>
-            </Show>
-          </div>
-
-          {/* Division (Shown for MEC) */}
-          <Show when={college() === "mec" || div() !== "none"}>
+          {/* ========================================================================= */}
+          {/* C. WORKING PROFESSIONAL FIELDS */}
+          {/* ========================================================================= */}
+          <Show when={occupation() === "working_professional"}>
             <div>
-              <label for="div" class="font-extrabold text-sm block mb-1">
-                Division
+              <label for="companyName" class="font-extrabold text-sm block mb-1">
+                Company / Organization *
               </label>
-              <select
-                id="div"
-                value={div()}
-                onChange={(e) => setDiv(e.currentTarget.value)}
-                class="input font-bold"
-              >
-                <For each={divValues}>
-                  {(value) => (
-                    <option value={value}>
-                      {value === "none"
-                        ? "None / Not Applicable"
-                        : `Division ${value.toUpperCase()}`}
-                    </option>
-                  )}
-                </For>
-              </select>
+              <input
+                id="companyName"
+                value={collegeOther()}
+                onInput={(e) => setCollegeOther(e.currentTarget.value)}
+                placeholder="e.g. Infosys, TCS, Startup, Freelance"
+                maxLength={80}
+                class="input"
+              />
+              <Show when={fieldError("collegeOther")}>
+                <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
+                  {fieldError("collegeOther")}
+                </p>
+              </Show>
+            </div>
+
+            <div>
+              <label for="designation" class="font-extrabold text-sm block mb-1">
+                Role / Designation <span style={{ color: "var(--ink-soft)" }}>(optional)</span>
+              </label>
+              <input
+                id="designation"
+                value={branchOther()}
+                onInput={(e) => setBranchOther(e.currentTarget.value)}
+                placeholder="e.g. Software Engineer, Product Designer"
+                maxLength={60}
+                class="input"
+              />
+            </div>
+          </Show>
+
+          {/* ========================================================================= */}
+          {/* D. OTHER / GENERAL FIELDS */}
+          {/* ========================================================================= */}
+          <Show when={occupation() === "other"}>
+            <div>
+              <label for="otherOrigin" class="font-extrabold text-sm block mb-1">
+                Where are you from / Community{" "}
+                <span style={{ color: "var(--ink-soft)" }}>(optional)</span>
+              </label>
+              <input
+                id="otherOrigin"
+                value={collegeOther()}
+                onInput={(e) => setCollegeOther(e.currentTarget.value)}
+                placeholder="e.g. Kochi, Open Source Enthusiast, Self-taught Dev"
+                maxLength={80}
+                class="input"
+              />
             </div>
           </Show>
 

@@ -52,6 +52,8 @@ export interface TinderGameProps {
   cards: TinderCardView[];
   /** Called with the full transcript once the deck is cleared. */
   onFinish: (submission: { passes: Decision[][] }) => void;
+  /** Optional client-side card checker for practice trials (no server request). */
+  onCheck?: (slice: Decision[]) => Promise<{ wrongIds: string[]; wrong: Verdict[] } | null>;
   disabled?: boolean;
   /** Deck state from a previous visit. */
   initialProgress?: TinderProgress | null;
@@ -177,6 +179,9 @@ export function TinderGame(props: TinderGameProps) {
     slice: Decision[],
   ): Promise<{ wrongIds: string[]; wrong: Verdict[] } | null> => {
     if (slice.length === 0) return { wrongIds: [], wrong: [] };
+    if (props.onCheck) {
+      return props.onCheck(slice);
+    }
     try {
       const res = await fetch(`/api/game/${props.slug}/check`, {
         method: "POST",

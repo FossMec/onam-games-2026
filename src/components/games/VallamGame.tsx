@@ -202,7 +202,15 @@ export function VallamGame(props: VallamGameProps) {
     props.onProgress?.(log);
 
     const escapee = next.find((b) => b.id === 0)!;
-    if (escapee.c + escapee.len === size()) props.onFinish({ moves: log });
+    if (escapee.c + escapee.len === size()) {
+      // Smoothly travel outside via the exit
+      setTimeout(() => {
+        setBoats((prev) => prev.map((b) => (b.id === 0 ? { ...b, c: b.c + 1.2 } : b)));
+        setTimeout(() => {
+          props.onFinish({ moves: log });
+        }, 320);
+      }, 140);
+    }
   };
 
   const tapCell = (r: number, c: number) => {

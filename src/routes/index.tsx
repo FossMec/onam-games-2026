@@ -146,6 +146,18 @@ export default function Home() {
   const scheduleMissing = () => games()?.length === 0;
 
   const [selectedDay, setSelectedDay] = createSignal<number>(1);
+
+  const selectDay = (day: number) => {
+    setSelectedDay(day);
+    if (typeof window !== "undefined") {
+      const el =
+        document.getElementById("arena-hero-card") ?? document.getElementById("games-arena");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  };
+
   const currentActiveDay = () => {
     const list = games();
     if (!list || list.length === 0) return 1;
@@ -480,13 +492,13 @@ export default function Home() {
             const playHref = me() ? targetHref : "/auth/signin";
 
             return (
-              <div class="space-y-6 max-w-4xl mx-auto">
+              <div id="arena-hero-card" class="space-y-6 max-w-4xl mx-auto scroll-mt-20">
                 {/* Control bar: Prev / Day Selector / Next / Help */}
                 <div class="flex items-center justify-between gap-2 flex-wrap">
                   <div class="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setSelectedDay((prev) => (prev > 1 ? prev - 1 : 7))}
+                      onClick={() => selectDay(selectedDay() > 1 ? selectedDay() - 1 : 7)}
                       class="btn-ghost px-3 py-1.5 text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer"
                       aria-label="Previous Day"
                     >
@@ -495,7 +507,7 @@ export default function Home() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setSelectedDay((prev) => (prev < 7 ? prev + 1 : 1))}
+                      onClick={() => selectDay(selectedDay() < 7 ? selectedDay() + 1 : 1)}
                       class="btn-ghost px-3 py-1.5 text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer"
                       aria-label="Next Day"
                     >
@@ -725,7 +737,7 @@ export default function Home() {
                         return (
                           <button
                             type="button"
-                            onClick={() => setSelectedDay(item.day)}
+                            onClick={() => selectDay(item.day)}
                             class={`card p-2 text-center flex flex-col items-center justify-between gap-1.5 transition-all cursor-pointer ${
                               DAY_POPS[(item.day - 1) % DAY_POPS.length]
                             } ${

@@ -34,6 +34,8 @@ export interface JumpGameProps {
   view: JumpViewData;
   onFinish: (submission: { inputs: number[] }) => void;
   disabled?: boolean;
+  /** Optional target height in meters to finish practice trials early */
+  targetY?: number;
 }
 
 const MS_PER_FRAME = 1000 / FPS;
@@ -430,7 +432,11 @@ export function JumpGame(props: JumpGameProps) {
         accumulator -= MS_PER_FRAME;
         steps += 1;
         step(state, dir);
-        if (!state.alive || state.frame >= MAX_FRAMES) {
+        if (
+          !state.alive ||
+          state.frame >= MAX_FRAMES ||
+          (props.targetY && state.maxY >= props.targetY)
+        ) {
           setScore(Math.floor(state.maxY));
           render();
           cancelAnimationFrame(frameHandle);

@@ -1,6 +1,6 @@
 import { Title } from "@solidjs/meta";
 import { createAsync, useParams, useSearchParams } from "@solidjs/router";
-import { ChevronLeft, Lock } from "lucide-solid";
+import { ChevronLeft, ChevronRight, Lock } from "lucide-solid";
 import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { Countdown } from "~/components/Countdown";
 
@@ -616,6 +616,7 @@ export default function GamePage() {
         <Show when={!attemptToken()}>
           <GameBar
             day={game()!.day}
+            slug={slug()}
             title={game()!.title}
             status={game()!.status}
             elapsed={null}
@@ -728,15 +729,20 @@ export default function GamePage() {
           </Show>
 
           {/* --------------------------------------------------- in play */}
-          {/* Fullscreen 100dvh/100dvw viewport on mobile with no header/footer overflow */}
+          {/* Fullscreen solid paper viewport covering entire screen during game */}
           <Show when={me()?.onboardingCompleted && attemptToken()}>
             <div
-              class="fixed inset-0 z-40 flex flex-col justify-between overflow-hidden bg-[var(--paper-1)] p-2 sm:p-4 select-none"
-              style={{ "touch-action": "none", "overscroll-behavior": "none" }}
+              class="fixed inset-0 z-50 flex flex-col justify-between overflow-hidden p-2 sm:p-4 select-none"
+              style={{
+                background: "var(--paper)",
+                "touch-action": "none",
+                "overscroll-behavior": "none",
+              }}
             >
               <div class="mx-auto w-full max-w-2xl shrink-0">
                 <GameBar
                   day={game()!.day}
+                  slug={slug()}
                   title={game()!.title}
                   status={game()!.status}
                   elapsed={elapsed()}
@@ -1090,8 +1096,19 @@ const METRIC_CHIP: Record<string, string> = {
  * mid-run actually looks at. Idle, it drops the title (the start panel below is
  * already shouting it) and is just a way back.
  */
+const GAME_NAV_LIST = [
+  { day: 1, slug: "open-source-tinder", title: "Open Source Tinder" },
+  { day: 2, slug: "pookalam-jigsaw", title: "Pookalam Jigsaw" },
+  { day: 3, slug: "wend", title: "Word Wend" },
+  { day: 4, slug: "escape-the-vallam", title: "Escape the Vallam" },
+  { day: 5, slug: "maveli-jump", title: "Maveli Jump" },
+  { day: 6, slug: "treasure-hunt", title: "The Hunt" },
+  { day: 7, slug: "code-a-pookalam", title: "Code-a-Pookalam" },
+];
+
 function GameBar(props: {
   day: number;
+  slug: string;
   title: string;
   status: string;
   /** Seconds elapsed, or null when no run is open. */
@@ -1102,38 +1119,87 @@ function GameBar(props: {
   const chip = () => STATUS_CHIP[props.status] ?? STATUS_CHIP.upcoming;
   const playing = () => props.elapsed !== null;
 
+  const currentIndex = () =>
+    GAME_NAV_LIST.findIndex((g) => g.slug === props.slug || g.day === props.day);
+  const prevGame = () => (currentIndex() > 0 ? GAME_NAV_LIST[currentIndex() - 1] : null);
+  const nextGame = () =>
+    currentIndex() >= 0 && currentIndex() < GAME_NAV_LIST.length - 1
+      ? GAME_NAV_LIST[currentIndex() + 1]
+      : null;
+
   return (
     <div class="flex items-center gap-2.5">
-      <a
-        href="/#games-arena"
-        class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5"
-        style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
-        aria-label="Back to games"
-      >
-        <ChevronLeft size={20} />
-      </a>
-
+      {/* When playing: only single back button */}
       <Show
-        when={playing()}
+        when={!playing()}
         fallback={
-          <span class="text-xs font-extrabold uppercase tracking-widest text-muted">
-            Day {props.day} · All games
-          </span>
+          <a
+            href="/#games-arena"
+            class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5"
+            style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
+            aria-label="Back to games"
+          >
+            <ChevronLeft size={20} />
+          </a>
         }
       >
-        <div class="min-w-0 flex-1">
-          <p class="truncate text-[0.65rem] font-extrabold uppercase tracking-widest text-muted">
-            Day {props.day}
-          </p>
-          <p
-            class="truncate leading-tight"
-            style={{ "font-family": "var(--font-stack-display)", "font-weight": 800 }}
+        {/* Previous Day Game Arrow */}
+        <Show
+          when={prevGame()}
+          fallback={
+            <a
+              href="/#games-arena"
+              class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5"
+              style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
+              aria-label="Back to all games"
+              title="All games"
+            >
+              <ChevronLeft size={20} />
+            </a>
+          }
+        >
+          <a
+            href={`/games/${prevGame()!.slug}`}
+            class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5 hover:bg-paper-3"
+            style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
+            aria-label={`Previous Day: Day ${prevGame()!.day} ${prevGame()!.title}`}
+            title={`Day ${prevGame()!.day}: ${prevGame()!.title}`}
           >
-            {props.title}
-          </p>
-        </div>
+            <ChevronLeft size={20} />
+          </a>
+        </Show>
+      </Show>
+
+      {/* Breadcrumb Title */}
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-[0.65rem] font-extrabold uppercase tracking-widest text-muted">
+          Day {props.day} of 7
+        </p>
+        <p
+          class="truncate text-base sm:text-lg leading-tight font-black"
+          style={{ "font-family": "var(--font-stack-display)" }}
+        >
+          {props.title}
+        </p>
+      </div>
+
+      {/* Next Day Game Arrow (Only on main page when not playing) */}
+      <Show when={!playing() && nextGame()}>
+        <a
+          href={`/games/${nextGame()!.slug}`}
+          class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5 hover:bg-paper-3"
+          style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
+          aria-label={`Next Day: Day ${nextGame()!.day} ${nextGame()!.title}`}
+          title={`Day ${nextGame()!.day}: ${nextGame()!.title}`}
+        >
+          <ChevronRight size={20} />
+        </a>
+      </Show>
+
+      {/* Timer during play */}
+      <Show when={playing()}>
         <span
-          class="shrink-0 rounded px-2.5 py-1 tabular-nums text-lg font-bold"
+          class="shrink-0 rounded px-2.5 py-1 tabular-nums text-base font-bold"
           style={{
             background: "var(--paper-2)",
             border: "var(--ink-w) solid var(--ink)",
@@ -1146,30 +1212,22 @@ function GameBar(props: {
         </span>
       </Show>
 
+      {/* Status Chip when not playing */}
       <Show when={!playing()}>
-        <span class="badge ml-auto shrink-0" style={{ "--pop": chip().pop }}>
+        <span class="badge shrink-0 text-xs" style={{ "--pop": chip().pop }}>
           {chip().label}
         </span>
       </Show>
 
-      {/*
-        The rules, from anywhere, at any point.
-
-        They used to be reachable only through the start button, which meant
-        that the moment a run began — or was resumed the next day — there was no
-        way back to them at all. On a jigsaw you picked up hours later that is
-        precisely when you want them. Mid-run it opens read-only, with no button
-        that could be mistaken for restarting the attempt.
-      */}
+      {/* Help / Rules button */}
       <Show when={props.onHowTo}>
         <button
           type="button"
-          class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5"
+          class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5 font-black text-base"
           style={{
             background: "var(--pop-yellow)",
             border: "var(--ink-w) solid var(--ink)",
             "font-family": "var(--font-stack-display)",
-            "font-weight": 800,
           }}
           onClick={props.onHowTo}
           aria-label="How to play"

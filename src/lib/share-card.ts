@@ -172,6 +172,77 @@ function inkedRect(
   ctx.stroke();
 }
 
+/**
+ * The hard offset shadow that makes a shape read as a sticker rather than a
+ * box. No blur, no transparency — a second solid shape sitting behind and
+ * down-right, which is how every printed comic and every Memphis poster fakes
+ * depth. Blur would be the wrong century.
+ */
+function stickerShadow(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+  dx = 12,
+  dy = 12,
+  color = INK,
+) {
+  roundRectPath(ctx, x + dx, y + dy, w, h, r);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+/** A shape drawn with its shadow in one call. */
+function stickerRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+  fill: string,
+  lineWidth = 8,
+  dx = 12,
+  dy = 12,
+  shadow = INK,
+) {
+  stickerShadow(ctx, x, y, w, h, r, dx, dy, shadow);
+  inkedRect(ctx, x, y, w, h, r, fill, lineWidth);
+}
+
+/**
+ * A zigzag ribbon of ink — the torn edge between two comic panels.
+ *
+ * Memphis loves a repeated angular motif and comics love a ragged gutter; this
+ * is both, and it stops the two panels reading as a plain stack of rectangles.
+ */
+function zigzagBand(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  amplitude: number,
+  step: number,
+  color: string,
+) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  let up = true;
+  for (let px = x; px <= x + w; px += step) {
+    ctx.lineTo(px, up ? y - amplitude : y + amplitude);
+    up = !up;
+  }
+  ctx.lineWidth = 7;
+  ctx.strokeStyle = color;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.stroke();
+  ctx.restore();
+}
+
 type FontFace = "display" | "body" | "mono" | "comic" | "hand" | "logo";
 
 /** The six voices, each with exactly one job. Same split as `app.css`. */
@@ -673,19 +744,22 @@ export function captionFor(data: ShareCardData): string {
 export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasElement> {
   const tier = tierFor(data);
   const seed = data.seed;
-
   await ensureFonts();
 
   const spriteName = spriteFor(tier, seed) as SpriteName;
-  const photoUrl = !data.options?.hideAvatar ? data.customPhoto || data.avatarUrl : null;
+  const avatarUrl = !data.options?.hideAvatar ? data.avatarUrl : null;
+  const customPhotoUrl = data.customPhoto;
 
-  const [memeImg, badgeImg, spriteImg, secondSpriteImg, photoImg] = await Promise.all([
-    loadImage(memeFor(seed)),
-    loadImage("/sprites/icons/foss-mec-badge.png"),
-    loadImage(`/sprites/icons/${spriteName}.png`),
-    loadImage("/sprites/icons/pookalam-flower.png"),
-    photoUrl ? loadImage(photoUrl).catch(() => null) : Promise.resolve(null),
-  ]);
+  const [memeImg, badgeImg, spriteImg, secondSpriteImg, avatarImg, customPhotoImg, gameImg] =
+    await Promise.all([
+      loadImage(memeFor(seed)),
+      loadImage("/sprites/icons/foss-mec-badge.png"),
+      loadImage(`/sprites/icons/${spriteName}.png`),
+      loadImage("/sprites/icons/pookalam-flower.png"),
+      avatarUrl ? loadImage(avatarUrl).catch(() => null) : Promise.resolve(null),
+      customPhotoUrl ? loadImage(customPhotoUrl).catch(() => null) : Promise.resolve(null),
+      loadImage(`/images/games/${data.gameSlug}.webp`).catch(() => null),
+    ]);
 
   const canvas = document.createElement("canvas");
   canvas.width = CARD_W;
@@ -753,23 +827,60 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
 
   ctx.font = font("display", 27, 800);
   ctx.fillStyle = TEAL_DEEP;
-  ctx.fillText("BY FOSSMEC", 256, 240);
+  // High-contrast pop accent color per game so text never clashes with game artwork
+  const GAME_ACCENT: Record<string, string> = {
+    "maveli-jump": POP.teal,
+    "escape-the-vallam": POP.yellow,
+    "code-a-pookalam": POP.yellow,
+    "open-source-tinder": POP.teal,
+    "pookalam-jigsaw": POP.yellow,
+    "treasure-hunt": POP.teal,
+    wend: POP.yellow,
+  };
+  const contrastAccent = GAME_ACCENT[data.gameSlug] ?? burstColor;
 
-  /* ---- 6. the panel --------------------------------------------------- */
+  /* ---- 6. the hero: a two-panel comic spread --------------------------- */
+  /*
+   * The old hero was one photograph with everything floating on top of it: the
+   * game art ran full bleed behind the whole panel, was dimmed by a four-stop
+   * vignette so the type could survive on top of it, and the score sat in a
+   * plain cream box in the middle. That cost twice over — the artwork became
+   * grey mush nobody could read as a picture, and the score box had nothing
+   * behind it but mush, which is why the middle of the card looked empty.
+   *
+   * It is a comic spread now. Two stacked panels with a real gutter between
+   * them: the score gets a flat pop-colour field of its own, and the artwork
+   * gets a clean panel where it is actually legible as art. Neither is
+   * competing with the other, and the rank starburst straddles the gutter the
+   * way a sticker sits over a panel edge.
+   *
+   * Selfie mode swaps the *contents* of the lower panel and nothing else. The
+   * old version rebuilt the whole layout when a photo appeared — halving the
+   * score box, shrinking the medallion, moving everything — so the two modes
+   * looked like two different cards, and the selfie one looked like the
+   * afterthought it was.
+   */
   ctx.save();
   roundRectPath(ctx, panel.x, panel.y, panel.w, panel.h, 54);
   ctx.clip();
-  ctx.fillStyle = panelA;
+  ctx.fillStyle = PAPER_3;
   ctx.fillRect(panel.x, panel.y, panel.w, panel.h);
+
+  // A soft diagonal wash so the panel is never a dead flat rectangle behind
+  // the two inner panels.
+  ctx.fillStyle = panelA;
+  ctx.globalAlpha = 0.5;
   ctx.beginPath();
-  ctx.moveTo(panel.x + panel.w * 0.46, panel.y);
+  ctx.moveTo(panel.x + panel.w * 0.42, panel.y);
   ctx.lineTo(panel.x + panel.w, panel.y);
   ctx.lineTo(panel.x + panel.w, panel.y + panel.h);
-  ctx.lineTo(panel.x + panel.w * 0.63, panel.y + panel.h);
+  ctx.lineTo(panel.x + panel.w * 0.62, panel.y + panel.h);
   ctx.closePath();
   ctx.fillStyle = panelB;
   ctx.fill();
+  ctx.globalAlpha = 1;
   ctx.restore();
+
   roundRectPath(ctx, panel.x, panel.y, panel.w, panel.h, 54);
   ctx.lineWidth = 10;
   ctx.strokeStyle = INK;
@@ -799,190 +910,240 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   }
   const branchBatchText = branchBatchParts.join(" · ");
   const instaText = showInsta ? `@${data.instagram!.trim()}` : "";
-
-  // Compute detail lines
-  const detailLines: { text: string; isHandle?: boolean }[] = [];
-  if (collegeText) detailLines.push({ text: collegeText });
-  if (branchBatchText) detailLines.push({ text: branchBatchText });
-  if (instaText) detailLines.push({ text: instaText, isHandle: true });
-
-  const hasDetails = detailLines.length > 0;
-  const hasPhoto = !!photoImg;
-
-  // Chip 1 — the name + optional avatar photo
-  const nameChipH = hasPhoto ? 210 : hasDetails ? 180 : 220;
-  const nameChipY = panel.y + 50;
-  inkedRect(ctx, chipX, nameChipY, chipW, nameChipH, 26, PAPER_2, 7);
-
+  const hasAvatar = !!avatarImg;
   const name = data.playerName.trim().toUpperCase() || "PLAYER";
 
-  if (hasPhoto && photoImg) {
-    const photoSize = 130;
-    const photoX = chipX + 36;
-    const photoY = nameChipY + (nameChipH - photoSize) / 2;
+  // 1. Single Top Header Pill (Avatar + Name + College Details)
+  const nameChipH = 120;
+  const nameChipY = panel.y + 24;
+  stickerRect(ctx, chipX, nameChipY, chipW, nameChipH, 24, PAPER_2, 7, 10, 10);
 
-    // Draw round cropped photo
+  const subDetailParts: string[] = [];
+  if (collegeText) subDetailParts.push(collegeText);
+  if (branchBatchText) subDetailParts.push(branchBatchText);
+  const subDetailText = subDetailParts.join(" · ") || "PLAYED FOSS ONAM GAMES";
+
+  if (hasAvatar && avatarImg) {
+    const avatarSize = 88;
+    const avatarX = chipX + 18;
+    const avatarY = nameChipY + (nameChipH - avatarSize) / 2;
+
     ctx.save();
     ctx.beginPath();
-    ctx.arc(photoX + photoSize / 2, photoY + photoSize / 2, photoSize / 2, 0, Math.PI * 2);
+    ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
     ctx.closePath();
     ctx.clip();
 
-    const pMin = Math.min(photoImg.width, photoImg.height);
-    const pSx = (photoImg.width - pMin) / 2;
-    const pSy = (photoImg.height - pMin) / 2;
-    ctx.drawImage(photoImg, pSx, pSy, pMin, pMin, photoX, photoY, photoSize, photoSize);
+    const aMin = Math.min(avatarImg.width, avatarImg.height);
+    const aSx = (avatarImg.width - aMin) / 2;
+    const aSy = (avatarImg.height - aMin) / 2;
+    ctx.drawImage(avatarImg, aSx, aSy, aMin, aMin, avatarX, avatarY, avatarSize, avatarSize);
     ctx.restore();
 
-    // Ink border around photo
     ctx.beginPath();
-    ctx.arc(photoX + photoSize / 2, photoY + photoSize / 2, photoSize / 2, 0, Math.PI * 2);
+    ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
     ctx.lineWidth = 6;
     ctx.strokeStyle = INK;
     ctx.stroke();
 
-    // Name text next to photo
-    const textLeft = photoX + photoSize + 30;
-    const textW = chipX + chipW - textLeft - 20;
-    const nameSize = fitSize(ctx, name, textW, "display", 76, 36, 800);
+    const textLeft = avatarX + avatarSize + 22;
+    const textW = chipX + chipW - textLeft - 18;
+    const nameSize = fitSize(ctx, name, textW, "display", 54, 28, 800);
     ctx.textAlign = "left";
     ctx.font = font("display", nameSize, 800);
     ctx.fillStyle = INK;
-    ctx.fillText(name, textLeft, nameChipY + nameChipH / 2 + 6);
-    ctx.font = font("mono", 22, 700);
+    ctx.fillText(name, textLeft, nameChipY + 48);
+
+    const subSize = fitSize(ctx, subDetailText.toUpperCase(), textW, "display", 24, 14, 700);
+    ctx.font = font("display", subSize, 700);
     ctx.fillStyle = INK_SOFT;
-    ctx.fillText("PLAYED FOSS ONAM GAMES", textLeft, nameChipY + nameChipH - 32);
+    ctx.fillText(subDetailText.toUpperCase(), textLeft, nameChipY + nameChipH - 22);
   } else {
-    const nameSize = fitSize(ctx, name, chipW - 70, "display", 92, 40, 800);
+    const nameSize = fitSize(ctx, name, chipW - 50, "display", 64, 32, 800);
     ctx.textAlign = "center";
     ctx.font = font("display", nameSize, 800);
     ctx.fillStyle = INK;
-    ctx.fillText(name, centreX, nameChipY + nameChipH / 2 + (hasDetails ? 4 : 14));
-    ctx.font = font("mono", 24, 700);
+    ctx.fillText(name, centreX, nameChipY + 48);
+
+    const subSize = fitSize(ctx, subDetailText.toUpperCase(), chipW - 50, "display", 24, 14, 700);
+    ctx.font = font("display", subSize, 700);
     ctx.fillStyle = INK_SOFT;
-    ctx.fillText("PLAYED FOSS ONAM GAMES", centreX, nameChipY + nameChipH - 30);
+    ctx.fillText(subDetailText.toUpperCase(), centreX, nameChipY + nameChipH - 22);
   }
 
-  // Chip 2 — dynamic details chip
-  let cursor = nameChipY + nameChipH + 22;
-  if (hasDetails) {
-    const infoH = detailLines.length === 1 ? 110 : detailLines.length === 2 ? 148 : 180;
-    inkedRect(ctx, chipX, cursor, chipW, infoH, 26, PAPER_2, 7);
-    ctx.textAlign = "center";
+  // =========================================================================
+  // 2. The spread: score panel above, artwork or selfie below
+  // =========================================================================
+  // Wide enough that the panels' hard shadows (14px) both land inside it and
+  // still leave the torn edge visible between them.
+  const GUTTER = 46;
+  const stageY = nameChipY + nameChipH + 22;
+  const stageH = panel.y + panel.h - 26 - stageY;
+  /*
+   * The score takes the smaller share. It is one short string — five
+   * characters at the very most — and giving it the larger half is what left
+   * all that emptiness around it. The picture below can actually use the room.
+   */
+  const scoreH = Math.round(stageH * 0.44);
+  const artY = stageY + scoreH + GUTTER;
+  const artH = stageH - scoreH - GUTTER;
 
-    if (detailLines.length === 1) {
-      const line = detailLines[0];
-      const size = fitSize(ctx, line.text.toUpperCase(), chipW - 60, "display", 50, 24, 800);
-      ctx.font = font(line.isHandle ? "mono" : "display", size, 800);
-      ctx.fillStyle = line.isHandle ? POP.pink : INK;
-      ctx.fillText(line.text.toUpperCase(), centreX, cursor + infoH / 2 + 14);
-    } else if (detailLines.length === 2) {
-      const line1 = detailLines[0];
-      const line2 = detailLines[1];
-      const size1 = fitSize(ctx, line1.text.toUpperCase(), chipW - 60, "display", 44, 22, 800);
-      ctx.font = font(line1.isHandle ? "mono" : "display", size1, 800);
-      ctx.fillStyle = line1.isHandle ? POP.pink : INK;
-      ctx.fillText(line1.text.toUpperCase(), centreX, cursor + 58);
+  /* --- 2a. score panel: flat colour, ben-day dots, speed lines --------- */
+  stickerRect(ctx, chipX, stageY, chipW, scoreH, 30, contrastAccent, 9, 14, 14);
 
-      const size2 = fitSize(ctx, line2.text.toUpperCase(), chipW - 60, "display", 38, 20, 800);
-      ctx.font = font(line2.isHandle ? "mono" : "display", size2, 800);
-      ctx.fillStyle = line2.isHandle ? POP.pink : INK_SOFT;
-      ctx.fillText(line2.text.toUpperCase(), centreX, cursor + 112);
-    } else {
-      // 3 lines
-      const line1 = detailLines[0];
-      const line2 = detailLines[1];
-      const line3 = detailLines[2];
-      ctx.font = font("display", 38, 800);
-      ctx.fillStyle = INK;
-      ctx.fillText(line1.text.toUpperCase(), centreX, cursor + 48);
+  ctx.save();
+  roundRectPath(ctx, chipX, stageY, chipW, scoreH, 30);
+  ctx.clip();
 
-      ctx.font = font("display", 32, 700);
-      ctx.fillStyle = INK_SOFT;
-      ctx.fillText(line2.text.toUpperCase(), centreX, cursor + 96);
+  const scoreCx = chipX + chipW / 2;
+  const scoreMidY = stageY + scoreH / 2;
 
-      ctx.font = font("mono", 32, 700);
-      ctx.fillStyle = POP.pink;
-      inkedText(ctx, line3.text, centreX, cursor + 148, POP.pink, 4);
-    }
+  // Speed lines radiating from behind the number — the comic way to say
+  // "this number is moving", and it fills the field without adding clutter.
+  const spoke = rng(`${seed}-spokes`);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 7;
+  ctx.globalAlpha = 0.12;
+  for (let i = 0; i < 22; i += 1) {
+    const angle = (i / 22) * Math.PI * 2 + spoke() * 0.12;
+    ctx.beginPath();
+    ctx.moveTo(
+      scoreCx + Math.cos(angle) * chipW * 0.13,
+      scoreMidY + Math.sin(angle) * scoreH * 0.2,
+    );
+    ctx.lineTo(scoreCx + Math.cos(angle) * chipW, scoreMidY + Math.sin(angle) * chipW);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  halftonePookalam(ctx, scoreCx, scoreMidY, 120, 620);
+  ctx.restore();
 
-    cursor += infoH + 22;
+  const figure = figureFor(data);
+
+  // Game name as a small ribbon riding the top edge of the score panel.
+  const ribbonText = data.gameTitle.toUpperCase();
+  ctx.textAlign = "center";
+  const ribbonSize = fitSize(ctx, ribbonText, chipW * 0.72, "display", 30, 16, 800);
+  ctx.font = font("display", ribbonSize, 800);
+  const ribbonW = ctx.measureText(ribbonText).width + 52;
+  const ribbonH = ribbonSize + 26;
+  inkedRect(ctx, scoreCx - ribbonW / 2, stageY - ribbonH / 2, ribbonW, ribbonH, 18, PAPER_2, 7);
+  ctx.fillStyle = INK;
+  ctx.textBaseline = "middle";
+  ctx.fillText(ribbonText, scoreCx, stageY + 1);
+  ctx.textBaseline = "alphabetic";
+
+  // The number itself, cream on colour with a heavy ink outline. Sized to the
+  // panel so "9" and "1,792" both land as the loudest thing on the card.
+  // Narrower than the panel on purpose: the rank sticker hangs into the
+  // bottom-left corner, and a long metric label ("M ABOVE PAATHALAM") centred
+  // across the full width would run straight under it.
+  const labelSize = fitSize(ctx, figure.label.toUpperCase(), chipW - 320, "mono", 32, 16, 700);
+  const figSize = fitSize(ctx, figure.value, chipW - 110, "display", scoreH * 0.62, 60, 800);
+  const figCy = stageY + scoreH / 2 + figSize * 0.3 - labelSize * 0.5;
+
+  ctx.font = font("display", figSize, 800);
+  /*
+   * Duotone numerals: an ink copy offset down-right, then the cream face over
+   * it. Risograph misregistration on purpose — the same trick the wordmark
+   * uses at the top of the card, so the two loudest things on it rhyme.
+   */
+  ctx.fillStyle = INK;
+  ctx.fillText(figure.value, scoreCx + 10, figCy + 12);
+  inkedText(ctx, figure.value, scoreCx, figCy, PAPER_2, 13);
+
+  ctx.font = font("mono", labelSize, 700);
+  inkedText(ctx, figure.label.toUpperCase(), scoreCx, stageY + scoreH - 26, PAPER_2, 6);
+
+  /* --- 2b. the torn gutter -------------------------------------------- */
+  zigzagBand(ctx, chipX + 6, artY - 15, chipW - 12, 8, 28, INK);
+
+  /* --- 2c. lower panel: the artwork, or the player's own face ---------- */
+  const lowerImg = customPhotoImg ?? gameImg;
+  stickerRect(ctx, chipX, artY, chipW, artH, 30, PAPER_3, 9, 14, 14);
+  if (lowerImg) {
+    ctx.save();
+    roundRectPath(ctx, chipX, artY, chipW, artH, 30);
+    ctx.clip();
+    // Cover-crop: fill the panel from the middle of the source, never squash.
+    const scale = Math.max(chipW / lowerImg.width, artH / lowerImg.height);
+    const dw = lowerImg.width * scale;
+    const dh = lowerImg.height * scale;
+    ctx.drawImage(lowerImg, chipX + (chipW - dw) / 2, artY + (artH - dh) / 2, dw, dh);
+    ctx.restore();
+    // Re-ink the edge over the image so the panel border stays unbroken.
+    roundRectPath(ctx, chipX, artY, chipW, artH, 30);
+    ctx.lineWidth = 9;
+    ctx.strokeStyle = INK;
+    ctx.lineJoin = "round";
+    ctx.stroke();
   }
 
-  // Row 3 — the rank medallion on the left, the figure on the right.
-  const rowH = panel.y + panel.h - 46 - cursor;
-  const medallionR = Math.min(rowH / 2, 126);
-  const medallionCx = chipX + medallionR + 10;
-  const medallionCy = cursor + rowH / 2;
+  /* --- 2d. rank sticker, straddling the gutter ------------------------- */
+  // Hung off the panel's left edge rather than tucked inside it — a sticker
+  // slapped over the seam reads as applied, where a centred one reads as
+  // drawn-in and loses the collage feel entirely.
+  const medallionR = Math.min(artH * 0.36, 118);
+  const medallionCx = chipX + medallionR - 18;
+  const medallionCy = artY + 2;
 
-  burst(ctx, medallionCx, medallionCy, medallionR + 20, 16, burstColor, `${seed}-rank`, 7);
+  ctx.save();
+  ctx.translate(medallionCx, medallionCy);
+  ctx.rotate(rad(-7));
+  ctx.translate(-medallionCx, -medallionCy);
+  /*
+   * Colour on the burst, cream on the numeral — not the other way round. A
+   * cream star carrying cream type disappears against cream paper, and the
+   * rank is the second thing anyone looks at.
+   */
+  burst(ctx, medallionCx, medallionCy, medallionR + 22, 16, contrastAccent, `${seed}-rank`, 8);
   ctx.textAlign = "center";
   if (data.rank) {
     const rankText = `#${data.rank}`;
-    const rankSize = fitSize(ctx, rankText, medallionR * 1.7, "display", 92, 40, 800);
+    const rankSize = fitSize(ctx, rankText, medallionR * 1.5, "display", 118, 48, 800);
     ctx.font = font("display", rankSize, 800);
-    inkedText(ctx, rankText, medallionCx, medallionCy + 6, PAPER_2, 8);
-    ctx.font = font("mono", 28, 700);
+    inkedText(ctx, rankText, medallionCx, medallionCy + 8, PAPER_2, 9);
+    ctx.font = font("mono", 26, 700);
     ctx.fillStyle = INK;
     ctx.fillText(data.fieldSize ? `of ${data.fieldSize}` : "ranked", medallionCx, medallionCy + 52);
   } else {
-    ctx.font = font("display", 46, 800);
-    inkedText(ctx, "JUST", medallionCx, medallionCy - 6, PAPER_2, 7);
-    inkedText(ctx, "FOR FUN", medallionCx, medallionCy + 46, PAPER_2, 7);
+    ctx.font = font("display", 50, 800);
+    inkedText(ctx, "JUST", medallionCx, medallionCy - 8, PAPER_2, 8);
+    inkedText(ctx, "FOR FUN", medallionCx, medallionCy + 44, PAPER_2, 8);
+  }
+  ctx.restore();
+
+  // =========================================================================
+  // 3. Instagram Handle: Placed BELOW the Panel Card, Right-Aligned
+  // =========================================================================
+  if (instaText) {
+    const iSize = fitSize(ctx, instaText, chipW * 0.5, "display", 38, 20, 800);
+    ctx.font = font("display", iSize, 800);
+    ctx.textAlign = "right";
+    inkedText(ctx, instaText, panel.x + panel.w - 10, panel.y + panel.h + 46, PAPER_2, 6);
   }
 
-  const figureX = medallionCx + medallionR + 44;
-  const figureW = chipX + chipW - figureX;
-  inkedRect(ctx, figureX, cursor, figureW, rowH, 26, PAPER_2, 7);
-  const figure = figureFor(data);
-  const figureCx = figureX + figureW / 2;
-  const figSize = fitSize(ctx, figure.value, figureW - 56, "mono", 104, 44, 700);
-  ctx.font = font("mono", figSize, 700);
-  ctx.fillStyle = INK;
-  ctx.fillText(figure.value, figureCx, cursor + rowH / 2 + 14);
-  const labelSize = fitSize(ctx, figure.label, figureW - 44, "display", 30, 18, 800);
-  ctx.font = font("display", labelSize, 800);
-  ctx.fillStyle = INK_SOFT;
-  ctx.fillText(figure.label, figureCx, cursor + rowH - 34);
-
-  /* ---- 8. prominent meme / player photo card -------------------------- */
-  const displayCardImg = photoImg || memeImg;
-  if (displayCardImg) {
+  /* ---- 8. meme sticker (Priority #4: ALWAYS the festival comic meme) ---- */
+  if (memeImg) {
     ctx.save();
     ctx.translate(memeBox.x + memeBox.w / 2, memeBox.y + memeBox.h / 2);
     ctx.rotate(rad(-3.5));
     const frame = memeBox.w;
-    // Cover-crop to a square so a portrait/photo is never squashed.
-    const side = Math.min(displayCardImg.width, displayCardImg.height);
-    const sx = (displayCardImg.width - side) / 2;
-    const sy = (displayCardImg.height - side) / 2;
+    // Cover-crop to a square so a portrait meme is never squashed.
+    const side = Math.min(memeImg.width, memeImg.height);
+    const sx = (memeImg.width - side) / 2;
+    const sy = (memeImg.height - side) / 2;
     ctx.save();
     roundRectPath(ctx, -frame / 2, -frame / 2, frame, frame, 22);
     ctx.clip();
     ctx.fillStyle = PAPER_2;
     ctx.fillRect(-frame / 2, -frame / 2, frame, frame);
-    ctx.drawImage(displayCardImg, sx, sy, side, side, -frame / 2, -frame / 2, frame, frame);
+    ctx.drawImage(memeImg, sx, sy, side, side, -frame / 2, -frame / 2, frame, frame);
     ctx.restore();
     roundRectPath(ctx, -frame / 2, -frame / 2, frame, frame, 22);
     ctx.lineWidth = 9;
     ctx.strokeStyle = INK;
     ctx.stroke();
-
-    // If custom photo or player photo is featured, add a prominent comic stamp/badge across the bottom
-    if (photoImg && displayCardImg === photoImg) {
-      const tagText = "★ PLAYER PHOTO ★";
-      ctx.font = font("display", 24, 800);
-      const tagW = ctx.measureText(tagText).width + 28;
-      const tagH = 36;
-      const tagX = -tagW / 2;
-      const tagY = frame / 2 - tagH - 12;
-
-      inkedRect(ctx, tagX, tagY, tagW, tagH, 8, POP.yellow, 4);
-      ctx.fillStyle = INK;
-      ctx.textAlign = "center";
-      ctx.fillText(tagText, 0, tagY + 25);
-    }
-
     ctx.restore();
   }
 
@@ -1052,7 +1213,7 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
     ctx.drawImage(img, -size / 2, -size / 2, size, size);
     ctx.restore();
   };
-  stick(spriteImg, 985, 1215, 175, SPRITE_REGISTRY[spriteName]?.defaultTilt ?? -3);
+  stick(spriteImg, 1005, 1315, 160, SPRITE_REGISTRY[spriteName]?.defaultTilt ?? -3);
   stick(secondSpriteImg, 852, 208, 130, 6);
 
   /* ---- 13. footer ----------------------------------------------------- */
