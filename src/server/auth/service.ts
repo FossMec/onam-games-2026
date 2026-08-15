@@ -7,6 +7,7 @@ import { authSessions, testers, users } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
 import { getRequestMeta } from "~/server/request";
 import { getSupabaseAdmin, getSupabaseAnon } from "~/server/supabase/client";
+import { getRequestEvent } from "solid-js/web";
 import { clearAuthCookie, readAuthCookie, writeAuthCookie } from "./session";
 
 export interface OAuthSession {
@@ -163,6 +164,15 @@ export async function completeOAuthSignIn(
 
 /** Returns the signed-in user's DB row, or null. No token refresh. */
 export async function getCurrentUser(): Promise<PublicUser | null> {
+  const event = getRequestEvent();
+  if (event?.locals.currentUserPromise) return event.locals.currentUserPromise;
+
+  const lookup = getCurrentUserUncached();
+  if (event) event.locals.currentUserPromise = lookup;
+  return lookup;
+}
+
+async function getCurrentUserUncached(): Promise<PublicUser | null> {
   const data = await readAuthCookie();
   if (!data?.sid) return null;
   const db = getDb();

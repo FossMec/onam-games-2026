@@ -69,6 +69,19 @@ export async function getDailyLeaderboard(
   const metric: GameMetric = game ? (getGameDefByType(game.gameType)?.metric ?? "time") : "time";
   const includeTesters = viewerRole !== "player";
   const now = new Date();
+  const filters = [
+    eq(dailyLeaderboard.gameId, gameId),
+    eq(dailyLeaderboard.isFlagged, false),
+    eq(users.banLevel, 0),
+    or(isNull(users.banUntil), lt(users.banUntil, now)),
+    includeTesters ? undefined : ne(users.role, "tester"),
+  ];
+  const rankingOrder =
+    metric === "score"
+      ? sql`${dailyLeaderboard.score} desc, ${dailyLeaderboard.startedAt} asc`
+      : metric === "fcfs"
+        ? sql`${dailyLeaderboard.submittedAt} asc, ${dailyLeaderboard.startedAt} asc`
+        : sql`${dailyLeaderboard.durationMs} asc, ${dailyLeaderboard.startedAt} asc`;
 
   const rows = await db
     .select({
@@ -86,18 +99,12 @@ export async function getDailyLeaderboard(
       batch: users.batch,
       streakCount: users.streakCount,
       role: users.role,
+      rank: sql<number>`row_number() over (order by ${rankingOrder})`,
+      fieldSize: sql<number>`count(*) over ()`,
     })
     .from(dailyLeaderboard)
     .innerJoin(users, eq(users.id, dailyLeaderboard.userId))
-    .where(
-      and(
-        eq(dailyLeaderboard.gameId, gameId),
-        eq(dailyLeaderboard.isFlagged, false),
-        eq(users.banLevel, 0),
-        or(isNull(users.banUntil), lt(users.banUntil, now)),
-        includeTesters ? undefined : ne(users.role, "tester"),
-      ),
-    )
+    .where(and(...filters))
     .orderBy(
       // FCFS ranks by who submitted first; the others by their own metric.
       metric === "score"
@@ -106,10 +113,11 @@ export async function getDailyLeaderboard(
           ? asc(dailyLeaderboard.submittedAt)
           : asc(dailyLeaderboard.durationMs),
       asc(dailyLeaderboard.startedAt),
-    );
+    )
+    .limit(limit);
 
   const settled = !!game?.settledAt;
-  const fieldSize = rows.length;
+  const fieldSize = rows[0]?.fieldSize ?? 0;
 
   const toEntry = (row: (typeof rows)[number], rank: number): DailyEntry => ({
     rank,
@@ -134,10 +142,65 @@ export async function getDailyLeaderboard(
     isMe: row.userId === viewerUserId,
   });
 
-  const entries = rows.slice(0, limit).map((row, index) => toEntry(row, index + 1));
+  const entries = rows.map((row) => toEntry(row, row.rank));
 
-  const myIndex = viewerUserId ? rows.findIndex((r) => r.userId === viewerUserId) : -1;
-  const myEntry = myIndex >= 0 ? toEntry(rows[myIndex], myIndex + 1) : null;
+  const myRow = viewerUserId ? rows.find((row) => row.userId === viewerUserId) : undefined;
+  let myEntry = myRow ? toEntry(myRow, myRow.rank) : null;
+  if (!myEntry && viewerUserId) {
+    const [viewerRow] = await db
+      .select({
+        userId: dailyLeaderboard.userId,
+        durationMs: dailyLeaderboard.durationMs,
+        score: dailyLeaderboard.score,
+        attemptsUsed: dailyLeaderboard.attemptsUsed,
+        points: dailyLeaderboard.points,
+        startedAt: dailyLeaderboard.startedAt,
+        submittedAt: dailyLeaderboard.submittedAt,
+        name: users.name,
+        avatarUrl: users.avatarUrl,
+        college: users.college,
+        branch: users.branch,
+        batch: users.batch,
+        streakCount: users.streakCount,
+        role: users.role,
+      })
+      .from(dailyLeaderboard)
+      .innerJoin(users, eq(users.id, dailyLeaderboard.userId))
+      .where(and(...filters, eq(dailyLeaderboard.userId, viewerUserId)))
+      .limit(1);
+    if (viewerRow) {
+      const ahead =
+        metric === "score"
+          ? or(
+              sql`${dailyLeaderboard.score} > ${viewerRow.score}`,
+              and(
+                sql`${dailyLeaderboard.score} = ${viewerRow.score}`,
+                sql`${dailyLeaderboard.startedAt} < ${viewerRow.startedAt}`,
+              ),
+            )
+          : metric === "fcfs"
+            ? or(
+                sql`${dailyLeaderboard.submittedAt} < ${viewerRow.submittedAt}`,
+                and(
+                  sql`${dailyLeaderboard.submittedAt} = ${viewerRow.submittedAt}`,
+                  sql`${dailyLeaderboard.startedAt} < ${viewerRow.startedAt}`,
+                ),
+              )
+            : or(
+                sql`${dailyLeaderboard.durationMs} < ${viewerRow.durationMs}`,
+                and(
+                  sql`${dailyLeaderboard.durationMs} = ${viewerRow.durationMs}`,
+                  sql`${dailyLeaderboard.startedAt} < ${viewerRow.startedAt}`,
+                ),
+              );
+      const [rankRow] = await db
+        .select({ rank: sql<number>`count(*)::int + 1` })
+        .from(dailyLeaderboard)
+        .innerJoin(users, eq(users.id, dailyLeaderboard.userId))
+        .where(and(...filters, ahead));
+      myEntry = toEntry({ ...viewerRow, rank: rankRow?.rank ?? 1, fieldSize }, rankRow?.rank ?? 1);
+    }
+  }
 
   return {
     metric,
@@ -176,21 +239,18 @@ export async function getMyPointsBreakdown(
 /** Kept for anti-cheat callers that still want a slow-tail anchor. */
 export async function getGameP99(gameId: string): Promise<number> {
   const db = getDb();
-  const rows = await db
-    .select({ durationMs: dailyLeaderboard.durationMs })
+  const [row] = await db
+    .select({
+      p99: sql<number>`percentile_cont(0.99) within group (order by ${dailyLeaderboard.durationMs})`,
+    })
     .from(dailyLeaderboard)
     .where(
       and(
         eq(dailyLeaderboard.gameId, gameId),
         eq(dailyLeaderboard.isFlagged, false),
         sql`${dailyLeaderboard.durationMs} is not null`,
+        sql`${dailyLeaderboard.durationMs} > 0`,
       ),
     );
-  const durations = rows
-    .map((r) => r.durationMs ?? 0)
-    .filter((d) => d > 0)
-    .sort((a, b) => a - b);
-  if (durations.length === 0) return 1;
-  if (durations.length <= 5) return Math.max(durations[durations.length - 1], 1);
-  return Math.max(durations[Math.floor(0.99 * (durations.length - 1))], 1);
+  return Math.max(Math.round(row?.p99 ?? 1), 1);
 }

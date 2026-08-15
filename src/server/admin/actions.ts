@@ -21,18 +21,15 @@ import {
   adminUpdateSetting,
   adminVoidAttempt,
 } from "~/server/admin/service";
+import { requireAdmin } from "~/server/auth/service";
 
 export async function getAdminDashboard() {
+  await requireAdmin();
+  const [metrics, games] = await Promise.all([adminGetMetrics(), adminListGames()]);
+
   return {
-    metrics: await adminGetMetrics(),
-    users: await adminListUsers(),
-    games: await adminListGames(),
-    attempts: await adminListAttempts(),
-    testers: await adminListTesters(),
-    suspicious: await adminListSuspicious(),
-    activity: await adminListActivity(),
-    settings: await adminListSettings(),
-    blockedIps: await listBlockedIps(),
+    metrics,
+    games,
   };
 }
 
@@ -40,8 +37,8 @@ export async function getAdminMetricsAction() {
   return adminGetMetrics();
 }
 
-export async function listAttemptsAction(limit = 100) {
-  return adminListAttempts(limit);
+export async function listAttemptsAction(page = 0) {
+  return adminListAttempts(100, Math.max(0, page) * 100);
 }
 
 export async function voidAttemptAction(attemptId: string) {
@@ -52,8 +49,8 @@ export async function removeLeaderboardEntryAction(leaderboardId: string) {
   await adminRemoveLeaderboardEntry(leaderboardId);
 }
 
-export async function listUsers() {
-  return adminListUsers();
+export async function listUsers(page = 0) {
+  return adminListUsers(100, Math.max(0, page) * 100);
 }
 
 export async function setUserRole(userId: string, role: "player" | "tester" | "admin") {
@@ -64,8 +61,8 @@ export async function setUserBanLevel(userId: string, level: 0 | 1 | 2 | 3 | 4, 
   await adminSetUserBanLevel(userId, level, reason);
 }
 
-export async function listTesters() {
-  return adminListTesters();
+export async function listTesters(page = 0) {
+  return adminListTesters(100, Math.max(0, page) * 100);
 }
 
 export async function addTester(email: string, earlyHours = 24) {
@@ -76,12 +73,12 @@ export async function setTesterActive(id: string, active: boolean) {
   await adminSetTesterActive(id, active);
 }
 
-export async function listSuspicious() {
-  return adminListSuspicious();
+export async function listSuspicious(page = 0) {
+  return adminListSuspicious(100, Math.max(0, page) * 100);
 }
 
-export async function listActivity() {
-  return adminListActivity();
+export async function listActivity(page = 0) {
+  return adminListActivity(100, Math.max(0, page) * 100);
 }
 
 export async function listSettings() {
@@ -97,8 +94,8 @@ export async function updateSetting(
   await adminUpdateSetting(key, value, group, description);
 }
 
-export async function listBlockedIpsAction() {
-  return listBlockedIps();
+export async function listBlockedIpsAction(page = 0) {
+  return listBlockedIps(100, Math.max(0, page) * 100);
 }
 
 export async function blockIpAction(opts: {

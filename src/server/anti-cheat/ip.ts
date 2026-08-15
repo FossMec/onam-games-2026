@@ -1,25 +1,9 @@
 import { and, eq, gte, isNull, or } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
 import { blockedIps } from "~/server/db/schema";
-import { getRedisOrNull } from "~/server/redis/client";
-
-const BLOCK_PREFIX = "block:ip:";
-
-function blockKey(ip: string): string {
-  return `${BLOCK_PREFIX}${ip}`;
-}
 
 export async function isIpBlocked(ip: string): Promise<boolean> {
   if (!ip) return false;
-  const redis = getRedisOrNull();
-  if (redis) {
-    try {
-      const hit = await redis.get(blockKey(ip));
-      if (hit) return true;
-    } catch {
-      // fall back to DB
-    }
-  }
   const db = getDb();
   const [row] = await db
     .select({ id: blockedIps.ip })
@@ -63,30 +47,16 @@ export async function blockIp(opts: {
         createdAt: new Date(),
       },
     });
-  const redis = getRedisOrNull();
-  if (redis) {
-    const ttl = opts.expiresAt
-      ? Math.max(1, Math.floor((opts.expiresAt.getTime() - Date.now()) / 1000))
-      : undefined;
-    if (ttl && ttl > 0) {
-      await redis.set(blockKey(ip), "1", { ex: ttl });
-    } else {
-      await redis.set(blockKey(ip), "1");
-    }
-  }
 }
 
 export async function unblockIp(ip: string): Promise<void> {
   const db = getDb();
   await db.delete(blockedIps).where(eq(blockedIps.ip, ip));
-  const redis = getRedisOrNull();
-  if (redis) {
-    await redis.del(blockKey(ip));
-  }
 }
 
 export async function listBlockedIps(
   limit = 200,
+  offset = 0,
 ): Promise<
   { ip: string; reason: string | null; scope: string; expiresAt: Date | null; createdAt: Date }[]
 > {
@@ -101,5 +71,6 @@ export async function listBlockedIps(
     })
     .from(blockedIps)
     .orderBy(blockedIps.createdAt)
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
 }

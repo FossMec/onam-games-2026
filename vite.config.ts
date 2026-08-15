@@ -21,6 +21,12 @@ export default defineConfig({
   plugins: lazyPlugins(() => [
     tailwindcss(),
     solidStart({ middleware: "./src/middleware/index.ts" }),
-    nitro(),
+    nitro({
+      vercel: {
+        functions: {
+          regions: ["sin1"],
+        },
+      },
+    }),
   ]),
 });

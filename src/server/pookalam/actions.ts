@@ -44,6 +44,7 @@ export async function submitPookalam(input: SubmissionInput) {
     limit: 10,
     windowMs: 60_000,
   });
+  if (limit.unavailable) throw new Error("Rate limiter unavailable");
   if (!limit.success) throw new Error("Slow down a moment.");
   await upsertSubmission(user.id, input);
   return getMySubmission(user.id);
@@ -70,6 +71,7 @@ export async function votePookalam(winnerId: string, loserId: string) {
     limit: 60,
     windowMs: 60_000,
   });
+  if (limit.unavailable) return { ok: false, reason: "Rate limiter unavailable." };
   if (!limit.success) return { ok: false, reason: "Too fast. Look at them properly." };
   return castVote(user.id, winnerId, loserId);
 }
@@ -81,9 +83,9 @@ export async function getPookalamResults() {
 
 /* ---------------------------------------------------------------- admin */
 
-export async function adminListPookalams() {
+export async function adminListPookalams(page = 0) {
   await requireAdmin();
-  return listForReview();
+  return listForReview(50, Math.max(0, page) * 50);
 }
 
 export async function adminReviewPookalam(

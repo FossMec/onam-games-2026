@@ -33,6 +33,9 @@ export async function POST({ params, request }: APIEvent) {
       limit: 20,
       windowMs: 60_000,
     });
+    if (rate.unavailable) {
+      return Response.json({ error: "Rate limiter unavailable" }, { status: 503 });
+    }
     if (!rate.success) {
       return Response.json({ error: "Too many requests" }, { status: 429 });
     }

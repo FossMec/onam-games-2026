@@ -12,14 +12,55 @@ import { SecurityTab } from "~/components/admin/tabs/SecurityTab";
 import { SettingsTab } from "~/components/admin/tabs/SettingsTab";
 import { UsersTab } from "~/components/admin/tabs/UsersTab";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
-import { getAdminDashboard } from "~/server/admin/actions";
+import {
+  getAdminDashboard,
+  listActivity,
+  listAttemptsAction,
+  listBlockedIpsAction,
+  listSettings,
+  listSuspicious,
+  listTesters,
+  listUsers,
+} from "~/server/admin/actions";
 import { getMe } from "~/server/auth/actions";
 
 export default function Admin() {
   const me = createAsync(() => getMe());
   const [activeTab, setActiveTab] = createSignal<AdminTabId>("overview");
+  const [page, setPage] = createSignal(0);
   const [version, setVersion] = createSignal(0);
   const reload = () => setVersion((v) => v + 1);
+
+  const users = createAsync(() => {
+    void version();
+    return activeTab() === "users" ? listUsers(page()) : Promise.resolve(null);
+  });
+  const attempts = createAsync(() => {
+    void version();
+    return activeTab() === "attempts" ? listAttemptsAction(page()) : Promise.resolve(null);
+  });
+  const settings = createAsync(() => {
+    void version();
+    return activeTab() === "settings" ? listSettings() : Promise.resolve(null);
+  });
+  const testers = createAsync(() => {
+    void version();
+    return activeTab() === "testers" ? listTesters(page()) : Promise.resolve(null);
+  });
+  const security = createAsync(async () => {
+    void version();
+    if (activeTab() !== "security") return null;
+    const [suspicious, blockedIps, betaTesters] = await Promise.all([
+      listSuspicious(page()),
+      listBlockedIpsAction(page()),
+      listTesters(page()),
+    ]);
+    return { suspicious, blockedIps, testers: betaTesters };
+  });
+  const activity = createAsync(() => {
+    void version();
+    return activeTab() === "logs" ? listActivity(page()) : Promise.resolve(null);
+  });
 
   const data = createAsync(async () => {
     void version();
@@ -118,15 +159,43 @@ export default function Admin() {
               {/* Navigation Tabs */}
               <AdminTabs
                 activeTab={activeTab()}
-                onSelect={(t) => setActiveTab(t)}
+                onSelect={(t) => {
+                  setPage(0);
+                  setActiveTab(t);
+                }}
                 counts={{
                   games: d.games.length,
-                  users: d.users.length,
-                  attempts: d.attempts.length,
-                  suspicious: d.suspicious.length,
-                  testers: d.testers.filter((t) => t.active).length,
+                  users: d.metrics.totalUsers,
+                  attempts: d.metrics.totalAttempts,
+                  suspicious: d.metrics.suspiciousEvents,
+                  testers: d.metrics.activeTesters,
                 }}
               />
+
+              <div class="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  class="btn-ghost text-xs"
+                  disabled={page() === 0}
+                  onClick={() => setPage((current) => Math.max(0, current - 1))}
+                >
+                  Previous page
+                </button>
+                <span class="text-xs font-bold">Page {page() + 1}</span>
+                <button
+                  type="button"
+                  class="btn-ghost text-xs"
+                  disabled={
+                    activeTab() === "overview" ||
+                    activeTab() === "games" ||
+                    activeTab() === "settings" ||
+                    activeTab() === "pookalam"
+                  }
+                  onClick={() => setPage((current) => current + 1)}
+                >
+                  Next page
+                </button>
+              </div>
 
               {/* 1. Overview Tab */}
               <Show when={activeTab() === "overview"}>
@@ -144,39 +213,57 @@ export default function Admin() {
 
               {/* 3. Users & Ban Tab */}
               <Show when={activeTab() === "users"}>
-                <UsersTab users={d.users} onReload={reload} onNotify={showNotification} />
+                <Show when={users()} fallback={<TabLoading />}>
+                  <UsersTab users={users()!} onReload={reload} onNotify={showNotification} />
+                </Show>
               </Show>
 
               {/* 4. Attempts & Anti-Cheat Tab */}
               <Show when={activeTab() === "attempts"}>
-                <AttemptsTab attempts={d.attempts} onReload={reload} onNotify={showNotification} />
+                <Show when={attempts()} fallback={<TabLoading />}>
+                  <AttemptsTab
+                    attempts={attempts()!}
+                    onReload={reload}
+                    onNotify={showNotification}
+                  />
+                </Show>
               </Show>
 
               {/* 5. Settings Tab */}
               <Show when={activeTab() === "settings"}>
-                <SettingsTab settings={d.settings} onReload={reload} onNotify={showNotification} />
+                <Show when={settings()} fallback={<TabLoading />}>
+                  <SettingsTab
+                    settings={settings()!}
+                    onReload={reload}
+                    onNotify={showNotification}
+                  />
+                </Show>
               </Show>
 
               {/* 6. Testers & Beta Access Tab */}
               <Show when={activeTab() === "testers"}>
-                <SecurityTab
-                  testers={d.testers}
-                  blockedIps={d.blockedIps}
-                  suspicious={d.suspicious}
-                  onReload={reload}
-                  onNotify={showNotification}
-                />
+                <Show when={testers()} fallback={<TabLoading />}>
+                  <SecurityTab
+                    testers={testers()!}
+                    blockedIps={[]}
+                    suspicious={[]}
+                    onReload={reload}
+                    onNotify={showNotification}
+                  />
+                </Show>
               </Show>
 
               {/* 7. Security / Threat Stream Tab */}
               <Show when={activeTab() === "security"}>
-                <SecurityTab
-                  testers={d.testers}
-                  blockedIps={d.blockedIps}
-                  suspicious={d.suspicious}
-                  onReload={reload}
-                  onNotify={showNotification}
-                />
+                <Show when={security()} fallback={<TabLoading />}>
+                  <SecurityTab
+                    testers={security()!.testers}
+                    blockedIps={security()!.blockedIps}
+                    suspicious={security()!.suspicious}
+                    onReload={reload}
+                    onNotify={showNotification}
+                  />
+                </Show>
               </Show>
 
               {/* 8. Code-a-Pookalam Review Tab */}
@@ -186,7 +273,9 @@ export default function Admin() {
 
               {/* 9. Activity Logs Tab */}
               <Show when={activeTab() === "logs"}>
-                <LogsTab logs={d.activity} />
+                <Show when={activity()} fallback={<TabLoading />}>
+                  <LogsTab logs={activity()!} />
+                </Show>
               </Show>
             </div>
           );
@@ -194,4 +283,8 @@ export default function Admin() {
       </Show>
     </main>
   );
+}
+
+function TabLoading() {
+  return <div class="card card-plain p-8 text-center font-bold text-sm">Loading this tab…</div>;
 }

@@ -144,7 +144,10 @@ export const games = pgTable(
     settledAt: timestamp("settled_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("games_day_idx").on(t.day)],
+  (t) => [
+    index("games_day_idx").on(t.day),
+    index("games_published_day_idx").on(t.published, t.day),
+  ],
 );
 
 export const attemptStatusEnum = pgEnum("attempt_status", [
@@ -202,6 +205,7 @@ export const gameAttempts = pgTable(
     // attempt number impossible, so a raced double-start cannot mint two rows.
     unique("game_attempts_user_game_number_key").on(t.userId, t.gameId, t.attemptNumber),
     index("game_attempts_user_game_idx").on(t.userId, t.gameId),
+    index("game_attempts_user_game_status_idx").on(t.userId, t.gameId, t.status),
     index("game_attempts_game_idx").on(t.gameId),
     index("game_attempts_started_at_idx").on(t.startedAt),
   ],
@@ -257,6 +261,17 @@ export const blockedIps = pgTable("blocked_ips", {
   createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const rateLimitWindows = pgTable(
+  "rate_limit_windows",
+  {
+    key: text("key").primaryKey(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    count: integer("count").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("rate_limit_windows_expires_idx").on(t.expiresAt)],
+);
 
 export const testers = pgTable(
   "testers",
@@ -329,8 +344,9 @@ export const dailyLeaderboard = pgTable(
   },
   (t) => [
     unique("daily_leaderboard_game_user_key").on(t.gameId, t.userId),
-    index("daily_leaderboard_game_duration_idx").on(t.gameId, t.durationMs),
-    index("daily_leaderboard_game_score_idx").on(t.gameId, t.score),
+    index("daily_leaderboard_game_duration_idx").on(t.gameId, t.isFlagged, t.durationMs),
+    index("daily_leaderboard_game_score_idx").on(t.gameId, t.isFlagged, t.score),
+    index("daily_leaderboard_game_submitted_idx").on(t.gameId, t.isFlagged, t.submittedAt),
   ],
 );
 
@@ -416,7 +432,7 @@ export const pookalamSubmissions = pgTable(
   },
   (t) => [
     unique("pookalam_submissions_user_key").on(t.userId),
-    index("pookalam_submissions_status_idx").on(t.status),
+    index("pookalam_submissions_status_idx").on(t.status, t.matches, t.id),
     index("pookalam_submissions_rating_idx").on(t.rating),
   ],
 );

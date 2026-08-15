@@ -1,34 +1,55 @@
-import { Ratelimit } from "@upstash/ratelimit";
-import { getRedis } from "~/server/redis/client";
+import { lt, sql } from "drizzle-orm";
+import { getDb } from "~/server/db/client";
+import { rateLimitWindows } from "~/server/db/schema";
 
 export interface RateLimitResult {
   success: boolean;
   remaining: number;
   reset: number;
+  unavailable?: boolean;
 }
 
 /**
- * Sliding-window rate limit keyed per identifier (ip, user, etc.).
- * Returns success=false when the limit is exceeded. Falls back to "allowed"
- * when Redis is not configured (local dev) so requests never fail on setup.
+ * Fixed-window rate limit stored in Postgres. Each key has one row that is
+ * atomically reset and incremented when its window changes.
  */
 export async function checkRateLimit(opts: {
   key: string;
   limit?: number;
   windowMs?: number;
 }): Promise<RateLimitResult> {
+  const limit = Math.max(1, opts.limit ?? 30);
+  const windowMs = Math.max(1_000, opts.windowMs ?? 60_000);
+  const windowStartMs = Math.floor(Date.now() / windowMs) * windowMs;
+  const windowStart = new Date(windowStartMs);
+  const expiresAt = new Date(windowStartMs + windowMs);
+  const db = getDb();
+
   try {
-    const limit = opts.limit ?? 30;
-    const windowMs = opts.windowMs ?? 60_000;
-    const ratelimit = new Ratelimit({
-      redis: getRedis(),
-      limiter: Ratelimit.slidingWindow(limit, `${windowMs} ms`),
-      prefix: "rl",
-      analytics: false,
-    });
-    const result = await ratelimit.limit(opts.key);
-    return { success: result.success, remaining: result.remaining, reset: result.reset };
+    const [row] = await db
+      .insert(rateLimitWindows)
+      .values({ key: opts.key, windowStart, count: 1, expiresAt })
+      .onConflictDoUpdate({
+        target: rateLimitWindows.key,
+        set: {
+          windowStart,
+          expiresAt,
+          count: sql`case when ${rateLimitWindows.windowStart} = ${windowStart} then ${rateLimitWindows.count} + 1 else 1 end`,
+        },
+      })
+      .returning({ count: rateLimitWindows.count, expiresAt: rateLimitWindows.expiresAt });
+
+    if (Math.random() < 0.01) {
+      void db.delete(rateLimitWindows).where(lt(rateLimitWindows.expiresAt, new Date()));
+    }
+
+    const count = row?.count ?? limit;
+    return {
+      success: count <= limit,
+      remaining: Math.max(0, limit - count),
+      reset: row?.expiresAt.getTime() ?? expiresAt.getTime(),
+    };
   } catch {
-    return { success: true, remaining: Number.MAX_SAFE_INTEGER, reset: 0 };
+    return { success: false, remaining: 0, reset: Date.now() + 1_000, unavailable: true };
   }
 }

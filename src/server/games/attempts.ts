@@ -5,7 +5,6 @@ import { getDb } from "~/server/db/client";
 import { dailyLeaderboard, devices, gameAttempts, games, globalScores } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
 import { rollUpGlobalScores } from "~/server/leaderboard/settle";
-import { getRedisOrNull } from "~/server/redis/client";
 import { revealDeck } from "./impl/tinder";
 import type { GameAssets, GameDef, GameMetric } from "./registry";
 import { requireGameDef } from "./registry";
@@ -53,7 +52,7 @@ export interface StartResult {
  * seed you did not like.
  */
 async function expireIfStale(
-  attempt: typeof gameAttempts.$inferSelect,
+  attempt: Pick<typeof gameAttempts.$inferSelect, "id" | "startedAt">,
   def: GameDef,
 ): Promise<boolean> {
   const age = Date.now() - attempt.startedAt.getTime();
@@ -86,7 +85,14 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
 
   const db = getDb();
   const prior = await db
-    .select()
+    .select({
+      id: gameAttempts.id,
+      attemptToken: gameAttempts.attemptToken,
+      attemptNumber: gameAttempts.attemptNumber,
+      seed: gameAttempts.seed,
+      startedAt: gameAttempts.startedAt,
+      status: gameAttempts.status,
+    })
     .from(gameAttempts)
     .where(and(eq(gameAttempts.userId, input.userId), eq(gameAttempts.gameId, game.id)))
     .orderBy(desc(gameAttempts.attemptNumber));
@@ -149,15 +155,6 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
       attemptToken: gameAttempts.attemptToken,
       startedAt: gameAttempts.startedAt,
     });
-
-  const redis = getRedisOrNull();
-  if (redis) {
-    await redis.set(
-      `attempt:${attempt.attemptToken}`,
-      JSON.stringify({ userId: input.userId, gameId: game.id, startedAt: now.getTime() }),
-      { ex: 7200 },
-    );
-  }
 
   await logActivity({
     userId: input.userId,
@@ -245,23 +242,72 @@ export async function getMyAttemptBySlug(
   if (!game) return null;
 
   const def = requireGameDef(game.gameType);
-  const rows = await db
-    .select()
+  const [summary] = await db
+    .select({
+      attemptsUsed: sql<number>`count(*)::int`,
+      bestScore: sql<
+        number | null
+      >`max(${gameAttempts.score}) filter (where ${gameAttempts.serverValid} = true and ${gameAttempts.status} = 'submitted')`,
+      bestDurationMs: sql<
+        number | null
+      >`min(${gameAttempts.durationMs}) filter (where ${gameAttempts.serverValid} = true and ${gameAttempts.status} = 'submitted')`,
+    })
     .from(gameAttempts)
-    .where(and(eq(gameAttempts.userId, userId), eq(gameAttempts.gameId, game.id)))
-    .orderBy(desc(gameAttempts.attemptNumber));
+    .where(and(eq(gameAttempts.userId, userId), eq(gameAttempts.gameId, game.id)));
+  const [open] = await db
+    .select({
+      status: gameAttempts.status,
+      durationMs: gameAttempts.durationMs,
+      score: gameAttempts.score,
+      serverValid: gameAttempts.serverValid,
+      afterDeadline: gameAttempts.afterDeadline,
+      startedAt: gameAttempts.startedAt,
+      submittedAt: gameAttempts.submittedAt,
+      attemptNumber: gameAttempts.attemptNumber,
+    })
+    .from(gameAttempts)
+    .where(
+      and(
+        eq(gameAttempts.userId, userId),
+        eq(gameAttempts.gameId, game.id),
+        eq(gameAttempts.status, "in_progress"),
+      ),
+    )
+    .orderBy(desc(gameAttempts.attemptNumber))
+    .limit(1);
+  const latest =
+    open ??
+    (
+      await db
+        .select({
+          status: gameAttempts.status,
+          durationMs: gameAttempts.durationMs,
+          score: gameAttempts.score,
+          serverValid: gameAttempts.serverValid,
+          afterDeadline: gameAttempts.afterDeadline,
+          startedAt: gameAttempts.startedAt,
+          submittedAt: gameAttempts.submittedAt,
+          attemptNumber: gameAttempts.attemptNumber,
+        })
+        .from(gameAttempts)
+        .where(and(eq(gameAttempts.userId, userId), eq(gameAttempts.gameId, game.id)))
+        .orderBy(desc(gameAttempts.attemptNumber))
+        .limit(1)
+    )[0];
 
   const unlimited = role !== "player";
   const base = {
     metric: def.metric,
     maxAttempts: def.maxAttempts,
-    attemptsUsed: rows.length,
+    attemptsUsed: summary?.attemptsUsed ?? 0,
     // Testers never run out, so the page must never draw them a "0 runs left".
-    attemptsRemaining: unlimited ? def.maxAttempts : Math.max(0, def.maxAttempts - rows.length),
+    attemptsRemaining: unlimited
+      ? def.maxAttempts
+      : Math.max(0, def.maxAttempts - (summary?.attemptsUsed ?? 0)),
     unlimited,
   };
 
-  if (rows.length === 0) {
+  if (!latest) {
     return {
       ...base,
       status: "none",
@@ -276,25 +322,17 @@ export async function getMyAttemptBySlug(
     };
   }
 
-  const valid = rows.filter((r) => r.serverValid && r.status === "submitted");
-  const bestScore = valid.length ? Math.max(...valid.map((r) => r.score ?? 0)) : null;
-  const bestDurationMs = valid.length
-    ? Math.min(...valid.map((r) => r.durationMs ?? Number.MAX_SAFE_INTEGER))
-    : null;
-
-  // Prefer an open attempt; otherwise report the most recent one.
-  const current = rows.find((r) => r.status === "in_progress") ?? rows[0];
   return {
     ...base,
-    status: current.status,
-    durationMs: current.durationMs,
-    score: current.score,
-    bestScore,
-    bestDurationMs: bestDurationMs === Number.MAX_SAFE_INTEGER ? null : bestDurationMs,
-    valid: current.serverValid,
-    afterDeadline: current.afterDeadline,
-    startedAt: current.startedAt.toISOString(),
-    submittedAt: current.submittedAt?.toISOString() ?? null,
+    status: latest.status,
+    durationMs: latest.durationMs,
+    score: latest.score,
+    bestScore: summary?.bestScore ?? null,
+    bestDurationMs: summary?.bestDurationMs ?? null,
+    valid: latest.serverValid,
+    afterDeadline: latest.afterDeadline,
+    startedAt: latest.startedAt.toISOString(),
+    submittedAt: latest.submittedAt?.toISOString() ?? null,
   };
 }
 
@@ -450,10 +488,14 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
   // The expiry test uses the bare clock: a time penalty is a ranking cost, not
   // a reason to void a run somebody actually finished inside the window.
   if (rawDurationMs > def.maxDurationMs) {
-    await db
+    const expired = await db
       .update(gameAttempts)
       .set({ status: "expired", durationMs: rawDurationMs, submittedAt: now })
-      .where(eq(gameAttempts.id, attempt.id));
+      .where(and(eq(gameAttempts.id, attempt.id), eq(gameAttempts.status, "in_progress")))
+      .returning({ id: gameAttempts.id });
+    if (expired.length === 0) {
+      throw new HttpError(409, "This attempt has already been submitted");
+    }
     return {
       valid: false,
       durationMs: rawDurationMs,
@@ -494,7 +536,7 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
   // the floor would launder exactly the impossibly-fast run it exists to catch.
   const isAnomalous = result.valid && rawDurationMs < def.minPlausibleMs;
 
-  await db
+  const claimed = await db
     .update(gameAttempts)
     .set({
       submittedAt: now,
@@ -507,7 +549,11 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
       status: "submitted",
       movesCount: result.movesCount ?? null,
     })
-    .where(eq(gameAttempts.id, attempt.id));
+    .where(and(eq(gameAttempts.id, attempt.id), eq(gameAttempts.status, "in_progress")))
+    .returning({ id: gameAttempts.id });
+  if (claimed.length === 0) {
+    throw new HttpError(409, "This attempt has already been submitted");
+  }
 
   await db
     .update(devices)
@@ -556,17 +602,6 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
             updatedAt: new Date(),
           },
         });
-    }
-
-    const redis = getRedisOrNull();
-    if (redis) {
-      const zset = input.role === "player" ? `lb:game:${game.id}` : `lb:game:${game.id}:testers`;
-      // Redis sorts ascending, so score games store a negated score to keep
-      // "first element is best" true for every metric.
-      await redis.zadd(zset, {
-        score: def.metric === "score" ? -(score ?? 0) : durationMs,
-        member: input.userId,
-      });
     }
   } else if (result.valid) {
     await logActivity({

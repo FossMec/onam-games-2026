@@ -51,14 +51,25 @@ function parseDateSetting(value: unknown): Date | null {
  * schedule settings (event start date + daily release time, both IST). A
  * per-game explicit releaseAt overrides the computed value.
  */
-async function computeRelease(game: typeof games.$inferSelect): Promise<Date | null> {
-  if (game.releaseAt) return game.releaseAt;
-  const [startDate, timeOfDay] = await Promise.all([
+type ScheduleSettings = {
+  eventStartDate: string;
+  releaseTime: string;
+  durationHours: number;
+};
+
+async function getScheduleSettings(): Promise<ScheduleSettings> {
+  const [eventStartDate, releaseTime, durationHours] = await Promise.all([
     getSetting<string>("schedule.event_start_date", ""),
     getSetting<string>("schedule.release_time", "19:00"),
+    getSetting<number>("schedule.game_duration_hours", 24),
   ]);
-  const start = parseDateSetting(startDate);
-  const timeMs = parseTimeSetting(timeOfDay);
+  return { eventStartDate, releaseTime, durationHours };
+}
+
+function computeRelease(game: typeof games.$inferSelect, settings: ScheduleSettings): Date | null {
+  if (game.releaseAt) return game.releaseAt;
+  const start = parseDateSetting(settings.eventStartDate);
+  const timeMs = parseTimeSetting(settings.releaseTime);
   if (!start || timeMs === null) return null;
   const dayOffset = (game.day - 1) * 24 * HOUR_MS;
   const midnightIstUtc = start.getTime() - IST_OFFSET_MS + dayOffset;
@@ -68,18 +79,20 @@ async function computeRelease(game: typeof games.$inferSelect): Promise<Date | n
 export async function resolveSchedule(
   game: typeof games.$inferSelect,
   viewerRole: ViewerRole,
+  settings?: ScheduleSettings,
 ): Promise<{
   releaseAt: Date | null;
   endAt: Date | null;
   testerReleaseAt: Date | null;
   status: GameStatus;
 }> {
-  const releaseAt = await computeRelease(game);
+  const scheduleSettings = settings ?? (await getScheduleSettings());
+  const releaseAt = computeRelease(game, scheduleSettings);
   if (!releaseAt) {
     return { releaseAt: null, endAt: null, testerReleaseAt: null, status: "upcoming" };
   }
-  const durationHours = await getSetting<number>("schedule.game_duration_hours", 24);
-  const endAt = game.endAt ?? new Date(releaseAt.getTime() + durationHours * HOUR_MS);
+  const endAt =
+    game.endAt ?? new Date(releaseAt.getTime() + scheduleSettings.durationHours * HOUR_MS);
   const testerEarlyHours = game.testerEarlyHours ?? 24;
   const testerReleaseAt = new Date(releaseAt.getTime() - testerEarlyHours * HOUR_MS);
 
@@ -165,8 +178,9 @@ export async function getGamesList(viewerRole: ViewerRole): Promise<GameCard[]> 
     .from(games)
     .where(eq(games.published, true))
     .orderBy(asc(games.day));
+  const settings = await getScheduleSettings();
   const cards = await Promise.all(
-    rows.map(async (game) => toCard(game, await resolveSchedule(game, viewerRole))),
+    rows.map(async (game) => toCard(game, await resolveSchedule(game, viewerRole, settings))),
   );
   return cards.map((card) => (card.status === "upcoming" ? maskCard(card) : card));
 }

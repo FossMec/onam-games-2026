@@ -18,7 +18,7 @@ import type { BanLevel } from "~/server/auth/bans";
 import { setBanLevel } from "~/server/auth/bans";
 import { ensureDefaultSettings } from "~/server/settings/defaults";
 
-export async function adminListUsers(limit = 200) {
+export async function adminListUsers(limit = 100, offset = 0) {
   await requireAdmin();
   return getDb()
     .select({
@@ -40,7 +40,8 @@ export async function adminListUsers(limit = 200) {
     })
     .from(users)
     .orderBy(desc(users.createdAt))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
 }
 
 export async function adminSetUserRole(userId: string, role: "player" | "tester" | "admin") {
@@ -59,7 +60,7 @@ export async function adminSetUserBanLevel(userId: string, level: BanLevel, reas
   await setBanLevel(userId, level, level === 0 ? null : (reason ?? "set by admin"));
 }
 
-export async function adminListTesters() {
+export async function adminListTesters(limit = 100, offset = 0) {
   await requireAdmin();
   return getDb()
     .select({
@@ -72,7 +73,8 @@ export async function adminListTesters() {
     })
     .from(testers)
     .orderBy(desc(testers.createdAt))
-    .limit(500);
+    .limit(limit)
+    .offset(offset);
 }
 
 export async function adminAddTester(email: string, earlyHours = 24) {
@@ -93,7 +95,7 @@ export async function adminSetTesterActive(id: string, active: boolean) {
   await getDb().update(testers).set({ active }).where(eq(testers.id, id));
 }
 
-export async function adminListSuspicious(limit = 100) {
+export async function adminListSuspicious(limit = 100, offset = 0) {
   await requireAdmin();
   return getDb()
     .select({
@@ -111,10 +113,11 @@ export async function adminListSuspicious(limit = 100) {
     .leftJoin(users, eq(users.id, suspiciousLogs.userId))
     .leftJoin(devices, eq(devices.id, suspiciousLogs.deviceId))
     .orderBy(desc(suspiciousLogs.createdAt))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
 }
 
-export async function adminListActivity(limit = 100) {
+export async function adminListActivity(limit = 100, offset = 0) {
   await requireAdmin();
   return getDb()
     .select({
@@ -128,7 +131,8 @@ export async function adminListActivity(limit = 100) {
     .from(activityLogs)
     .leftJoin(users, eq(users.id, activityLogs.userId))
     .orderBy(desc(activityLogs.createdAt))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
 }
 
 export async function adminListSettings() {
@@ -266,7 +270,7 @@ export async function adminGetMetrics() {
   };
 }
 
-export async function adminListAttempts(limit = 100) {
+export async function adminListAttempts(limit = 100, offset = 0) {
   await requireAdmin();
   const db = getDb();
   return db
@@ -298,7 +302,8 @@ export async function adminListAttempts(limit = 100) {
     .innerJoin(users, eq(users.id, gameAttempts.userId))
     .leftJoin(devices, eq(devices.id, gameAttempts.deviceId))
     .orderBy(desc(gameAttempts.createdAt))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
 }
 
 export async function adminVoidAttempt(attemptId: string) {

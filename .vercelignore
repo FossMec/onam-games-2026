@@ -1,0 +1,7 @@
+.output
+.vercel
+dist
+.wrangler
+.vinxi
+node_modules
+*.local

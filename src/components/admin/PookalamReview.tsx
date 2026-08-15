@@ -26,16 +26,23 @@ export function PookalamReview() {
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal("");
   const [note, setNote] = createSignal<Record<string, string>>({});
+  const [page, setPage] = createSignal(0);
 
-  const load = async () => {
+  const load = async (pageNumber = page()) => {
     try {
-      setRows(await adminListPookalams());
+      setRows(await adminListPookalams(pageNumber));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load submissions.");
     }
   };
 
   onMount(() => void load());
+
+  const changePage = async (next: number) => {
+    if (next < 0) return;
+    setPage(next);
+    await load(next);
+  };
 
   const review = async (id: string, status: "approved" | "rejected") => {
     setBusy(true);
@@ -153,6 +160,26 @@ export function PookalamReview() {
           </For>
         </div>
       </Show>
+
+      <div class="flex items-center justify-between gap-2 pt-2">
+        <button
+          type="button"
+          class="btn-ghost text-xs"
+          disabled={page() === 0 || busy()}
+          onClick={() => void changePage(page() - 1)}
+        >
+          Previous
+        </button>
+        <span class="text-xs font-bold">Page {page() + 1}</span>
+        <button
+          type="button"
+          class="btn-ghost text-xs"
+          disabled={rows().length < 50 || busy()}
+          onClick={() => void changePage(page() + 1)}
+        >
+          Next
+        </button>
+      </div>
     </section>
   );
 }

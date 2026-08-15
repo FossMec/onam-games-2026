@@ -99,6 +99,21 @@ export function Footer() {
           <SpriteIcon name="gopher-king" size={28} animate="float" delay={2.6} interactive />
           <SpriteIcon name="linus-torvalds" size={28} animate="float" delay={3.2} interactive />
         </div>
+
+        <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs font-bold">
+          <a
+            href="/privacy"
+            class="underline decoration-2 underline-offset-4 text-[var(--ink)] opacity-80 hover:opacity-100 hover:text-[var(--pop-teal-deep)] transition-colors"
+          >
+            Privacy Policy
+          </a>
+          <a
+            href="/terms"
+            class="underline decoration-2 underline-offset-4 text-[var(--ink)] opacity-80 hover:opacity-100 hover:text-[var(--pop-teal-deep)] transition-colors"
+          >
+            Terms of Service
+          </a>
+        </div>
       </div>
     </footer>
   );

@@ -28,9 +28,13 @@ export function BetaGate(props: { children: JSX.Element }) {
   const location = useLocation();
 
   const isAuthRoute = () => location.pathname.startsWith("/auth");
+  // Legal pages must stay reachable for the Google OAuth consent screen even
+  // while the beta door is shut.
+  const isLegalRoute = () => location.pathname === "/privacy" || location.pathname === "/terms";
   // Undefined while the state is loading — render the page rather than flashing
   // a denial at somebody who turns out to be a tester.
-  const blocked = () => access() !== undefined && !access()!.allowed && !isAuthRoute();
+  const blocked = () =>
+    access() !== undefined && !access()!.allowed && !isAuthRoute() && !isLegalRoute();
 
   return (
     <Show when={!blocked()} fallback={<Denied signedIn={!!access()?.signedIn} />}>

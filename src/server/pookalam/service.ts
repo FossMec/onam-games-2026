@@ -355,7 +355,7 @@ export interface ReviewRow extends ResultRow {
   reviewNote: string | null;
 }
 
-export async function listForReview(): Promise<ReviewRow[]> {
+export async function listForReview(limit = 50, offset = 0): Promise<ReviewRow[]> {
   const rows = await getDb()
     .select({
       id: pookalamSubmissions.id,
@@ -372,7 +372,9 @@ export async function listForReview(): Promise<ReviewRow[]> {
     })
     .from(pookalamSubmissions)
     .innerJoin(users, eq(users.id, pookalamSubmissions.userId))
-    .orderBy(asc(pookalamSubmissions.status), desc(pookalamSubmissions.createdAt));
+    .orderBy(asc(pookalamSubmissions.status), desc(pookalamSubmissions.createdAt))
+    .limit(limit)
+    .offset(offset);
 
   return rows.map((row, index) => ({ ...row, rank: index + 1 }));
 }
