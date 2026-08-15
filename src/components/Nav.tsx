@@ -48,9 +48,21 @@ function ProfileMenu(props: {
         aria-expanded={open()}
         aria-label="User profile menu"
       >
-        <div class="w-5 h-5 rounded-full bg-[var(--pop-teal)] border border-[var(--ink)] grid place-items-center text-[10px] font-black uppercase">
-          {props.me.name.charAt(0)}
-        </div>
+        <Show
+          when={props.me.avatarUrl}
+          fallback={
+            <div class="w-5 h-5 rounded-full bg-[var(--pop-teal)] border border-[var(--ink)] grid place-items-center text-[10px] font-black uppercase shrink-0">
+              {props.me.name.charAt(0)}
+            </div>
+          }
+        >
+          <img
+            src={props.me.avatarUrl!}
+            alt={props.me.name}
+            class="w-5 h-5 rounded-full object-cover shrink-0 select-none block"
+            style={{ border: "1.5px solid var(--ink)" }}
+          />
+        </Show>
         <Show when={!props.compact}>
           <span class="max-w-[7rem] truncate text-left">{props.me.name}</span>
         </Show>
@@ -65,9 +77,21 @@ function ProfileMenu(props: {
         >
           <div class="space-y-1 pb-2.5 border-b border-[var(--ink-soft)]/20">
             <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-full bg-[var(--pop-yellow)] border-2 border-[var(--ink)] grid place-items-center font-black text-sm uppercase">
-                {props.me.name.charAt(0)}
-              </div>
+              <Show
+                when={props.me.avatarUrl}
+                fallback={
+                  <div class="w-8 h-8 rounded-full bg-[var(--pop-yellow)] border-2 border-[var(--ink)] grid place-items-center font-black text-sm uppercase shrink-0">
+                    {props.me.name.charAt(0)}
+                  </div>
+                }
+              >
+                <img
+                  src={props.me.avatarUrl!}
+                  alt={props.me.name}
+                  class="w-8 h-8 rounded-full object-cover shrink-0 select-none block"
+                  style={{ border: "2px solid var(--ink)" }}
+                />
+              </Show>
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-1.5">
                   <p class="font-extrabold text-sm truncate">{props.me.name}</p>

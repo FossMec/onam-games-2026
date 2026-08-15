@@ -436,7 +436,19 @@ export default function Leaderboard() {
             <div class="relative overflow-hidden card card-plain p-4 bg-[var(--pop-yellow)] flex items-center justify-between gap-4">
               <Confetti seed="winner-callout" count={6} animate />
               <div class="art-over flex items-center gap-3 min-w-0">
-                <SpriteIcon name="tux-king" size={36} animate="wobble" class="shrink-0" />
+                <Show
+                  when={top.avatarUrl}
+                  fallback={
+                    <SpriteIcon name="tux-king" size={36} animate="wobble" class="shrink-0" />
+                  }
+                >
+                  <img
+                    src={top.avatarUrl!}
+                    alt={top.name}
+                    class="w-10 h-10 rounded-full object-cover shrink-0 select-none block"
+                    style={{ border: "2px solid var(--ink)" }}
+                  />
+                </Show>
                 <div class="min-w-0">
                   <div class="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase px-2 py-0.5 rounded bg-[var(--paper-2)] border border-[var(--ink)]">
                     <Trophy size={12} strokeWidth={3} />
@@ -484,10 +496,33 @@ export default function Leaderboard() {
                     }`}
                     onClick={() => toggleExpand(`daily-${entry.userId}`)}
                   >
-                    {/* Main Row: Standing, Name, Score */}
+                    {/* Main Row: Standing, Avatar, Name, Score */}
                     <div class="px-4 py-3 flex items-center justify-between gap-3">
-                      <div class="flex items-center gap-3 min-w-0">
+                      <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
                         <RankChip rank={entry.rank} />
+                        <Show
+                          when={entry.avatarUrl}
+                          fallback={
+                            <div
+                              class="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden grid place-items-center shrink-0 text-[10px] sm:text-xs font-black select-none"
+                              style={{
+                                border: "1.5px solid var(--ink)",
+                                background: entry.isMe ? "var(--pop-yellow)" : "var(--paper-3)",
+                                color: "var(--ink)",
+                              }}
+                            >
+                              {entry.name.slice(0, 1).toUpperCase()}
+                            </div>
+                          }
+                        >
+                          <img
+                            src={entry.avatarUrl!}
+                            alt={entry.name}
+                            class="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover shrink-0 select-none block"
+                            style={{ border: "1.5px solid var(--ink)" }}
+                            loading="lazy"
+                          />
+                        </Show>
                         <div class="min-w-0">
                           <p class="font-extrabold text-sm truncate flex items-center gap-1.5">
                             <span>{entry.name}</span>

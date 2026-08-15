@@ -91,7 +91,12 @@ export async function completeOAuthSignIn(
     sbUser.user_metadata?.name ??
     email.split("@")[0] ??
     "Player";
-  const avatarUrl = sbUser.user_metadata?.avatar_url ?? sbUser.user_metadata?.picture ?? null;
+  const googleAvatar =
+    (sbUser.user_metadata?.avatar_url as string | undefined) ??
+    (sbUser.user_metadata?.picture as string | undefined) ??
+    (sbUser.identities?.[0]?.identity_data?.avatar_url as string | undefined) ??
+    (sbUser.identities?.[0]?.identity_data?.picture as string | undefined) ??
+    null;
 
   const db = getDb();
   const [existing] = await db.select().from(users).where(eq(users.supabaseUid, sbUser.id)).limit(1);
@@ -104,14 +109,14 @@ export async function completeOAuthSignIn(
       .set({
         email,
         name,
-        avatarUrl: avatarUrl ?? existing.avatarUrl,
+        avatarUrl: existing.avatarUrl ?? googleAvatar,
         lastLoginAt: new Date(),
       })
       .where(eq(users.id, existing.id));
   } else {
     const [created] = await db
       .insert(users)
-      .values({ supabaseUid: sbUser.id, email, name, avatarUrl })
+      .values({ supabaseUid: sbUser.id, email, name, avatarUrl: googleAvatar })
       .returning({ id: users.id });
     userId = created.id;
   }

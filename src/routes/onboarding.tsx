@@ -40,8 +40,6 @@ export default function Onboarding() {
     if (user && !loaded()) {
       if (user.college) {
         setCollege(user.college);
-      } else if (user.email?.endsWith("@mec.ac.in")) {
-        setCollege("mec");
       }
       if (user.collegeOther) setCollegeOther(user.collegeOther);
       if (user.branch) setBranch(user.branch);
