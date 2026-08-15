@@ -4,6 +4,7 @@ import { GameDemo, HowToPlayModal, HowToPlayPanel } from "./HowToPlay";
 import { JigsawGame, restoreBoard } from "./JigsawGame";
 import { ProjectMark } from "./ProjectMark";
 import { TinderRecap } from "./TinderRecap";
+import { WinModal } from "./WinModal";
 import { BRAND_ICONS } from "~/lib/brand-icons";
 
 describe("ssr smoke", () => {
@@ -160,6 +161,45 @@ describe("jigsaw board", () => {
     expect(() =>
       renderToString(() => <JigsawGame view={view} startedAt={0} disabled onFinish={() => {}} />),
     ).not.toThrow();
+  });
+});
+
+describe("win modal", () => {
+  const base = {
+    shout: "THEE THANNE NEE!",
+    shoutColor: "var(--pop-red)",
+    seed: "jig-130800-0",
+    figures: <p>130.8s</p>,
+    afterDeadline: false,
+    isPersonalBest: false,
+    onClose: () => {},
+  };
+
+  it("celebrates a valid run and offers the way onward", () => {
+    const html = renderToString(() => <WinModal {...base} valid />);
+    expect(html).toContain("THEE THANNE NEE!");
+    expect(html).toContain("130.8s");
+    expect(html).toContain("View leaderboard");
+    expect(html).toContain("See my board");
+  });
+
+  it("does not throw confetti at a rejected run", () => {
+    const html = renderToString(() => (
+      <WinModal {...base} valid={false} reason="Not solved yet. Keep going." />
+    ));
+    expect(html).toContain("Not solved yet. Keep going.");
+    expect(html).toContain("pop-red");
+    expect(html).toContain("Close");
+  });
+
+  it("offers another go only when there is one", () => {
+    const withRetry = renderToString(() => (
+      <WinModal {...base} valid runsLeft={4} onGoAgain={() => {}} />
+    ));
+    expect(withRetry).toContain("Go again");
+    expect(withRetry).toContain("4 runs left today");
+
+    expect(renderToString(() => <WinModal {...base} valid />)).not.toContain("Go again");
   });
 });
 

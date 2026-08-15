@@ -3,7 +3,7 @@ import { createAsync, useParams, useSearchParams } from "@solidjs/router";
 import { ChevronLeft } from "lucide-solid";
 import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { Countdown } from "~/components/Countdown";
-import { ShoutBurst } from "~/components/art/Burst";
+
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { HowToPlayModal, HowToPlayPanel } from "~/components/games/HowToPlay";
@@ -19,6 +19,7 @@ import {
   type TinderProgress,
 } from "~/components/games/TinderGame";
 import { TinderRecap } from "~/components/games/TinderRecap";
+import { WinModal } from "~/components/games/WinModal";
 import { VallamGame, type VallamMove, type VallamViewData } from "~/components/games/VallamGame";
 import { WendGame, type Cell as WendCell, type WendViewData } from "~/components/games/WendGame";
 import { getMe, getMyBanState } from "~/server/auth/actions";
@@ -108,6 +109,8 @@ export default function GamePage() {
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal("");
   const [result, setResult] = createSignal<FinishPayload | null>(null);
+  /** True from the instant a run lands until the player dismisses the fanfare. */
+  const [celebrating, setCelebrating] = createSignal(false);
   const [huntToken, setHuntToken] = createSignal("");
   /**
    * The rules screen, in one of two modes.
@@ -285,6 +288,9 @@ export default function GamePage() {
         });
         setFinishedBoard({ view: board, submission: submittedState });
       }
+      // The celebration is for the moment it happened, so it is armed here and
+      // nowhere else — a reload restores the result but not the fireworks.
+      setCelebrating(true);
       clearProgress(token);
       clearAttempt(slug());
       setAttemptToken(null);
@@ -402,6 +408,14 @@ export default function GamePage() {
   });
 
   /**
+   * The run to describe under the board — this tab's fresh result if there is
+   * one, otherwise whatever the server remembers. One value, so the ending is
+   * one panel rather than a fresh card stacked on top of a historical one
+   * repeating the same number.
+   */
+  const settledResult = () => result() ?? historyResult();
+
+  /**
    * The answer key for a finished Tinder deck. Gated server-side on the
    * player's own submitted attempt, so asking for it early gets nothing.
    */
@@ -491,13 +505,14 @@ export default function GamePage() {
   });
 
   /** Stable per-result so the shout and burst don't reshuffle on re-render. */
-  const attemptKey = () => `${slug()}-${result()?.durationMs ?? 0}-${result()?.score ?? 0}`;
+  const attemptKey = () =>
+    `${slug()}-${settledResult()?.durationMs ?? 0}-${settledResult()?.score ?? 0}`;
 
   const resultMood = () =>
     moodForResult({
-      valid: result()?.valid ?? false,
-      afterDeadline: result()?.afterDeadline ?? false,
-      isPersonalBest: result()?.isPersonalBest ?? false,
+      valid: settledResult()?.valid ?? false,
+      afterDeadline: settledResult()?.afterDeadline ?? false,
+      isPersonalBest: settledResult()?.isPersonalBest ?? false,
     });
 
   const startLabel = () =>
@@ -714,81 +729,33 @@ export default function GamePage() {
             </div>
           </Show>
 
-          {/* ----------------------------------------------------- result */}
-          <Show when={result()}>
-            <div class="card pop-yellow space-y-3 text-center">
-              {/*
-                The shout carries the verdict — it is the loudest moment on the
-                site and the payoff for the whole run. Keyed on the attempt so a
-                refresh shows the same word instead of reshuffling.
-              */}
-              <ShoutBurst
-                text={shout(resultMood(), attemptKey())}
-                color={SHOUT_COLOR[resultMood()]}
-                seed={attemptKey()}
-              />
-              <ResultFigures result={result()!} />
-
-              <Show when={!result()!.valid && result()!.reason}>
-                <p class="font-semibold" style={{ color: "var(--pop-red)" }}>
-                  {result()!.reason}
-                </p>
-              </Show>
-              <Show when={result()!.afterDeadline}>
-                <p class="comment">
-                  counts for the overall board, not this day's. you got there eventually.
-                </p>
-              </Show>
-              <Show when={isRetryGame() && result()!.attemptsRemaining > 0 && !unlimited()}>
-                <span class="badge" style={{ "--pop": "var(--paper-2)" }}>
-                  {result()!.attemptsRemaining} run
-                  {result()!.attemptsRemaining === 1 ? "" : "s"} left today
-                </span>
-              </Show>
-
-              <div>
-                <a href="/leaderboard" class="btn-ghost">
-                  View leaderboard
-                </a>
-              </div>
-            </div>
-          </Show>
-
+          {/* ------------------------------------------- the finished board */}
           {/*
-            The quieter version, for a revisit. Same facts, no fanfare — the
-            celebration belongs to the moment you finished, not to every reload
-            after it.
-          */}
-          <Show when={historyResult()}>
-            <div class="card pop-blue space-y-3 text-center">
-              <p class="rule justify-center">Your run</p>
-              <ResultFigures result={historyResult()!} />
-              <Show when={!historyResult()!.valid}>
-                <p class="font-semibold" style={{ color: "var(--pop-red)" }}>
-                  This run was not accepted.
-                </p>
-              </Show>
-              <Show when={historyResult()!.afterDeadline}>
-                <p class="comment">counted for the overall board, not this day's.</p>
-              </Show>
-              <div>
-                <a href="/leaderboard" class="btn-ghost">
-                  View leaderboard
-                </a>
-              </div>
-            </div>
-          </Show>
+            One panel for the whole ending: what you built, then what it cost.
 
-          {/* -------------------------------------------- the finished board */}
-          {/*
-            Shown once the attempt is over and kept across reloads. Finishing a
-            puzzle and having it vanish into a result card is a bad ending —
-            people want to look at the thing they solved. Every board is
-            `disabled`, so this is a picture, not a second go.
+            This used to be three stacked cards — a result card with the shout,
+            a quieter duplicate of it for revisits, and the board underneath —
+            which meant the thing the player actually made was the last item on
+            the page, below two boxes repeating the same number. The shout has
+            moved to a modal at the moment of finishing, where a celebration
+            belongs, and shrinks to a sticker here. The time sits under the
+            board, which is the order you want to read it in: the pookalam, then
+            how long it took.
           */}
-          <Show when={hasFinishedBoard()}>
+          <Show when={hasFinishedBoard() || settledResult()}>
             <div class="card card-plain space-y-3">
-              <p class="rule">Your board</p>
+              <div class="flex items-start justify-between gap-3">
+                <p class="rule flex-1">{hasFinishedBoard() ? "Your board" : "Your run"}</p>
+                <Show when={settledResult()?.valid}>
+                  <span
+                    class="sticker shrink-0 text-sm"
+                    style={{ "--pop": SHOUT_COLOR[resultMood()], "white-space": "nowrap" }}
+                  >
+                    {shout(resultMood(), attemptKey())}
+                  </span>
+                </Show>
+              </div>
+
               <Show when={finishedKind() === "wend"}>
                 <WendGame
                   view={finishedBoard()!.view as WendViewData}
@@ -824,6 +791,37 @@ export default function GamePage() {
                   passes={(finishedBoard()?.submission as TinderSubmission | null)?.passes ?? []}
                   reveal={recap()?.cards ?? null}
                 />
+              </Show>
+
+              {/* The numbers, under the thing they describe. */}
+              <Show when={settledResult()}>
+                <div
+                  class="space-y-2 pt-1 text-center"
+                  style={{ "border-top": "var(--ink-w) dashed var(--ink)" }}
+                >
+                  <ResultFigures result={settledResult()!} />
+                  <Show when={!settledResult()!.valid}>
+                    <p class="font-semibold" style={{ color: "var(--pop-red)" }}>
+                      {settledResult()!.reason ?? "This run was not accepted."}
+                    </p>
+                  </Show>
+                  <Show when={settledResult()!.afterDeadline}>
+                    <p class="comment">counts for the overall board, not this day's.</p>
+                  </Show>
+                  <Show
+                    when={isRetryGame() && settledResult()!.attemptsRemaining > 0 && !unlimited()}
+                  >
+                    <span class="badge" style={{ "--pop": "var(--paper-3)" }}>
+                      {settledResult()!.attemptsRemaining} run
+                      {settledResult()!.attemptsRemaining === 1 ? "" : "s"} left today
+                    </span>
+                  </Show>
+                  <div>
+                    <a href="/leaderboard" class="btn-ghost">
+                      View leaderboard
+                    </a>
+                  </div>
+                </div>
               </Show>
             </div>
           </Show>
@@ -893,6 +891,30 @@ export default function GamePage() {
           busy={busy()}
           onStart={howTo() === "start" ? () => void confirmStart() : undefined}
           onClose={() => setHowTo(null)}
+        />
+      </Show>
+
+      {/* The fanfare, for the moment it happened and no longer. */}
+      <Show when={celebrating() && result()}>
+        <WinModal
+          shout={shout(resultMood(), attemptKey())}
+          shoutColor={SHOUT_COLOR[resultMood()]}
+          seed={attemptKey()}
+          valid={result()!.valid}
+          reason={result()!.reason}
+          figures={<ResultFigures result={result()!} />}
+          afterDeadline={result()!.afterDeadline}
+          isPersonalBest={result()!.isPersonalBest}
+          runsLeft={unlimited() ? 0 : isRetryGame() ? result()!.attemptsRemaining : 0}
+          onGoAgain={
+            unlimited() || (isRetryGame() && attemptsLeft() > 0)
+              ? () => {
+                  setCelebrating(false);
+                  openHowTo();
+                }
+              : undefined
+          }
+          onClose={() => setCelebrating(false)}
         />
       </Show>
     </main>
