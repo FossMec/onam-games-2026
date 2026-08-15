@@ -1,10 +1,10 @@
-import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
-import { dailyLeaderboard, games, globalScores, users } from "~/server/db/schema";
+import { dailyLeaderboard, games, users } from "~/server/db/schema";
 import type { GameMetric } from "~/server/games/registry";
 import { getGameDefByType } from "~/server/games/registry";
 import type { ViewerRole } from "~/server/games/service";
-import { pointsForRank, settlePendingGames } from "./settle";
+import { pointsForRank } from "./settle";
 
 export interface DailyEntry {
   rank: number;
@@ -39,20 +39,6 @@ export interface DailyBoard {
   myEntry: DailyEntry | null;
 }
 
-export interface GlobalEntry {
-  rank: number;
-  userId: string;
-  name: string;
-  avatarUrl: string | null;
-  college: string | null;
-  streakCount: number;
-  gamesCompleted: number;
-  totalPoints: number;
-  streakBonus: number;
-  isTester: boolean;
-  isMe: boolean;
-}
-
 export function metricLabel(metric: GameMetric): string {
   switch (metric) {
     case "score":
@@ -66,10 +52,6 @@ export function metricLabel(metric: GameMetric): string {
 
 /**
  * A day's board, ranked in the game's own units.
- *
- * Raw times and raw scores never leave this function's own board — cross-game
- * comparison happens only through `points` on the global board. That is what
- * lets Maveli Jump share a leaderboard system with four stopwatch games.
  */
 export async function getDailyLeaderboard(
   gameId: string,
@@ -86,6 +68,7 @@ export async function getDailyLeaderboard(
 
   const metric: GameMetric = game ? (getGameDefByType(game.gameType)?.metric ?? "time") : "time";
   const includeTesters = viewerRole !== "player";
+  const now = new Date();
 
   const rows = await db
     .select({
@@ -110,6 +93,8 @@ export async function getDailyLeaderboard(
       and(
         eq(dailyLeaderboard.gameId, gameId),
         eq(dailyLeaderboard.isFlagged, false),
+        eq(users.banLevel, 0),
+        or(isNull(users.banUntil), lt(users.banUntil, now)),
         includeTesters ? undefined : ne(users.role, "tester"),
       ),
     )
@@ -164,60 +149,7 @@ export async function getDailyLeaderboard(
   };
 }
 
-/**
- * The week's board. Ranks purely on accumulated points.
- *
- * The old ordering put `gamesCompleted` first, which meant someone who played
- * all five games badly outranked someone who played four perfectly. Missing a
- * day already scores zero points, so attendance needs no separate thumb on the
- * scale — and the streak bonus rewards showing up without overruling skill.
- */
-export async function getGlobalLeaderboard(
-  viewerRole: ViewerRole,
-  viewerUserId: string | null,
-  limit = 100,
-): Promise<{ entries: GlobalEntry[]; myEntry: GlobalEntry | null }> {
-  // Cheap no-op unless a game closed since the last read.
-  await settlePendingGames();
-
-  const db = getDb();
-  const rows = await db
-    .select({
-      userId: globalScores.userId,
-      gamesCompleted: globalScores.gamesCompleted,
-      totalPoints: globalScores.totalPoints,
-      streakBonus: globalScores.streakBonus,
-      name: users.name,
-      avatarUrl: users.avatarUrl,
-      college: users.college,
-      streakCount: users.streakCount,
-      role: users.role,
-    })
-    .from(globalScores)
-    .innerJoin(users, eq(users.id, globalScores.userId))
-    .where(viewerRole === "player" ? ne(users.role, "tester") : undefined)
-    .orderBy(desc(globalScores.totalPoints), desc(globalScores.gamesCompleted));
-
-  const toEntry = (row: (typeof rows)[number], rank: number): GlobalEntry => ({
-    rank,
-    userId: row.userId,
-    name: row.name,
-    avatarUrl: row.avatarUrl,
-    college: row.college,
-    streakCount: row.streakCount,
-    gamesCompleted: row.gamesCompleted,
-    totalPoints: row.totalPoints,
-    streakBonus: row.streakBonus,
-    isTester: row.role === "tester",
-    isMe: row.userId === viewerUserId,
-  });
-
-  const entries = rows.slice(0, limit).map((row, index) => toEntry(row, index + 1));
-  const myIndex = viewerUserId ? rows.findIndex((r) => r.userId === viewerUserId) : -1;
-  const myEntry = myIndex >= 0 ? toEntry(rows[myIndex], myIndex + 1) : null;
-
-  return { entries, myEntry };
-}
+// Global leaderboard removed in favor of daily leaderboards.
 
 /**
  * Per-day points breakdown for one player — the "why is my total that number"

@@ -109,15 +109,12 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
       alreadyStarted: true,
     };
   }
-
   /*
-   * Testers and admins play without a run limit. They are the people who have
-   * to break a game before five hundred players find the same bug, and a
-   * one-shot game gives them exactly one look at it. Their results are already
-   * kept off the player leaderboard (`lb:game:*:testers`), so nothing they do
-   * here can move a real ranking.
+   * Testers, admins, and players on closed games play without a run limit.
+   * Closed games are in free-play practice mode and do not count towards active leaderboards.
    */
-  const unlimited = input.role !== "player";
+  const isClosed = game.status === "closed";
+  const unlimited = input.role !== "player" || isClosed;
   const used = prior.length;
   if (!unlimited && used >= def.maxAttempts) {
     throw new HttpError(

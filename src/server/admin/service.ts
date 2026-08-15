@@ -1,10 +1,13 @@
-import { asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import {
   activityLogs,
   appSettings,
+  dailyLeaderboard,
   devices,
+  gameAttempts,
   games,
   getDb,
+  pookalamSubmissions,
   suspiciousLogs,
   testers,
   userDevices,
@@ -229,4 +232,140 @@ export async function adminUpdateGame(
 export async function adminDeleteGame(id: string) {
   await requireAdmin();
   await getDb().delete(games).where(eq(games.id, id));
+}
+
+export async function adminGetMetrics() {
+  await requireAdmin();
+  const db = getDb();
+  const [
+    [userCount],
+    [testerCount],
+    [gameCount],
+    [suspiciousCount],
+    [attemptCount],
+    [pookalamCount],
+  ] = await Promise.all([
+    db.select({ count: sql<number>`count(*)::int` }).from(users),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(testers)
+      .where(eq(testers.active, true)),
+    db.select({ count: sql<number>`count(*)::int` }).from(games),
+    db.select({ count: sql<number>`count(*)::int` }).from(suspiciousLogs),
+    db.select({ count: sql<number>`count(*)::int` }).from(gameAttempts),
+    db.select({ count: sql<number>`count(*)::int` }).from(pookalamSubmissions),
+  ]);
+
+  return {
+    totalUsers: userCount?.count ?? 0,
+    activeTesters: testerCount?.count ?? 0,
+    totalGames: gameCount?.count ?? 0,
+    suspiciousEvents: suspiciousCount?.count ?? 0,
+    totalAttempts: attemptCount?.count ?? 0,
+    pookalamSubmissions: pookalamCount?.count ?? 0,
+  };
+}
+
+export async function adminListAttempts(limit = 100) {
+  await requireAdmin();
+  const db = getDb();
+  return db
+    .select({
+      id: gameAttempts.id,
+      gameId: gameAttempts.gameId,
+      gameTitle: games.title,
+      gameSlug: games.slug,
+      gameDay: games.day,
+      userId: gameAttempts.userId,
+      userName: users.name,
+      userEmail: users.email,
+      attemptNumber: gameAttempts.attemptNumber,
+      status: gameAttempts.status,
+      durationMs: gameAttempts.durationMs,
+      score: gameAttempts.score,
+      movesCount: gameAttempts.movesCount,
+      serverValid: gameAttempts.serverValid,
+      isAnomalous: gameAttempts.isAnomalous,
+      afterDeadline: gameAttempts.afterDeadline,
+      ip: gameAttempts.ip,
+      deviceHash: devices.deviceHash,
+      startedAt: gameAttempts.startedAt,
+      submittedAt: gameAttempts.submittedAt,
+      createdAt: gameAttempts.createdAt,
+    })
+    .from(gameAttempts)
+    .innerJoin(games, eq(games.id, gameAttempts.gameId))
+    .innerJoin(users, eq(users.id, gameAttempts.userId))
+    .leftJoin(devices, eq(devices.id, gameAttempts.deviceId))
+    .orderBy(desc(gameAttempts.createdAt))
+    .limit(limit);
+}
+
+export async function adminVoidAttempt(attemptId: string) {
+  await requireAdmin();
+  const db = getDb();
+  const [attempt] = await db
+    .select()
+    .from(gameAttempts)
+    .where(eq(gameAttempts.id, attemptId))
+    .limit(1);
+  if (!attempt) throw new Error("Attempt not found");
+
+  // Mark attempt void
+  await db
+    .update(gameAttempts)
+    .set({ status: "void", serverValid: false })
+    .where(eq(gameAttempts.id, attemptId));
+
+  // If this attempt is linked in dailyLeaderboard, remove or recalculate it
+  const [boardEntry] = await db
+    .select()
+    .from(dailyLeaderboard)
+    .where(
+      and(
+        eq(dailyLeaderboard.gameId, attempt.gameId),
+        eq(dailyLeaderboard.userId, attempt.userId),
+        eq(dailyLeaderboard.attemptId, attemptId),
+      ),
+    )
+    .limit(1);
+
+  if (boardEntry) {
+    // Check if there are other valid submitted attempts by this user for this game
+    const [nextBest] = await db
+      .select()
+      .from(gameAttempts)
+      .where(
+        and(
+          eq(gameAttempts.gameId, attempt.gameId),
+          eq(gameAttempts.userId, attempt.userId),
+          eq(gameAttempts.status, "submitted"),
+          eq(gameAttempts.serverValid, true),
+        ),
+      )
+      .orderBy(asc(gameAttempts.durationMs))
+      .limit(1);
+
+    if (nextBest) {
+      await db
+        .update(dailyLeaderboard)
+        .set({
+          attemptId: nextBest.id,
+          durationMs: nextBest.durationMs,
+          score: nextBest.score,
+          startedAt: nextBest.startedAt,
+          submittedAt: nextBest.submittedAt ?? nextBest.startedAt,
+        })
+        .where(eq(dailyLeaderboard.id, boardEntry.id));
+    } else {
+      // No other valid attempt, remove from daily leaderboard
+      await db.delete(dailyLeaderboard).where(eq(dailyLeaderboard.id, boardEntry.id));
+    }
+  }
+}
+
+export async function adminRemoveLeaderboardEntry(leaderboardId: string) {
+  await requireAdmin();
+  const db = getDb();
+  await db.delete(dailyLeaderboard).where(eq(dailyLeaderboard.id, leaderboardId));
 }

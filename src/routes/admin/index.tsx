@@ -1,477 +1,196 @@
 import { Title } from "@solidjs/meta";
 import { createAsync } from "@solidjs/router";
-import { For, Show, createSignal, onMount } from "solid-js";
+import { CheckCircle, RefreshCw, ShieldAlert, X } from "lucide-solid";
+import { Show, createSignal } from "solid-js";
+import { AdminTabs, type AdminTabId } from "~/components/admin/AdminTabs";
 import { PookalamReview } from "~/components/admin/PookalamReview";
+import { AttemptsTab } from "~/components/admin/tabs/AttemptsTab";
+import { GamesTab } from "~/components/admin/tabs/GamesTab";
+import { LogsTab } from "~/components/admin/tabs/LogsTab";
+import { OverviewTab } from "~/components/admin/tabs/OverviewTab";
+import { SecurityTab } from "~/components/admin/tabs/SecurityTab";
+import { SettingsTab } from "~/components/admin/tabs/SettingsTab";
+import { UsersTab } from "~/components/admin/tabs/UsersTab";
+import { SpriteIcon } from "~/components/art/SpriteIcon";
+import { getAdminDashboard } from "~/server/admin/actions";
 import { getMe } from "~/server/auth/actions";
-import {
-  addTester,
-  blockIpAction,
-  createGame,
-  deleteGame,
-  getAdminDashboard,
-  listGames,
-  setTesterActive,
-  setUserBanLevel,
-  setUserRole,
-  unblockIpAction,
-  updateGame,
-  updateSetting,
-} from "~/server/admin/actions";
 
 export default function Admin() {
   const me = createAsync(() => getMe());
+  const [activeTab, setActiveTab] = createSignal<AdminTabId>("overview");
   const [version, setVersion] = createSignal(0);
   const reload = () => setVersion((v) => v + 1);
+
   const data = createAsync(async () => {
     void version();
     if (me()?.role !== "admin") return null;
     return getAdminDashboard();
   });
 
-  const [blockIpInput, setBlockIpInput] = createSignal("");
-  const [testerEmail, setTesterEmail] = createSignal("");
-  const [message, setMessage] = createSignal("");
+  const [notification, setNotification] = createSignal<string | null>(null);
 
-  // game create form
-  const [gDay, setGDay] = createSignal(1);
-  const [gSlug, setGSlug] = createSignal("");
-  const [gTitle, setGTitle] = createSignal("");
-  const [gType, setGType] = createSignal("puzzle");
-  const [gHint, setGHint] = createSignal("");
-  const [gamesList, setGamesList] = createSignal<Awaited<ReturnType<typeof listGames>>>([]);
-
-  const loadGames = async () => {
-    try {
-      setGamesList(await listGames());
-    } catch {
-      // ignore
-    }
+  const showNotification = (msg: string) => {
+    setNotification(msg);
+    setTimeout(() => {
+      setNotification((curr) => (curr === msg ? null : curr));
+    }, 4500);
   };
-
-  const run = async (fn: () => Promise<unknown>, success: string) => {
-    try {
-      await fn();
-      setMessage(success);
-      reload();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Failed");
-    }
-  };
-
-  onMount(() => {
-    void loadGames();
-  });
 
   return (
-    <main class="container space-y-6 py-8">
-      <Title>Admin — FOSS Onam Games</Title>
-      <h1 class="text-3xl font-bold tracking-tight">Admin</h1>
-      <Show when={message()}>
-        <p>{message()}</p>
-      </Show>
+    <main class="container space-y-5 py-6 max-w-6xl">
+      <Title>Admin Control Center — FOSS Onam Games</Title>
 
-      <Show when={!me() || me()!.role !== "admin"}>
-        <p>You don't have access to this page.</p>
-      </Show>
+      {/* Header Banner */}
+      <div
+        class="relative overflow-hidden rounded-lg p-5 flex items-center justify-between gap-4 flex-wrap"
+        style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--paper-2)" }}
+      >
+        <div class="flex items-center gap-3">
+          <SpriteIcon name="tux-king" size={38} animate="float" interactive />
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight m-0">
+                Admin Control Center
+              </h1>
+              <span class="badge text-[10px] py-0.5 px-2 bg-[var(--pop-yellow)] uppercase font-black">
+                Superuser
+              </span>
+            </div>
+            <p class="text-xs font-semibold mt-0.5" style={{ color: "var(--ink-soft)" }}>
+              Festival game scheduling, user ban management, anti-cheat score review, and settings.
+            </p>
+          </div>
+        </div>
 
-      <Show when={me()?.role === "admin" && data()}>
-        <section class="card space-y-3">
-          <h2 class="text-lg font-semibold">Settings</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Key</th>
-                <th>Value</th>
-                <th>Group</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <For each={data()!.settings}>
-                {(setting) => (
-                  <tr>
-                    <td>{setting.key}</td>
-                    <td>{String(JSON.stringify(setting.value))}</td>
-                    <td>{setting.group}</td>
-                    <td>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const raw = prompt(
-                            `New value for ${setting.key}`,
-                            JSON.stringify(setting.value),
-                          );
-                          if (raw === null) return;
-                          try {
-                            const parsed = JSON.parse(raw);
-                            await run(
-                              () =>
-                                updateSetting(
-                                  setting.key,
-                                  parsed,
-                                  setting.group,
-                                  setting.description ?? undefined,
-                                ),
-                              "Setting updated",
-                            );
-                          } catch {
-                            setMessage("Value must be valid JSON");
-                          }
-                        }}
-                      >
-                        Edit
-                      </button>
-                    </td>
-                  </tr>
-                )}
-              </For>
-            </tbody>
-          </table>
-        </section>
+        <button
+          type="button"
+          onClick={reload}
+          class="btn-ghost text-xs px-3.5 py-1.5 inline-flex items-center gap-1.5 cursor-pointer font-extrabold"
+        >
+          <RefreshCw size={13} strokeWidth={2.5} />
+          <span>Refresh Data</span>
+        </button>
+      </div>
 
-        <section class="card space-y-3">
-          <h2 class="text-lg font-semibold">Games</h2>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void run(
-                () =>
-                  createGame({
-                    slug: gSlug(),
-                    day: gDay(),
-                    title: gTitle(),
-                    hint: gHint() || undefined,
-                    gameType: gType(),
-                  }),
-                "Game created",
-              );
-              void loadGames();
-              setGSlug("");
-              setGTitle("");
-              setGHint("");
-            }}
+      {/* Notification Toast */}
+      <Show when={notification()}>
+        <div class="card p-3 bg-[var(--pop-yellow)] border-2 border-[var(--ink)] flex items-center justify-between text-xs font-extrabold shadow-sm animate-bounce-short">
+          <div class="flex items-center gap-2">
+            <CheckCircle size={16} strokeWidth={2.5} class="text-[var(--ink)]" />
+            <span>{notification()}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setNotification(null)}
+            class="p-1 hover:opacity-75 cursor-pointer"
           >
-            <input
-              type="number"
-              min={1}
-              max={7}
-              value={gDay()}
-              onChange={(e) => setGDay(Number(e.currentTarget.value))}
-              style={{ width: "3rem" }}
-            />
-            <input
-              type="text"
-              placeholder="slug"
-              value={gSlug()}
-              onChange={(e) => setGSlug(e.currentTarget.value)}
-              required
-            />
-            <input
-              type="text"
-              placeholder="Title"
-              value={gTitle()}
-              onChange={(e) => setGTitle(e.currentTarget.value)}
-              required
-            />
-            <input
-              type="text"
-              placeholder="game type (e.g. minesweeper)"
-              value={gType()}
-              onChange={(e) => setGType(e.currentTarget.value)}
-            />
-            <input
-              type="text"
-              placeholder="hint"
-              value={gHint()}
-              onChange={(e) => setGHint(e.currentTarget.value)}
-            />
-            <button type="submit">Add game</button>
-          </form>
-          <button type="button" onClick={() => void loadGames()}>
-            Reload games
+            <X size={14} />
           </button>
-          <table>
-            <thead>
-              <tr>
-                <th>Day</th>
-                <th>Slug</th>
-                <th>Title</th>
-                <th>Type</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <For each={gamesList()}>
-                {(game) => (
-                  <tr>
-                    <td>{game.day}</td>
-                    <td>{game.slug}</td>
-                    <td>{game.title}</td>
-                    <td>{game.gameType}</td>
-                    <td>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const title = prompt("Title", game.title);
-                          if (!title) return;
-                          void run(() => updateGame(game.id, { title }), "Game updated");
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void run(() => deleteGame(game.id), "Game deleted")}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                )}
-              </For>
-            </tbody>
-          </table>
-        </section>
+        </div>
+      </Show>
 
-        <section class="card space-y-3">
-          <h2 class="text-lg font-semibold">Users</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>College</th>
-                <th>Role</th>
-                <th>Trust</th>
-                <th>Streak</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <For each={data()!.users}>
-                {(user) => (
-                  <tr>
-                    <td>{user.name}</td>
-                    <td>{user.email}</td>
-                    <td>
-                      {user.college ?? "-"}
-                      {user.branch ? ` · ${user.branch}` : ""}
-                      {user.batch ? ` · ${user.batch}` : ""}
-                    </td>
-                    <td>
-                      <select
-                        value={user.role ?? "player"}
-                        onChange={(e) =>
-                          run(
-                            () =>
-                              setUserRole(
-                                user.id,
-                                e.currentTarget.value as "player" | "tester" | "admin",
-                              ),
-                            "Role updated",
-                          )
-                        }
-                      >
-                        <option value="player">player</option>
-                        <option value="tester">tester</option>
-                        <option value="admin">admin</option>
-                      </select>
-                    </td>
-                    <td>{user.trustScore}</td>
-                    <td>{user.streakCount}</td>
-                    <td>
-                      <select
-                        value={String(user.banLevel ?? 0)}
-                        onChange={(e) =>
-                          run(
-                            () =>
-                              setUserBanLevel(
-                                user.id,
-                                Number(e.currentTarget.value) as 0 | 1 | 2 | 3 | 4,
-                                "by admin",
-                              ),
-                            "Ban level updated",
-                          )
-                        }
-                      >
-                        <option value="0">0 · clear</option>
-                        <option value="1">1 · warning</option>
-                        <option value="2">2 · 3h bench</option>
-                        <option value="3">3 · 24h bench</option>
-                        <option value="4">4 · hard ban</option>
-                      </select>
-                      <Show when={user.banUntil}>
-                        <span class="ml-2 text-xs text-muted">
-                          until {new Date(user.banUntil!).toLocaleString("en-IN")}
-                        </span>
-                      </Show>
-                    </td>
-                  </tr>
-                )}
-              </For>
-            </tbody>
-          </table>
-        </section>
+      {/* Unauthorized State */}
+      <Show when={me() && me()!.role !== "admin"}>
+        <div class="card pop-red text-center p-12 space-y-3">
+          <ShieldAlert size={48} class="mx-auto text-red-600" />
+          <h2 class="text-xl font-black">Access Denied</h2>
+          <p class="font-semibold text-sm max-w-md mx-auto">
+            You do not have administrator permissions to view this control suite. If you believe
+            this is a mistake, contact the FOSS MEC event team.
+          </p>
+        </div>
+      </Show>
 
-        <section class="card space-y-3">
-          <h2 class="text-lg font-semibold">Testers</h2>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void run(() => addTester(testerEmail()), "Tester added");
-              setTesterEmail("");
-            }}
-          >
-            <input
-              type="email"
-              placeholder="tester@example.com"
-              value={testerEmail()}
-              onChange={(e) => setTesterEmail(e.currentTarget.value)}
-              required
-            />
-            <button type="submit">Add tester</button>
-          </form>
-          <table>
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Early hours</th>
-                <th>Active</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <For each={data()!.testers}>
-                {(tester) => (
-                  <tr>
-                    <td>{tester.email}</td>
-                    <td>{tester.earlyHours}</td>
-                    <td>{tester.active ? "yes" : "no"}</td>
-                    <td>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          run(() => setTesterActive(tester.id, !tester.active), "Tester toggled")
-                        }
-                      >
-                        {tester.active ? "Deactivate" : "Activate"}
-                      </button>
-                    </td>
-                  </tr>
-                )}
-              </For>
-            </tbody>
-          </table>
-        </section>
+      {/* Loading State */}
+      <Show when={me()?.role === "admin" && !data()}>
+        <div class="card card-plain p-12 text-center space-y-2">
+          <RefreshCw size={24} class="animate-spin mx-auto text-[var(--ink-soft)]" />
+          <p class="font-bold text-sm">Loading admin telemetry & databases...</p>
+        </div>
+      </Show>
 
-        <section class="card space-y-3">
-          <h2 class="text-lg font-semibold">Blocked IPs</h2>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void run(() => blockIpAction({ ip: blockIpInput() }), "IP blocked");
-              setBlockIpInput("");
-            }}
-          >
-            <input
-              type="text"
-              placeholder="1.2.3.4"
-              value={blockIpInput()}
-              onChange={(e) => setBlockIpInput(e.currentTarget.value)}
-              required
-            />
-            <button type="submit">Block IP</button>
-          </form>
-          <table>
-            <thead>
-              <tr>
-                <th>IP</th>
-                <th>Reason</th>
-                <th>Scope</th>
-                <th>Expires</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <For each={data()!.blockedIps}>
-                {(row) => (
-                  <tr>
-                    <td>{row.ip}</td>
-                    <td>{row.reason ?? "-"}</td>
-                    <td>{row.scope}</td>
-                    <td>{row.expiresAt?.toISOString() ?? "never"}</td>
-                    <td>
-                      <button
-                        type="button"
-                        onClick={() => run(() => unblockIpAction(row.ip), "IP unblocked")}
-                      >
-                        Unblock
-                      </button>
-                    </td>
-                  </tr>
-                )}
-              </For>
-            </tbody>
-          </table>
-        </section>
+      {/* Main Admin Tabbed Suite */}
+      <Show when={me()?.role === "admin" && data()}>
+        {(() => {
+          const d = data()!;
+          return (
+            <div class="space-y-5">
+              {/* Navigation Tabs */}
+              <AdminTabs
+                activeTab={activeTab()}
+                onSelect={(t) => setActiveTab(t)}
+                counts={{
+                  games: d.games.length,
+                  users: d.users.length,
+                  attempts: d.attempts.length,
+                  suspicious: d.suspicious.length,
+                  testers: d.testers.filter((t) => t.active).length,
+                }}
+              />
 
-        <section class="card space-y-3">
-          <h2 class="text-lg font-semibold">Suspicious activity</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>When</th>
-                <th>Type</th>
-                <th>Severity</th>
-                <th>Action</th>
-                <th>User</th>
-                <th>IP</th>
-              </tr>
-            </thead>
-            <tbody>
-              <For each={data()!.suspicious}>
-                {(row) => (
-                  <tr>
-                    <td>{row.createdAt.toISOString()}</td>
-                    <td>{row.eventType}</td>
-                    <td>{row.severity}</td>
-                    <td>{row.actionTaken}</td>
-                    <td>{row.userEmail ?? "-"}</td>
-                    <td>{row.ip ?? "-"}</td>
-                  </tr>
-                )}
-              </For>
-            </tbody>
-          </table>
-        </section>
+              {/* 1. Overview Tab */}
+              <Show when={activeTab() === "overview"}>
+                <OverviewTab
+                  metrics={d.metrics}
+                  games={d.games}
+                  onNavigateTab={(t) => setActiveTab(t)}
+                />
+              </Show>
 
-        <PookalamReview />
+              {/* 2. Games & Schedule Tab */}
+              <Show when={activeTab() === "games"}>
+                <GamesTab games={d.games} onReload={reload} onNotify={showNotification} />
+              </Show>
 
-        <section class="card space-y-3">
-          <h2 class="text-lg font-semibold">Activity log</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>When</th>
-                <th>Type</th>
-                <th>User</th>
-                <th>IP</th>
-              </tr>
-            </thead>
-            <tbody>
-              <For each={data()!.activity}>
-                {(row) => (
-                  <tr>
-                    <td>{row.createdAt.toISOString()}</td>
-                    <td>{row.eventType}</td>
-                    <td>{row.userEmail ?? "-"}</td>
-                    <td>{row.ip ?? "-"}</td>
-                  </tr>
-                )}
-              </For>
-            </tbody>
-          </table>
-        </section>
+              {/* 3. Users & Ban Tab */}
+              <Show when={activeTab() === "users"}>
+                <UsersTab users={d.users} onReload={reload} onNotify={showNotification} />
+              </Show>
+
+              {/* 4. Attempts & Anti-Cheat Tab */}
+              <Show when={activeTab() === "attempts"}>
+                <AttemptsTab attempts={d.attempts} onReload={reload} onNotify={showNotification} />
+              </Show>
+
+              {/* 5. Settings Tab */}
+              <Show when={activeTab() === "settings"}>
+                <SettingsTab settings={d.settings} onReload={reload} onNotify={showNotification} />
+              </Show>
+
+              {/* 6. Testers & Beta Access Tab */}
+              <Show when={activeTab() === "testers"}>
+                <SecurityTab
+                  testers={d.testers}
+                  blockedIps={d.blockedIps}
+                  suspicious={d.suspicious}
+                  onReload={reload}
+                  onNotify={showNotification}
+                />
+              </Show>
+
+              {/* 7. Security / Threat Stream Tab */}
+              <Show when={activeTab() === "security"}>
+                <SecurityTab
+                  testers={d.testers}
+                  blockedIps={d.blockedIps}
+                  suspicious={d.suspicious}
+                  onReload={reload}
+                  onNotify={showNotification}
+                />
+              </Show>
+
+              {/* 8. Code-a-Pookalam Review Tab */}
+              <Show when={activeTab() === "pookalam"}>
+                <PookalamReview />
+              </Show>
+
+              {/* 9. Activity Logs Tab */}
+              <Show when={activeTab() === "logs"}>
+                <LogsTab logs={d.activity} />
+              </Show>
+            </div>
+          );
+        })()}
       </Show>
     </main>
   );

@@ -5,28 +5,51 @@ import {
   adminAddTester,
   adminCreateGame,
   adminDeleteGame,
+  adminGetMetrics,
   adminListActivity,
+  adminListAttempts,
   adminListGames,
   adminListSettings,
   adminListSuspicious,
   adminListTesters,
   adminListUsers,
+  adminRemoveLeaderboardEntry,
   adminSetTesterActive,
   adminSetUserBanLevel,
   adminSetUserRole,
   adminUpdateGame,
   adminUpdateSetting,
+  adminVoidAttempt,
 } from "~/server/admin/service";
 
 export async function getAdminDashboard() {
   return {
+    metrics: await adminGetMetrics(),
     users: await adminListUsers(),
+    games: await adminListGames(),
+    attempts: await adminListAttempts(),
     testers: await adminListTesters(),
     suspicious: await adminListSuspicious(),
     activity: await adminListActivity(),
     settings: await adminListSettings(),
     blockedIps: await listBlockedIps(),
   };
+}
+
+export async function getAdminMetricsAction() {
+  return adminGetMetrics();
+}
+
+export async function listAttemptsAction(limit = 100) {
+  return adminListAttempts(limit);
+}
+
+export async function voidAttemptAction(attemptId: string) {
+  await adminVoidAttempt(attemptId);
+}
+
+export async function removeLeaderboardEntryAction(leaderboardId: string) {
+  await adminRemoveLeaderboardEntry(leaderboardId);
 }
 
 export async function listUsers() {
