@@ -344,15 +344,25 @@ export default function GamePage() {
   /**
    * Done for good.
    *
-   * This used to test only for a *submitted* attempt, which left an expired or
-   * void run showing a Start button that the server then refused with a 409 —
-   * the player got an error where they should have got their board. Runs
-   * remaining is the honest question, and it covers every terminal status.
+   * Testing a *submitted* attempt alone was not enough — an expired or void run
+   * left a Start button the server then refused with a 409, so the player got
+   * an error where they should have got their board. Runs remaining is the
+   * honest question and covers every terminal status.
+   *
+   * The `attempt()` guard is load-bearing and was missing: with no attempt row
+   * — signed out, or the query still in flight — `attemptsLeft()` falls back to
+   * zero, and a first-time visitor was told "you're done with this one, every
+   * run has been used" before they had ever played it. No attempt record means
+   * nothing is known, which is not the same as nothing is left.
    */
-  const finished = () =>
-    !attemptToken() &&
-    !unlimited() &&
-    (attemptsLeft() <= 0 || (!isRetryGame() && attempt()?.status === "submitted"));
+  const finished = () => {
+    if (attemptToken() || unlimited()) return false;
+    const landed = result();
+    if (landed) return landed.attemptsRemaining <= 0;
+    const a = attempt();
+    if (!a) return false;
+    return a.attemptsRemaining <= 0 || (!isRetryGame() && a.status === "submitted");
+  };
 
   /**
    * The last run, as the server remembers it.
@@ -469,16 +479,19 @@ export default function GamePage() {
       </Show>
 
       <Show when={game()}>
-        {/* ------------------------------------------------------------ header */}
-        <GameHeader
+        {/*
+          One line, always. While a run is open it carries the title and the
+          clock and nothing else, because everything below it is the board —
+          this page had grown four stacked panels above the game, which on a
+          phone meant scrolling past the whole preamble to reach the thing you
+          came to play. The preamble now lives inside the start panel, and the
+          start panel is gone the moment you are playing.
+        */}
+        <GameBar
           day={game()!.day}
-          difficulty={game()!.difficulty}
           title={game()!.title}
-          tagline={game()!.tagline}
           status={game()!.status}
-          metric={game()!.metric}
-          maxAttempts={game()!.maxAttempts}
-          unlimited={unlimited()}
+          elapsed={attemptToken() ? elapsed() : null}
         />
 
         {/*
@@ -496,7 +509,8 @@ export default function GamePage() {
         </Show>
 
         <Show when={game()!.status === "upcoming"}>
-          <div class="card space-y-3">
+          <div class="card pop-yellow space-y-3 text-center">
+            <h1 class="text-3xl">{game()!.title}</h1>
             <p class="text-muted">Hint: {game()!.hint ?? "A mystery awaits…"}</p>
             <Show when={game()!.releaseAt}>
               <p>
@@ -509,100 +523,43 @@ export default function GamePage() {
           </div>
         </Show>
 
-        <Show when={game()!.status === "tester"}>
-          <div class="card pop-purple space-y-2">
-            <p class="font-extrabold text-warn">Tester early access is open.</p>
-            <Show when={game()!.releaseAt}>
-              <p>
-                <span class="text-muted">Public release in </span>
-                <span class="font-mono tabular-nums">
-                  <Countdown target={new Date(game()!.releaseAt!)} />
-                </span>
-              </p>
-            </Show>
-            <p class="comment">break it now so nobody else gets to.</p>
-          </div>
-        </Show>
-
-        <Show when={isCatchUp()}>
-          <div class="card pop-blue space-y-2">
-            <p class="font-extrabold">This day is over, but you can still play it.</p>
-            <p class="font-semibold">
-              It counts towards the overall board — but not this day's leaderboard, and not for a
-              rank. That field already settled.
-            </p>
-            <p class="comment">no clock to beat. just you and the puzzle. finally.</p>
-            <a href="/leaderboard" class="btn-ghost mt-2 inline-block">
-              View leaderboard
-            </a>
-          </div>
-        </Show>
-
-        {/* How to play stays on the page, for before and after. */}
-        <Show when={(game()!.howTo?.length ?? 0) > 0 && !attemptToken()}>
-          <HowToPlayPanel gameType={game()!.gameType} steps={game()!.howTo} />
-        </Show>
-
         <Show when={playable() && !banState()?.blocksPlay}>
-          <Show when={!me()}>
-            <div class="card flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p class="text-muted">Sign in to play this game.</p>
-              <a
-                href={`/auth/signin?next=${encodeURIComponent(`/games/${slug()}`)}`}
-                class="btn-brand"
-              >
-                Sign in with Google
-              </a>
-            </div>
-          </Show>
-
-          <Show when={me() && !me()!.onboardingCompleted}>
-            <div class="card flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p class="text-muted">Complete your profile before playing.</p>
-              <a
-                href={`/onboarding?next=${encodeURIComponent(`/games/${slug()}`)}`}
-                class="btn-ghost"
-              >
-                Complete profile
-              </a>
-            </div>
-          </Show>
-
           {/* ------------------------------------------------------ idle */}
           {/*
-            Suppressed once a run has just landed: the result card carries its
-            own "Go again", and two start buttons on one screen is a question
-            rather than an invitation.
+            The whole pre-game screen, in one panel: what it is, how it ranks,
+            what the day's caveat is, and the one button that applies — sign in,
+            finish your profile, or start. Those used to be three separate cards
+            stacked above a fourth, which meant a signed-out visitor scrolled
+            past two boxes before learning what the game even was.
+
+            Suppressed once a run has landed: the result card carries its own
+            "Go again", and two start buttons on one screen is a question rather
+            than an invitation.
           */}
-          <Show when={me()?.onboardingCompleted && !attemptToken() && !finished() && !result()}>
-            <div class="card pop-teal space-y-4 text-center">
-              <p class="font-semibold">
-                {unlimited()
-                  ? "Tester access: play this as many times as you like. None of it touches the player board."
-                  : isRetryGame()
-                    ? `Your best run of the day is the one that counts. ${attemptsLeft()} run${attemptsLeft() === 1 ? "" : "s"} left.`
-                    : "One attempt. The clock starts when you press the button, not before."}
-              </p>
-              <button
-                type="button"
-                onClick={openHowTo}
-                disabled={busy()}
-                class="btn-brand px-8 py-3 text-lg"
-              >
-                {busy() ? "Starting…" : startLabel()}
-              </button>
-              <p class="comment">the rules come up first. read them, they're short.</p>
-            </div>
+          <Show when={!attemptToken() && !finished() && !result()}>
+            <StartPanel
+              title={game()!.title}
+              tagline={game()!.tagline}
+              metric={game()!.metric}
+              unlimited={unlimited()}
+              attemptsLeft={attemptsLeft()}
+              isRetryGame={isRetryGame()}
+              isCatchUp={isCatchUp()}
+              isTesterWindow={game()!.status === "tester"}
+              releaseAt={game()!.releaseAt}
+              busy={busy()}
+              startLabel={startLabel()}
+              onStart={openHowTo}
+              signedIn={!!me()}
+              onboarded={!!me()?.onboardingCompleted}
+              next={`/games/${slug()}`}
+            />
           </Show>
 
           {/* --------------------------------------------------- in play */}
+          {/* No card, no chrome, no preamble. The board is the page. */}
           <Show when={me()?.onboardingCompleted && attemptToken()}>
-            <div class="card space-y-4 text-center">
-              <p class="text-3xl font-bold tabular-nums">
-                {Math.floor(elapsed() / 60)}m {elapsed() % 60}s
-              </p>
-              <p class="text-xs text-muted">Refreshing won't reset the clock — finish the run.</p>
-
+            <div class="space-y-3 text-center">
               <Show when={isHunt()}>
                 <div class="space-y-3">
                   <input
@@ -859,6 +816,17 @@ export default function GamePage() {
             </div>
           </Show>
 
+          {/*
+            The rules, kept for afterwards. Before a run they live in the modal
+            the start button opens, so they cost nothing at the top of the page;
+            here they are for anyone re-reading what they just played.
+          */}
+          <Show
+            when={!attemptToken() && (game()!.howTo?.length ?? 0) > 0 && (result() || finished())}
+          >
+            <HowToPlayPanel gameType={game()!.gameType} steps={game()!.howTo} />
+          </Show>
+
           <Show when={error()}>
             <div class="card pop-red space-y-2">
               <div class="flex items-start gap-3">
@@ -904,85 +872,198 @@ const METRIC_CHIP: Record<string, string> = {
 };
 
 /**
- * The game's title panel.
+ * One line above the game. That is the entire budget.
  *
- * Previously a bare text link and an h1 floating on the page background, which
- * made the one screen a player stares at for ten minutes the least designed
- * screen on the site. It is a comic panel now, like everything else: inked box,
- * confetti, the day as a sticker, and the facts that decide how you play —
- * ranking metric and how many runs you get — as chips rather than as a
- * paragraph nobody reads.
+ * While a run is open it is the only thing between the top of the page and the
+ * board, and it carries the clock — which is the one piece of chrome a player
+ * mid-run actually looks at. Idle, it drops the title (the start panel below is
+ * already shouting it) and is just a way back.
  */
-function GameHeader(props: {
+function GameBar(props: {
   day: number;
-  difficulty: string;
   title: string;
-  tagline: string;
   status: string;
-  metric: string;
-  maxAttempts: number;
-  unlimited: boolean;
+  /** Seconds elapsed, or null when no run is open. */
+  elapsed: number | null;
 }) {
   const chip = () => STATUS_CHIP[props.status] ?? STATUS_CHIP.upcoming;
+  const playing = () => props.elapsed !== null;
 
   return (
-    <div class="space-y-3">
+    <div class="flex items-center gap-2.5">
       <a
         href="/"
-        class="inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-transform duration-75 active:translate-y-0.5"
-        style={{
-          background: "var(--paper-2)",
-          border: "var(--ink-w) solid var(--ink)",
-          "font-family": "var(--font-stack-display)",
-          "font-weight": 800,
-        }}
+        class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5"
+        style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
+        aria-label="All games"
       >
-        <ChevronLeft size={18} />
-        All games
+        <ChevronLeft size={20} />
       </a>
 
-      <section
-        class="relative overflow-hidden rounded-lg px-4 py-5 sm:px-6"
-        style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--paper-2)" }}
+      <Show
+        when={playing()}
+        fallback={
+          <span class="text-xs font-extrabold uppercase tracking-widest text-muted">
+            Day {props.day} · All games
+          </span>
+        }
       >
-        <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-          <Confetti seed={`game-${props.title}`} count={6} animate />
-        </div>
-
-        <div class="relative space-y-2.5">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="sticker" style={{ "--pop": "var(--pop-yellow)" }}>
-              Day {props.day}
-            </span>
-            <span class="badge" style={{ "--pop": chip().pop }}>
-              {chip().label}
-            </span>
-            <span class="badge" style={{ "--pop": "var(--paper-3)" }}>
-              {props.difficulty}
-            </span>
-          </div>
-
-          <h1 class="text-3xl sm:text-4xl">{props.title}</h1>
-          <Show when={props.tagline}>
-            <p class="max-w-prose font-semibold text-muted">{props.tagline}</p>
-          </Show>
-
-          <div
-            class="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-xs font-extrabold uppercase tracking-wider text-muted"
-            style={{ "border-top": "var(--ink-w) dashed var(--ink)", "padding-top": "0.6rem" }}
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-[0.65rem] font-extrabold uppercase tracking-widest text-muted">
+            Day {props.day}
+          </p>
+          <p
+            class="truncate leading-tight"
+            style={{ "font-family": "var(--font-stack-display)", "font-weight": 800 }}
           >
-            <span>{METRIC_CHIP[props.metric] ?? "Ranked"}</span>
-            <span>
-              {props.unlimited
-                ? "Unlimited runs (tester)"
-                : props.maxAttempts === 1
-                  ? "One attempt"
-                  : `${props.maxAttempts} runs a day`}
-            </span>
-          </div>
+            {props.title}
+          </p>
         </div>
-      </section>
+        <span
+          class="shrink-0 rounded px-2.5 py-1 tabular-nums text-lg font-bold"
+          style={{
+            background: "var(--paper-2)",
+            border: "var(--ink-w) solid var(--ink)",
+            "font-family": "var(--font-stack-mono)",
+          }}
+          aria-label="Time elapsed"
+        >
+          {String(Math.floor(props.elapsed! / 60)).padStart(2, "0")}:
+          {String(props.elapsed! % 60).padStart(2, "0")}
+        </span>
+      </Show>
+
+      <Show when={!playing()}>
+        <span class="badge ml-auto shrink-0" style={{ "--pop": chip().pop }}>
+          {chip().label}
+        </span>
+      </Show>
     </div>
+  );
+}
+
+/**
+ * Everything a player needs before starting, in one panel.
+ *
+ * This replaces four stacked cards — title panel, tester notice, catch-up
+ * notice, how-to accordion, start card — that between them pushed the actual
+ * game a full screen down on a phone. They were all saying things worth
+ * saying; they just did not each need their own box. The day's caveat is a
+ * line here, and the rules are one tap away in the modal that the button opens
+ * anyway.
+ */
+function StartPanel(props: {
+  title: string;
+  tagline: string;
+  metric: string;
+  unlimited: boolean;
+  attemptsLeft: number;
+  isRetryGame: boolean;
+  isCatchUp: boolean;
+  isTesterWindow: boolean;
+  releaseAt: string | null;
+  busy: boolean;
+  startLabel: string;
+  onStart: () => void;
+  signedIn: boolean;
+  onboarded: boolean;
+  /** Where to come back to after signing in or finishing a profile. */
+  next: string;
+}) {
+  const runs = () =>
+    props.unlimited
+      ? "Unlimited runs · tester"
+      : props.isRetryGame
+        ? `${props.attemptsLeft} run${props.attemptsLeft === 1 ? "" : "s"} left today`
+        : "One attempt";
+
+  return (
+    <section
+      class="relative overflow-hidden rounded-lg px-4 py-6 text-center sm:px-6"
+      style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--paper-2)" }}
+    >
+      <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <Confetti seed={`game-${props.title}`} count={6} animate />
+      </div>
+
+      <div class="relative space-y-3">
+        <h1 class="text-3xl sm:text-4xl">{props.title}</h1>
+        <Show when={props.tagline}>
+          <p class="mx-auto max-w-prose font-semibold text-muted">{props.tagline}</p>
+        </Show>
+
+        <div class="flex flex-wrap items-center justify-center gap-2">
+          <span class="badge" style={{ "--pop": "var(--pop-yellow)" }}>
+            {METRIC_CHIP[props.metric] ?? "Ranked"}
+          </span>
+          <span class="badge" style={{ "--pop": "var(--paper-3)" }}>
+            {runs()}
+          </span>
+        </div>
+
+        {/* The day's caveat, when there is one. A line, not a panel. */}
+        <Show when={props.isCatchUp}>
+          <p class="mx-auto max-w-prose text-sm font-semibold" style={{ color: "var(--pop-blue)" }}>
+            This day has closed. You can still play it and it counts towards the overall board — but
+            not this day's leaderboard, and not for a rank.
+          </p>
+        </Show>
+        <Show when={props.isTesterWindow}>
+          <p class="mx-auto max-w-prose text-sm font-semibold text-warn">
+            Tester early access.
+            <Show when={props.releaseAt}>
+              {" "}
+              Public release in{" "}
+              <span class="font-mono tabular-nums">
+                <Countdown target={new Date(props.releaseAt!)} />
+              </span>
+              .
+            </Show>
+          </p>
+        </Show>
+
+        {/* One call to action, whichever one actually applies. */}
+        <div class="pt-1">
+          <Show
+            when={props.signedIn}
+            fallback={
+              <a
+                href={`/auth/signin?next=${encodeURIComponent(props.next)}`}
+                class="btn-brand inline-block px-10 py-3 text-lg"
+              >
+                Sign in to play
+              </a>
+            }
+          >
+            <Show
+              when={props.onboarded}
+              fallback={
+                <a
+                  href={`/onboarding?next=${encodeURIComponent(props.next)}`}
+                  class="btn-accent inline-block px-10 py-3 text-lg"
+                >
+                  Finish your profile
+                </a>
+              }
+            >
+              <button
+                type="button"
+                onClick={props.onStart}
+                disabled={props.busy}
+                class="btn-brand px-10 py-3 text-lg"
+              >
+                {props.busy ? "Starting…" : props.startLabel}
+              </button>
+            </Show>
+          </Show>
+        </div>
+        <p class="comment">
+          {props.signedIn && props.onboarded
+            ? "rules first, then the clock. they're short."
+            : "takes ten seconds. the clock doesn't start until you say so."}
+        </p>
+      </div>
+    </section>
   );
 }
 
