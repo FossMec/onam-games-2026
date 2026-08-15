@@ -61,6 +61,12 @@ function Denied(props: { signedIn: boolean }) {
           <SpriteIcon name="tux-king" size={64} animate="float" alt="" />
         </div>
 
+        <p class="text-xs font-black uppercase tracking-widest">FOSS ONAM</p>
+        <p class="font-semibold leading-relaxed">
+          A free, open-source online festival by FOSS MEC with daily browser games, fair-play
+          leaderboards, and the Code-a-Pookalam community art contest.
+        </p>
+
         <Show
           when={props.signedIn}
           fallback={

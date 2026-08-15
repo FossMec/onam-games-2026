@@ -14,14 +14,14 @@ export default function App() {
     <Router
       root={(props) => (
         <MetaProvider>
-          <Title>FOSS Onam Games 2026 — FOSS MEC</Title>
+          <Title>FOSS ONAM — FOSS Onam Games by FOSS MEC</Title>
           <Meta
             name="description"
             content="Seven days of games. One week of Onam. A comic-themed, open-source celebration with daily browser challenges, Code-a-Pookalam, and live leaderboards by FOSS MEC."
           />
           <Meta name="author" content="Dijith Dinesh" />
           <Meta name="creator" content="Dijith Dinesh" />
-          <Meta property="og:title" content="FOSS Onam Games 2026 — FOSS MEC" />
+          <Meta property="og:title" content="FOSS ONAM — FOSS Onam Games by FOSS MEC" />
           <Meta
             property="og:description"
             content="Seven days of games. One week of Onam. Designed & engineered by Dijith Dinesh for FOSS MEC."

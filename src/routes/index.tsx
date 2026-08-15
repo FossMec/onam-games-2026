@@ -222,6 +222,10 @@ export default function Home() {
           >
             {EVENT.tagline}
           </p>
+          <p class="mx-auto max-w-2xl text-sm sm:text-base font-bold leading-relaxed">
+            FOSS Onam Games is a free, open-source online festival by FOSS MEC featuring daily
+            browser games, fair-play leaderboards, and the Code-a-Pookalam community art contest.
+          </p>
           <p class="mx-auto max-w-2xl font-semibold leading-relaxed">{EVENT.blurb}</p>
 
           {/* Linus Sadya Meme Sticker in Hero */}
