@@ -71,6 +71,13 @@
       "when": 1786789230456,
       "tag": "0009_lush_havok",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786809564340,
+      "tag": "0010_sharp_firebird",
+      "breakpoints": true
     }
   ]
 }

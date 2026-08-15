@@ -179,8 +179,13 @@ describe("win modal", () => {
     const html = renderToString(() => <WinModal {...base} valid />);
     expect(html).toContain("THEE THANNE NEE!");
     expect(html).toContain("130.8s");
-    expect(html).toContain("View leaderboard");
-    expect(html).toContain("See my board");
+    expect(html).toContain("Leaderboard");
+    expect(html).toContain("My board");
+  });
+
+  it("shows the share card inside the celebration when there is one", () => {
+    const html = renderToString(() => <WinModal {...base} valid share={<p>share-card-slot</p>} />);
+    expect(html).toContain("share-card-slot");
   });
 
   it("does not throw confetti at a rejected run", () => {
@@ -210,10 +215,9 @@ describe("brand marks", () => {
     expect(html).toContain('aria-label="Firefox"');
   });
 
-  it("keeps both halves of a trap pair on the same hand-drawn mark", () => {
-    // A logo that appears for Chrome but not Chromium would be the answer.
-    for (const id of ["chrome", "chromium", "vscode", "vscodium"]) {
-      expect(BRAND_ICONS[id], id).toBeUndefined();
+  it("renders the real logo for curated brands", () => {
+    for (const id of ["chrome", "chromium", "vscode", "debian", "photoshop", "canva", "windows"]) {
+      expect(BRAND_ICONS[id], id).toBeDefined();
     }
   });
 

@@ -268,11 +268,9 @@ export const GAMES: readonly GameDef[] = [
     gameType: "jump",
     metric: "score",
     /**
-     * Retries are the whole appeal, but unbounded retries are both unfair
-     * against four one-shot games and an open compute tap for replay
-     * verification. Twelve keeps the "one more go" hook and bounds both.
+     * Three runs allowed per player today. Best score counts.
      */
-    maxAttempts: 12,
+    maxAttempts: 3,
     minPlausibleMs: 3_000,
     maxDurationMs: 6 * MINUTE,
     /** ~40k frames of delta-encoded input, with headroom. */
@@ -282,10 +280,10 @@ export const GAMES: readonly GameDef[] = [
       tagline: "One year of freedom. Infinite platforms. Zero dignity.",
       hint: "Paathalam is below. Kerala is above. Start climbing.",
       howTo: [
-        "Hold the left or right half of the board to steer. Maveli jumps on his own — he has done this before.",
-        "Yellow platforms break, blue ones move, pink ones launch you.",
+        "Hold the left or right half of the board or tilt your phone to steer. Maveli jumps on his own.",
+        "Mint platforms are safe, orange platforms launch high, blue ones move, yellow ones break.",
         "Height above Paathalam is your score.",
-        "Twelve runs today. Your best one is the one that counts.",
+        "Three runs today. Your best one is the one that counts.",
       ],
     },
     /**

@@ -21,7 +21,7 @@ export interface BlockedIpRow {
 export interface SuspiciousRow {
   id: string;
   eventType: string;
-  severity: "info" | "warn" | "critical" | string;
+  severity: "info" | "warn" | "critical" | (string & {});
   actionTaken: string;
   details: unknown;
   ip: string | null;

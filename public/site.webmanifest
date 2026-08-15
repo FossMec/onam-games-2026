@@ -1,0 +1,21 @@
+{
+  "name": "FOSS ONAM — FOSS Onam Games",
+  "short_name": "FOSS ONAM",
+  "description": "Seven days of games. One week of Onam. A comic-themed, open-source online festival with daily browser challenges & leaderboards by FOSS MEC.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fbf6ea",
+  "theme_color": "#22202b",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

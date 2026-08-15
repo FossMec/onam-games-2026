@@ -26,8 +26,6 @@ import { TINDER_CARDS, type TinderCard } from "../data/tinder-cards";
  */
 
 export const TINDER_DECK_SIZE = 20;
-/** Guaranteed minimum of brand-trap cards (Chromium vs Chrome, etc). */
-const MIN_TRICKY = 6;
 
 /**
  * Time added to the clock for every card called wrong.
@@ -53,25 +51,13 @@ export interface TinderSubmission {
   passes: TinderDecision[][];
 }
 
-/**
- * Deterministically deal a deck. Balanced roughly 50/50 so neither swipe
- * direction is a winning default, and salted with tricky cards.
- */
 export function dealDeck(seed: string): TinderCard[] {
   const rng = createRng(seed);
-  const open = TINDER_CARDS.filter((c) => c.open);
-  const closed = TINDER_CARDS.filter((c) => !c.open);
+  const open = rng.shuffle(TINDER_CARDS.filter((c) => c.open));
+  const closed = rng.shuffle(TINDER_CARDS.filter((c) => !c.open));
 
   const half = Math.floor(TINDER_DECK_SIZE / 2);
-  const trickyOpen = rng.shuffle(open.filter((c) => c.tricky));
-  const trickyClosed = rng.shuffle(closed.filter((c) => c.tricky));
-  const plainOpen = rng.shuffle(open.filter((c) => !c.tricky));
-  const plainClosed = rng.shuffle(closed.filter((c) => !c.tricky));
-
-  const trickyPerSide = Math.ceil(MIN_TRICKY / 2);
-  const picked = [...trickyOpen.slice(0, trickyPerSide), ...trickyClosed.slice(0, trickyPerSide)];
-  picked.push(...plainOpen.slice(0, half - trickyPerSide));
-  picked.push(...plainClosed.slice(0, TINDER_DECK_SIZE - half - trickyPerSide));
+  const picked = [...open.slice(0, half), ...closed.slice(0, TINDER_DECK_SIZE - half)];
 
   return rng.shuffle(picked);
 }

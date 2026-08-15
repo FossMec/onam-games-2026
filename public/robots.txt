@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /onboarding
+
+Sitemap: https://foss-onam-games.vercel.app/sitemap.xml

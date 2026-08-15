@@ -183,6 +183,8 @@ export async function adminCreateGame(input: {
   difficulty?: string;
   releaseAt?: string | null;
   endAt?: string | null;
+  /** Null = derive it from `schedule.preview_hours`, which is the normal case. */
+  previewAt?: string | null;
   testerEarlyHours?: number;
   published?: boolean;
 }) {
@@ -198,6 +200,7 @@ export async function adminCreateGame(input: {
       difficulty: input.difficulty ?? "normal",
       releaseAt: input.releaseAt ? new Date(input.releaseAt) : null,
       endAt: input.endAt ? new Date(input.endAt) : null,
+      previewAt: input.previewAt ? new Date(input.previewAt) : null,
       testerEarlyHours: input.testerEarlyHours ?? 24,
       published: input.published ?? false,
     });
@@ -214,6 +217,7 @@ export async function adminUpdateGame(
     difficulty: string;
     releaseAt: string | null;
     endAt: string | null;
+    previewAt: string | null;
     testerEarlyHours: number;
     published: boolean;
   }>,
@@ -229,6 +233,11 @@ export async function adminUpdateGame(
           ? null
           : undefined,
       endAt: patch.endAt ? new Date(patch.endAt) : patch.endAt === null ? null : undefined,
+      previewAt: patch.previewAt
+        ? new Date(patch.previewAt)
+        : patch.previewAt === null
+          ? null
+          : undefined,
     })
     .where(eq(games.id, id));
 }

@@ -326,31 +326,33 @@ function VallamDemo() {
           />
 
           {/* The blocker, moving up its own column to clear the lane. */}
-          <rect
-            x="104"
-            y="26"
-            width="22"
-            height="44"
-            rx="8"
-            fill="var(--pop-blue)"
-            stroke={INK}
-            stroke-width="2.5"
-            style={{ animation: "demo-blocker-up 4s ease-in-out infinite" }}
-          />
+          <g style={{ animation: "demo-blocker-up 4s ease-in-out infinite" }}>
+            <image
+              href="/sprites/vallam/boat-canoe.webp"
+              x="93"
+              y="37"
+              width="44"
+              height="22"
+              transform="rotate(90 115 48)"
+              style={{
+                filter: "hue-rotate(40deg) saturate(1.2) drop-shadow(0 2px 3px rgba(34,32,43,0.3))",
+              }}
+            />
+          </g>
 
           {/* The chundan vallam, out through the right edge. */}
           <g style={{ "--slide": "94px", animation: "demo-slide-out 4s ease-in-out infinite" }}>
-            <rect
-              x="30"
-              y="52"
-              width="66"
-              height="22"
-              rx="10"
-              fill="var(--pop-red)"
-              stroke={INK}
-              stroke-width="2.5"
-            />
-            <circle cx="44" cy="63" r="4" fill={PAPER} stroke={INK} stroke-width="2" />
+            <g transform="translate(30, 52)">
+              <image
+                href="/sprites/vallam/hero-vallam.webp"
+                x="-68"
+                y="0"
+                width="68"
+                height="22"
+                transform="scale(-1, 1)"
+                style={{ filter: "drop-shadow(0 2px 3px rgba(34,32,43,0.3))" }}
+              />
+            </g>
           </g>
         </svg>
       </div>
@@ -361,51 +363,218 @@ function VallamDemo() {
   );
 }
 
-/** Maveli climbs. Hold a side to steer. */
+/** Maveli climbs. Hold a side or tilt to steer. */
 function JumpDemo() {
+  const [anim, setAnim] = createSignal({
+    px: 30,
+    py: 78,
+    moveX: 86,
+    sprite: "/sprites/jump/maveli-jump.webp",
+    balloonVisible: true,
+    showUmbrellaBurst: false,
+    flip: false,
+  });
+
+  onMount(() => {
+    let frame = 0;
+    const interval = setInterval(() => {
+      frame = (frame + 1) % 180; // 3 seconds cycle at 60fps
+      const t = frame / 180; // 0 to 1
+
+      // Moving platform position:
+      const moveX = 86 + Math.sin(t * Math.PI * 4) * 16;
+
+      let px = 30;
+      let py = 78;
+      let sprite = "/sprites/jump/maveli-jump.webp";
+      let balloonVisible = true;
+      let showUmbrellaBurst = false;
+      let flip = false;
+
+      if (t < 0.28) {
+        // Hop 1: Bottom Mint (x: 30, y: 78) -> Moving Blue Platform
+        const p = t / 0.28;
+        px = 30 + p * (moveX + 10 - 30);
+        py = 78 - Math.sin(p * Math.PI) * 36;
+        sprite = p > 0.5 ? "/sprites/jump/maveli-fall.webp" : "/sprites/jump/maveli-jump.webp";
+      } else if (t < 0.55) {
+        // Hop 2: Blue Platform -> Balloon Grab (x: 102, y: 38)
+        const p = (t - 0.28) / 0.27;
+        px = moveX + 10 + p * (102 - (moveX + 10));
+        py = 50 - Math.sin(p * Math.PI) * 32;
+        if (p > 0.45) {
+          balloonVisible = false;
+          sprite = "/sprites/jump/maveli-balloon.webp";
+        } else {
+          sprite = "/sprites/jump/maveli-jump.webp";
+        }
+      } else if (t < 0.78) {
+        // Hop 3: Float down onto Orange Umbrella Spring Platform (x: 165, y: 22)
+        const p = (t - 0.55) / 0.23;
+        balloonVisible = false;
+        px = 102 + p * (165 - 102);
+        py = 32 + p * (22 - 32) + Math.sin(p * Math.PI) * 4;
+        sprite = "/sprites/jump/maveli-balloon.webp";
+      } else {
+        // Hop 4: BOING! Super Launch off Umbrella Platform with Olakuda!
+        const p = (t - 0.78) / 0.22;
+        balloonVisible = false;
+        showUmbrellaBurst = true;
+        flip = true;
+        px = 165 - p * 135;
+        py = 22 - Math.sin(p * Math.PI) * 58;
+        sprite = "/sprites/jump/maveli-umbrella.webp";
+      }
+
+      setAnim({
+        px,
+        py,
+        moveX,
+        sprite,
+        balloonVisible,
+        showUmbrellaBurst,
+        flip,
+      });
+    }, 1000 / 60);
+
+    onCleanup(() => clearInterval(interval));
+  });
+
   return (
     <Stage seed="demo-jump">
-      <div class="absolute inset-0 grid place-items-center">
-        <div class="relative" style={{ width: "150px", height: "140px" }}>
-          <For
-            each={[
-              { x: 4, y: 108, pop: "var(--paper-2)" },
-              { x: 48, y: 78, pop: "var(--pop-yellow)" },
-              { x: 92, y: 48, pop: "var(--pop-blue)" },
-              { x: 40, y: 20, pop: "var(--pop-pink)" },
-            ]}
+      <div class="absolute inset-0 grid place-items-center pb-5">
+        <svg
+          viewBox="0 0 220 130"
+          class="w-full h-full max-w-[240px] max-h-[140px] overflow-visible select-none"
+          aria-hidden="true"
+        >
+          {/* Subtle comic height guide line */}
+          <line
+            x1="10"
+            y1="35"
+            x2="210"
+            y2="35"
+            stroke="var(--ink)"
+            stroke-width="1.5"
+            stroke-dasharray="4 4"
+            opacity="0.25"
+          />
+          <text
+            x="15"
+            y="30"
+            fill="var(--ink)"
+            opacity="0.5"
+            font-size="8"
+            font-weight="800"
+            font-family="var(--font-stack-mono)"
           >
-            {(p) => (
-              <div
-                class="absolute rounded"
-                style={{
-                  left: `${p.x}px`,
-                  top: `${p.y}px`,
-                  width: "44px",
-                  height: "9px",
-                  background: p.pop,
-                  border: "var(--ink-w) solid var(--ink)",
-                }}
-              />
-            )}
-          </For>
-          <div
-            class="absolute"
-            style={{
-              left: "12px",
-              top: "76px",
-              animation: "demo-hop 2.6s ease-in-out infinite",
-            }}
+            100 m
+          </text>
+
+          {/* Platform 1: Mint Normal */}
+          <g transform="translate(18, 98)">
+            <rect
+              width="46"
+              height="10"
+              rx="4"
+              fill="#2ec4b6"
+              stroke="var(--ink)"
+              stroke-width="2"
+            />
+            <line
+              x1="15"
+              y1="0"
+              x2="15"
+              y2="10"
+              stroke="var(--ink)"
+              stroke-width="1.5"
+              opacity="0.4"
+            />
+            <line
+              x1="31"
+              y1="0"
+              x2="31"
+              y2="10"
+              stroke="var(--ink)"
+              stroke-width="1.5"
+              opacity="0.4"
+            />
+          </g>
+
+          {/* Platform 2: Blue Moving */}
+          <g transform={`translate(${anim().moveX}, 68)`}>
+            <rect
+              width="46"
+              height="10"
+              rx="4"
+              fill="#3a86ff"
+              stroke="var(--ink)"
+              stroke-width="2"
+            />
+            <path d="M 8 5 L 14 2 L 14 8 Z" fill="#ffffff" />
+            <path d="M 38 5 L 32 2 L 32 8 Z" fill="#ffffff" />
+          </g>
+
+          {/* Platform 3: Orange Umbrella Launch */}
+          <g transform="translate(154, 40)">
+            <rect
+              width="46"
+              height="10"
+              rx="4"
+              fill="#ff9f1c"
+              stroke="var(--ink)"
+              stroke-width="2"
+            />
+            <path
+              d="M 23 0 A 7 7 0 0 1 30 -7 L 16 -7 A 7 7 0 0 1 23 0 Z"
+              fill="#e71d36"
+              stroke="var(--ink)"
+              stroke-width="1.5"
+            />
+            <line x1="23" y1="-7" x2="23" y2="0" stroke="var(--ink)" stroke-width="1.5" />
+          </g>
+
+          {/* Tiny Floating Collectible Balloon */}
+          <Show when={anim().balloonVisible}>
+            <g transform="translate(102, 36)">
+              <image href="/sprites/jump/item-balloon.webp" width="14" height="14" />
+            </g>
+          </Show>
+
+          {/* Umbrella Super-Launch Burst Effect */}
+          <Show when={anim().showUmbrellaBurst}>
+            <g transform="translate(177, 36)">
+              <circle r="6" fill="#ffbf69" opacity="0.6" />
+              <line x1="0" y1="-3" x2="0" y2="-10" stroke="#e71d36" stroke-width="2" />
+              <line x1="-5" y1="-2" x2="-9" y2="-7" stroke="#e71d36" stroke-width="2" />
+              <line x1="5" y1="-2" x2="9" y2="-7" stroke="#e71d36" stroke-width="2" />
+            </g>
+          </Show>
+
+          {/* Animated Maveli Hopping & Sprite Switching */}
+          <g
+            transform={`translate(${anim().px}, ${anim().py}) ${anim().flip ? "scale(-1, 1)" : ""}`}
+            style={{ transition: "none" }}
           >
-            <SpriteIcon name="maveli-laptop" size={30} alt="" />
-          </div>
-        </div>
+            <image
+              href={anim().sprite}
+              x={anim().flip ? -26 : 0}
+              y={anim().sprite.includes("umbrella") || anim().sprite.includes("balloon") ? -10 : 0}
+              width={
+                anim().sprite.includes("umbrella") || anim().sprite.includes("balloon") ? 32 : 24
+              }
+              height={
+                anim().sprite.includes("umbrella") || anim().sprite.includes("balloon") ? 34 : 26
+              }
+              style={{ filter: "drop-shadow(0 2px 3px rgba(34,32,43,0.35))" }}
+            />
+          </g>
+        </svg>
       </div>
-      <div class="absolute inset-x-0 bottom-1.5 flex items-center justify-between px-3 text-[0.65rem] font-extrabold uppercase tracking-wider text-muted">
-        <span>hold left</span>
-        <span style={{ color: "var(--pop-yellow-deep)" }}>yellow breaks · pink launches</span>
-        <span>hold right</span>
-      </div>
+
+      <p class="absolute inset-x-0 bottom-1 text-center text-[0.65rem] font-extrabold uppercase tracking-wider text-muted">
+        hold sides or tilt phone to steer
+      </p>
     </Stage>
   );
 }

@@ -7,7 +7,6 @@ import { HttpError } from "~/server/errors";
 import { revealDeck } from "./impl/tinder";
 import type { GameAssets, GameDef, GameMetric } from "./registry";
 import { requireGameDef } from "./registry";
-import { newSeed } from "./rng";
 import type { ViewerRole } from "./service";
 import { getGameBySlug, resolveSchedule } from "./service";
 import { updateStreak } from "./streak";
@@ -73,11 +72,15 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
    *
    * A late run counts towards the overall table at the completion floor and
    * never appears on that day's leaderboard; `finishAttempt` derives that from
-   * the server clock, so nothing here has to be trusted. Only `upcoming` is
-   * refused, because releasing a puzzle early is the one thing that cannot be
-   * undone.
+   * the server clock, so nothing here has to be trusted.
+   *
+   * `upcoming` and `preview` are refused, because releasing a puzzle early is
+   * the one thing that cannot be undone. Preview shows a player what the game
+   * is; the seed still only exists once the clock says so, and this check is
+   * what makes that true rather than the button being hidden — the endpoint is
+   * callable directly.
    */
-  if (game.status === "upcoming") {
+  if (game.status === "upcoming" || game.status === "preview") {
     throw new HttpError(403, "This game is not available yet");
   }
   const def = requireGameDef(game.gameType);
@@ -128,7 +131,8 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
     );
   }
 
-  const seed = newSeed();
+  // Canonical daily seed ensures fair competition — every player receives the exact same puzzle/level.
+  const seed = sha256(`foss-onam:daily-game:${game.slug}:day-${game.day}`);
   const { view } = def.generate(seed, game.difficulty, game.assets as GameAssets);
   const attemptNumber = (prior[0]?.attemptNumber ?? 0) + 1;
   const now = new Date();

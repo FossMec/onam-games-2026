@@ -131,6 +131,13 @@ export const games = pgTable(
     difficulty: text("difficulty").notNull().default("normal"),
     releaseAt: timestamp("release_at", { withTimezone: true }),
     endAt: timestamp("end_at", { withTimezone: true }),
+    /**
+     * When the game stops being a "???" and starts showing its title, art and
+     * rules — while still refusing to be played. Null means "derive it from
+     * `schedule.preview_hours` before the release", which is how every game
+     * runs unless somebody sets a one-off.
+     */
+    previewAt: timestamp("preview_at", { withTimezone: true }),
     testerEarlyHours: integer("tester_early_hours").notNull().default(24),
     status: gameStatusEnum("status").notNull().default("upcoming"),
     /**

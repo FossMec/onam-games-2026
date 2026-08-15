@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, lt, ne, or, sql } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
 import { dailyLeaderboard, games, users } from "~/server/db/schema";
 import type { GameMetric } from "~/server/games/registry";
@@ -37,6 +37,9 @@ export interface DailyBoard {
   settled: boolean;
   entries: DailyEntry[];
   myEntry: DailyEntry | null;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export function metricLabel(metric: GameMetric): string {
@@ -57,7 +60,9 @@ export async function getDailyLeaderboard(
   gameId: string,
   viewerRole: ViewerRole,
   viewerUserId: string | null,
-  limit = 50,
+  viewMode: "main" | "tester" = "main",
+  page = 1,
+  pageSize = 50,
 ): Promise<DailyBoard> {
   const db = getDb();
   const [game] = await db
@@ -67,14 +72,30 @@ export async function getDailyLeaderboard(
     .limit(1);
 
   const metric: GameMetric = game ? (getGameDefByType(game.gameType)?.metric ?? "time") : "time";
-  const includeTesters = viewerRole !== "player";
-  const now = new Date();
   const filters = [
     eq(dailyLeaderboard.gameId, gameId),
     eq(dailyLeaderboard.isFlagged, false),
-    eq(users.banLevel, 0),
-    or(isNull(users.banUntil), lt(users.banUntil, now)),
-    includeTesters ? undefined : ne(users.role, "tester"),
+    /*
+     * Only a hard ban takes a run off the board.
+     *
+     * This used to demand `banLevel = 0`, which quietly deleted anyone holding
+     * a level-1 *warning* from every board — and a warning is explicitly the
+     * level that "costs an honest player nothing" (`auth/bans.ts`), handed out
+     * for things as innocent as sharing a hostel's NAT IP. The player was told
+     * their run counted, the run was verified, and then it was nowhere, with no
+     * message explaining why.
+     *
+     * Levels 2 and 3 stay visible too. They are a timed bench on *playing*, and
+     * the ban notice itself promises "the leaderboard is still yours to watch";
+     * hiding an already-earned score for three hours and then restoring it
+     * reads as a bug from every direction. Level 4 is the only level that means
+     * "out of the games", and the rest of the codebase already uses `>= 4` as
+     * the line — this was the one place that disagreed.
+     */
+    lt(users.banLevel, 4),
+    viewerRole === "player" || viewMode === "main"
+      ? and(ne(users.role, "tester"), ne(users.role, "admin"))
+      : or(eq(users.role, "tester"), eq(users.role, "admin")),
   ];
   const rankingOrder =
     metric === "score"
@@ -82,6 +103,10 @@ export async function getDailyLeaderboard(
       : metric === "fcfs"
         ? sql`${dailyLeaderboard.submittedAt} asc, ${dailyLeaderboard.startedAt} asc`
         : sql`${dailyLeaderboard.durationMs} asc, ${dailyLeaderboard.startedAt} asc`;
+
+  const safePage = Math.max(1, page);
+  const safePageSize = Math.min(100, Math.max(1, pageSize));
+  const offset = (safePage - 1) * safePageSize;
 
   const rows = await db
     .select({
@@ -114,10 +139,12 @@ export async function getDailyLeaderboard(
           : asc(dailyLeaderboard.durationMs),
       asc(dailyLeaderboard.startedAt),
     )
-    .limit(limit);
+    .limit(safePageSize)
+    .offset(offset);
 
   const settled = !!game?.settledAt;
   const fieldSize = rows[0]?.fieldSize ?? 0;
+  const totalPages = Math.max(1, Math.ceil(fieldSize / safePageSize));
 
   const toEntry = (row: (typeof rows)[number], rank: number): DailyEntry => ({
     rank,
@@ -209,6 +236,9 @@ export async function getDailyLeaderboard(
     settled,
     entries,
     myEntry,
+    page: safePage,
+    pageSize: safePageSize,
+    totalPages,
   };
 }
 

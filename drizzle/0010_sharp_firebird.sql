@@ -1,0 +1,1 @@
+ALTER TABLE "games" ADD COLUMN "preview_at" timestamp with time zone;

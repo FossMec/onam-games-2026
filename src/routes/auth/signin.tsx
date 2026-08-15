@@ -22,7 +22,6 @@ export default function SignIn() {
         src="/images/memes/need-more-tokens.webp"
         alt="Need More Tokens Meme"
         class="w-36 sm:w-44 h-auto object-contain select-none animate-bounce-short"
-        style={{ filter: "drop-shadow(3px 3px 0 var(--ink))" }}
       />
 
       <div

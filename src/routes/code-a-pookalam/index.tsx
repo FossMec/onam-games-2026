@@ -239,13 +239,11 @@ export default function CodeAPookalam() {
       {/* ---------------------------------------------------- BOTTOM CTA */}
       <section class="card pop-yellow text-center space-y-4 p-6 sm:p-8 relative overflow-hidden">
         <Confetti seed="pookalam-footer" count={8} animate />
-        <div class="relative z-10 space-y-3 max-w-lg mx-auto">
-          <SpriteIcon
-            name="octocat-garland"
-            size={52}
-            animate="wobble"
-            interactive
-            class="mx-auto"
+        <div class="relative z-10 space-y-3 max-w-lg mx-auto flex flex-col items-center">
+          <img
+            src="/images/memes/meme-deploy.webp"
+            alt="Deploy Flower Carpet Meme"
+            class="w-28 sm:w-36 h-auto object-contain select-none mx-auto"
           />
           <h2 class="text-2xl sm:text-3xl font-black">Ready to deploy your flower carpet?</h2>
           <p class="comment">

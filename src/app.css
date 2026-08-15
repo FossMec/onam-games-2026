@@ -1002,6 +1002,33 @@ a {
   }
 }
 
+@keyframes demo-jump-hop {
+  0% {
+    transform: translate(28px, 72px);
+  }
+  15% {
+    transform: translate(63px, 30px);
+  }
+  30% {
+    transform: translate(98px, 42px);
+  }
+  45% {
+    transform: translate(132px, 2px);
+  }
+  60% {
+    transform: translate(165px, 14px);
+  }
+  75% {
+    transform: translate(96px, -40px);
+  }
+  90% {
+    transform: translate(45px, 20px);
+  }
+  100% {
+    transform: translate(28px, 72px);
+  }
+}
+
 /* Everything in a demo scrolls upward as the loop restarts. */
 @keyframes demo-fade-cycle {
   0%,

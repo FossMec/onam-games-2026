@@ -27,6 +27,14 @@ export interface WinModalProps {
   reason?: string;
   /** The headline figures — time, score, penalty — as the caller renders them. */
   figures: JSX.Element;
+  /**
+   * The share card, drawn and ready to post.
+   *
+   * Shown *inside* the celebration rather than behind a button: this is the one
+   * moment a player is proud of a number, and a card they can already see gets
+   * shared far more often than one they have to go looking for.
+   */
+  share?: JSX.Element;
   afterDeadline: boolean;
   isPersonalBest: boolean;
   /** Shown when a retry game has runs left. */
@@ -96,18 +104,40 @@ export function WinModal(props: WinModalProps) {
             </p>
           </Show>
 
+          {/*
+            The card, with no heading over it. A label saying "share this" above
+            a picture of the thing and a button marked Share is three ways of
+            saying one thing, and on a phone every one of them costs a row that
+            pushes "Go again" under the fold.
+          */}
+          <Show when={props.share}>
+            <div
+              class="rounded p-2"
+              style={{
+                background: "var(--paper-3)",
+                border: "var(--ink-w) solid var(--ink)",
+              }}
+            >
+              {props.share}
+            </div>
+          </Show>
+
           <div class="flex flex-col gap-2 pt-1">
             <Show when={props.onGoAgain}>
               <button type="button" class="btn-brand text-lg" onClick={props.onGoAgain}>
                 Go again
               </button>
             </Show>
-            <a href="/leaderboard" class="btn-accent">
-              View leaderboard
-            </a>
-            <button type="button" class="btn-ghost" onClick={props.onClose}>
-              {props.valid ? "See my board" : "Close"}
-            </button>
+            {/* Two ways onward, on one row. Short labels — at half width these
+                buttons are ~150px and anything longer wraps to two lines. */}
+            <div class="grid grid-cols-2 gap-2">
+              <a href="/leaderboard" class="btn-accent">
+                Leaderboard
+              </a>
+              <button type="button" class="btn-ghost" onClick={props.onClose}>
+                {props.valid ? "My board" : "Close"}
+              </button>
+            </div>
           </div>
         </div>
       </div>

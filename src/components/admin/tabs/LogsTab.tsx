@@ -1,4 +1,4 @@
-import { Code, Eye, Search, X } from "lucide-solid";
+import { Eye, Search, X } from "lucide-solid";
 import { For, Show, createMemo, createSignal } from "solid-js";
 
 export interface ActivityRow {
@@ -197,7 +197,9 @@ function MetadataPreview(props: { meta: unknown; onExpand: () => void }) {
           <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--paper-2)] border border-[var(--ink-soft)]/40 text-[11px] font-mono">
             <span class="opacity-60">{key}:</span>
             <span class="font-bold truncate max-w-[120px]">
-              {typeof val === "object" ? JSON.stringify(val) : String(val)}
+              {typeof val === "string" || typeof val === "number" || typeof val === "boolean"
+                ? String(val)
+                : JSON.stringify(val)}
             </span>
           </span>
         )}

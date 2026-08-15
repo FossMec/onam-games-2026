@@ -1,6 +1,6 @@
 import { Title } from "@solidjs/meta";
 import { createAsync } from "@solidjs/router";
-import { ChevronLeft, ChevronRight, Clock, HelpCircle, Lock } from "lucide-solid";
+import { BookOpen, ChevronLeft, ChevronRight, Clock, HelpCircle, Lock, Zap } from "lucide-solid";
 import { For, Show, createEffect, createSignal } from "solid-js";
 
 import { Countdown } from "~/components/Countdown";
@@ -70,6 +70,7 @@ const GAME_TEASERS: Record<number, { hint: string; icon: SpriteName }> = {
 const statusSticker: Record<string, { label: string; pop: string }> = {
   live: { label: "Live now", pop: "var(--pop-teal)" },
   tester: { label: "Tester access", pop: "var(--pop-purple)" },
+  preview: { label: "Opens soon", pop: "var(--pop-yellow)" },
   upcoming: { label: "Locked", pop: "var(--paper-3)" },
   closed: { label: "Catch up", pop: "var(--pop-blue)" },
 };
@@ -182,7 +183,10 @@ export default function Home() {
       {/* ------------------------------------------------------------- hero */}
       <section
         class="relative overflow-hidden rounded-lg px-5 py-10 text-center"
-        style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--paper-2)" }}
+        style={{
+          border: "var(--ink-w-bold) solid var(--ink)",
+          background: "var(--paper-2)",
+        }}
       >
         <Confetti seed="hero" count={10} animate />
         <SpriteScatter
@@ -209,9 +213,17 @@ export default function Home() {
             <div class="flex justify-end">
               <SpriteIcon name="maveli-laptop" size={48} animate="float" interactive />
             </div>
-            <h1 class="wordmark text-4xl sm:text-6xl" data-text="FOSS ONAM">
-              FOSS ONAM
-            </h1>
+            <div class="inline-flex flex-col items-end">
+              <h1 class="wordmark text-4xl sm:text-6xl tracking-wider" data-text="FOSS ONAM">
+                FOSS ONAM
+              </h1>
+              <span
+                class="text-[0.68rem] sm:text-xs font-black tracking-widest uppercase text-muted pr-1 -mt-1 sm:-mt-2 select-none"
+                style={{ "font-family": "var(--font-stack-display)", opacity: "0.85" }}
+              >
+                by fossmec
+              </span>
+            </div>
             <div class="flex justify-start">
               <SpriteIcon name="tux-king" size={48} animate="float" delay={1.2} interactive />
             </div>
@@ -228,14 +240,15 @@ export default function Home() {
           </p>
           <p class="mx-auto max-w-2xl font-semibold leading-relaxed">{EVENT.blurb}</p>
 
-          {/* Linus Sadya Meme Sticker in Hero */}
+          {/* Linus Sadya Meme Sticker in Hero (Clicking scrolls to games section) */}
           <div class="flex justify-center py-1">
-            <img
-              src="/images/memes/talk-is-cheap-sadya.webp"
-              alt="Talk is cheap. Give me Sadya."
-              class="w-36 xs:w-44 sm:w-52 h-auto object-contain select-none transition-transform hover:rotate-1"
-              style={{ filter: "drop-shadow(3px 3px 0 var(--ink))" }}
-            />
+            <a href="#games-arena" class="cursor-pointer inline-block" title="Jump to Daily Games">
+              <img
+                src="/images/memes/talk-is-cheap-sadya.webp"
+                alt="Talk is cheap. Give me Sadya."
+                class="w-36 xs:w-44 sm:w-52 h-auto object-contain select-none"
+              />
+            </a>
           </div>
 
           <div class="flex flex-col items-center gap-2 pt-1 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3">
@@ -251,7 +264,7 @@ export default function Home() {
               </Show>
             </a>
             <div class="flex items-center justify-center gap-2 w-full sm:w-auto">
-              <a href="#pookalam" class="btn-accent whitespace-nowrap">
+              <a href="/code-a-pookalam" class="btn-accent whitespace-nowrap">
                 Code-a-Pookalam
               </a>
               <a href="/leaderboard" class="btn-ghost whitespace-nowrap">
@@ -272,7 +285,10 @@ export default function Home() {
       <Section title="Code-a-Pookalam" id="pookalam" confettiSeed="pookalam-sec" confettiCount={5}>
         <div
           class="relative overflow-hidden rounded-lg p-4 sm:p-6"
-          style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--pop-pink)" }}
+          style={{
+            border: "var(--ink-w-bold) solid var(--ink)",
+            background: "var(--pop-pink)",
+          }}
         >
           <Confetti seed="pookalam-box" count={6} animate />
           <Halftone opacity={0.12} />
@@ -357,7 +373,6 @@ export default function Home() {
               src="/images/memes/sudo-mkdir-pookalam.webp"
               alt="Sudo mkdir pookalam meme"
               class="w-28 xs:w-32 sm:w-36 md:w-40 h-auto object-contain select-none shrink-0 self-center block"
-              style={{ filter: "drop-shadow(3px 3px 0 var(--ink))" }}
             />
           </div>
         </div>
@@ -378,6 +393,13 @@ export default function Home() {
           {(() => {
             const current = activeGame()!;
             const locked = current.status === "upcoming";
+            /*
+             * The reveal window. Not locked — the art, the title and the pitch
+             * are all real from here — but not playable either, so the card
+             * offers a countdown and a way in to read the rules rather than a
+             * play button that would only bounce off the server.
+             */
+            const previewing = current.status === "preview";
             const sticker = statusSticker[current.status] ?? statusSticker.upcoming;
             const teaser = GAME_TEASERS[current.day] ?? {
               hint: "A mystery game",
@@ -458,7 +480,9 @@ export default function Home() {
                               <SpriteIcon name={teaser.icon} size={48} animate="wobble" />
                               <p
                                 class="text-xl font-extrabold uppercase tracking-widest"
-                                style={{ "font-family": "var(--font-stack-display)" }}
+                                style={{
+                                  "font-family": "var(--font-stack-display)",
+                                }}
                               >
                                 ? ? ? ?
                               </p>
@@ -489,7 +513,9 @@ export default function Home() {
                           <SpriteIcon name={teaser.icon} size={28} animate="wobble" interactive />
                           <span
                             class="text-xs font-extrabold uppercase tracking-widest"
-                            style={{ "font-family": "var(--font-stack-display)" }}
+                            style={{
+                              "font-family": "var(--font-stack-display)",
+                            }}
                           >
                             Day {current.day}
                           </span>
@@ -553,6 +579,24 @@ export default function Home() {
                               Unlocks on Day {current.day} evening
                             </p>
                           </div>
+                        </Show>
+
+                        <Show when={previewing}>
+                          <div class="card card-plain flex flex-col items-center justify-center gap-2 p-3 text-center">
+                            <p class="comment text-sm">Playable in</p>
+                            <Show
+                              when={current.releaseAt}
+                              fallback={<p class="font-extrabold">Later today</p>}
+                            >
+                              <Countdown target={new Date(current.releaseAt!)} />
+                            </Show>
+                          </div>
+                          <a
+                            href={playHref}
+                            class="btn-ghost w-full text-center text-base py-2.5 block"
+                          >
+                            Take a look before it opens →
+                          </a>
                         </Show>
 
                         <Show when={current.status === "live" || current.status === "tester"}>
@@ -627,7 +671,9 @@ export default function Home() {
                           >
                             <span
                               class="text-[11px] font-extrabold uppercase tracking-wider"
-                              style={{ "font-family": "var(--font-stack-display)" }}
+                              style={{
+                                "font-family": "var(--font-stack-display)",
+                              }}
                             >
                               Day {item.day}
                             </span>
@@ -635,7 +681,9 @@ export default function Home() {
                             {/* Actual 1:1 Event Image Thumbnail */}
                             <div
                               class="w-12 h-12 xs:w-14 xs:h-14 sm:w-16 sm:h-16 rounded aspect-square overflow-hidden bg-[var(--paper-3)] shrink-0 relative flex items-center justify-center"
-                              style={{ border: "var(--ink-w) solid var(--ink)" }}
+                              style={{
+                                border: "var(--ink-w) solid var(--ink)",
+                              }}
                             >
                               <Show
                                 when={!isLock}
@@ -706,10 +754,9 @@ export default function Home() {
             </p>
           </div>
           <img
-            src="/images/memes/talk-is-cheap-sadya.webp"
-            alt="Talk is cheap give me sadya meme"
+            src="/images/memes/meme-celebrate.webp"
+            alt="Celebrate Onam with FOSS MEC Meme"
             class="w-28 sm:w-36 h-auto object-contain select-none shrink-0"
-            style={{ filter: "drop-shadow(2px 2px 0 var(--ink))" }}
           />
         </div>
 
@@ -830,11 +877,95 @@ export default function Home() {
         </div>
       </Section>
 
+      {/* -------------------------------------------------------- Comics Teaser Section */}
+      <section
+        class="card pop-teal p-6 sm:p-8 relative overflow-hidden text-center sm:text-left shadow-sm"
+        style={{ border: "var(--ink-w-bold) solid var(--ink)" }}
+      >
+        <Confetti seed="comics-teaser" count={8} animate />
+        <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div class="space-y-2.5 max-w-xl">
+            <div class="flex items-center justify-center sm:justify-start gap-2">
+              <span
+                class="badge text-xs font-black uppercase px-2.5 py-0.5"
+                style={{ background: "var(--pop-yellow)", color: "var(--ink)" }}
+              >
+                <Zap size={12} class="inline mr-1" />
+                Special Edition
+              </span>
+              <span class="badge text-xs font-black uppercase px-2 py-0.5 bg-[var(--paper)] text-[var(--ink)]">
+                5 Full Comics
+              </span>
+            </div>
+
+            <h2
+              class="text-2xl sm:text-3xl md:text-4xl font-black text-[var(--ink)] m-0 leading-tight"
+              style={{ "font-family": "var(--font-stack-display)" }}
+            >
+              Tired of reading all these? Want to read some comics?
+            </h2>
+
+            <p class="text-xs sm:text-sm font-semibold text-[var(--ink)]/85 leading-relaxed">
+              Step into the hilarious comic multiverse of Maveli in Paathalam, Tux with Onam Sadya,
+              and Arch-user boat racers. 100% open-source festival laughs!
+            </p>
+
+            <div class="pt-1 flex justify-center sm:justify-start">
+              <a
+                href="/comics"
+                class="btn-brand text-sm sm:text-base px-5 py-2.5 inline-flex items-center gap-2 shadow-xs cursor-pointer"
+              >
+                <BookOpen size={18} strokeWidth={2.5} />
+                <span>Read The Comics →</span>
+              </a>
+            </div>
+          </div>
+
+          {/* Comic Preview Stack */}
+          <div class="flex items-center justify-center gap-2 sm:gap-3 shrink-0">
+            <a href="/comics" class="relative block cursor-pointer" title="Read Comics Vault">
+              <div
+                class="w-28 sm:w-36 aspect-square rounded-lg overflow-hidden shadow-xs"
+                style={{ border: "2.5px solid var(--ink)", background: "var(--paper)" }}
+              >
+                <img
+                  src="/images/comics/comic-1.webp"
+                  alt="Comic Issue 1"
+                  class="w-full h-full object-cover select-none"
+                  loading="lazy"
+                />
+              </div>
+            </a>
+
+            <a
+              href="/comics"
+              class="relative block cursor-pointer hidden xs:block"
+              title="Read Comics Vault"
+            >
+              <div
+                class="w-28 sm:w-36 aspect-square rounded-lg overflow-hidden shadow-xs"
+                style={{ border: "2.5px solid var(--ink)", background: "var(--paper)" }}
+              >
+                <img
+                  src="/images/comics/comic-2.webp"
+                  alt="Comic Issue 2"
+                  class="w-full h-full object-cover select-none"
+                  loading="lazy"
+                />
+              </div>
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* -------------------------------------------------------- last CTA */}
       <Show when={!me()}>
         <section
           class="relative overflow-hidden rounded-lg p-8 text-center"
-          style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--pop-yellow)" }}
+          style={{
+            border: "var(--ink-w-bold) solid var(--ink)",
+            background: "var(--pop-yellow)",
+          }}
         >
           <Confetti seed="cta" count={6} />
           <SpriteScatter

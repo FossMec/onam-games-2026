@@ -3,9 +3,18 @@ import { getDb } from "~/server/db/client";
 import { games } from "~/server/db/schema";
 import type { GameMetric } from "./registry";
 import { getGameDefByType } from "./registry";
-import { getSetting } from "~/server/settings/service";
+import { getSettings } from "~/server/settings/service";
 
-export type GameStatus = "upcoming" | "tester" | "live" | "closed";
+/**
+ * Where a game sits in its day.
+ *
+ *   upcoming  nothing is known: a "???" card with a countdown
+ *   preview   the reveal — title, art and rules visible, still not playable
+ *   tester    testers and admins only, ahead of the public release
+ *   live      open to everyone
+ *   closed    past its window; still playable for fun, off the daily board
+ */
+export type GameStatus = "upcoming" | "preview" | "tester" | "live" | "closed";
 export type ViewerRole = "player" | "tester" | "admin";
 
 export interface GameCard {
@@ -18,6 +27,8 @@ export interface GameCard {
   difficulty: string;
   releaseAt: string | null;
   endAt: string | null;
+  /** When the details stop being hidden. Drives the "opens in" countdown copy. */
+  previewAt: string | null;
   testerReleaseAt: string | null;
   status: GameStatus;
   /** Registry copy — safe for every game at every status. */
@@ -55,15 +66,31 @@ type ScheduleSettings = {
   eventStartDate: string;
   releaseTime: string;
   durationHours: number;
+  previewHours: number;
 };
 
+/**
+ * One query for the whole schedule.
+ *
+ * These four keys are always read together, and reading them one at a time cost
+ * a round trip each on every request that resolves a game's status — which is
+ * the home page, the game page and the leaderboard. Adding the preview window
+ * here made that four; batching makes it one.
+ */
 async function getScheduleSettings(): Promise<ScheduleSettings> {
-  const [eventStartDate, releaseTime, durationHours] = await Promise.all([
-    getSetting<string>("schedule.event_start_date", ""),
-    getSetting<string>("schedule.release_time", "19:00"),
-    getSetting<number>("schedule.game_duration_hours", 24),
+  const values = await getSettings([
+    "schedule.event_start_date",
+    "schedule.release_time",
+    "schedule.game_duration_hours",
+    "schedule.preview_hours",
   ]);
-  return { eventStartDate, releaseTime, durationHours };
+  const read = <T>(key: string, fallback: T): T => (values.get(key) as T) ?? fallback;
+  return {
+    eventStartDate: read("schedule.event_start_date", ""),
+    releaseTime: read("schedule.release_time", "19:00"),
+    durationHours: read("schedule.game_duration_hours", 24),
+    previewHours: read("schedule.preview_hours", 24),
+  };
 }
 
 function computeRelease(game: typeof games.$inferSelect, settings: ScheduleSettings): Date | null {
@@ -76,6 +103,25 @@ function computeRelease(game: typeof games.$inferSelect, settings: ScheduleSetti
   return new Date(midnightIstUtc + timeMs);
 }
 
+/**
+ * When a game stops being a mystery.
+ *
+ * A per-game `previewAt` wins; otherwise it is `preview_hours` before the
+ * release. Zero (or negative) hours means the reveal and the release are the
+ * same instant, which switches the preview window off entirely.
+ */
+function computePreview(
+  game: typeof games.$inferSelect,
+  releaseAt: Date,
+  settings: ScheduleSettings,
+): Date {
+  if (game.previewAt) return game.previewAt;
+  // Settings come back from jsonb and have been seen stored as strings, so the
+  // arithmetic is done on a number we coerced ourselves rather than a maybe.
+  const hours = Math.max(0, Number(settings.previewHours) || 0);
+  return new Date(releaseAt.getTime() - hours * HOUR_MS);
+}
+
 export async function resolveSchedule(
   game: typeof games.$inferSelect,
   viewerRole: ViewerRole,
@@ -83,19 +129,35 @@ export async function resolveSchedule(
 ): Promise<{
   releaseAt: Date | null;
   endAt: Date | null;
+  previewAt: Date | null;
   testerReleaseAt: Date | null;
   status: GameStatus;
 }> {
   const scheduleSettings = settings ?? (await getScheduleSettings());
   const releaseAt = computeRelease(game, scheduleSettings);
   if (!releaseAt) {
-    return { releaseAt: null, endAt: null, testerReleaseAt: null, status: "upcoming" };
+    return {
+      releaseAt: null,
+      endAt: null,
+      previewAt: null,
+      testerReleaseAt: null,
+      status: "upcoming",
+    };
   }
   const endAt =
     game.endAt ?? new Date(releaseAt.getTime() + scheduleSettings.durationHours * HOUR_MS);
   const testerEarlyHours = game.testerEarlyHours ?? 24;
   const testerReleaseAt = new Date(releaseAt.getTime() - testerEarlyHours * HOUR_MS);
+  const previewAt = computePreview(game, releaseAt, scheduleSettings);
 
+  /*
+   * Order matters, and it is not the order the fields are declared in.
+   *
+   * `tester` sits above `live` so a privileged viewer keeps early access, and
+   * `preview` sits *below* both: it is the weakest claim on the page, granting
+   * sight of a game and nothing else. A tester inside their window therefore
+   * still gets "tester" (playable) rather than being demoted to a preview.
+   */
   const now = Date.now();
   let status: GameStatus;
   if (now >= endAt.getTime()) {
@@ -104,10 +166,12 @@ export async function resolveSchedule(
     status = "tester";
   } else if (now >= releaseAt.getTime()) {
     status = "live";
+  } else if (now >= previewAt.getTime()) {
+    status = "preview";
   } else {
     status = "upcoming";
   }
-  return { releaseAt, endAt, testerReleaseAt, status };
+  return { releaseAt, endAt, previewAt, testerReleaseAt, status };
 }
 
 function toCard(
@@ -115,6 +179,7 @@ function toCard(
   schedule: {
     releaseAt: Date | null;
     endAt: Date | null;
+    previewAt: Date | null;
     testerReleaseAt: Date | null;
     status: GameStatus;
   },
@@ -130,6 +195,7 @@ function toCard(
     difficulty: game.difficulty,
     releaseAt: schedule.releaseAt?.toISOString() ?? null,
     endAt: schedule.endAt?.toISOString() ?? null,
+    previewAt: schedule.previewAt?.toISOString() ?? null,
     testerReleaseAt: schedule.testerReleaseAt?.toISOString() ?? null,
     status: schedule.status,
     // Only registry *copy* ships here. The previous version returned
@@ -155,6 +221,10 @@ function toCard(
  *
  * What survives is what a locked card legitimately needs: which day it is, when
  * it opens, and that it is locked.
+ *
+ * Only `upcoming` gets this treatment. A game in `preview` has deliberately
+ * given its details up — that is the entire point of the status — and hiding
+ * them again here would make the reveal do nothing.
  */
 function maskCard(card: GameCard): GameCard {
   return {

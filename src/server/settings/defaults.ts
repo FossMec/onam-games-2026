@@ -29,6 +29,17 @@ export const settingsRegistry: SettingDef[] = [
     defaultValue: 24,
   },
   {
+    key: "schedule.preview_hours",
+    group: "schedule",
+    /**
+     * The window where a game is visible but not playable: title, artwork and
+     * rules on the page with a countdown instead of a start button. Set to 0 to
+     * keep every game a "???" right up to the second it opens.
+     */
+    description: "Hours before release that a game reveals its details (0 = no preview)",
+    defaultValue: 24,
+  },
+  {
     key: "access.closed_beta",
     group: "access",
     /**

@@ -1,4 +1,22 @@
 import { For, Show, createMemo, createSignal } from "solid-js";
+import { SpriteIcon } from "~/components/art/SpriteIcon";
+import type { SpriteName } from "~/lib/sprites";
+
+const ENEMY_PASSENGERS: SpriteName[] = [
+  "tux-king",
+  "ferris-crab",
+  "gopher-king",
+  "linus-torvalds",
+  "octocat-garland",
+  "vamana-umbrella",
+  "bird-mascot",
+  "docker-pookalam",
+  "python-snake",
+  "arch-crown",
+  "nilavilakku",
+  "papad-face",
+  "floppy-onam",
+];
 
 /**
  * Escape the Vallam — sliding-block board.
@@ -47,17 +65,48 @@ export interface VallamGameProps {
   onProgress?: (moves: VallamMove[]) => void;
 }
 
-/**
- * The other boats' hues. The vallam gets its own colour and is never in here —
- * the one block that matters has to be findable at a glance.
- */
-const HULLS = [
-  "var(--pop-teal)",
-  "var(--pop-blue)",
-  "var(--pop-purple)",
-  "var(--pop-pink)",
-  "var(--pop-yellow)",
+const BOAT_SPRITES = {
+  hero: "/sprites/vallam/hero-vallam.webp",
+  canoe: "/sprites/vallam/boat-canoe.webp",
+  canoe3: "/sprites/vallam/boat-canoe-3.webp",
+  wood: "/sprites/vallam/boat-wood.webp",
+  small: "/sprites/vallam/boat-small-h.webp",
+};
+
+/** Pop color palette variations for enemy blocker boats */
+const ENEMY_FILTERS = [
+  "none",
+  "hue-rotate(-45deg) saturate(1.3)",
+  "hue-rotate(-85deg) saturate(1.4) brightness(1.05)",
+  "hue-rotate(120deg) saturate(1.35)",
+  "hue-rotate(40deg) saturate(1.2)",
+  "hue-rotate(75deg) saturate(1.3)",
+  "hue-rotate(-20deg) saturate(1.5)",
 ];
+
+function getBoatSprite(boat: BoatView): string {
+  if (boat.id === 0) return BOAT_SPRITES.hero;
+  if (boat.len >= 3) {
+    return BOAT_SPRITES.canoe3;
+  }
+  const pick = boat.id % 3;
+  if (pick === 0) return BOAT_SPRITES.wood;
+  if (pick === 1) return BOAT_SPRITES.canoe;
+  return BOAT_SPRITES.small;
+}
+
+function getBoatFilter(boat: BoatView, isActive: boolean): string {
+  if (boat.id === 0) {
+    return isActive
+      ? "drop-shadow(0 0 10px rgba(228, 88, 88, 0.9)) drop-shadow(0 4px 8px rgba(34, 32, 43, 0.4))"
+      : "drop-shadow(0 2px 4px rgba(34, 32, 43, 0.3))";
+  }
+  const baseFilter = ENEMY_FILTERS[boat.id % ENEMY_FILTERS.length];
+  const filterPrefix = baseFilter === "none" ? "" : `${baseFilter} `;
+  return isActive
+    ? `${filterPrefix}drop-shadow(0 0 8px rgba(255, 209, 102, 0.95)) drop-shadow(0 4px 8px rgba(34, 32, 43, 0.4))`
+    : `${filterPrefix}drop-shadow(0 2px 4px rgba(34, 32, 43, 0.25))`;
+}
 
 function occupancy(boats: BoatView[], size: number): Int8Array {
   const grid = new Int8Array(size * size).fill(-1);
@@ -245,11 +294,12 @@ export function VallamGame(props: VallamGameProps) {
                   top: pct(boat.r),
                   width: pct(boat.horizontal ? boat.len : 1),
                   height: pct(boat.horizontal ? 1 : boat.len),
-                  padding: "2%",
+                  padding: "2px",
                   background: "transparent",
                   border: "none",
                   cursor: props.disabled ? "default" : "pointer",
                   transition: "left 140ms ease-out, top 140ms ease-out",
+                  "z-index": active() ? 10 : 2,
                 }}
                 aria-label={
                   isVallam
@@ -258,28 +308,89 @@ export function VallamGame(props: VallamGameProps) {
                 }
               >
                 <div
+                  class="relative h-full w-full select-none flex items-center justify-center"
                   style={{
-                    width: "100%",
-                    height: "100%",
-                    background: isVallam ? "var(--pop-red)" : HULLS[boat.id % HULLS.length],
-                    border: `${active() ? "var(--ink-w-bold)" : "var(--ink-w)"} solid var(--ink)`,
-                    "border-radius": "999px",
-                    display: "grid",
-                    "place-items": "center",
-                    "font-family": "var(--font-stack-display)",
-                    "font-size": "clamp(0.7rem, 3vw, 1rem)",
-                    color: "var(--ink)",
+                    transform: active() ? "scale(1.05)" : "scale(1)",
+                    transition: "transform 120ms ease-out",
                   }}
                 >
-                  <Show when={isVallam}>
-                    <span
+                  <Show
+                    when={boat.horizontal}
+                    fallback={
+                      /* Vertical boat: natural horizontal sprite rotated 90deg to fill vertical cell slot */
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: "50%",
+                          top: "50%",
+                          width: `${boat.len * 100}%`,
+                          height: `${(1 / boat.len) * 100}%`,
+                          transform: "translate(-50%, -50%) rotate(90deg)",
+                          display: "flex",
+                          "align-items": "center",
+                          "justify-content": "center",
+                        }}
+                      >
+                        <img
+                          src={getBoatSprite(boat)}
+                          alt=""
+                          draggable={false}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            "object-fit": "contain",
+                            filter: getBoatFilter(boat, active()),
+                            transition: "filter 140ms ease-out",
+                          }}
+                        />
+                        <Show when={!isVallam}>
+                          {/* Upright passenger on vertical boat */}
+                          <div
+                            class="pointer-events-none absolute z-10 flex items-center justify-center"
+                            style={{
+                              transform: "rotate(-90deg)",
+                              filter: "drop-shadow(0 2px 3px rgba(34,32,43,0.4))",
+                            }}
+                          >
+                            <SpriteIcon
+                              name={ENEMY_PASSENGERS[boat.id % ENEMY_PASSENGERS.length]}
+                              size={boat.len >= 3 ? 24 : 20}
+                              animate="wobble"
+                            />
+                          </div>
+                        </Show>
+                      </div>
+                    }
+                  >
+                    {/* Horizontal boat: faces right toward exit (hero vallam flipped horizontally so prow points right) */}
+                    <img
+                      src={getBoatSprite(boat)}
+                      alt=""
+                      draggable={false}
                       style={{
-                        transform: boat.horizontal ? "none" : "rotate(90deg)",
-                        "white-space": "nowrap",
+                        width: "100%",
+                        height: "100%",
+                        "object-fit": "contain",
+                        transform: isVallam ? "scaleX(-1)" : "none",
+                        filter: getBoatFilter(boat, active()),
+                        transition: "filter 140ms ease-out",
                       }}
-                    >
-                      ▸▸
-                    </span>
+                    />
+                    <Show when={!isVallam}>
+                      {/* Passenger in horizontal enemy boat */}
+                      <div
+                        class="pointer-events-none absolute z-10 flex items-center justify-center"
+                        style={{
+                          filter: "drop-shadow(0 2px 3px rgba(34,32,43,0.4))",
+                        }}
+                      >
+                        <SpriteIcon
+                          name={ENEMY_PASSENGERS[boat.id % ENEMY_PASSENGERS.length]}
+                          size={boat.len >= 3 ? 24 : 20}
+                          animate="wobble"
+                        />
+                      </div>
+                    </Show>
                   </Show>
                 </div>
               </button>

@@ -86,6 +86,14 @@ export function Footer() {
           </p>
         </div>
 
+        <div class="flex justify-center py-1">
+          <img
+            src="/images/memes/meme-footer.webp"
+            alt="FOSS Onam Festival Meme"
+            class="w-28 sm:w-36 h-auto object-contain select-none opacity-90 hover:opacity-100 transition-opacity rounded-md"
+          />
+        </div>
+
         <p class="comment text-base">
           free as in freedom, free as in payasam. licensed under GPLv3 — fork the repo, not Maveli's
           moustache.

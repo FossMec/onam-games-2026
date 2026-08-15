@@ -1,6 +1,27 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
 import { appSettings } from "~/server/db/schema";
+
+/**
+ * Several settings in one round trip.
+ *
+ * `getSetting` is a query per key, which is fine for a one-off flag and wasteful
+ * for a group that is always read together — the schedule alone was four
+ * separate selects on every request that resolved a game's status. Missing keys
+ * are simply absent from the map; callers keep their own fallbacks.
+ */
+export async function getSettings(keys: string[]): Promise<Map<string, unknown>> {
+  if (keys.length === 0) return new Map();
+  try {
+    const rows = await getDb()
+      .select({ key: appSettings.key, value: appSettings.value })
+      .from(appSettings)
+      .where(inArray(appSettings.key, keys));
+    return new Map(rows.map((row) => [row.key, row.value]));
+  } catch {
+    return new Map();
+  }
+}
 
 export async function getSetting<T>(key: string, fallback: T): Promise<T> {
   try {

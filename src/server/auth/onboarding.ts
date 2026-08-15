@@ -87,8 +87,7 @@ export async function completeOnboarding(input: OnboardingInput): Promise<void> 
     whatsappNumber: input.whatsappNumber?.replace(/[\s\-()]/g, "") || undefined,
   };
   const parsed = onboardingSchema.parse(normalized);
-  const isMec = parsed.college === "mec";
-  const branch = isMec ? (parsed.branch ?? null) : null;
+  const branch = parsed.branch ?? null;
   await getDb()
     .update(users)
     .set({
@@ -98,7 +97,7 @@ export async function completeOnboarding(input: OnboardingInput): Promise<void> 
       collegeOther: parsed.college === "other" ? parsed.collegeOther?.trim() || null : null,
       branch,
       branchOther: branch === "other" ? parsed.branchOther?.trim() || null : null,
-      batch: isMec ? (parsed.batch ?? null) : null,
+      batch: parsed.batch ?? null,
       div: parsed.div ?? "none",
       instagramHandle: parsed.instagramHandle?.trim() || null,
       whatsappNumber: parsed.whatsappNumber?.trim() || null,

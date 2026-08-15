@@ -1,8 +1,20 @@
 import { Title } from "@solidjs/meta";
 import { createAsync, useParams, useSearchParams } from "@solidjs/router";
-import { ChevronLeft } from "lucide-solid";
+import { ChevronLeft, Lock } from "lucide-solid";
 import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { Countdown } from "~/components/Countdown";
+
+const GAME_IMAGES: Record<string, string> = {
+  "open-source-tinder": "/images/games/open-source-tinder.webp",
+  "pookalam-jigsaw": "/images/games/pookalam-jigsaw.webp",
+  wend: "/images/games/wend.webp",
+  "escape-the-vallam": "/images/games/escape-the-vallam.webp",
+  "maveli-jump": "/images/games/maveli-jump.webp",
+  "treasure-hunt": "/images/games/treasure-hunt.webp",
+  "the-hunt": "/images/games/treasure-hunt.webp",
+  "code-a-pookalam": "/images/games/code-a-pookalam.webp",
+  "code-a-pookalam-vote": "/images/games/code-a-pookalam.webp",
+};
 
 import { ShoutBurst } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
@@ -20,11 +32,15 @@ import {
   type TinderProgress,
 } from "~/components/games/TinderGame";
 import { TinderRecap } from "~/components/games/TinderRecap";
+import { ShareCard, ShareCardModal } from "~/components/games/ShareCard";
 import { WinModal } from "~/components/games/WinModal";
 import { VallamGame, type VallamMove, type VallamViewData } from "~/components/games/VallamGame";
 import { WendGame, type Cell as WendCell, type WendViewData } from "~/components/games/WendGame";
 import { getMe, getMyBanState } from "~/server/auth/actions";
 import { getGame, getMyAttempt, getMyRecap } from "~/server/games/actions";
+import { getMyStanding, type MyStanding } from "~/server/leaderboard/actions";
+import { collegeLabel } from "~/lib/profile";
+import type { ShareCardData } from "~/lib/share-card";
 import {
   clearAttempt,
   clearProgress,
@@ -516,6 +532,57 @@ export default function GamePage() {
       isPersonalBest: settledResult()?.isPersonalBest ?? false,
     });
 
+  /* --------------------------------------------------------------- sharing */
+
+  /**
+   * Where this run currently sits on the day's board.
+   *
+   * Fetched only once a run has actually landed, because it is only ever used
+   * by the share card — the rank on the card is the whole reason anyone else
+   * clicks the link. A failure here is not worth surfacing: the card falls back
+   * to a "just for fun" badge and still shares.
+   */
+  const [standing, setStanding] = createSignal<MyStanding | null>(null);
+  const [sharing, setSharing] = createSignal(false);
+
+  createEffect(() => {
+    const g = game();
+    const landed = settledResult();
+    if (!g || !landed?.valid) return;
+    void getMyStanding(g.id)
+      .then(setStanding)
+      .catch(() => setStanding(null));
+  });
+
+  /**
+   * Everything the card needs, or null when there is nothing to brag about.
+   *
+   * Invalid runs never get here — a rejected submission is not a score, and a
+   * card announcing one would be a strange thing to post.
+   */
+  const shareData = createMemo<ShareCardData | null>(() => {
+    const g = game();
+    const landed = settledResult();
+    const user = me();
+    if (!g || !user || !landed?.valid) return null;
+    return {
+      playerName: user.name,
+      college: collegeLabel(user.college, user.collegeOther),
+      instagram: user.instagramHandle,
+      gameTitle: g.title,
+      gameSlug: slug(),
+      day: g.day,
+      metric: landed.metric,
+      durationMs: landed.durationMs,
+      score: landed.score,
+      rank: standing()?.rank ?? null,
+      fieldSize: standing()?.fieldSize ?? null,
+      afterDeadline: landed.afterDeadline,
+      origin: typeof window === "undefined" ? "" : window.location.origin,
+      seed: attemptKey(),
+    };
+  });
+
   const startLabel = () =>
     attempt()?.status === "in_progress"
       ? "Resume run"
@@ -568,7 +635,29 @@ export default function GamePage() {
         </Show>
 
         <Show when={game()!.status === "upcoming"}>
-          <div class="card pop-yellow space-y-3 text-center">
+          <div class="card pop-yellow mx-auto max-w-md space-y-4 p-6 text-center">
+            <div
+              class="relative mx-auto w-full max-w-[240px] overflow-hidden rounded-xl bg-[var(--paper-3)]"
+              style={{
+                border: "var(--ink-w-bold) solid var(--ink)",
+                "box-shadow": "3px 3px 0 var(--ink)",
+              }}
+            >
+              <img
+                src={GAME_IMAGES[slug()] ?? `/images/games/${slug()}.webp`}
+                alt="Classified preview"
+                class="aspect-square w-full object-cover blur-md opacity-40 grayscale"
+              />
+              <div class="absolute inset-0 flex flex-col items-center justify-center p-3 text-center">
+                <span
+                  class="sticker inline-flex items-center gap-1 font-bold"
+                  style={{ "--pop": "var(--pop-red)" }}
+                >
+                  <Lock size={14} strokeWidth={2.5} />
+                  <span>Classified</span>
+                </span>
+              </div>
+            </div>
             <h1 class="text-3xl">{game()!.title}</h1>
             <p class="text-muted">Hint: {game()!.hint ?? "A mystery awaits…"}</p>
             <Show when={game()!.releaseAt}>
@@ -580,6 +669,37 @@ export default function GamePage() {
               </p>
             </Show>
           </div>
+        </Show>
+
+        {/*
+          ---------------------------------------------------------- preview
+          The reveal, a day before the release. The same panel a player will
+          start the run from, minus the start button — and the rules panel
+          below it, which is the part worth reading early.
+        */}
+        <Show when={game()!.status === "preview"}>
+          <StartPanel
+            slug={slug()}
+            title={game()!.title}
+            tagline={game()!.tagline}
+            metric={game()!.metric}
+            unlimited={false}
+            attemptsLeft={game()!.maxAttempts}
+            isRetryGame={(game()!.maxAttempts ?? 1) > 1}
+            isCatchUp={false}
+            isTesterWindow={false}
+            preview
+            releaseAt={game()!.releaseAt}
+            busy={false}
+            startLabel=""
+            onStart={() => undefined}
+            signedIn={!!me()}
+            onboarded={!!me()?.onboardingCompleted}
+            next={`/games/${slug()}`}
+          />
+          <Show when={(game()!.howTo?.length ?? 0) > 0}>
+            <HowToPlayPanel gameType={game()!.gameType} steps={game()!.howTo} />
+          </Show>
         </Show>
 
         <Show when={playable() && !banState()?.blocksPlay}>
@@ -597,6 +717,7 @@ export default function GamePage() {
           */}
           <Show when={!attemptToken() && !finished() && !result()}>
             <StartPanel
+              slug={slug()}
               title={game()!.title}
               tagline={game()!.tagline}
               metric={game()!.metric}
@@ -823,7 +944,13 @@ export default function GamePage() {
                       {settledResult()!.attemptsRemaining === 1 ? "" : "s"} left today
                     </span>
                   </Show>
-                  <div>
+                  <div class="flex flex-wrap justify-center gap-2">
+                    {/* The card again, for anyone who dismissed the fanfare. */}
+                    <Show when={shareData()}>
+                      <button type="button" class="btn-accent" onClick={() => setSharing(true)}>
+                        Share my card
+                      </button>
+                    </Show>
                     <a href="/leaderboard" class="btn-ghost">
                       View leaderboard
                     </a>
@@ -910,6 +1037,7 @@ export default function GamePage() {
           valid={result()!.valid}
           reason={result()!.reason}
           figures={<ResultFigures result={result()!} />}
+          share={shareData() ? <ShareCard data={shareData()!} compact /> : undefined}
           afterDeadline={result()!.afterDeadline}
           isPersonalBest={result()!.isPersonalBest}
           runsLeft={unlimited() ? 0 : isRetryGame() ? result()!.attemptsRemaining : 0}
@@ -924,6 +1052,10 @@ export default function GamePage() {
           onClose={() => setCelebrating(false)}
         />
       </Show>
+
+      <Show when={sharing() && shareData()}>
+        <ShareCardModal data={shareData()!} onClose={() => setSharing(false)} />
+      </Show>
     </main>
   );
 }
@@ -933,6 +1065,7 @@ export default function GamePage() {
 const STATUS_CHIP: Record<string, { label: string; pop: string }> = {
   live: { label: "Live now", pop: "var(--pop-teal)" },
   tester: { label: "Tester access", pop: "var(--pop-purple)" },
+  preview: { label: "Opens soon", pop: "var(--pop-yellow)" },
   upcoming: { label: "Locked", pop: "var(--paper-3)" },
   closed: { label: "Catch up", pop: "var(--pop-blue)" },
 };
@@ -1054,6 +1187,7 @@ function GameBar(props: {
  * anyway.
  */
 function StartPanel(props: {
+  slug: string;
   title: string;
   tagline: string;
   metric: string;
@@ -1062,6 +1196,12 @@ function StartPanel(props: {
   isRetryGame: boolean;
   isCatchUp: boolean;
   isTesterWindow: boolean;
+  /**
+   * The reveal window: the same panel, with a countdown where the start button
+   * goes. One panel rather than two so the game a player reads about today is
+   * exactly the one they meet tomorrow.
+   */
+  preview?: boolean;
   releaseAt: string | null;
   busy: boolean;
   startLabel: string;
@@ -1078,91 +1218,145 @@ function StartPanel(props: {
         ? `${props.attemptsLeft} run${props.attemptsLeft === 1 ? "" : "s"} left today`
         : "One attempt";
 
+  const imageSrc = () => GAME_IMAGES[props.slug] ?? `/images/games/${props.slug}.webp`;
+
   return (
     <section
-      class="relative overflow-hidden rounded-lg px-4 py-6 text-center sm:px-6"
+      class="relative overflow-hidden rounded-xl p-5 text-center sm:p-8"
       style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--paper-2)" }}
     >
       <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         <Confetti seed={`game-${props.title}`} count={6} animate />
       </div>
 
-      <div class="relative space-y-3">
-        <h1 class="text-3xl sm:text-4xl">{props.title}</h1>
-        <Show when={props.tagline}>
-          <p class="mx-auto max-w-prose font-semibold text-muted">{props.tagline}</p>
-        </Show>
-
-        <div class="flex flex-wrap items-center justify-center gap-2">
-          <span class="badge" style={{ "--pop": "var(--pop-yellow)" }}>
-            {METRIC_CHIP[props.metric] ?? "Ranked"}
-          </span>
-          <span class="badge" style={{ "--pop": "var(--paper-3)" }}>
-            {runs()}
-          </span>
+      <div class="relative mx-auto flex max-w-2xl flex-col items-center gap-5">
+        {/* Game Visual Tile Card (Matching landing page style) */}
+        <div
+          class="relative w-full max-w-[260px] overflow-hidden rounded-xl bg-[var(--paper-3)] sm:max-w-[300px]"
+          style={{
+            border: "var(--ink-w-bold) solid var(--ink)",
+            "box-shadow": "4px 4px 0 var(--ink)",
+          }}
+        >
+          <img
+            src={imageSrc()}
+            alt={props.title}
+            class="aspect-square w-full object-cover"
+            loading="eager"
+          />
+          <div class="absolute top-2.5 right-2.5 flex gap-1.5">
+            <span class="badge shadow-sm" style={{ "--pop": "var(--pop-yellow)" }}>
+              {METRIC_CHIP[props.metric] ?? "Ranked"}
+            </span>
+          </div>
         </div>
 
-        {/* The day's caveat, when there is one. A line, not a panel. */}
-        <Show when={props.isCatchUp}>
-          <p class="mx-auto max-w-prose text-sm font-semibold" style={{ color: "var(--pop-blue)" }}>
-            This day has closed. You can still play just for fun — daily leaderboard rankings are
-            closed for this day.
-          </p>
-        </Show>
-        <Show when={props.isTesterWindow}>
-          <p class="mx-auto max-w-prose text-sm font-semibold text-warn">
-            Tester early access.
-            <Show when={props.releaseAt}>
-              {" "}
-              Public release in{" "}
-              <span class="font-mono tabular-nums">
-                <Countdown target={new Date(props.releaseAt!)} />
-              </span>
-              .
-            </Show>
-          </p>
-        </Show>
+        <div class="w-full space-y-3">
+          <h1 class="text-3xl sm:text-4xl">{props.title}</h1>
+          <Show when={props.tagline}>
+            <p class="mx-auto max-w-prose font-semibold text-muted">{props.tagline}</p>
+          </Show>
 
-        {/* One call to action, whichever one actually applies. */}
-        <div class="pt-1">
-          <Show
-            when={props.signedIn}
-            fallback={
-              <a
-                href={`/auth/signin?next=${encodeURIComponent(props.next)}`}
-                class="btn-brand inline-block px-10 py-3 text-lg"
-              >
-                Sign in to play
-              </a>
-            }
-          >
+          <div class="flex flex-wrap items-center justify-center gap-2">
+            <span class="badge" style={{ "--pop": "var(--pop-yellow)" }}>
+              {METRIC_CHIP[props.metric] ?? "Ranked"}
+            </span>
+            <span class="badge" style={{ "--pop": "var(--paper-3)" }}>
+              {runs()}
+            </span>
+          </div>
+
+          {/* The day's caveat, when there is one. A line, not a panel. */}
+          <Show when={props.isCatchUp}>
+            <p
+              class="mx-auto max-w-prose text-sm font-semibold"
+              style={{ color: "var(--pop-blue)" }}
+            >
+              This day has closed. You can still play just for fun — daily leaderboard rankings are
+              closed for this day.
+            </p>
+          </Show>
+          <Show when={props.isTesterWindow}>
+            <p class="mx-auto max-w-prose text-sm font-semibold text-warn">
+              Tester early access.
+              <Show when={props.releaseAt}>
+                {" "}
+                Public release in{" "}
+                <span class="font-mono tabular-nums">
+                  <Countdown target={new Date(props.releaseAt!)} />
+                </span>
+                .
+              </Show>
+            </p>
+          </Show>
+
+          {/*
+            Preview: everything above this line is real — the art, the title,
+            the rules — and the only thing missing is the button. Showing the
+            game a day early is the trailer; the clock is what decides when
+            anybody may actually touch it.
+          */}
+          <Show when={props.preview}>
+            <div
+              class="mx-auto max-w-sm space-y-1 rounded-lg p-4"
+              style={{ background: "var(--paper-3)", border: "var(--ink-w) solid var(--ink)" }}
+            >
+              <p class="font-display text-sm font-extrabold uppercase tracking-wide">Opens in</p>
+              <p class="font-mono text-3xl font-black tabular-nums">
+                <Show when={props.releaseAt} fallback="soon">
+                  <Countdown target={new Date(props.releaseAt!)} />
+                </Show>
+              </p>
+              <p class="text-sm font-semibold text-muted">
+                Have a look around. Nobody plays until the countdown runs out.
+              </p>
+            </div>
+            <p class="comment">read the rules now, save the seconds later.</p>
+          </Show>
+
+          {/* One call to action, whichever one actually applies. */}
+          <div class="pt-1" classList={{ hidden: props.preview }}>
             <Show
-              when={props.onboarded}
+              when={props.signedIn}
               fallback={
                 <a
-                  href={`/onboarding?next=${encodeURIComponent(props.next)}`}
-                  class="btn-accent inline-block px-10 py-3 text-lg"
+                  href={`/auth/signin?next=${encodeURIComponent(props.next)}`}
+                  class="btn-brand inline-block px-10 py-3 text-lg"
                 >
-                  Finish your profile
+                  Sign in to play
                 </a>
               }
             >
-              <button
-                type="button"
-                onClick={props.onStart}
-                disabled={props.busy}
-                class="btn-brand px-10 py-3 text-lg"
+              <Show
+                when={props.onboarded}
+                fallback={
+                  <a
+                    href={`/onboarding?next=${encodeURIComponent(props.next)}`}
+                    class="btn-accent inline-block px-10 py-3 text-lg"
+                  >
+                    Finish your profile
+                  </a>
+                }
               >
-                {props.busy ? "Starting…" : props.startLabel}
-              </button>
+                <button
+                  type="button"
+                  onClick={props.onStart}
+                  disabled={props.busy}
+                  class="btn-brand px-10 py-3 text-lg"
+                >
+                  {props.busy ? "Starting…" : props.startLabel}
+                </button>
+              </Show>
             </Show>
+          </div>
+          <Show when={!props.preview}>
+            <p class="comment">
+              {props.signedIn && props.onboarded
+                ? "rules first, then the clock. they're short."
+                : "takes ten seconds. the clock doesn't start until you say so."}
+            </p>
           </Show>
         </div>
-        <p class="comment">
-          {props.signedIn && props.onboarded
-            ? "rules first, then the clock. they're short."
-            : "takes ten seconds. the clock doesn't start until you say so."}
-        </p>
       </div>
     </section>
   );

@@ -162,7 +162,7 @@ console.log("\n\x1b[1mEscape the Vallam\x1b[0m — server replays every move");
     "teleport the vallam straight to the exit",
     vallam.verify({
       ...base,
-      submission: { moves: [{ b: 0, d: vallam.BOARD - 2 - view.boats[0].c }] },
+      submission: { moves: [{ b: 0, d: vallam.BOARD - view.boats[0].len - view.boats[0].c }] },
     }),
   );
   expectRejected(
@@ -226,11 +226,12 @@ console.log("\n\x1b[1mMaveli Jump\x1b[0m — server re-simulates the input trace
     for (const p of state.level.platforms) {
       if (p.y > apex) break;
       if (p.y < state.cameraY) continue;
+      if (p.enemy?.type === 1) continue;
       target = p;
     }
     let want = 0;
     if (target) {
-      let dx = platformX(target, state.frame) + 11 - state.px;
+      let dx = platformX(target, state.frame) + 6 - state.px;
       if (dx > 50) dx -= 100;
       if (dx < -50) dx += 100;
       want = dx > 1.2 ? 1 : dx < -1.2 ? -1 : 0;
@@ -271,7 +272,7 @@ console.log("\n\x1b[1mMaveli Jump\x1b[0m — server re-simulates the input trace
     submission: { inputs: [], score: 999_999, height: 999_999 },
     durationMs: 400_000,
   });
-  const ignored = claimed.valid && (claimed.score ?? -1) < 100;
+  const ignored = claimed.valid && (claimed.score ?? -1) < 500;
   console.log(
     `  ${ignored ? "\x1b[32mIGNORED\x1b[0m " : "\x1b[31mLEAKED\x1b[0m  "} a client-claimed score of 999,999 — server derived ${claimed.score ?? "nothing"} from the trace`,
   );

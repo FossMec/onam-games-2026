@@ -19,11 +19,11 @@ function ProfileMenu(props: {
   compact?: boolean;
 }) {
   const [open, setOpen] = createSignal(false);
-  let containerRef!: HTMLDivElement;
+  let containerRef: HTMLDivElement | undefined = undefined;
 
   onMount(() => {
     const handleOutside = (e: MouseEvent) => {
-      if (!containerRef.contains(e.target as Node)) setOpen(false);
+      if (containerRef && !containerRef.contains(e.target as Node)) setOpen(false);
     };
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -37,7 +37,7 @@ function ProfileMenu(props: {
   });
 
   return (
-    <div ref={containerRef} class="relative shrink-0">
+    <div ref={(el) => (containerRef = el)} class="relative shrink-0">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
@@ -151,8 +151,7 @@ export function Nav() {
     return loc.pathname.startsWith(href);
   };
 
-  const isPookalamPage = () =>
-    loc.pathname.startsWith("/code-a-pookalam") && loc.pathname !== "/code-a-pookalam/submit";
+  const isPookalamSection = () => loc.pathname.startsWith("/code-a-pookalam");
 
   return (
     <>
@@ -195,18 +194,8 @@ export function Nav() {
                 </div>
               </a>
 
-              {/* Mobile-only User Profile or Submit */}
+              {/* Mobile-only User Profile */}
               <div class="sm:hidden flex items-center gap-2 shrink-0">
-                <Show when={isPookalamPage()}>
-                  <a
-                    href="/code-a-pookalam/submit"
-                    class="btn-brand py-1 px-2.5 text-xs rounded-full font-black cursor-pointer inline-flex items-center gap-1"
-                  >
-                    <Send size={11} strokeWidth={2.5} />
-                    <span>Submit</span>
-                  </a>
-                </Show>
-
                 <Show
                   when={me()}
                   fallback={
@@ -244,13 +233,23 @@ export function Nav() {
                   )}
                 </For>
 
-                {/* Submit button in header on desktop when on code-a-pookalam */}
-                <Show when={isPookalamPage()}>
+                {/* Submit button when on code-a-pookalam section */}
+                <Show when={isPookalamSection()}>
                   <a
                     href="/code-a-pookalam/submit"
-                    class="hidden sm:inline-flex btn-brand py-1.5 px-3.5 text-sm rounded-full font-black cursor-pointer items-center gap-1.5 shrink-0"
+                    class="flex-1 sm:flex-initial text-center inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 text-xs sm:px-3.5 sm:py-1.5 sm:text-sm transition-transform active:translate-y-0.5 cursor-pointer"
+                    style={{
+                      "font-family": "var(--font-stack-display)",
+                      "font-weight": 800,
+                      border: "2px solid var(--ink)",
+                      background:
+                        loc.pathname === "/code-a-pookalam/submit"
+                          ? "var(--pop-pink)"
+                          : "var(--pop-yellow)",
+                      color: loc.pathname === "/code-a-pookalam/submit" ? "white" : "var(--ink)",
+                    }}
                   >
-                    <Send size={14} strokeWidth={2.5} />
+                    <Send size={12} strokeWidth={2.5} />
                     <span>Submit</span>
                   </a>
                 </Show>
@@ -277,19 +276,6 @@ export function Nav() {
           </div>
         </div>
       </header>
-
-      {/* Floating Toolbar on mobile when on code-a-pookalam */}
-      <Show when={isPookalamPage()}>
-        <div class="sm:hidden fixed bottom-4 right-4 z-40">
-          <a
-            href="/code-a-pookalam/submit"
-            class="btn-brand py-2.5 px-4 rounded-full font-black text-xs inline-flex items-center gap-1.5"
-          >
-            <Send size={14} strokeWidth={2.5} />
-            <span>Submit Pookalam</span>
-          </a>
-        </div>
-      </Show>
     </>
   );
 }

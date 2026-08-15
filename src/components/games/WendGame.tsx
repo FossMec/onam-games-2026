@@ -33,6 +33,7 @@ export interface WendViewData {
 export interface WendFound {
   word: string;
   cells: Cell[];
+  isTarget?: boolean;
 }
 
 export interface WendGameProps {
@@ -83,8 +84,10 @@ export function WendGame(props: WendGameProps) {
   const remainingLengths = createMemo(() => {
     const pool = [...props.view.wordLengths];
     for (const entry of found()) {
-      const at = pool.indexOf(entry.word.length);
-      if (at !== -1) pool.splice(at, 1);
+      if (entry.isTarget !== false) {
+        const at = pool.indexOf(entry.word.length);
+        if (at !== -1) pool.splice(at, 1);
+      }
     }
     return pool;
   });
@@ -92,11 +95,16 @@ export function WendGame(props: WendGameProps) {
   const commit = (next: WendFound[]) => {
     setFound(next);
     props.onProgress?.(next);
+    const validTargets = next.filter((e) => e.isTarget !== false);
     const cells = next.reduce((n, entry) => n + entry.cells.length, 0);
-    // Both conditions, always: every word found AND every tile covered. The
-    // second one is the actual puzzle.
-    if (next.length === props.view.wordLengths.length && cells === props.view.openCells) {
-      props.onFinish({ found: next });
+
+    // Both conditions, always: every target word found AND every tile covered.
+    if (
+      validTargets.length === props.view.wordLengths.length &&
+      cells === props.view.openCells &&
+      next.every((e) => e.isTarget !== false)
+    ) {
+      props.onFinish({ found: validTargets });
     }
   };
 
@@ -112,8 +120,7 @@ export function WendGame(props: WendGameProps) {
       setPath([cell]);
       return;
     }
-    // Dragging back over the previous tile retraces — the natural undo for a
-    // gesture, and the reason this does not need a separate undo while drawing.
+    // Dragging back over the previous tile retraces — the natural undo for a gesture
     if (current.length > 1 && key(current[current.length - 2]) === k) {
       setPath(current.slice(0, -1));
       return;
@@ -121,12 +128,12 @@ export function WendGame(props: WendGameProps) {
     if (inPath().has(k)) return;
     if (!adjacent(current[current.length - 1], cell)) return;
 
-    const longest = Math.max(...remainingLengths());
+    const longest = Math.max(...props.view.wordLengths, 8);
     if (current.length + 1 > longest) return;
     setPath([...current, cell]);
   };
 
-  /** Lets go of the trace and asks the server whether it spelled anything. */
+  /** Lets go of the trace: checks target status and places word without discarding */
   const release = async () => {
     setDrawing(false);
     const cells = path();
@@ -134,22 +141,27 @@ export function WendGame(props: WendGameProps) {
       setPath([]);
       return;
     }
+
+    const candidateWord = cells.map(letterAt).join("");
+
     if (!props.onTrace) {
+      commit([...found(), { word: candidateWord, cells, isTarget: false }]);
       setPath([]);
       return;
     }
 
     setChecking(true);
     try {
-      const word = await props.onTrace(cells);
-      if (word && !found().some((f) => f.word === word)) {
-        commit([...found(), { word, cells }]);
-        setFlash("");
+      const verified = await props.onTrace(cells);
+      if (verified && !found().some((f) => f.word === verified && f.isTarget !== false)) {
+        commit([...found(), { word: verified, cells, isTarget: true }]);
       } else {
-        setFlash(word ? "Already found that one." : "Not a word.");
+        // Keep candidate path on board without throwing away or erroring
+        commit([...found(), { word: candidateWord, cells, isTarget: false }]);
       }
+      setFlash("");
     } catch {
-      setFlash("Could not check that. Try again.");
+      commit([...found(), { word: candidateWord, cells, isTarget: false }]);
     } finally {
       setChecking(false);
       setPath([]);
@@ -210,46 +222,37 @@ export function WendGame(props: WendGameProps) {
     commit([]);
   };
 
-  const fillFor = (r: number, c: number): string => {
-    if (isWall(r, c)) return "var(--ink)";
-    const owner = lockedCells().get(key({ r, c }));
-    if (owner !== undefined) return PATH_POPS[owner % PATH_POPS.length];
-    if (inPath().has(key({ r, c }))) return "var(--pop-yellow)";
-    return "var(--paper-2)";
-  };
-
   return (
-    <div class="space-y-3">
+    <div class="space-y-3.5">
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <span class="badge" style={{ "--pop": "var(--pop-blue)" }}>
-          {covered()}/{props.view.openCells} tiles
+        <span class="badge font-black text-xs" style={{ "--pop": "var(--pop-blue)" }}>
+          {covered()}/{props.view.openCells} tiles covered
         </span>
         <Show
           when={path().length > 0}
           fallback={
-            <span class="badge" style={{ "--pop": "var(--paper-3)" }}>
-              {checking() ? "checking…" : "drag to trace a word"}
+            <span class="badge text-xs" style={{ "--pop": "var(--paper-3)" }}>
+              {checking() ? "checking…" : "drag across letters to trace"}
             </span>
           }
         >
-          <span class="badge" style={{ "--pop": "var(--pop-yellow)" }}>
+          <span
+            class="badge font-black text-xs tracking-wider"
+            style={{ "--pop": "var(--pop-yellow)" }}
+          >
             {path().map(letterAt).join("")}
           </span>
         </Show>
       </div>
 
       <div
-        class="mx-auto grid w-full select-none"
+        class="mx-auto w-full select-none relative overflow-hidden"
         style={{
           "max-width": "min(100%, 26rem)",
-          "grid-template-columns": `repeat(${props.view.size}, 1fr)`,
           "aspect-ratio": "1 / 1",
-          gap: "2px",
-          background: "var(--ink)",
+          background: "var(--paper)",
           border: "var(--ink-w-bold) solid var(--ink)",
           "border-radius": "var(--radius)",
-          // Without this the browser claims the gesture for scrolling and the
-          // drag never reaches us — which is exactly how this game gets ruined.
           "touch-action": "none",
         }}
         onPointerDown={(e) => {
@@ -271,80 +274,310 @@ export function WendGame(props: WendGameProps) {
           if (at) extend(at.r, at.c);
         }}
       >
-        <For each={props.view.grid}>
-          {(row, r) => (
-            <For each={row}>
-              {(letter, c) => {
-                const wall = () => isWall(r(), c());
-                return (
-                  <button
-                    type="button"
-                    data-cell={`${r()},${c()}`}
-                    onClick={() => {
-                      // Only handle real taps; a drag already resolved itself.
-                      if (!drawing() && path().length <= 1) tapCell(r(), c());
-                    }}
-                    disabled={props.disabled || wall()}
-                    aria-label={
-                      wall() ? "Wall" : `Row ${r() + 1} column ${c() + 1}, letter ${letter}`
+        {/* Underlay Grid Background Cells */}
+        <div
+          class="absolute inset-0 grid w-full h-full"
+          style={{
+            "grid-template-columns": `repeat(${props.view.size}, 1fr)`,
+            gap: "1px",
+            background: "rgba(34,32,43,0.15)",
+          }}
+        >
+          <For each={props.view.grid}>
+            {(row, r) => (
+              <For each={row}>
+                {(_, c) => {
+                  const wall = () => isWall(r(), c());
+                  return (
+                    <div
+                      style={{
+                        background: wall() ? "var(--ink)" : "var(--paper-2)",
+                      }}
+                    />
+                  );
+                }}
+              </For>
+            )}
+          </For>
+        </div>
+
+        {/* LinkedIn-Style Continuous Rounded Snake Paths SVG Layer */}
+        <svg
+          class="absolute inset-0 w-full h-full pointer-events-none"
+          viewBox={`0 0 ${props.view.size * 100} ${props.view.size * 100}`}
+          style={{ "z-index": 2 }}
+        >
+          {/* 1. Locked Found Words */}
+          <For each={found()}>
+            {(entry, i) => {
+              const color = PATH_POPS[i() % PATH_POPS.length];
+              const cells = entry.cells;
+              const pathD =
+                cells.length > 1
+                  ? `M ${cells[0].c * 100 + 50} ${cells[0].r * 100 + 50} ` +
+                    cells
+                      .slice(1)
+                      .map((c) => `L ${c.c * 100 + 50} ${c.r * 100 + 50}`)
+                      .join(" ")
+                  : "";
+
+              return (
+                <g>
+                  {/* Thick Rounded Path Pipe */}
+                  <Show
+                    when={cells.length > 1}
+                    fallback={
+                      <circle
+                        cx={cells[0].c * 100 + 50}
+                        cy={cells[0].r * 100 + 50}
+                        r="39"
+                        fill={color}
+                      />
                     }
-                    style={{
-                      "aspect-ratio": "1 / 1",
-                      display: "grid",
-                      "place-items": "center",
-                      "font-family": "var(--font-stack-display)",
-                      "font-weight": 800,
-                      "font-size": "clamp(0.9rem, 5vw, 1.5rem)",
-                      color: "var(--ink)",
-                      background: fillFor(r(), c()),
-                      border: "none",
-                      "border-radius": "4px",
-                      padding: 0,
-                      cursor: props.disabled || wall() ? "default" : "pointer",
-                    }}
                   >
-                    {letter}
-                  </button>
-                );
-              }}
-            </For>
-          )}
-        </For>
+                    <path
+                      d={pathD}
+                      fill="none"
+                      stroke={color}
+                      stroke-width="78"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </Show>
+
+                  {/* Start Node Disc with Halo Outline */}
+                  <circle
+                    cx={cells[0].c * 100 + 50}
+                    cy={cells[0].r * 100 + 50}
+                    r="38"
+                    fill={color}
+                    stroke="#ffffff"
+                    stroke-width="5"
+                  />
+
+                  {/* Checkmark Badge at top-right of Start Node ONLY for verified target words */}
+                  <Show when={entry.isTarget !== false}>
+                    <g transform={`translate(${cells[0].c * 100 + 74}, ${cells[0].r * 100 + 26})`}>
+                      <circle r="12" fill="#ffffff" stroke="var(--ink)" stroke-width="2" />
+                      <path
+                        d="M -4 0 L -1 3.5 L 5 -3"
+                        fill="none"
+                        stroke="#06d6a0"
+                        stroke-width="2.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </g>
+                  </Show>
+
+                  {/* Directional Chevrons Along The Path */}
+                  <For each={cells.slice(0, -1)}>
+                    {(from, idx) => {
+                      const to = cells[idx() + 1];
+                      const midX = (from.c * 100 + 50 + to.c * 100 + 50) / 2;
+                      const midY = (from.r * 100 + 50 + to.r * 100 + 50) / 2;
+                      const rot =
+                        to.r > from.r ? 90 : to.r < from.r ? -90 : to.c > from.c ? 0 : 180;
+
+                      return (
+                        <path
+                          d="M -5 -7 L 4 0 L -5 7"
+                          fill="none"
+                          stroke="var(--ink)"
+                          stroke-width="3.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          transform={`translate(${midX}, ${midY}) rotate(${rot})`}
+                        />
+                      );
+                    }}
+                  </For>
+                </g>
+              );
+            }}
+          </For>
+
+          {/* 2. Live Active Drawing Path */}
+          <Show when={path().length > 0}>
+            {(() => {
+              const cells = path();
+              const color = "var(--pop-yellow)";
+              const pathD =
+                cells.length > 1
+                  ? `M ${cells[0].c * 100 + 50} ${cells[0].r * 100 + 50} ` +
+                    cells
+                      .slice(1)
+                      .map((c) => `L ${c.c * 100 + 50} ${c.r * 100 + 50}`)
+                      .join(" ")
+                  : "";
+
+              return (
+                <g>
+                  <Show
+                    when={cells.length > 1}
+                    fallback={
+                      <circle
+                        cx={cells[0].c * 100 + 50}
+                        cy={cells[0].r * 100 + 50}
+                        r="39"
+                        fill={color}
+                      />
+                    }
+                  >
+                    <path
+                      d={pathD}
+                      fill="none"
+                      stroke={color}
+                      stroke-width="78"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </Show>
+
+                  {/* Start Node Disc */}
+                  <circle
+                    cx={cells[0].c * 100 + 50}
+                    cy={cells[0].r * 100 + 50}
+                    r="38"
+                    fill={color}
+                    stroke="#ffffff"
+                    stroke-width="5"
+                  />
+
+                  {/* Live Directional Chevrons */}
+                  <For each={cells.slice(0, -1)}>
+                    {(from, idx) => {
+                      const to = cells[idx() + 1];
+                      const midX = (from.c * 100 + 50 + to.c * 100 + 50) / 2;
+                      const midY = (from.r * 100 + 50 + to.r * 100 + 50) / 2;
+                      const rot =
+                        to.r > from.r ? 90 : to.r < from.r ? -90 : to.c > from.c ? 0 : 180;
+
+                      return (
+                        <path
+                          d="M -5 -7 L 4 0 L -5 7"
+                          fill="none"
+                          stroke="var(--ink)"
+                          stroke-width="3.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          transform={`translate(${midX}, ${midY}) rotate(${rot})`}
+                        />
+                      );
+                    }}
+                  </For>
+                </g>
+              );
+            })()}
+          </Show>
+        </svg>
+
+        {/* Interactive Buttons & Letters Layer */}
+        <div
+          class="absolute inset-0 grid w-full h-full select-none"
+          style={{
+            "grid-template-columns": `repeat(${props.view.size}, 1fr)`,
+            "z-index": 5,
+          }}
+        >
+          <For each={props.view.grid}>
+            {(row, r) => (
+              <For each={row}>
+                {(letter, c) => {
+                  const wall = () => isWall(r(), c());
+
+                  return (
+                    <button
+                      type="button"
+                      data-cell={`${r()},${c()}`}
+                      onClick={() => {
+                        if (!drawing() && path().length <= 1) tapCell(r(), c());
+                      }}
+                      disabled={props.disabled || wall()}
+                      aria-label={
+                        wall() ? "Wall" : `Row ${r() + 1} column ${c() + 1}, letter ${letter}`
+                      }
+                      class="relative transition-transform select-none"
+                      style={{
+                        "aspect-ratio": "1 / 1",
+                        display: "grid",
+                        "place-items": "center",
+                        "font-family": "var(--font-stack-display)",
+                        "font-weight": 800,
+                        "font-size": "clamp(1.1rem, 5.5vw, 1.65rem)",
+                        color: "var(--ink)",
+                        background: "transparent",
+                        border: "none",
+                        padding: 0,
+                        cursor: props.disabled || wall() ? "default" : "pointer",
+                      }}
+                    >
+                      <span class="relative select-none">{letter}</span>
+                    </button>
+                  );
+                }}
+              </For>
+            )}
+          </For>
+        </div>
       </div>
 
-      {/*
-        Lengths, not words. This is the only clue the player gets, and giving
-        any more of it away would be giving away the puzzle.
-      */}
-      <div class="flex flex-wrap items-center justify-center gap-2">
-        <For each={found()}>
+      {/* Target Word Bank & Found Words Display */}
+      <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
+        <For each={found().filter((e) => e.isTarget !== false)}>
           {(entry, i) => (
-            <span class="badge" style={{ "--pop": PATH_POPS[i() % PATH_POPS.length] }}>
-              {entry.word}
+            <span
+              class="badge text-xs font-black px-3 py-1 inline-flex items-center gap-1.5 shadow-xs"
+              style={{
+                background: PATH_POPS[i() % PATH_POPS.length],
+                border: "2px solid var(--ink)",
+                color: "var(--ink)",
+              }}
+            >
+              <span
+                class="w-3.5 h-3.5 rounded-full bg-white/95 text-[9px] font-black grid place-items-center"
+                style={{ border: "1px solid var(--ink)" }}
+              >
+                ✓
+              </span>
+              <span class="tracking-wider">{entry.word}</span>
             </span>
           )}
         </For>
         <For each={remainingLengths()}>
           {(length) => (
-            <span class="badge" style={{ "--pop": "var(--paper-2)" }}>
-              {"?".repeat(length)}
+            <span
+              class="badge text-xs font-extrabold px-3 py-1 inline-flex items-center gap-1.5 opacity-80"
+              style={{
+                background: "var(--paper-2)",
+                border: "2px dashed var(--ink)",
+                color: "var(--ink)",
+              }}
+            >
+              <span class="tracking-widest font-mono">{"• ".repeat(length).trim()}</span>
+              <span class="text-[10px] opacity-75">({length}L)</span>
             </span>
           )}
         </For>
       </div>
 
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <p class="comment">every tile belongs to exactly one word. no leftovers.</p>
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <p class="comment">every tile belongs to exactly one word. tap a word to release.</p>
         <div class="flex gap-2">
           <button
             type="button"
-            class="btn-ghost"
+            class="btn-ghost text-xs px-3 py-1"
             onClick={undo}
             disabled={props.disabled || (path().length === 0 && found().length === 0)}
           >
             Undo
           </button>
-          <button type="button" class="btn-ghost" onClick={reset} disabled={props.disabled}>
+          <button
+            type="button"
+            class="btn-ghost text-xs px-3 py-1"
+            onClick={reset}
+            disabled={props.disabled || (path().length === 0 && found().length === 0)}
+          >
             Reset
           </button>
         </div>

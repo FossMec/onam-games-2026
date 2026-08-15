@@ -375,7 +375,9 @@ export function SettingsTab(props: SettingsTabProps) {
                     <Show when={meta.type === "time"}>
                       <input
                         type="time"
-                        value={String(currentValue() ?? "19:00")}
+                        value={
+                          typeof currentValue() === "string" ? (currentValue() as string) : "19:00"
+                        }
                         onInput={(e) => handleValueChange(setting.key, e.currentTarget.value)}
                         class="input w-36 font-mono text-xs font-bold"
                       />
@@ -385,7 +387,7 @@ export function SettingsTab(props: SettingsTabProps) {
                     <Show when={meta.type === "date"}>
                       <input
                         type="date"
-                        value={String(currentValue() ?? "")}
+                        value={typeof currentValue() === "string" ? (currentValue() as string) : ""}
                         onInput={(e) => handleValueChange(setting.key, e.currentTarget.value)}
                         class="input w-44 font-mono text-xs font-bold"
                       />
@@ -395,7 +397,14 @@ export function SettingsTab(props: SettingsTabProps) {
                     <Show when={meta.type === "string" || meta.type === "secret"}>
                       <input
                         type={meta.type === "secret" ? "password" : "text"}
-                        value={String(currentValue() ?? "")}
+                        value={
+                          typeof currentValue() === "string"
+                            ? (currentValue() as string)
+                            : typeof currentValue() === "number" ||
+                                typeof currentValue() === "boolean"
+                              ? String(currentValue())
+                              : ""
+                        }
                         onInput={(e) => handleValueChange(setting.key, e.currentTarget.value)}
                         placeholder={meta.placeholder ?? "Value..."}
                         class="input w-full text-xs font-mono"

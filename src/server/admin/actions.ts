@@ -129,6 +129,7 @@ export async function createGame(input: {
   difficulty?: string;
   releaseAt?: string | null;
   endAt?: string | null;
+  previewAt?: string | null;
   testerEarlyHours?: number;
   published?: boolean;
 }) {

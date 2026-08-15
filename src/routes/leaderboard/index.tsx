@@ -6,15 +6,27 @@ import {
   ChevronRight,
   ChevronUp,
   Clock,
+  Flame,
   FlaskConical,
   GraduationCap,
   Lock,
   RefreshCw,
   Trophy,
 } from "lucide-solid";
-import { For, Show, createEffect, createSignal, onCleanup, useTransition } from "solid-js";
+import {
+  For,
+  Show,
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  useTransition,
+} from "solid-js";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
+import { ShareCardModal } from "~/components/games/ShareCard";
+import { collegeLabel } from "~/lib/profile";
+import type { ShareCardData } from "~/lib/share-card";
 import { getMe } from "~/server/auth/actions";
 import { getGames } from "~/server/games/actions";
 import { getDaily } from "~/server/leaderboard/actions";
@@ -63,6 +75,7 @@ export default function Leaderboard() {
   const me = createAsync(() => getMe());
   const games = createAsync(() => getGames());
   const [selectedDay, setSelectedDay] = createSignal<number>(1);
+  const [viewMode, setViewMode] = createSignal<"main" | "tester">("main");
   const [expandedId, setExpandedId] = createSignal<string | null>(null);
   const [version, setVersion] = createSignal(0);
   const [lastRefresh, setLastRefresh] = createSignal(Date.now());
@@ -109,12 +122,54 @@ export default function Leaderboard() {
 
   const selectedGame = () => games()?.find((g) => g.day === selectedDay()) ?? null;
 
+  // Auto-set tab to tester if currently selected game is in tester preview
+  createEffect(() => {
+    const g = selectedGame();
+    if (g && g.status === "tester" && isTesterOrAdmin()) {
+      setViewMode("tester");
+    }
+  });
+
   const [pending, startTransition] = useTransition();
+  const [sharing, setSharing] = createSignal(false);
+  const [page, setPage] = createSignal(1);
 
   const daily = createAsync<DailyBoard | null>(() => {
     void version();
     const g = selectedGame();
-    return g ? getDaily(g.id) : Promise.resolve(null);
+    const mode = isTesterOrAdmin() ? viewMode() : "main";
+    return g ? getDaily(g.id, mode, page(), 50) : Promise.resolve(null);
+  });
+
+  /**
+   * The viewer's own row, as a share card.
+   *
+   * Seeded exactly the way the game page seeds it, so the card offered here is
+   * the same card the player was shown when they finished — same meme, same
+   * joke, same picture. Two different cards for one run would read as a bug.
+   */
+  const shareData = createMemo<ShareCardData | null>(() => {
+    const g = selectedGame();
+    const board = daily();
+    const entry = board?.myEntry;
+    const user = me();
+    if (!g || !entry || !user) return null;
+    return {
+      playerName: user.name,
+      college: collegeLabel(user.college, user.collegeOther),
+      instagram: user.instagramHandle,
+      gameTitle: g.title,
+      gameSlug: g.slug,
+      day: g.day,
+      metric: entry.metric,
+      durationMs: entry.durationMs,
+      score: entry.score,
+      rank: entry.rank,
+      fieldSize: board.fieldSize,
+      afterDeadline: false,
+      origin: typeof window === "undefined" ? "" : window.location.origin,
+      seed: `${g.slug}-${entry.durationMs ?? 0}-${entry.score ?? 0}`,
+    };
   });
 
   createEffect(() => {
@@ -145,12 +200,14 @@ export default function Leaderboard() {
 
   const prevDay = () => {
     void startTransition(() => {
+      setPage(1);
       setSelectedDay((d) => (d > 1 ? d - 1 : 7));
     });
   };
 
   const nextDay = () => {
     void startTransition(() => {
+      setPage(1);
       setSelectedDay((d) => (d < 7 ? d + 1 : 1));
     });
   };
@@ -163,7 +220,10 @@ export default function Leaderboard() {
     const g = selectedGame();
     if (!g) return false;
     if (isTesterOrAdmin()) return false;
-    return g.status === "upcoming" || g.status === "tester";
+    // Preview counts as locked here: the board cannot have entries before the
+    // game opens, so a player following the reveal should get the teaser rather
+    // than an empty table.
+    return g.status === "upcoming" || g.status === "preview" || g.status === "tester";
   };
 
   return (
@@ -182,7 +242,7 @@ export default function Leaderboard() {
         style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--paper-2)" }}
       >
         <Confetti seed="leaderboard-hero" count={8} animate />
-        <div class="art-over flex items-center justify-between gap-3 flex-wrap">
+        <div class="art-over flex items-center justify-between gap-4">
           <div>
             <div class="flex items-center gap-2">
               <SpriteIcon name="tux-king" size={30} animate="float" interactive />
@@ -193,17 +253,26 @@ export default function Leaderboard() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={refresh}
-            disabled={cooldownLeft() > 0}
-            class="btn-ghost text-xs px-3 py-1.5 inline-flex items-center gap-1.5 cursor-pointer"
-          >
-            <RefreshCw size={13} strokeWidth={2.5} class={pending() ? "animate-spin" : ""} />
-            <span>
-              {cooldownLeft() > 0 ? `Wait ${Math.ceil(cooldownLeft() / 1000)}s` : "Refresh"}
-            </span>
-          </button>
+          <div class="flex items-center gap-3 shrink-0">
+            {/* Desktop right-side meme sticker */}
+            <img
+              src="/images/memes/meme-leaderboard.webp"
+              alt="Leaderboard Festival Meme"
+              class="hidden sm:block w-20 md:w-24 h-auto object-contain select-none opacity-90 hover:opacity-100 transition-opacity rounded-md"
+            />
+
+            <button
+              type="button"
+              onClick={refresh}
+              disabled={cooldownLeft() > 0}
+              class="btn-ghost text-xs px-3 py-1.5 inline-flex items-center gap-1.5 cursor-pointer self-start sm:self-center"
+            >
+              <RefreshCw size={13} strokeWidth={2.5} class={pending() ? "animate-spin" : ""} />
+              <span>
+                {cooldownLeft() > 0 ? `Wait ${Math.ceil(cooldownLeft() / 1000)}s` : "Refresh"}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -233,7 +302,12 @@ export default function Leaderboard() {
                 return (
                   <button
                     type="button"
-                    onClick={() => startTransition(() => setSelectedDay(d))}
+                    onClick={() =>
+                      startTransition(() => {
+                        setPage(1);
+                        setSelectedDay(d);
+                      })
+                    }
                     class={`w-8 h-8 rounded font-black text-xs grid place-items-center transition-all cursor-pointer ${
                       isSel()
                         ? "bg-[var(--pop-teal)] text-[var(--ink)] border-2 border-[var(--ink)] scale-105 shadow-xs"
@@ -281,19 +355,55 @@ export default function Leaderboard() {
         </Show>
       </div>
 
+      {/* ---------------------------------------------------- Tester vs Main Leaderboard Tabs (Admin / Tester Only) */}
+      <Show when={isTesterOrAdmin()}>
+        <div class="flex items-center gap-2 bg-[var(--paper-2)] p-1.5 rounded-lg border-2 border-[var(--ink)]">
+          <button
+            type="button"
+            onClick={() =>
+              startTransition(() => {
+                setPage(1);
+                setViewMode("main");
+              })
+            }
+            class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 ${
+              viewMode() === "main"
+                ? "bg-[var(--pop-yellow)] text-[var(--ink)] border-2 border-[var(--ink)] shadow-xs"
+                : "bg-transparent text-[var(--ink-soft)] hover:text-[var(--ink)] opacity-70 hover:opacity-100"
+            }`}
+          >
+            <Trophy size={13} strokeWidth={2.5} />
+            <span>Official Public Leaderboard</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              startTransition(() => {
+                setPage(1);
+                setViewMode("tester");
+              })
+            }
+            class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 ${
+              viewMode() === "tester"
+                ? "bg-[var(--pop-teal)] text-[var(--ink)] border-2 border-[var(--ink)] shadow-xs"
+                : "bg-transparent text-[var(--ink-soft)] hover:text-[var(--ink)] opacity-70 hover:opacity-100"
+            }`}
+          >
+            <FlaskConical size={13} strokeWidth={2.5} />
+            <span>Tester Preview Runs</span>
+          </button>
+        </div>
+      </Show>
+
       {/* ---------------------------------------------------- Tester Notice (When Viewing Tester Runs) */}
-      <Show
-        when={
-          isTesterOrAdmin() &&
-          (selectedGame()?.status === "tester" || selectedGame()?.status === "upcoming")
-        }
-      >
+      <Show when={isTesterOrAdmin() && viewMode() === "tester"}>
         <div class="card p-3 bg-[var(--pop-teal)]/20 border-2 border-[var(--ink)] flex items-center justify-between text-xs font-bold">
           <div class="flex items-center gap-2">
             <FlaskConical size={16} class="text-[var(--ink)] shrink-0" />
             <span>
-              Tester Access: Showing runs for Day {selectedDay()} ({selectedGame()?.title}). These
-              results are isolated to testers.
+              Tester Mode: Showing pre-release / test runs for Day {selectedDay()} (
+              {selectedGame()?.title}). These results are isolated from public players.
             </span>
           </div>
           <span class="badge text-[10px] py-0 px-1.5 bg-[var(--pop-teal)] uppercase font-black">
@@ -387,6 +497,22 @@ export default function Leaderboard() {
                                 Tester
                               </span>
                             )}
+                            {/*
+                              The streak rides along on the row the board is
+                              already fetching — `users.streak_count` is part of
+                              the same join, so this costs nothing. Shown from
+                              two days up: a "streak" of one is just today.
+                            */}
+                            {entry.streakCount > 1 && (
+                              <span
+                                class="badge text-[9px] py-0 px-1 tabular-nums"
+                                style={{ "--pop": "var(--pop-red)" }}
+                                title={`${entry.streakCount}-day streak`}
+                              >
+                                <Flame size={10} strokeWidth={3} />
+                                {entry.streakCount}
+                              </span>
+                            )}
                           </p>
                         </div>
                       </div>
@@ -417,6 +543,12 @@ export default function Leaderboard() {
                           </span>
                         </div>
                         <div class="flex items-center gap-3 font-mono text-[11px] opacity-85">
+                          <Show when={entry.streakCount > 0}>
+                            <span class="inline-flex items-center gap-1">
+                              <Flame size={12} />
+                              {entry.streakCount} day{entry.streakCount === 1 ? "" : "s"} in a row
+                            </span>
+                          </Show>
                           <Show when={daily()!.metric === "score"}>
                             <span>Runs: {entry.attemptsUsed}</span>
                           </Show>
@@ -434,6 +566,45 @@ export default function Leaderboard() {
           </div>
         </div>
 
+        {/* ---------------------------------------------------- Pagination Controls */}
+        <Show when={daily() && daily()!.totalPages > 1}>
+          <div class="card card-plain p-3 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[var(--paper-2)]">
+            <span class="text-xs font-bold text-[var(--ink-soft)]">
+              Showing {(daily()!.page - 1) * daily()!.pageSize + 1}–
+              {Math.min(daily()!.page * daily()!.pageSize, daily()!.fieldSize)} of{" "}
+              {daily()!.fieldSize} players
+            </span>
+
+            <div class="flex items-center gap-1.5">
+              <button
+                type="button"
+                class="btn-ghost text-xs px-3 py-1.5 cursor-pointer"
+                disabled={daily()!.page <= 1}
+                onClick={() => {
+                  void startTransition(() => setPage((p) => Math.max(1, p - 1)));
+                }}
+              >
+                Previous
+              </button>
+
+              <span class="text-xs font-black px-2.5 py-1 bg-[var(--paper)] rounded border border-[var(--ink)]">
+                Page {daily()!.page} of {daily()!.totalPages}
+              </span>
+
+              <button
+                type="button"
+                class="btn-ghost text-xs px-3 py-1.5 cursor-pointer"
+                disabled={daily()!.page >= daily()!.totalPages}
+                onClick={() => {
+                  void startTransition(() => setPage((p) => Math.min(daily()!.totalPages, p + 1)));
+                }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </Show>
+
         <Show when={daily()!.myEntry && !daily()!.entries.some((e) => e.isMe)}>
           <div class="card pop-yellow p-3.5 flex items-center justify-between">
             <div class="flex items-center gap-2.5">
@@ -445,6 +616,33 @@ export default function Leaderboard() {
             <p class="font-mono font-black text-sm">{formatMetric(daily()!.myEntry!)}</p>
           </div>
         </Show>
+
+        {/*
+          A rank is only worth having if you can show it to somebody. Available
+          from the board as well as the game page, because the bragging usually
+          happens a while after the run.
+        */}
+        <Show when={shareData()}>
+          <div class="card pop-pink flex flex-wrap items-center justify-between gap-3 p-3.5">
+            <p class="comment">can you beat me? put it on their timeline.</p>
+            <button type="button" class="btn-brand" onClick={() => setSharing(true)}>
+              Share my card
+            </button>
+          </div>
+        </Show>
+      </Show>
+
+      {/* Mobile Bottom Meme Sticker */}
+      <div class="sm:hidden flex justify-center py-4">
+        <img
+          src="/images/memes/meme-leaderboard.webp"
+          alt="Leaderboard Festival Meme"
+          class="w-28 h-auto object-contain select-none opacity-90 hover:opacity-100 rounded-md"
+        />
+      </div>
+
+      <Show when={sharing() && shareData()}>
+        <ShareCardModal data={shareData()!} onClose={() => setSharing(false)} />
       </Show>
     </main>
   );

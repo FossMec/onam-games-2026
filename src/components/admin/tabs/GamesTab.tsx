@@ -12,6 +12,7 @@ export interface GameRow {
   difficulty: string;
   releaseAt: string | Date | null;
   endAt: string | Date | null;
+  previewAt: string | Date | null;
   testerEarlyHours: number;
   status: string;
   published: boolean;
@@ -51,6 +52,7 @@ export function GamesTab(props: GamesTabProps) {
   const [formHint, setFormHint] = createSignal("");
   const [formReleaseAt, setFormReleaseAt] = createSignal("");
   const [formEndAt, setFormEndAt] = createSignal("");
+  const [formPreviewAt, setFormPreviewAt] = createSignal("");
   const [formEarlyHours, setFormEarlyHours] = createSignal(24);
   const [formPublished, setFormPublished] = createSignal(false);
 
@@ -64,6 +66,7 @@ export function GamesTab(props: GamesTabProps) {
     setFormHint("");
     setFormReleaseAt("");
     setFormEndAt("");
+    setFormPreviewAt("");
     setFormEarlyHours(24);
     setFormPublished(false);
     setIsCreating(true);
@@ -80,6 +83,7 @@ export function GamesTab(props: GamesTabProps) {
     setFormHint(game.hint ?? "");
     setFormReleaseAt(toDateTimeLocal(game.releaseAt));
     setFormEndAt(toDateTimeLocal(game.endAt));
+    setFormPreviewAt(toDateTimeLocal(game.previewAt));
     setFormEarlyHours(game.testerEarlyHours ?? 24);
     setFormPublished(game.published ?? false);
   };
@@ -98,6 +102,7 @@ export function GamesTab(props: GamesTabProps) {
           hint: formHint().trim() || undefined,
           releaseAt: formReleaseAt() ? new Date(formReleaseAt()).toISOString() : null,
           endAt: formEndAt() ? new Date(formEndAt()).toISOString() : null,
+          previewAt: formPreviewAt() ? new Date(formPreviewAt()).toISOString() : null,
           testerEarlyHours: formEarlyHours(),
           published: formPublished(),
         });
@@ -112,6 +117,7 @@ export function GamesTab(props: GamesTabProps) {
           hint: formHint().trim() || null,
           releaseAt: formReleaseAt() ? new Date(formReleaseAt()).toISOString() : null,
           endAt: formEndAt() ? new Date(formEndAt()).toISOString() : null,
+          previewAt: formPreviewAt() ? new Date(formPreviewAt()).toISOString() : null,
           testerEarlyHours: formEarlyHours(),
           published: formPublished(),
         });
@@ -431,6 +437,20 @@ export function GamesTab(props: GamesTabProps) {
                       onInput={(e) => setFormEndAt(e.currentTarget.value)}
                       class="input w-full text-xs font-mono"
                     />
+                  </div>
+
+                  <div class="sm:col-span-2">
+                    <label class="block font-bold text-[11px] mb-0.5">Custom Preview Time</label>
+                    <input
+                      type="datetime-local"
+                      value={formPreviewAt()}
+                      onInput={(e) => setFormPreviewAt(e.currentTarget.value)}
+                      class="input w-full text-xs font-mono"
+                    />
+                    <p class="text-[10px] text-[var(--ink-soft)] font-semibold pt-0.5">
+                      When the title, art and rules become visible while the game stays locked.
+                      Blank uses the global preview window.
+                    </p>
                   </div>
                 </div>
 

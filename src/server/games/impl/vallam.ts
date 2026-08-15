@@ -184,23 +184,11 @@ export function solve(boats: Boat[], cap = 30_000): number | null {
 
 /** Places boats at random without overlapping. Vallam is always id 0. */
 function randomBoard(rng: Rng): Boat[] | null {
-  const boats: Boat[] = [{ id: 0, r: EXIT_ROW, c: rng.int(0, 2), len: 2, horizontal: true }];
+  const boats: Boat[] = [{ id: 0, r: EXIT_ROW, c: rng.int(0, 1), len: 3, horizontal: true }];
   const occupied = new Set<string>();
   for (const cell of cellsOf(boats[0])) occupied.add(`${cell.r},${cell.c}`);
 
-  // Boat count drives BFS state space far more than board size does, but it
-  // also drives how tangled the board is, and both matter. Measured over 12
-  // boards per setting:
-  //
-  //     9-11 boats   median par 5    74ms/board
-  //    11-13 boats   median par 7   266ms/board
-  //    12-14 boats   median par 7   172ms/board
-  //    13-15 boats   median par 6    66ms/board
-  //
-  // 12-14 buys the extra two moves of par for a cost that still fits inside a
-  // request. Fewer boats than this produces four-move boards, which are not a
-  // puzzle; more starts crowding the board so hard that most boats are frozen.
-  const target = rng.int(12, 14);
+  const target = rng.int(10, 13);
   let guard = 0;
   while (boats.length < target && guard < 400) {
     guard += 1;
