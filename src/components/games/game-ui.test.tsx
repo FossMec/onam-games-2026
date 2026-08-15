@@ -1,6 +1,7 @@
 import { renderToString } from "solid-js/web";
 import { describe, expect, it } from "vite-plus/test";
 import { GameDemo, HowToPlayModal, HowToPlayPanel } from "./HowToPlay";
+import { JigsawGame, restoreBoard } from "./JigsawGame";
 import { ProjectMark } from "./ProjectMark";
 import { TinderRecap } from "./TinderRecap";
 import { BRAND_ICONS } from "~/lib/brand-icons";
@@ -90,6 +91,75 @@ describe("how to play", () => {
     ));
     expect(html).toContain("Start the clock");
     expect(html).toContain("Not yet");
+  });
+});
+
+describe("jigsaw board", () => {
+  const view = {
+    kind: "jigsaw" as const,
+    cols: 2,
+    rows: 2,
+    imageUrl: "/pookalam.jpeg",
+    hEdges: [[tab(), tab()]],
+    vEdges: [[tab()], [tab()]],
+    scatter: [
+      { id: 0, x: 0.2, y: 0.3 },
+      { id: 1, x: 1.6, y: 0.1 },
+      { id: 2, x: 0.4, y: 1.7 },
+      { id: 3, x: 2.0, y: 1.4 },
+    ],
+  };
+
+  function tab() {
+    return { dir: 1 as const, offset: 0.44, neck: 0.12, head: 0.2, skew: 0.03 };
+  }
+
+  /*
+   * These exercise `restoreBoard` directly rather than rendering the component.
+   * `onMount` does not run during SSR, so a render-based test of this path
+   * would pass without ever executing the code that crashed.
+   */
+  it("falls back to a scatter instead of crashing on foreign progress", () => {
+    // A *submission* (`layout`) where progress (`pieces`) was expected. This
+    // threw "cannot read properties of undefined (reading 'length')".
+    const submission = { layout: [{ id: 0, gx: 0, gy: 0 }], moveLog: [] };
+    const restored = restoreBoard(submission as never, view, 4);
+    expect(restored.pieces).toHaveLength(4);
+    // A fresh scatter: nothing joined to anything.
+    expect(new Set(restored.pieces.map((p) => p.groupId)).size).toBe(4);
+  });
+
+  it("survives progress from a different-sized board", () => {
+    const stale = { pieces: [{ id: 0, groupId: 0, x: 0, y: 0 }], moveLog: [] };
+    expect(restoreBoard(stale, view, 4).pieces).toHaveLength(4);
+  });
+
+  it("survives a missing scatter and missing progress", () => {
+    expect(restoreBoard(null, { scatter: undefined as never }, 4).pieces).toEqual([]);
+    expect(restoreBoard(undefined, view, 4).pieces).toHaveLength(4);
+  });
+
+  it("restores a real half-finished board untouched", () => {
+    const saved = {
+      pieces: [
+        { id: 0, groupId: 0, x: 1, y: 1 },
+        { id: 1, groupId: 0, x: 2, y: 1 },
+        { id: 2, groupId: 2, x: 0.5, y: 2.2 },
+        { id: 3, groupId: 3, x: 2.4, y: 0.1 },
+      ],
+      moveLog: [{ p: 0, t: 1200 }],
+    };
+    const restored = restoreBoard(saved, view, 4);
+    expect(restored.pieces).toEqual(saved.pieces);
+    expect(restored.moveLog).toEqual(saved.moveLog);
+    // Copied, not aliased — the board mutates its own state.
+    expect(restored.pieces[0]).not.toBe(saved.pieces[0]);
+  });
+
+  it("renders without throwing", () => {
+    expect(() =>
+      renderToString(() => <JigsawGame view={view} startedAt={0} disabled onFinish={() => {}} />),
+    ).not.toThrow();
   });
 });
 

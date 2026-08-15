@@ -84,6 +84,43 @@ const SNAP = 0.3;
  * different places along the edge and the pieces visibly did not fit.
  */
 
+/**
+ * Decides what the board opens with: restored progress, or a fresh scatter.
+ *
+ * Pulled out of `onMount` and exported so it can be tested, because the bug it
+ * exists to prevent lives exactly here and is invisible to a server render —
+ * `onMount` does not run during SSR, so a test that only renders the component
+ * proves nothing about this path.
+ *
+ * Restored state is untrusted input, not a local variable. It comes from
+ * localStorage, where an older version of this component may have written it,
+ * and from the finished-board path, which handed over a *submission*
+ * (`{ layout }`) where progress (`{ pieces }`) was expected. `initialProgress`
+ * is typed as though that cannot happen, so the mismatch surfaced as a runtime
+ * crash reading `.length` of undefined rather than as a type error. Anything
+ * that is not the shape it claims to be is discarded for a fresh scatter:
+ * losing a half-finished board is bad, but a board that will not render at all
+ * is worse, and the server still owns the clock either way.
+ */
+export function restoreBoard(
+  saved: JigsawProgress | null | undefined,
+  view: Pick<JigsawViewData, "scatter">,
+  count: number,
+): { pieces: Piece[]; moveLog: Move[] } {
+  if (Array.isArray(saved?.pieces) && saved.pieces.length === count) {
+    return {
+      pieces: saved.pieces.map((p) => ({ ...p })),
+      moveLog: Array.isArray(saved.moveLog) ? saved.moveLog.slice() : [],
+    };
+  }
+  // Each piece starts in its own group, which is what "loose on the board"
+  // means: no two pieces are joined yet.
+  return {
+    pieces: (view.scatter ?? []).map((s) => ({ id: s.id, groupId: s.id, x: s.x, y: s.y })),
+    moveLog: [],
+  };
+}
+
 export function JigsawGame(props: JigsawGameProps) {
   let board: HTMLDivElement | undefined;
 
@@ -97,15 +134,9 @@ export function JigsawGame(props: JigsawGameProps) {
   const [activeGroup, setActiveGroup] = createSignal<number | null>(null);
 
   onMount(() => {
-    const saved = props.initialProgress;
-    if (saved && saved.pieces.length === count()) {
-      setPieces(saved.pieces.map((p) => ({ ...p })));
-      setMoveLog(saved.moveLog.slice());
-      return;
-    }
-    // Each piece starts in its own group, which is what "loose on the board"
-    // means: no two pieces are joined yet.
-    setPieces(props.view.scatter.map((s) => ({ id: s.id, groupId: s.id, x: s.x, y: s.y })));
+    const restored = restoreBoard(props.initialProgress, props.view, count());
+    setPieces(restored.pieces);
+    setMoveLog(restored.moveLog);
   });
 
   const homeOf = (id: number) => ({ x: id % cols(), y: Math.floor(id / cols()) });

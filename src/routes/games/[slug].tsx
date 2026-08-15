@@ -429,6 +429,36 @@ export default function GamePage() {
       : null;
   };
 
+  /**
+   * The finished jigsaw, as board state.
+   *
+   * What was submitted is a *layout* — `{ id, gx, gy }` in whole grid cells —
+   * and what the board renders is *progress*, `{ pieces, moveLog }`. Those are
+   * different shapes, and handing the first to the component expecting the
+   * second crashed it on `pieces.length` of undefined. A cast was papering over
+   * exactly that, so nothing complained until the finished board started being
+   * shown on every revisit.
+   *
+   * The layout is anchored wherever the player happened to assemble it, so it
+   * is normalised back to the origin; every piece shares one group because a
+   * finished puzzle is, by definition, one lump.
+   */
+  const jigsawFinishedProgress = (): JigsawProgress | null => {
+    const submission = finishedBoard()?.submission as {
+      layout?: { id: number; gx: number; gy: number }[];
+      moveLog?: { p: number; t: number }[];
+    } | null;
+    const layout = submission?.layout;
+    if (!Array.isArray(layout) || layout.length === 0) return null;
+
+    const minX = Math.min(...layout.map((p) => p.gx));
+    const minY = Math.min(...layout.map((p) => p.gy));
+    return {
+      pieces: layout.map((p) => ({ id: p.id, groupId: 0, x: p.gx - minX, y: p.gy - minY })),
+      moveLog: submission?.moveLog ?? [],
+    };
+  };
+
   /** Whether there is actually a board to draw. Stops an empty "Your board". */
   const finishedKind = () => (finishedBoard()?.view as GameView | undefined)?.kind;
   const hasFinishedBoard = () =>
@@ -784,7 +814,7 @@ export default function GamePage() {
                   view={finishedBoard()!.view as JigsawViewData}
                   startedAt={0}
                   disabled
-                  initialProgress={finishedBoard()!.submission as JigsawProgress | null}
+                  initialProgress={jigsawFinishedProgress()}
                   onFinish={() => undefined}
                 />
               </Show>
