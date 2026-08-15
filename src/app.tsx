@@ -3,6 +3,7 @@ import { Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { Suspense } from "solid-js";
 import { BanNotice } from "./components/BanNotice";
+import { BetaGate } from "./components/BetaGate";
 import { Footer } from "./components/Footer";
 import { Nav } from "./components/Nav";
 import { InkFilter } from "./components/art/InkFilter";
@@ -41,7 +42,10 @@ export default function App() {
             {/* Every page, not just the game page — a warning nobody sees is not a warning. */}
             <BanNotice />
             <div class="flex-1">
-              <Suspense>{props.children}</Suspense>
+              <Suspense>
+                {/* Closed beta: testers only, until `access.closed_beta` is off. */}
+                <BetaGate>{props.children}</BetaGate>
+              </Suspense>
             </div>
             <Footer />
           </div>

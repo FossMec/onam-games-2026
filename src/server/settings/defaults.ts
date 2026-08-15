@@ -29,6 +29,17 @@ export const settingsRegistry: SettingDef[] = [
     defaultValue: 24,
   },
   {
+    key: "access.closed_beta",
+    group: "access",
+    /**
+     * The whole site behind the tester list. A setting rather than a constant
+     * so opening the doors on launch night is a toggle in /admin, not a deploy
+     * — the one change guaranteed to be needed at the worst possible moment.
+     */
+    description: "Closed beta: only testers and admins can see the site",
+    defaultValue: true,
+  },
+  {
     key: "enforce_one_user_per_device",
     group: "anti-cheat",
     description: "Block a second account on a device already bound to another account",

@@ -6,6 +6,7 @@ import { dailyLeaderboard, devices, gameAttempts, games, globalScores } from "~/
 import { HttpError } from "~/server/errors";
 import { rollUpGlobalScores } from "~/server/leaderboard/settle";
 import { getRedisOrNull } from "~/server/redis/client";
+import { revealDeck } from "./impl/tinder";
 import type { GameAssets, GameDef, GameMetric } from "./registry";
 import { requireGameDef } from "./registry";
 import { newSeed } from "./rng";
@@ -40,6 +41,8 @@ export interface StartResult {
   startedAt: string;
   attemptNumber: number;
   attemptsRemaining: number;
+  /** True for testers and admins, who play without a run limit. */
+  unlimited: boolean;
   maxDurationMs: number;
   alreadyStarted: boolean;
 }
@@ -99,14 +102,24 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
       view,
       startedAt: open.startedAt.toISOString(),
       attemptNumber: open.attemptNumber,
-      attemptsRemaining: def.maxAttempts - open.attemptNumber,
+      attemptsRemaining:
+        input.role === "player" ? def.maxAttempts - open.attemptNumber : def.maxAttempts,
+      unlimited: input.role !== "player",
       maxDurationMs: def.maxDurationMs,
       alreadyStarted: true,
     };
   }
 
+  /*
+   * Testers and admins play without a run limit. They are the people who have
+   * to break a game before five hundred players find the same bug, and a
+   * one-shot game gives them exactly one look at it. Their results are already
+   * kept off the player leaderboard (`lb:game:*:testers`), so nothing they do
+   * here can move a real ranking.
+   */
+  const unlimited = input.role !== "player";
   const used = prior.length;
-  if (used >= def.maxAttempts) {
+  if (!unlimited && used >= def.maxAttempts) {
     throw new HttpError(
       409,
       def.maxAttempts === 1 ? "You have already played this game" : "You are out of runs for today",
@@ -163,7 +176,8 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
     view,
     startedAt: attempt.startedAt.toISOString(),
     attemptNumber,
-    attemptsRemaining: def.maxAttempts - attemptNumber,
+    attemptsRemaining: unlimited ? def.maxAttempts : def.maxAttempts - attemptNumber,
+    unlimited,
     maxDurationMs: def.maxDurationMs,
     alreadyStarted: false,
   };
@@ -179,12 +193,19 @@ export interface FinishInput {
 
 export interface FinishResult {
   valid: boolean;
+  /** Ranked duration: the server-measured clock plus any in-game penalty. */
   durationMs: number;
+  /** The clock alone, so the result card can show what the penalty cost. */
+  rawDurationMs: number;
+  /** Penalty added by the game's own rules, e.g. 3s per wrong Tinder swipe. */
+  penaltyMs: number;
   /** Server-derived; null for non-score games. */
   score: number | null;
   metric: GameMetric;
   afterDeadline: boolean;
   attemptsRemaining: number;
+  /** True for testers and admins, who play without a run limit. */
+  unlimited: boolean;
   /** True when this run improved the player's standing for the day. */
   isPersonalBest: boolean;
   reason?: string;
@@ -200,6 +221,8 @@ export interface MyAttempt {
   attemptsUsed: number;
   attemptsRemaining: number;
   maxAttempts: number;
+  /** True for testers and admins, who play without a run limit. */
+  unlimited: boolean;
   valid: boolean;
   afterDeadline: boolean;
   startedAt: string | null;
@@ -211,7 +234,11 @@ export interface MyAttempt {
  * and their best result so far. Drives the whole game page, so it has to work
  * for both one-shot and retry games.
  */
-export async function getMyAttemptBySlug(slug: string, userId: string): Promise<MyAttempt | null> {
+export async function getMyAttemptBySlug(
+  slug: string,
+  userId: string,
+  role: ViewerRole = "player",
+): Promise<MyAttempt | null> {
   const db = getDb();
   const [game] = await db
     .select({ id: games.id, gameType: games.gameType })
@@ -227,11 +254,14 @@ export async function getMyAttemptBySlug(slug: string, userId: string): Promise<
     .where(and(eq(gameAttempts.userId, userId), eq(gameAttempts.gameId, game.id)))
     .orderBy(desc(gameAttempts.attemptNumber));
 
+  const unlimited = role !== "player";
   const base = {
     metric: def.metric,
     maxAttempts: def.maxAttempts,
     attemptsUsed: rows.length,
-    attemptsRemaining: Math.max(0, def.maxAttempts - rows.length),
+    // Testers never run out, so the page must never draw them a "0 runs left".
+    attemptsRemaining: unlimited ? def.maxAttempts : Math.max(0, def.maxAttempts - rows.length),
+    unlimited,
   };
 
   if (rows.length === 0) {
@@ -269,6 +299,46 @@ export async function getMyAttemptBySlug(slug: string, userId: string): Promise<
     startedAt: current.startedAt.toISOString(),
     submittedAt: current.submittedAt?.toISOString() ?? null,
   };
+}
+
+export interface TinderRecap {
+  kind: "tinder";
+  cards: { id: string; name: string; category: string; open: boolean; why: string }[];
+}
+
+/**
+ * The answer key for a Tinder deck the player has already submitted.
+ *
+ * Three things keep this from being a leak. It reads the caller's own attempt
+ * row; it refuses unless that attempt is `submitted`; and it regenerates from
+ * that attempt's seed, which is unique per player per run. So the most it can
+ * ever hand over is the deck you just finished — and every card in it is one
+ * you have already answered correctly, or the run would not have ended.
+ */
+export async function getMyRecapBySlug(slug: string, userId: string): Promise<TinderRecap | null> {
+  const db = getDb();
+  const [game] = await db
+    .select({ id: games.id, gameType: games.gameType })
+    .from(games)
+    .where(eq(games.slug, slug))
+    .limit(1);
+  if (!game || game.gameType !== "tinder") return null;
+
+  const [attempt] = await db
+    .select({ seed: gameAttempts.seed })
+    .from(gameAttempts)
+    .where(
+      and(
+        eq(gameAttempts.userId, userId),
+        eq(gameAttempts.gameId, game.id),
+        eq(gameAttempts.status, "submitted"),
+      ),
+    )
+    .orderBy(desc(gameAttempts.attemptNumber))
+    .limit(1);
+  if (!attempt) return null;
+
+  return { kind: "tinder", cards: revealDeck(attempt.seed) };
 }
 
 /**
@@ -359,7 +429,7 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
   const schedule = await resolveSchedule(game, input.role);
   const now = new Date();
   // The clock is the DB's, not the client's. Nothing posted can change it.
-  const durationMs = now.getTime() - attempt.startedAt.getTime();
+  const rawDurationMs = now.getTime() - attempt.startedAt.getTime();
   const afterDeadline = schedule.endAt ? now.getTime() > schedule.endAt.getTime() : false;
 
   const priorCount = await db
@@ -368,18 +438,28 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
     .where(and(eq(gameAttempts.userId, input.userId), eq(gameAttempts.gameId, game.id)));
   const attemptsUsed = priorCount[0]?.count ?? attempt.attemptNumber;
 
-  if (durationMs > def.maxDurationMs) {
+  const unlimited = input.role !== "player";
+  const attemptsRemaining = unlimited
+    ? def.maxAttempts
+    : Math.max(0, def.maxAttempts - attemptsUsed);
+
+  // The expiry test uses the bare clock: a time penalty is a ranking cost, not
+  // a reason to void a run somebody actually finished inside the window.
+  if (rawDurationMs > def.maxDurationMs) {
     await db
       .update(gameAttempts)
-      .set({ status: "expired", durationMs, submittedAt: now })
+      .set({ status: "expired", durationMs: rawDurationMs, submittedAt: now })
       .where(eq(gameAttempts.id, attempt.id));
     return {
       valid: false,
-      durationMs,
+      durationMs: rawDurationMs,
+      rawDurationMs,
+      penaltyMs: 0,
       score: null,
       metric: def.metric,
       afterDeadline,
-      attemptsRemaining: Math.max(0, def.maxAttempts - attemptsUsed),
+      attemptsRemaining,
+      unlimited,
       isPersonalBest: false,
       reason: "This attempt was open too long and expired.",
     };
@@ -392,11 +472,23 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
     seed: attempt.seed,
     difficulty: game.difficulty,
     submission: input.submittedState,
-    durationMs,
+    durationMs: rawDurationMs,
   });
 
+  /*
+   * The ranked duration. A game may charge its own time penalty — Tinder adds
+   * three seconds per wrong swipe — and that penalty is derived from the replay
+   * above, so it is as server-authoritative as the clock it is added to. This
+   * combined figure is what gets stored and ranked; `rawDurationMs` survives
+   * only to show the player what the mistakes cost them.
+   */
+  const penaltyMs = result.valid ? Math.max(0, result.durationPenaltyMs ?? 0) : 0;
+  const durationMs = rawDurationMs + penaltyMs;
+
   const score = def.metric === "score" ? (result.score ?? 0) : null;
-  const isAnomalous = result.valid && durationMs < def.minPlausibleMs;
+  // Anomaly detection reads the real clock. A penalty inflating a duration past
+  // the floor would launder exactly the impossibly-fast run it exists to catch.
+  const isAnomalous = result.valid && rawDurationMs < def.minPlausibleMs;
 
   await db
     .update(gameAttempts)
@@ -425,7 +517,7 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
       ip: attempt.ip ?? undefined,
       eventType: "speed_anomaly",
       severity: "warn",
-      details: { durationMs, minPlausibleMs: def.minPlausibleMs, gameId: game.id },
+      details: { durationMs: rawDurationMs, minPlausibleMs: def.minPlausibleMs, gameId: game.id },
       actionTaken: "flag",
     });
   }
@@ -516,10 +608,13 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
   return {
     valid: result.valid,
     durationMs,
+    rawDurationMs,
+    penaltyMs,
     score,
     metric: def.metric,
     afterDeadline,
-    attemptsRemaining: Math.max(0, def.maxAttempts - attemptsUsed),
+    attemptsRemaining,
+    unlimited,
     isPersonalBest,
     reason: result.valid ? undefined : result.reason,
   };

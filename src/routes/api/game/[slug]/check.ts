@@ -7,16 +7,17 @@ import { requireCurrentUser } from "~/server/auth/service";
 import { getDb } from "~/server/db/client";
 import { gameAttempts, games } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
-import { checkPass, dealDeck } from "~/server/games/impl/tinder";
+import { checkPass, dealDeck, explainCards } from "~/server/games/impl/tinder";
 import { getRequestMeta } from "~/server/request";
 
 /**
- * Grades one pass of a deck mid-attempt.
+ * Grades swipes mid-attempt — one card at a time as the deck is played, or a
+ * whole pass at once.
  *
  * This exists so the browser never has to hold the answer key. It returns only
- * the ids the player got wrong — information they earned by guessing, and
- * would learn anyway when the card came back around. Nothing is revealed about
- * cards they have not answered.
+ * the ids the player got wrong, and the licence note for those — information
+ * they earned by guessing, and which they are about to be shown as their
+ * penalty screen. Nothing is revealed about cards they have not answered.
  *
  * It is deliberately stateless: the pass is graded as a pure function of the
  * attempt's seed. The authoritative check is still the full-transcript replay
@@ -38,10 +39,16 @@ export async function POST({ request }: APIEvent) {
     assertCanPlay(user);
     const meta = getRequestMeta();
 
-    // Generous: a full run is several passes, but this bounds a script.
+    /*
+     * One call per swipe, so this has to clear a whole deck inside a minute
+     * and leave room for a second run. A 20-card deck plus recycled misses is
+     * ~30 calls; 200 is comfortably above a human playing flat out and still
+     * far below anything worth scripting — every call costs a real swipe and
+     * only ever grades a card the player has already committed to.
+     */
     const rate = await checkRateLimit({
       key: `game-check:${meta.ip}:${user.id}`,
-      limit: 60,
+      limit: 200,
       windowMs: 60_000,
     });
     if (!rate.success) {
@@ -81,7 +88,13 @@ export async function POST({ request }: APIEvent) {
     if (!result.ok) {
       return Response.json({ error: result.reason }, { status: 400 });
     }
-    return Response.json({ wrongIds: result.wrongIds });
+    // `wrong` carries the licence note for the misses only. The player is about
+    // to be shown it as their penalty screen, and it says nothing about any
+    // card they have not already answered.
+    return Response.json({
+      wrongIds: result.wrongIds,
+      wrong: explainCards(attempt.seed, result.wrongIds),
+    });
   } catch (error) {
     if (error instanceof HttpError) {
       return Response.json({ error: error.message }, { status: error.status });

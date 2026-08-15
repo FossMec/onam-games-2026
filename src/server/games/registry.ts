@@ -78,6 +78,13 @@ export interface VerifyResult {
   score?: number;
   /** Server-counted moves, for anomaly detection. */
   movesCount?: number;
+  /**
+   * Time added to the measured duration as an in-game penalty — Tinder charges
+   * three seconds per wrong swipe. Derived here from the replayed submission,
+   * never accepted from the client, and added on top of the server-measured
+   * clock so the stored duration is the one the leaderboard ranks.
+   */
+  durationPenaltyMs?: number;
 }
 
 /**
@@ -144,9 +151,10 @@ export const GAMES: readonly GameDef[] = [
       tagline: "Swipe right on freedom. Swipe left on the EULA.",
       hint: "Some of these logos are lying to you.",
       howTo: [
-        "Swipe right if the project is open source.",
-        "Swipe left if it is proprietary.",
-        "Get one wrong and it comes back at the end of the deck. Repeatedly.",
+        "Swipe right if the project is open source. Swipe left if it is proprietary.",
+        "Arrow keys work too — ← for proprietary, → for open source.",
+        "Get one wrong and it costs you 3 seconds. You get told what it actually is while you wait.",
+        "Wrong cards come back at the end of the deck. Repeatedly.",
         "The deck ends when every card is sorted correctly. Fastest wins.",
       ],
     },

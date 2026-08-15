@@ -5,23 +5,42 @@ import { TINDER_CARDS, type TinderCard } from "../data/tinder-cards";
 /**
  * Open Source Tinder.
  *
- * Swipe right for open source, left for proprietary. Cards you get wrong come
- * back at the end of the deck. The run ends when the deck is empty, so the only
- * score is how long it took — the game is self-verifying in the sense that an
- * incorrect answer cannot end the run.
+ * Swipe right for open source, left for proprietary. A wrong call costs three
+ * seconds and the card comes back at the end of the deck. The run ends when the
+ * deck is empty, so the only score is how long it took — the game is
+ * self-verifying in the sense that an incorrect answer cannot end the run.
  *
  * ANTI-CHEAT SHAPE
  *
- * The browser never receives the answer key. It plays a pass, posts that pass
- * to `/check`, and gets back only the ids it got wrong — information the player
- * already earned by guessing. At finish, the full transcript is replayed here
- * and must reconstruct exactly: the right cards, in the right order, ending
- * with a clean pass. A fabricated transcript fails on order alone.
+ * The browser never receives the answer key. It posts each swipe to `/check`
+ * and gets back only whether *that* card was wrong, plus the licence note for
+ * it if it was — information the player has already earned by guessing, and is
+ * about to be shown as the penalty screen anyway. Nothing is ever said about a
+ * card they have not answered.
+ *
+ * At finish, the full transcript is replayed here and must reconstruct exactly:
+ * the right cards, in the right order, misses recycling into the next pass,
+ * ending with a clean pass. A fabricated transcript fails on order alone, and
+ * the time penalty is counted from the replay rather than from anything the
+ * client reported.
  */
 
 export const TINDER_DECK_SIZE = 20;
 /** Guaranteed minimum of brand-trap cards (Chromium vs Chrome, etc). */
 const MIN_TRICKY = 6;
+
+/**
+ * Time added to the clock for every card called wrong.
+ *
+ * Recycling a miss to the back of the deck was the only cost of guessing, and
+ * it is a weak one: a fast player could swipe blind, take the free grading, and
+ * still beat a careful player who read every card. Three seconds makes a guess
+ * genuinely more expensive than a moment's thought, without ending the run.
+ *
+ * Applied server-side in `verify`, from the replayed transcript — the browser
+ * displays a running total but never gets a vote on the number.
+ */
+export const WRONG_SWIPE_PENALTY_MS = 3_000;
 
 export interface TinderDecision {
   id: string;
@@ -65,10 +84,12 @@ function answerKey(seed: string): Map<string, boolean> {
 export function generate(seed: string): GeneratedInstance {
   const deck = dealDeck(seed);
   return {
-    // Name only. No `open`, no `why`, no `tricky` — those are the answers.
+    // Name and category only. No `open`, no `why`, no `tricky` — those are the
+    // answers. `category` is deliberately shared across both sides of the deck
+    // (see `data/tinder-cards.ts`), so it dresses the card without grading it.
     view: {
       kind: "tinder",
-      cards: deck.map((card) => ({ id: card.id, name: card.name })),
+      cards: deck.map((card) => ({ id: card.id, name: card.name, category: card.category })),
     },
     solution: deck.map((card) => ({ id: card.id, open: card.open })),
   };
@@ -106,6 +127,25 @@ export function checkPass(
 }
 
 /**
+ * The teaching moment for cards the player just got wrong.
+ *
+ * Only ever called with ids `checkPass` has already graded as wrong, and it is
+ * the caller's job to keep it that way: `why` names the licence, so handing it
+ * over for an unanswered card would be handing over the answer. For a card the
+ * player has already missed it reveals nothing they were not just told.
+ */
+export function explainCards(
+  seed: string,
+  ids: readonly string[],
+): { id: string; open: boolean; why: string }[] {
+  const deck = new Map(dealDeck(seed).map((card) => [card.id, card]));
+  return ids.flatMap((id) => {
+    const card = deck.get(id);
+    return card ? [{ id: card.id, open: card.open, why: card.why }] : [];
+  });
+}
+
+/**
  * Replays the whole transcript. The deck must be dealt in order on pass 1,
  * each later pass must contain exactly the previous pass's misses in the same
  * relative order, and the last pass must be clean.
@@ -122,6 +162,7 @@ export function verify(input: VerifyInput): VerifyResult {
 
   let expected: string[] = dealDeck(input.seed).map((card) => card.id);
   let moves = 0;
+  let wrongSwipes = 0;
 
   for (const pass of submission.passes) {
     if (!Array.isArray(pass)) return { valid: false, reason: "Malformed pass." };
@@ -131,6 +172,7 @@ export function verify(input: VerifyInput): VerifyResult {
     const result = checkPass(input.seed, expected, pass);
     if (!result.ok) return { valid: false, reason: result.reason };
     moves += pass.length;
+    wrongSwipes += result.wrongIds.length;
     // Misses recycle, keeping their relative order.
     expected = expected.filter((id) => result.wrongIds.includes(id));
   }
@@ -138,13 +180,25 @@ export function verify(input: VerifyInput): VerifyResult {
   if (expected.length > 0) {
     return { valid: false, reason: "You left cards unsorted. DWAAAA..." };
   }
-  return { valid: true, movesCount: moves };
+  return {
+    valid: true,
+    movesCount: moves,
+    durationPenaltyMs: wrongSwipes * WRONG_SWIPE_PENALTY_MS,
+  };
 }
 
 /**
  * The recap shown after a win: what each card was and why. Safe to send only
  * once the attempt is submitted.
  */
-export function revealDeck(seed: string): { name: string; open: boolean; why: string }[] {
-  return dealDeck(seed).map((card) => ({ name: card.name, open: card.open, why: card.why }));
+export function revealDeck(
+  seed: string,
+): { id: string; name: string; category: string; open: boolean; why: string }[] {
+  return dealDeck(seed).map((card) => ({
+    id: card.id,
+    name: card.name,
+    category: card.category,
+    open: card.open,
+    why: card.why,
+  }));
 }

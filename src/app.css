@@ -769,6 +769,183 @@ a {
   transform: scale(1.12) rotate(calc(var(--sprite-tilt, 0deg) + 3deg));
 }
 
+/* --- gameplay feedback -------------------------------------------------
+ * The one place animation is not decoration. These run on surfaces a player
+ * is actively watching, so they carry meaning: how long a penalty has left,
+ * which way a demo card went. Still transform/opacity/stroke only.
+ */
+
+/* The penalty countdown ring. 94.2 is the circumference of r=15. */
+@keyframes penalty-drain {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: 94.2;
+  }
+}
+
+/* A modal that arrives like a panel being slapped down. */
+@keyframes sheet-in {
+  from {
+    transform: translateY(14px) scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.anim-sheet-in {
+  animation: sheet-in 200ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/*
+ * The how-to-play demos. Each loop is one full explanation of a game, run on
+ * a toy board, and every keyframe set below is written to read at a glance
+ * rather than to be pretty — a player watches this once, before their clock
+ * starts, and must come away knowing which way to move.
+ */
+@keyframes demo-swipe-right {
+  0%,
+  12% {
+    transform: translateX(0) rotate(0deg);
+    opacity: 1;
+  }
+  38%,
+  100% {
+    transform: translateX(120%) rotate(18deg);
+    opacity: 0;
+  }
+}
+
+@keyframes demo-swipe-left {
+  0%,
+  55% {
+    transform: translateX(0) rotate(0deg);
+    opacity: 1;
+  }
+  80%,
+  100% {
+    transform: translateX(-120%) rotate(-18deg);
+    opacity: 0;
+  }
+}
+
+@keyframes demo-stamp {
+  0%,
+  8% {
+    opacity: 0;
+    transform: scale(1.5) rotate(-12deg);
+  }
+  16%,
+  34% {
+    opacity: 1;
+    transform: scale(1) rotate(-12deg);
+  }
+  42%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes demo-stamp-late {
+  0%,
+  52% {
+    opacity: 0;
+    transform: scale(1.5) rotate(12deg);
+  }
+  60%,
+  76% {
+    opacity: 1;
+    transform: scale(1) rotate(12deg);
+  }
+  84%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* A piece travelling from the tray to its slot, then locking. */
+@keyframes demo-slot {
+  0%,
+  10% {
+    transform: translate(0, 0) rotate(-6deg);
+  }
+  45%,
+  100% {
+    transform: translate(var(--to-x, 0), var(--to-y, 0)) rotate(0deg);
+  }
+}
+
+/* A boat sliding along its own axis and out of the frame. */
+@keyframes demo-slide-out {
+  0%,
+  20% {
+    transform: translateX(0);
+  }
+  60%,
+  100% {
+    transform: translateX(var(--slide, 60px));
+  }
+}
+
+/* The boat in the way, clearing the lane before the vallam can leave. */
+@keyframes demo-blocker-up {
+  0%,
+  15% {
+    transform: translateY(0);
+  }
+  40%,
+  100% {
+    transform: translateY(-18px);
+  }
+}
+
+/* A traced word revealing itself letter by letter. */
+@keyframes demo-trace {
+  0%,
+  10% {
+    stroke-dashoffset: var(--len, 200);
+  }
+  55%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Maveli hopping up the platforms, forever. */
+@keyframes demo-hop {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(22px, -26px);
+  }
+  50% {
+    transform: translate(44px, -52px);
+  }
+  75% {
+    transform: translate(22px, -26px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+/* Everything in a demo scrolls upward as the loop restarts. */
+@keyframes demo-fade-cycle {
+  0%,
+  90% {
+    opacity: 1;
+  }
+  95%,
+  100% {
+    opacity: 0.25;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

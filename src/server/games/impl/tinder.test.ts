@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vite-plus/test";
-import { TINDER_DECK_SIZE, checkPass, dealDeck, verify } from "./tinder";
+import {
+  TINDER_DECK_SIZE,
+  WRONG_SWIPE_PENALTY_MS,
+  checkPass,
+  dealDeck,
+  explainCards,
+  verify,
+} from "./tinder";
 
 /**
  * The verifier is the only thing standing between the leaderboard and a forged
@@ -82,6 +89,36 @@ describe("verify", () => {
     expect(result.movesCount).toBe(TINDER_DECK_SIZE);
   });
 
+  it("charges no penalty for a flawless run", () => {
+    expect(run(perfectRun(SEED)).durationPenaltyMs).toBe(0);
+  });
+
+  it("charges the penalty once per wrong swipe, not once per card", () => {
+    const deck = dealDeck(SEED);
+    const missed = deck.slice(0, 2);
+    const result = run({
+      passes: [
+        // Two wrong on the first pass…
+        deck.map((card, i) => ({ id: card.id, open: i < 2 ? !card.open : card.open })),
+        // …and one of them wrong *again* on the recycled pass.
+        missed.map((card, i) => ({ id: card.id, open: i === 0 ? !card.open : card.open })),
+        [{ id: missed[0].id, open: missed[0].open }],
+      ],
+    });
+    expect(result.valid).toBe(true);
+    // Three wrong swipes in total: two, then one.
+    expect(result.durationPenaltyMs).toBe(3 * WRONG_SWIPE_PENALTY_MS);
+  });
+
+  it("charges nothing for a run that was rejected", () => {
+    const deck = dealDeck(SEED);
+    const result = run({
+      passes: [deck.map((card, i) => ({ id: card.id, open: i === 0 ? !card.open : card.open }))],
+    });
+    expect(result.valid).toBe(false);
+    expect(result.durationPenaltyMs).toBeUndefined();
+  });
+
   it("accepts a run where misses recycle and are then fixed", () => {
     const deck = dealDeck(SEED);
     const missed = deck.slice(0, 3);
@@ -134,5 +171,19 @@ describe("verify", () => {
   it("bounds the work an attacker can buy with one request", () => {
     const flood = Array.from({ length: 500 }, () => []);
     expect(run({ passes: flood }).valid).toBe(false);
+  });
+});
+
+describe("explainCards", () => {
+  it("explains the cards it is asked about, in order", () => {
+    const deck = dealDeck(SEED);
+    const explained = explainCards(SEED, [deck[3].id, deck[1].id]);
+    expect(explained.map((c) => c.id)).toEqual([deck[3].id, deck[1].id]);
+    expect(explained[0].open).toBe(deck[3].open);
+    expect(explained[0].why).toBe(deck[3].why);
+  });
+
+  it("silently drops ids that are not in this player's deck", () => {
+    expect(explainCards(SEED, ["not-a-card"])).toEqual([]);
   });
 });
