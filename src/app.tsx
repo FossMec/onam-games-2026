@@ -39,8 +39,21 @@ export default function App() {
             <Suspense>
               <Nav />
             </Suspense>
-            {/* Every page, not just the game page — a warning nobody sees is not a warning. */}
-            <BanNotice />
+            {/*
+              Every page, not just the game page — a warning nobody sees is not
+              a warning.
+
+              Its own boundary, and it must have one: `BanNotice` reads an async
+              resource, and an async read with no Suspense above it has nothing
+              to defer into during SSR. The server sent no markup for the
+              warning modal while the client, once the ban state resolved, tried
+              to hydrate it — "unable to find DOM nodes for hydration key". The
+              boundary is separate from the page's so a slow ban lookup cannot
+              hold up the route, or the other way round.
+            */}
+            <Suspense>
+              <BanNotice />
+            </Suspense>
             <div class="flex-1">
               <Suspense>
                 {/* Closed beta: testers only, until `access.closed_beta` is off. */}
