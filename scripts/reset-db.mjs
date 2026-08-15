@@ -6,7 +6,7 @@ console.log("--- Resetting Database Tables (Preserving Dijith Admin Accounts) --
 
 // 1. Clear game attempts, pookalams, votes, anticheat logs
 console.log("Clearing gameplay and submission tables...");
-await sql`TRUNCATE TABLE game_attempts, pookalam_submissions, pookalam_votes, daily_leaderboard, global_scores, activity_logs, suspicious_logs, blocked_ips CASCADE`;
+await sql`TRUNCATE TABLE game_attempts, pookalam_submissions, pookalam_votes, daily_leaderboard, activity_logs, suspicious_logs, blocked_ips CASCADE`;
 
 // 2. Clear devices and sessions
 console.log("Clearing devices and sessions...");

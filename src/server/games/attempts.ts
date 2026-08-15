@@ -2,7 +2,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { logActivity, logSuspicious } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
-import { dailyLeaderboard, devices, gameAttempts, games, globalScores } from "~/server/db/schema";
+import { dailyLeaderboard, devices, gameAttempts, games } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
 import { revealDeck } from "./impl/tinder";
 import type { GameAssets, GameDef, GameMetric } from "./registry";
@@ -591,21 +591,6 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
       attemptsUsed,
       isFlagged: isAnomalous,
     });
-
-    // `gamesCompleted` counts distinct games, so only the first valid run of a
-    // retry game increments it. Points themselves are written at settlement.
-    if (isPersonalBest && attemptsUsed === 1) {
-      await db
-        .insert(globalScores)
-        .values({ userId: input.userId, gamesCompleted: 1 })
-        .onConflictDoUpdate({
-          target: globalScores.userId,
-          set: {
-            gamesCompleted: sql`${globalScores.gamesCompleted} + 1`,
-            updatedAt: new Date(),
-          },
-        });
-    }
   } else if (result.valid) {
     // Late / catch-up play is just for fun; no daily leaderboard entry or streak update.
     await logActivity({

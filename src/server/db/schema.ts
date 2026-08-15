@@ -147,8 +147,6 @@ export const games = pgTable(
      */
     assetsJson: jsonb("assets_json"),
     published: boolean("published").notNull().default(false),
-    /** Set once the day's points have been settled; makes settlement idempotent. */
-    settledAt: timestamp("settled_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -340,13 +338,6 @@ export const dailyLeaderboard = pgTable(
     attemptsUsed: integer("attempts_used").notNull().default(1),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull(),
-    /**
-     * Settled at day close, both null while the day is live. Rank is shown
-     * live and recomputed on read; points are frozen so a player's total never
-     * moves under them after the fact.
-     */
-    rank: integer("rank"),
-    points: integer("points"),
     isFlagged: boolean("is_flagged").notNull().default(false),
   },
   (t) => [
@@ -356,18 +347,6 @@ export const dailyLeaderboard = pgTable(
     index("daily_leaderboard_game_submitted_idx").on(t.gameId, t.isFlagged, t.submittedAt),
   ],
 );
-
-export const globalScores = pgTable("global_scores", {
-  userId: uuid("user_id")
-    .primaryKey()
-    .references(() => users.id, { onDelete: "cascade" }),
-  gamesCompleted: integer("games_completed").notNull().default(0),
-  /** Sum of settled daily points. The only cross-game currency. */
-  totalPoints: integer("total_points").notNull().default(0),
-  /** Retention bonus from consecutive-day play, kept separate so it is explainable. */
-  streakBonus: integer("streak_bonus").notNull().default(0),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
 
 export const authSessions = pgTable(
   "auth_sessions",

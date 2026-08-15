@@ -1,10 +1,9 @@
-import { and, asc, desc, eq, lt, ne, or, sql } from "drizzle-orm";
-import { getDb } from "~/server/db/client";
+import { and, asc, eq, lt, ne, or, sql } from "drizzle-orm";
+import { getDb, type Db } from "~/server/db/client";
 import { dailyLeaderboard, games, users } from "~/server/db/schema";
 import type { GameMetric } from "~/server/games/registry";
 import { getGameDefByType } from "~/server/games/registry";
 import type { ViewerRole } from "~/server/games/service";
-import { pointsForRank } from "./settle";
 
 export interface DailyEntry {
   rank: number;
@@ -22,9 +21,6 @@ export interface DailyEntry {
   /** The ranking value for `fcfs` boards — "finished at" wall-clock time. */
   submittedAt: string;
   attemptsUsed: number;
-  /** Settled points, or the provisional value while the day is still open. */
-  points: number;
-  isProvisional: boolean;
   isTester: boolean;
   isMe: boolean;
 }
@@ -34,7 +30,6 @@ export interface DailyBoard {
   /** UI label for the ranking column, e.g. "Time" or "Height". */
   metricLabel: string;
   fieldSize: number;
-  settled: boolean;
   entries: DailyEntry[];
   myEntry: DailyEntry | null;
   page: number;
@@ -66,13 +61,108 @@ export async function getDailyLeaderboard(
 ): Promise<DailyBoard> {
   const db = getDb();
   const [game] = await db
-    .select({ gameType: games.gameType, settledAt: games.settledAt })
+    .select({ gameType: games.gameType })
     .from(games)
     .where(eq(games.id, gameId))
     .limit(1);
 
   const metric: GameMetric = game ? (getGameDefByType(game.gameType)?.metric ?? "time") : "time";
-  const filters = [
+  const safePage = Math.max(1, page);
+  const safePageSize = Math.min(100, Math.max(1, pageSize));
+  const offset = (safePage - 1) * safePageSize;
+
+  const ranked = rankedBoard(db, gameId, viewerRole, viewMode, metric);
+  const inSlice = and(
+    sql`${ranked.rank} > ${offset}`,
+    sql`${ranked.rank} <= ${offset + safePageSize}`,
+  );
+  const rows = await db
+    .with(ranked)
+    .select()
+    .from(ranked)
+    .where(viewerUserId ? or(inSlice, eq(ranked.userId, viewerUserId)) : inSlice)
+    .orderBy(asc(ranked.rank));
+
+  const fieldSize = rows[0]?.fieldSize ?? 0;
+  const totalPages = Math.max(1, Math.ceil(fieldSize / safePageSize));
+
+  const toEntry = (row: (typeof rows)[number], rank: number): DailyEntry => ({
+    rank,
+    userId: row.userId,
+    name: row.name,
+    avatarUrl: row.avatarUrl,
+    college: row.college,
+    branch: row.branch,
+    batch: row.batch,
+    streakCount: row.streakCount,
+    metric,
+    durationMs: row.durationMs,
+    score: row.score,
+    submittedAt: row.submittedAt.toISOString(),
+    attemptsUsed: row.attemptsUsed,
+    isTester: row.role === "tester",
+    isMe: row.userId === viewerUserId,
+  });
+
+  const entries = rows
+    .filter((row) => row.rank > offset && row.rank <= offset + safePageSize)
+    .map((row) => toEntry(row, row.rank));
+
+  const myRow = viewerUserId ? rows.find((row) => row.userId === viewerUserId) : undefined;
+  const myEntry = myRow ? toEntry(myRow, myRow.rank) : null;
+
+  return {
+    metric,
+    metricLabel: metricLabel(metric),
+    fieldSize,
+    entries,
+    myEntry,
+    page: safePage,
+    pageSize: safePageSize,
+    totalPages,
+  };
+}
+
+/**
+ * The window-function core both board reads share. Every row of the filtered
+ * field gets its true global rank and the full field size before any
+ * LIMIT/OFFSET, so a viewer's own position is known no matter which page they
+ * asked for — the caller then filters out the slice (or the viewer) it wants.
+ */
+function rankedBoard(
+  db: Db,
+  gameId: string,
+  viewerRole: ViewerRole,
+  viewMode: "main" | "tester",
+  metric: GameMetric,
+) {
+  return db.$with("ranked").as(
+    db
+      .select({
+        userId: dailyLeaderboard.userId,
+        durationMs: dailyLeaderboard.durationMs,
+        score: dailyLeaderboard.score,
+        attemptsUsed: dailyLeaderboard.attemptsUsed,
+        startedAt: dailyLeaderboard.startedAt,
+        submittedAt: dailyLeaderboard.submittedAt,
+        name: users.name,
+        avatarUrl: users.avatarUrl,
+        college: users.college,
+        branch: users.branch,
+        batch: users.batch,
+        streakCount: users.streakCount,
+        role: users.role,
+        rank: sql<number>`row_number() over (order by ${rankingOrder(metric)})`,
+        fieldSize: sql<number>`count(*) over ()`,
+      })
+      .from(dailyLeaderboard)
+      .innerJoin(users, eq(users.id, dailyLeaderboard.userId))
+      .where(and(...boardConditions(gameId, viewerRole, viewMode))),
+  );
+}
+
+function boardConditions(gameId: string, viewerRole: ViewerRole, viewMode: "main" | "tester") {
+  return [
     eq(dailyLeaderboard.gameId, gameId),
     eq(dailyLeaderboard.isFlagged, false),
     /*
@@ -97,174 +187,50 @@ export async function getDailyLeaderboard(
       ? and(ne(users.role, "tester"), ne(users.role, "admin"))
       : or(eq(users.role, "tester"), eq(users.role, "admin")),
   ];
-  const rankingOrder =
-    metric === "score"
-      ? sql`${dailyLeaderboard.score} desc, ${dailyLeaderboard.startedAt} asc`
-      : metric === "fcfs"
-        ? sql`${dailyLeaderboard.submittedAt} asc, ${dailyLeaderboard.startedAt} asc`
-        : sql`${dailyLeaderboard.durationMs} asc, ${dailyLeaderboard.startedAt} asc`;
+}
 
-  const safePage = Math.max(1, page);
-  const safePageSize = Math.min(100, Math.max(1, pageSize));
-  const offset = (safePage - 1) * safePageSize;
+function rankingOrder(metric: GameMetric) {
+  return metric === "score"
+    ? sql`${dailyLeaderboard.score} desc, ${dailyLeaderboard.startedAt} asc`
+    : metric === "fcfs"
+      ? sql`${dailyLeaderboard.submittedAt} asc, ${dailyLeaderboard.startedAt} asc`
+      : sql`${dailyLeaderboard.durationMs} asc, ${dailyLeaderboard.startedAt} asc`;
+}
 
-  const rows = await db
-    .select({
-      userId: dailyLeaderboard.userId,
-      durationMs: dailyLeaderboard.durationMs,
-      score: dailyLeaderboard.score,
-      attemptsUsed: dailyLeaderboard.attemptsUsed,
-      points: dailyLeaderboard.points,
-      startedAt: dailyLeaderboard.startedAt,
-      submittedAt: dailyLeaderboard.submittedAt,
-      name: users.name,
-      avatarUrl: users.avatarUrl,
-      college: users.college,
-      branch: users.branch,
-      batch: users.batch,
-      streakCount: users.streakCount,
-      role: users.role,
-      rank: sql<number>`row_number() over (order by ${rankingOrder})`,
-      fieldSize: sql<number>`count(*) over ()`,
-    })
-    .from(dailyLeaderboard)
-    .innerJoin(users, eq(users.id, dailyLeaderboard.userId))
-    .where(and(...filters))
-    .orderBy(
-      // FCFS ranks by who submitted first; the others by their own metric.
-      metric === "score"
-        ? desc(dailyLeaderboard.score)
-        : metric === "fcfs"
-          ? asc(dailyLeaderboard.submittedAt)
-          : asc(dailyLeaderboard.durationMs),
-      asc(dailyLeaderboard.startedAt),
-    )
-    .limit(safePageSize)
-    .offset(offset);
-
-  const settled = !!game?.settledAt;
-  const fieldSize = rows[0]?.fieldSize ?? 0;
-  const totalPages = Math.max(1, Math.ceil(fieldSize / safePageSize));
-
-  const toEntry = (row: (typeof rows)[number], rank: number): DailyEntry => ({
-    rank,
-    userId: row.userId,
-    name: row.name,
-    avatarUrl: row.avatarUrl,
-    college: row.college,
-    branch: row.branch,
-    batch: row.batch,
-    streakCount: row.streakCount,
-    metric,
-    durationMs: row.durationMs,
-    score: row.score,
-    submittedAt: row.submittedAt.toISOString(),
-    attemptsUsed: row.attemptsUsed,
-    // While the day is open, points are shown as a live projection so a player
-    // can see what their rank is worth — but only the settled value is stored,
-    // so nobody's banked total ever moves after the fact.
-    points: row.points ?? pointsForRank(rank, fieldSize),
-    isProvisional: row.points === null,
-    isTester: row.role === "tester",
-    isMe: row.userId === viewerUserId,
-  });
-
-  const entries = rows.map((row) => toEntry(row, row.rank));
-
-  const myRow = viewerUserId ? rows.find((row) => row.userId === viewerUserId) : undefined;
-  let myEntry = myRow ? toEntry(myRow, myRow.rank) : null;
-  if (!myEntry && viewerUserId) {
-    const [viewerRow] = await db
-      .select({
-        userId: dailyLeaderboard.userId,
-        durationMs: dailyLeaderboard.durationMs,
-        score: dailyLeaderboard.score,
-        attemptsUsed: dailyLeaderboard.attemptsUsed,
-        points: dailyLeaderboard.points,
-        startedAt: dailyLeaderboard.startedAt,
-        submittedAt: dailyLeaderboard.submittedAt,
-        name: users.name,
-        avatarUrl: users.avatarUrl,
-        college: users.college,
-        branch: users.branch,
-        batch: users.batch,
-        streakCount: users.streakCount,
-        role: users.role,
-      })
-      .from(dailyLeaderboard)
-      .innerJoin(users, eq(users.id, dailyLeaderboard.userId))
-      .where(and(...filters, eq(dailyLeaderboard.userId, viewerUserId)))
-      .limit(1);
-    if (viewerRow) {
-      const ahead =
-        metric === "score"
-          ? or(
-              sql`${dailyLeaderboard.score} > ${viewerRow.score}`,
-              and(
-                sql`${dailyLeaderboard.score} = ${viewerRow.score}`,
-                sql`${dailyLeaderboard.startedAt} < ${viewerRow.startedAt}`,
-              ),
-            )
-          : metric === "fcfs"
-            ? or(
-                sql`${dailyLeaderboard.submittedAt} < ${viewerRow.submittedAt}`,
-                and(
-                  sql`${dailyLeaderboard.submittedAt} = ${viewerRow.submittedAt}`,
-                  sql`${dailyLeaderboard.startedAt} < ${viewerRow.startedAt}`,
-                ),
-              )
-            : or(
-                sql`${dailyLeaderboard.durationMs} < ${viewerRow.durationMs}`,
-                and(
-                  sql`${dailyLeaderboard.durationMs} = ${viewerRow.durationMs}`,
-                  sql`${dailyLeaderboard.startedAt} < ${viewerRow.startedAt}`,
-                ),
-              );
-      const [rankRow] = await db
-        .select({ rank: sql<number>`count(*)::int + 1` })
-        .from(dailyLeaderboard)
-        .innerJoin(users, eq(users.id, dailyLeaderboard.userId))
-        .where(and(...filters, ahead));
-      myEntry = toEntry({ ...viewerRow, rank: rankRow?.rank ?? 1, fieldSize }, rankRow?.rank ?? 1);
-    }
-  }
-
+/**
+ * Just the caller's own position on a day's board — the share card needs a
+ * rank and a field size and nothing else. The window functions compute both
+ * over the whole field in one query, so there is no page slice to over-fetch
+ * and no second copy of the ranking rules to keep in step.
+ */
+export async function getMyStanding(
+  gameId: string,
+  viewerRole: ViewerRole,
+  viewerUserId: string,
+): Promise<{ rank: number; fieldSize: number } | null> {
+  const db = getDb();
+  const [game] = await db
+    .select({ gameType: games.gameType })
+    .from(games)
+    .where(eq(games.id, gameId))
+    .limit(1);
+  const metric: GameMetric = game ? (getGameDefByType(game.gameType)?.metric ?? "time") : "time";
+  const viewMode = viewerRole === "player" ? "main" : "tester";
+  const ranked = rankedBoard(db, gameId, viewerRole, viewMode, metric);
+  const [row] = await db
+    .with(ranked)
+    .select()
+    .from(ranked)
+    .where(eq(ranked.userId, viewerUserId))
+    .limit(1);
+  if (!row) return null;
   return {
-    metric,
-    metricLabel: metricLabel(metric),
-    fieldSize,
-    settled,
-    entries,
-    myEntry,
-    page: safePage,
-    pageSize: safePageSize,
-    totalPages,
+    rank: row.rank,
+    fieldSize: row.fieldSize,
   };
 }
 
 // Global leaderboard removed in favor of daily leaderboards.
-
-/**
- * Per-day points breakdown for one player — the "why is my total that number"
- * view. Six chips under the global board beats an unexplained integer.
- */
-export async function getMyPointsBreakdown(
-  userId: string,
-): Promise<{ day: number; title: string; rank: number | null; points: number | null }[]> {
-  const db = getDb();
-  const rows = await db
-    .select({
-      day: games.day,
-      title: games.title,
-      rank: dailyLeaderboard.rank,
-      points: dailyLeaderboard.points,
-    })
-    .from(dailyLeaderboard)
-    .innerJoin(games, eq(games.id, dailyLeaderboard.gameId))
-    .where(and(eq(dailyLeaderboard.userId, userId), eq(dailyLeaderboard.isFlagged, false)))
-    .orderBy(asc(games.day));
-  return rows;
-}
 
 /** Kept for anti-cheat callers that still want a slow-tail anchor. */
 export async function getGameP99(gameId: string): Promise<number> {
