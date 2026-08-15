@@ -152,8 +152,20 @@ function rankedBoard(
         batch: users.batch,
         streakCount: users.streakCount,
         role: users.role,
-        rank: sql<number>`row_number() over (order by ${rankingOrder(metric)})`,
-        fieldSize: sql<number>`count(*) over ()`,
+        /*
+         * The aliases are load-bearing, not decoration.
+         *
+         * These two are raw SQL inside a CTE, and the outer query filters and
+         * orders by `ranked.rank`. Without an explicit alias drizzle cannot
+         * name the column from outside, so touching `ranked.rank` throws while
+         * the query is still being *built* — before a single byte reaches the
+         * database. That failure mode is nastier than it sounds: it surfaced as
+         * an unhandled rejection that killed the process mid-stream, so the
+         * response was never terminated and every page hung until the platform
+         * timed it out, with no query in the database logs to explain why.
+         */
+        rank: sql<number>`row_number() over (order by ${rankingOrder(metric)})`.as("rank"),
+        fieldSize: sql<number>`count(*) over ()`.as("field_size"),
       })
       .from(dailyLeaderboard)
       .innerJoin(users, eq(users.id, dailyLeaderboard.userId))

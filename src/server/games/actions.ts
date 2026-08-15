@@ -26,15 +26,28 @@ export async function getGames(): Promise<GameCard[]> {
   });
 }
 
+/**
+ * One game, for its page.
+ *
+ * Degrades to `null`, which the page already renders as "there is no game at
+ * this address". That is the wrong sentence for an outage, but it is a page
+ * with words on it and a way back — where a read with no deadline is a spinner
+ * that never stops. Play itself is unaffected: `/start` and `/finish`
+ * re-check everything server-side and fail loudly on their own.
+ */
 export async function getGame(slug: string) {
-  const user = await getCurrentUser();
-  return getGameBySlug(slug, viewerRole(user));
+  return readOrDegrade<GameCard | null>("games.bySlug", null, async () => {
+    const user = await getCurrentUser();
+    return getGameBySlug(slug, viewerRole(user));
+  });
 }
 
 export async function getMyAttempt(slug: string) {
-  const user = await getCurrentUser();
-  if (!user) return null;
-  return getMyAttemptBySlug(slug, user.id, viewerRole(user));
+  return readOrDegrade("games.myAttempt", null, async () => {
+    const user = await getCurrentUser();
+    if (!user) return null;
+    return getMyAttemptBySlug(slug, user.id, viewerRole(user));
+  });
 }
 
 /**

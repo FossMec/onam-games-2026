@@ -68,6 +68,23 @@ export default defineConfig({
       vercel: {
         functions: {
           regions: ["sin1"],
+          /*
+           * Ten seconds, against a platform default of 300.
+           *
+           * Nothing here is slow on purpose: a page render is one or two
+           * in-region queries and finishes in about a second, and the heaviest
+           * request in the app — re-simulating a Maveli Jump run to verify it —
+           * is milliseconds of arithmetic. Anything still running at ten
+           * seconds is stuck, not working.
+           *
+           * The default matters because a *stuck* request is billed for the
+           * whole 300s. One unreachable database turned every page view into a
+           * five-minute invocation, which burns a free-tier month in an
+           * afternoon while showing the visitor a spinner the entire time.
+           * Failing at ten seconds costs 1/30th as much and, with the read
+           * fallbacks in place, still renders the page.
+           */
+          maxDuration: 10,
         },
       },
     }),

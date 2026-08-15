@@ -40,31 +40,36 @@ export interface AccessState {
  * those checks depend on this one.
  */
 export async function getAccessState(): Promise<AccessState> {
-  try {
-    // Independent reads: the flag does not depend on who is asking. Awaiting
-    // them one after the other cost two serial round trips on every page.
-    const [closedBeta, user] = await Promise.all([
-      readSetting<boolean>("access.closed_beta", true),
-      getCurrentUser(),
-    ]);
-    const privileged = user?.role === "tester" || user?.role === "admin";
-    return {
-      closedBeta,
-      allowed: !closedBeta || privileged,
-      signedIn: !!user,
-    };
-  } catch (error) {
-    /*
-     * The door defaults *shut* when the flag is merely absent, and *open* when
-     * the database is unreachable — because with the database down there is no
-     * way to prove anybody is a tester either, and a locked door would then
-     * mean nobody at all gets in, testers included. The site behind it is the
-     * static half of the landing page; the vault is untouched, since every
-     * action that matters authorises itself and will fail on its own.
-     */
-    console.error("[degraded] auth.access — beta gate failing open", error);
-    return { closedBeta: false, allowed: true, signedIn: false };
-  }
+  /*
+   * The door defaults *shut* when the flag is merely absent, and *open* when
+   * the database cannot answer — because without it there is no way to prove
+   * anybody is a tester either, and a locked door would then mean nobody at
+   * all gets in, testers included. The site behind it is the static half of
+   * the landing page; the vault is untouched, since every action that matters
+   * authorises itself and will fail on its own.
+   *
+   * This gate wraps every page, so it needs the deadline as much as the
+   * fallback: a read that never answers here hangs the entire site, not one
+   * section of it.
+   */
+  return readOrDegrade<AccessState>(
+    "auth.access",
+    { closedBeta: false, allowed: true, signedIn: false },
+    async () => {
+      // Independent reads: the flag does not depend on who is asking. Awaiting
+      // them one after the other cost two serial round trips on every page.
+      const [closedBeta, user] = await Promise.all([
+        readSetting<boolean>("access.closed_beta", true),
+        getCurrentUser(),
+      ]);
+      const privileged = user?.role === "tester" || user?.role === "admin";
+      return {
+        closedBeta,
+        allowed: !closedBeta || privileged,
+        signedIn: !!user,
+      };
+    },
+  );
 }
 
 export interface BanNoticeState {
