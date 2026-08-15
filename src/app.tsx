@@ -1,7 +1,8 @@
 import { Link, Meta, MetaProvider, Title } from "@solidjs/meta";
 import { Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
-import { Suspense } from "solid-js";
+import { ErrorBoundary, Suspense } from "solid-js";
+import { AppError } from "./components/AppError";
 import { BanNotice } from "./components/BanNotice";
 import { BetaGate } from "./components/BetaGate";
 import { Footer } from "./components/Footer";
@@ -83,17 +84,28 @@ export default function App() {
               Every page, above the navigation header — a warning nobody sees is not
               a warning.
             */}
-            <Suspense>
-              <BanNotice />
-            </Suspense>
-            <Suspense>
-              <Nav />
-            </Suspense>
-            <div class="flex-1">
+            {/*
+              Each strip of the shell gets its own boundary. A banner that
+              cannot render is a banner nobody misses; a header that cannot
+              render must not take the page with it.
+            */}
+            <ErrorBoundary fallback={null}>
               <Suspense>
-                {/* Closed beta: testers only, until `access.closed_beta` is off. */}
-                <BetaGate>{props.children}</BetaGate>
+                <BanNotice />
               </Suspense>
+            </ErrorBoundary>
+            <ErrorBoundary fallback={null}>
+              <Suspense>
+                <Nav />
+              </Suspense>
+            </ErrorBoundary>
+            <div class="flex-1">
+              <ErrorBoundary fallback={(_error, reset) => <AppError reset={reset} />}>
+                <Suspense>
+                  {/* Closed beta: testers only, until `access.closed_beta` is off. */}
+                  <BetaGate>{props.children}</BetaGate>
+                </Suspense>
+              </ErrorBoundary>
             </div>
             <Footer />
           </div>

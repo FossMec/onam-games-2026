@@ -231,22 +231,3 @@ export async function getMyStanding(
 }
 
 // Global leaderboard removed in favor of daily leaderboards.
-
-/** Kept for anti-cheat callers that still want a slow-tail anchor. */
-export async function getGameP99(gameId: string): Promise<number> {
-  const db = getDb();
-  const [row] = await db
-    .select({
-      p99: sql<number>`percentile_cont(0.99) within group (order by ${dailyLeaderboard.durationMs})`,
-    })
-    .from(dailyLeaderboard)
-    .where(
-      and(
-        eq(dailyLeaderboard.gameId, gameId),
-        eq(dailyLeaderboard.isFlagged, false),
-        sql`${dailyLeaderboard.durationMs} is not null`,
-        sql`${dailyLeaderboard.durationMs} > 0`,
-      ),
-    );
-  return Math.max(Math.round(row?.p99 ?? 1), 1);
-}

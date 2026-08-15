@@ -1,36 +1,70 @@
-import { eq, inArray } from "drizzle-orm";
+import { getRequestEvent } from "solid-js/web";
 import { getDb } from "~/server/db/client";
 import { appSettings } from "~/server/db/schema";
 
 /**
- * Several settings in one round trip.
+ * Every setting, once per request.
  *
- * `getSetting` is a query per key, which is fine for a one-off flag and wasteful
- * for a group that is always read together — the schedule alone was four
- * separate selects on every request that resolved a game's status. Missing keys
- * are simply absent from the map; callers keep their own fallbacks.
+ * The whole table is sixteen rows and about two hundred bytes of values, so
+ * fetching all of it costs the same round trip as fetching one key — and a
+ * single page render reads settings from several places that know nothing about
+ * each other. The home page alone was two separate `app_settings` selects (the
+ * closed-beta flag, then the four schedule keys) on top of the games query.
+ *
+ * The snapshot is memoised on the request, not on the module: settings are
+ * edited live from the admin panel, and a process-wide cache would keep serving
+ * yesterday's schedule from a warm Vercel instance. Within one request the
+ * value is fixed anyway — a render that saw two different values for the same
+ * flag would be worse than a stale one.
+ *
+ * Outside a request (scripts, tests) there is nothing to hang it on, so it
+ * falls back to a plain query.
+ */
+async function loadSettings(): Promise<Map<string, unknown>> {
+  const rows = await getDb()
+    .select({ key: appSettings.key, value: appSettings.value })
+    .from(appSettings);
+  return new Map(rows.map((row) => [row.key, row.value]));
+}
+
+export function snapshotSettings(): Promise<Map<string, unknown>> {
+  const event = getRequestEvent();
+  if (!event) return loadSettings();
+  event.locals.settingsPromise ??= loadSettings();
+  return event.locals.settingsPromise;
+}
+
+/**
+ * Several settings at once. Missing keys are simply absent from the map;
+ * callers keep their own fallbacks.
  */
 export async function getSettings(keys: string[]): Promise<Map<string, unknown>> {
   if (keys.length === 0) return new Map();
   try {
-    const rows = await getDb()
-      .select({ key: appSettings.key, value: appSettings.value })
-      .from(appSettings)
-      .where(inArray(appSettings.key, keys));
-    return new Map(rows.map((row) => [row.key, row.value]));
+    const all = await snapshotSettings();
+    return new Map(keys.filter((key) => all.has(key)).map((key) => [key, all.get(key)]));
   } catch {
     return new Map();
   }
 }
 
+/**
+ * The raw read: `fallback` covers a *missing* key, and an unreachable database
+ * throws.
+ *
+ * Most callers want `getSetting`, which flattens both cases into the fallback.
+ * The two are worth telling apart exactly once — the closed-beta door, where
+ * "the flag was never written" and "we cannot reach the flag" must be answered
+ * in opposite directions. See `getAccessState`.
+ */
+export async function readSetting<T>(key: string, fallback: T): Promise<T> {
+  const all = await snapshotSettings();
+  return all.has(key) ? (all.get(key) as T) : fallback;
+}
+
 export async function getSetting<T>(key: string, fallback: T): Promise<T> {
   try {
-    const [row] = await getDb()
-      .select({ value: appSettings.value })
-      .from(appSettings)
-      .where(eq(appSettings.key, key))
-      .limit(1);
-    return row ? (row.value as T) : fallback;
+    return await readSetting(key, fallback);
   } catch {
     return fallback;
   }
@@ -60,4 +94,11 @@ export async function setSetting(
         updatedAt: new Date(),
       },
     });
+  /*
+   * The admin panel writes a setting and then re-reads the list to show it.
+   * Drop the request's snapshot so that read sees what was just written rather
+   * than the row it replaced.
+   */
+  const event = getRequestEvent();
+  if (event) event.locals.settingsPromise = undefined;
 }

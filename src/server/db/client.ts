@@ -9,7 +9,15 @@ function createDrizzle() {
   if (!url) {
     throw new Error("DATABASE_URL is not set");
   }
-  const queryClient = postgres(url, { max: 1, prepare: false });
+  const queryClient = postgres(url, {
+    max: 1,
+    prepare: false,
+    // Set SQL_DEBUG=1 to print every statement — the way to count a page's
+    // round trips without guessing at them.
+    debug: process.env.SQL_DEBUG
+      ? (_connection, query) => console.log("[SQL]", query.replace(/\s+/g, " "))
+      : undefined,
+  });
   return drizzle(queryClient, { schema });
 }
 

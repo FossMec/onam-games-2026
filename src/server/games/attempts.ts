@@ -257,7 +257,11 @@ export async function getMyAttemptBySlug(
     })
     .from(gameAttempts)
     .where(and(eq(gameAttempts.userId, userId), eq(gameAttempts.gameId, game.id)));
-  const [open] = await db
+  // Attempts are sequential: a new one is only started once the previous is
+  // submitted or expired, so an `in_progress` row is always the latest. One
+  // query for the newest attempt covers both the "resume me" and "my last run"
+  // cases the page draws.
+  const [latest] = await db
     .select({
       status: gameAttempts.status,
       durationMs: gameAttempts.durationMs,
@@ -269,34 +273,9 @@ export async function getMyAttemptBySlug(
       attemptNumber: gameAttempts.attemptNumber,
     })
     .from(gameAttempts)
-    .where(
-      and(
-        eq(gameAttempts.userId, userId),
-        eq(gameAttempts.gameId, game.id),
-        eq(gameAttempts.status, "in_progress"),
-      ),
-    )
+    .where(and(eq(gameAttempts.userId, userId), eq(gameAttempts.gameId, game.id)))
     .orderBy(desc(gameAttempts.attemptNumber))
     .limit(1);
-  const latest =
-    open ??
-    (
-      await db
-        .select({
-          status: gameAttempts.status,
-          durationMs: gameAttempts.durationMs,
-          score: gameAttempts.score,
-          serverValid: gameAttempts.serverValid,
-          afterDeadline: gameAttempts.afterDeadline,
-          startedAt: gameAttempts.startedAt,
-          submittedAt: gameAttempts.submittedAt,
-          attemptNumber: gameAttempts.attemptNumber,
-        })
-        .from(gameAttempts)
-        .where(and(eq(gameAttempts.userId, userId), eq(gameAttempts.gameId, game.id)))
-        .orderBy(desc(gameAttempts.attemptNumber))
-        .limit(1)
-    )[0];
 
   const unlimited = role !== "player";
   const base = {
@@ -477,12 +456,9 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
   const rawDurationMs = now.getTime() - attempt.startedAt.getTime();
   const afterDeadline = schedule.endAt ? now.getTime() > schedule.endAt.getTime() : false;
 
-  const priorCount = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(gameAttempts)
-    .where(and(eq(gameAttempts.userId, input.userId), eq(gameAttempts.gameId, game.id)));
-  const attemptsUsed = priorCount[0]?.count ?? attempt.attemptNumber;
-
+  // Attempts are numbered 1..N at creation and never deleted, so the current
+  // row's number already is the count of runs used — no recount needed.
+  const attemptsUsed = attempt.attemptNumber;
   const unlimited = input.role !== "player";
   const attemptsRemaining = unlimited
     ? def.maxAttempts
@@ -577,7 +553,7 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
 
   let isPersonalBest = false;
   if (result.valid && !afterDeadline) {
-    await updateStreak(input.userId, game.day);
+    await updateStreak(input.userId, game.day, schedule.eventStartDate);
 
     isPersonalBest = await upsertDailyBest({
       gameId: game.id,

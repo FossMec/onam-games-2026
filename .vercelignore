@@ -5,3 +5,14 @@ dist
 .vinxi
 node_modules
 *.local
+
+# Never ship local environment files to a Vercel build.
+#
+# `vercel --prod` uploads the working directory and builds it on Vercel, and
+# the CLI's built-in ignore list covers `.env.local` / `.env.*.local` but not a
+# plain `.env`. Nitro then loads whatever `.env` it finds into `process.env` at
+# build time (see nitro/vite: `.env`, `.env.local`, `.env.<mode>`), so a local
+# `.env` pointing at 127.0.0.1 can end up baked into a production build. The
+# real values belong in the Vercel project's environment variables.
+.env
+.env.*

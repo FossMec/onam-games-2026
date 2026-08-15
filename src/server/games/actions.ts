@@ -3,16 +3,27 @@
 import { getCurrentUser } from "~/server/auth/service";
 import { getMyAttemptBySlug, getMyRecapBySlug, type TinderRecap } from "./attempts";
 import type { ViewerRole } from "./service";
-import { getGameBySlug, getGamesList } from "./service";
+import { getGameBySlug, getGamesList, type GameCard } from "./service";
+import { readOrDegrade } from "~/server/degrade";
 
 function viewerRole(user: { role?: "player" | "tester" | "admin" } | null): ViewerRole {
-  if (user?.role === "tester" || user?.role === "admin") return user.role;
-  return "player";
+  if (!user?.role) return "player";
+  return user.role;
 }
 
-export async function getGames() {
-  const user = await getCurrentUser();
-  return getGamesList(viewerRole(user));
+/**
+ * The seven-day schedule.
+ *
+ * Degrades to an empty list, which the landing page and the leaderboard both
+ * read as "the schedule is unavailable" rather than "there are no games" — the
+ * distinction matters, because an empty list must never be dressed up as a
+ * real festival week.
+ */
+export async function getGames(): Promise<GameCard[]> {
+  return readOrDegrade<GameCard[]>("games.list", [], async () => {
+    const user = await getCurrentUser();
+    return getGamesList(viewerRole(user));
+  });
 }
 
 export async function getGame(slug: string) {

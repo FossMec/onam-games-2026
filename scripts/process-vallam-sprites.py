@@ -72,10 +72,10 @@ def process_image(src_path):
 def main():
     os.makedirs("public/sprites/vallam", exist_ok=True)
     files = {
-        "hero-vallam": "public/images-raw/main-boat.jpeg",
-        "boat-small": "public/images-raw/enemy-boat-1.jpeg",
-        "boat-canoe": "public/images-raw/enemy-baot-2.jpeg",
-        "boat-wood": "public/images-raw/enemy-boat-3.jpeg"
+        "hero-vallam": "assets-raw/main-boat.jpeg",
+        "boat-small": "assets-raw/enemy-boat-1.jpeg",
+        "boat-canoe": "assets-raw/enemy-baot-2.jpeg",
+        "boat-wood": "assets-raw/enemy-boat-3.jpeg"
     }
 
     results = {}

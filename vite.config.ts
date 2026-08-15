@@ -5,6 +5,48 @@ import tailwindcss from "@tailwindcss/vite";
 import { solidStart } from "@solidjs/start/config";
 import { lazyPlugins } from "vite-plus";
 
+/**
+ * Refuses to produce a production bundle with no Supabase in it.
+ *
+ * `VITE_*` values are constant-folded at build time, so a missing one does not
+ * fail the build — it silently compiles the browser client down to a single
+ * `throw`, and every sign-in in production dies with "VITE_SUPABASE_URL is not
+ * set". That is exactly what shipped once already: an empty `.env.production.
+ * local` left behind by `vercel env pull` outranks `.env` in production mode,
+ * and a `--prebuilt` deploy uploaded the result.
+ *
+ * A build is the last place this is cheap to catch, so catch it here. Local
+ * URLs are only warned about — building against a local Supabase to test a
+ * production bundle is a real thing to want.
+ */
+function guardPublicEnv() {
+  return {
+    name: "foss-onam:guard-public-env",
+    apply: "build" as const,
+    configResolved(config: { command: string; mode: string; env: Record<string, unknown> }) {
+      if (config.mode !== "production") return;
+      const missing = ["VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY"].filter(
+        (key) => !config.env[key],
+      );
+      if (missing.length > 0) {
+        throw new Error(
+          `Production build is missing ${missing.join(" and ")}.\n` +
+            `The browser bundle would ship without Supabase and every sign-in would fail.\n` +
+            `Check for an empty .env.production.local (delete it — 'vercel env pull' writes ` +
+            `blanks for encrypted values), or set the variables in the build environment.`,
+        );
+      }
+      const url = String(config.env.VITE_SUPABASE_URL);
+      if (url.includes("localhost") || url.includes("127.0.0.1")) {
+        console.warn(
+          `\n[guard-public-env] Production bundle is being built against ${url}.\n` +
+            `Nothing but this machine can reach that. Do not deploy this build.\n`,
+        );
+      }
+    },
+  };
+}
+
 export default defineConfig({
   server: {
     port: Number(process.env.PORT ?? 3000),
@@ -19,6 +61,7 @@ export default defineConfig({
     options: { typeAware: true, typeCheck: true },
   },
   plugins: lazyPlugins(() => [
+    guardPublicEnv(),
     tailwindcss(),
     solidStart({ middleware: "./src/middleware/index.ts" }),
     nitro({

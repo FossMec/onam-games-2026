@@ -75,15 +75,6 @@ const SETTINGS_META: Record<string, SettingMetadata> = {
     explanation:
       "Blocks secondary accounts on a physical browser/device already associated with another participant, preventing multi-account farming.",
   },
-  "anti_cheat.speed_p99_factor": {
-    label: "Speed Anomaly Multiplier Factor",
-    type: "number",
-    step: 0.05,
-    min: 0.01,
-    max: 1.0,
-    explanation:
-      "Multiplier against the top 99th percentile speed threshold. Runs completed faster than this factor are automatically flagged as speed anomalies.",
-  },
   "anti_cheat.min_plausible_ms": {
     label: "Minimum Plausible Completion Time",
     type: "number",

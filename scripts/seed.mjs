@@ -21,7 +21,6 @@ const settings = [
   ["schedule.release_time", "19:00", "schedule"],
   ["schedule.game_duration_hours", 24, "schedule"],
   ["enforce_one_user_per_device", true, "anti-cheat"],
-  ["anti_cheat.speed_p99_factor", 0.1, "anti-cheat"],
   ["ui.leaderboard_poll_ms", 120000, "ui"],
   ["ui.refresh_cooldown_ms", 10000, "ui"],
   ["social.whatsapp_group_link", "", "social"],
@@ -68,7 +67,7 @@ const games = [
     // near the edges (a plain border makes the corner pieces pure guesswork).
     // A more symmetric design is a HARDER puzzle, so revisit `minPlausibleMs`
     // for the jigsaw in src/server/games/registry.ts when you change it.
-    assets: { imageUrl: "/pookalam.jpeg" },
+    assets: { imageUrl: "/images/games/pookalam.webp" },
   },
   {
     day: 3,

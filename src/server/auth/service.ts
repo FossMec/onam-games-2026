@@ -182,14 +182,24 @@ async function getCurrentUserUncached(): Promise<PublicUser | null> {
   if (!data?.sid) return null;
   const db = getDb();
   const [row] = await db
-    .select(USER_SELECT)
+    // `expiresAt` rides along on the row we are already fetching. Without it,
+    // every request from a signed-in visitor paid for a second select on
+    // `auth_sessions` purely to discover that the token was nowhere near
+    // expiry — which is the answer 99 times out of 100.
+    .select({ ...USER_SELECT, sessionExpiresAt: authSessions.expiresAt })
     .from(authSessions)
     .innerJoin(users, eq(users.id, authSessions.userId))
     .where(and(eq(authSessions.id, data.sid), isNull(authSessions.revokedAt)))
     .limit(1);
   if (!row) return null;
-  void refreshSessionIfNeeded(data.sid);
-  return (row ?? null) as PublicUser | null;
+  const { sessionExpiresAt, ...user } = row;
+  if (isRefreshDue(sessionExpiresAt)) void refreshSessionIfNeeded(data.sid);
+  return user as PublicUser;
+}
+
+/** A session is worth refreshing once it is within a minute of expiring. */
+function isRefreshDue(expiresAt: Date | null): boolean {
+  return (expiresAt?.getTime() ?? 0) <= Date.now() + 60_000;
 }
 
 /** Device id bound to the current session, if any. */
@@ -228,7 +238,15 @@ export async function requireAdmin(): Promise<PublicUser> {
   return user;
 }
 
-/** Refresh the stored Supabase access token if it is near expiry. */
+/**
+ * Refresh the stored Supabase access token.
+ *
+ * Callers gate this on `isRefreshDue` with the expiry they already hold, so
+ * reaching here means a refresh is expected. The row is re-read anyway because
+ * this runs detached from the request that triggered it, and it needs the
+ * refresh token — and the expiry is re-checked in case a concurrent request
+ * got there first.
+ */
 async function refreshSessionIfNeeded(sessionId: string): Promise<void> {
   const db = getDb();
   const [row] = await db
@@ -237,8 +255,7 @@ async function refreshSessionIfNeeded(sessionId: string): Promise<void> {
     .where(and(eq(authSessions.id, sessionId), isNull(authSessions.revokedAt)))
     .limit(1);
   if (!row) return;
-  const expiresAt = row.expiresAt?.getTime() ?? 0;
-  if (expiresAt > Date.now() + 60_000) return;
+  if (!isRefreshDue(row.expiresAt)) return;
 
   const { data, error } = await getSupabaseAnon().auth.refreshSession({
     refresh_token: row.refreshToken,

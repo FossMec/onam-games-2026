@@ -1,58 +1,49 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
 import { users } from "~/server/db/schema";
-import { getSetting } from "~/server/settings/service";
 
 const DAY_MS = 86400000;
 
-async function eventDayDate(day: number): Promise<string | null> {
-  const startDate = await getSetting<string>("schedule.event_start_date", "");
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(startDate.trim());
+/** The calendar date (UTC, YYYY-MM-DD) of an event day, given the event start date. */
+function dayDate(day: number, eventStartDate: string): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(eventStartDate.trim());
   if (!match) return null;
-  const date = new Date(
-    Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + (day - 1)),
-  );
-  return date.toISOString().slice(0, 10);
-}
-
-function isNextDay(previous: string | null, current: string): boolean {
-  if (!previous) return false;
-  const prev = new Date(`${previous}T00:00:00Z`).getTime();
-  const curr = new Date(`${current}T00:00:00Z`).getTime();
-  return curr - prev === DAY_MS;
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + (day - 1)))
+    .toISOString()
+    .slice(0, 10);
 }
 
 /**
  * Called on a valid, on-time completion. A streak increments only when the
  * player completes the event's consecutive days; a missed day resets it to 1.
+ *
+ * `eventStartDate` comes from the schedule settings the caller already loaded
+ * (see `resolveSchedule`), so this costs exactly one write — the new streak is
+ * derived in SQL from the row's own previous values.
  */
-export async function updateStreak(userId: string, day: number): Promise<void> {
-  const current = await eventDayDate(day);
+export async function updateStreak(
+  userId: string,
+  day: number,
+  eventStartDate: string,
+): Promise<void> {
+  const current = dayDate(day, eventStartDate);
   if (!current) return;
   const db = getDb();
-  const [user] = await db
-    .select({
-      streakCount: users.streakCount,
-      bestStreak: users.bestStreak,
-      lastStreakDay: users.lastStreakDay,
-    })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-  if (!user) return;
+  const prev = new Date(new Date(`${current}T00:00:00Z`).getTime() - DAY_MS)
+    .toISOString()
+    .slice(0, 10);
 
-  let streak = 1;
-  if (user.lastStreakDay === current) {
-    streak = user.streakCount;
-  } else if (isNextDay(user.lastStreakDay, current)) {
-    streak = user.streakCount + 1;
-  }
+  const newStreak = sql`case
+    when ${users.lastStreakDay} = ${current} then ${users.streakCount}
+    when ${users.lastStreakDay} = ${prev} then ${users.streakCount} + 1
+    else 1
+  end`;
 
   await db
     .update(users)
     .set({
-      streakCount: streak,
-      bestStreak: Math.max(user.bestStreak, streak),
+      streakCount: newStreak,
+      bestStreak: sql`greatest(${users.bestStreak}, ${newStreak})`,
       lastStreakDay: current,
     })
     .where(eq(users.id, userId));

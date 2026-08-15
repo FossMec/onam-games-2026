@@ -52,9 +52,9 @@ def remove_outer_bg(img_rgb, threshold=238, mean_threshold=242):
     return Image.fromarray(rgba, 'RGBA')
 
 def process_foss_logo():
-    if not os.path.exists('public/images-raw/foss-logo-theme.jpeg'):
+    if not os.path.exists('assets-raw/foss-logo-theme.jpeg'):
         return
-    img = Image.open('public/images-raw/foss-logo-theme.jpeg').convert('RGBA')
+    img = Image.open('assets-raw/foss-logo-theme.jpeg').convert('RGBA')
     w, h = img.size
     
     # Create smooth anti-aliased circular mask with radius ~456
@@ -87,7 +87,7 @@ def process_sheets():
     ]
 
     # Process Sheet 1
-    im1 = Image.open('public/images-raw/sticker-sheet-1.jpeg').convert('RGB')
+    im1 = Image.open('assets-raw/sticker-sheet-1.jpeg').convert('RGB')
     w, h = im1.size
     cell_w, cell_h = w // 4, h // 4
 
@@ -104,11 +104,11 @@ def process_sheets():
         out_sheet1.paste(cell_trans, box)
         print(f"Sheet 1: saved {name}")
 
-    out_sheet1.save('public/sprites/sheet-1.png')
-    print("Saved public/sprites/sheet-1.png")
+    out_sheet1.save('assets-raw/sprite-sheets/sheet-1.png')
+    print("Saved assets-raw/sprite-sheets/sheet-1.png")
 
     # Process Sheet 2
-    im2 = Image.open('public/images-raw/sticker-sheet-2.jpeg').convert('RGB')
+    im2 = Image.open('assets-raw/sticker-sheet-2.jpeg').convert('RGB')
     out_sheet2 = Image.new('RGBA', (w, h), (0, 0, 0, 0))
 
     for idx, name in enumerate(sheet2_names):
@@ -122,8 +122,8 @@ def process_sheets():
         out_sheet2.paste(cell_trans, box)
         print(f"Sheet 2: saved {name}")
 
-    out_sheet2.save('public/sprites/sheet-2.png')
-    print("Saved public/sprites/sheet-2.png")
+    out_sheet2.save('assets-raw/sprite-sheets/sheet-2.png')
+    print("Saved assets-raw/sprite-sheets/sheet-2.png")
 
     process_foss_logo()
 

@@ -95,9 +95,55 @@ function Section(props: {
   );
 }
 
+/**
+ * What the arena shows when the schedule cannot be read.
+ *
+ * The rest of the page — what the festival is, how it works, the prizes, the
+ * Pookalam contest, the comics — is static and still perfectly true, so this
+ * stays a hole in one section rather than an error page. It says which part is
+ * missing, offers the one thing that might fix it, and points at the parts of
+ * the site that do not need the schedule.
+ */
+function ScheduleUnavailable() {
+  return (
+    <div class="card pop-yellow relative mx-auto max-w-2xl space-y-3 text-center">
+      <div class="flex justify-center">
+        <SpriteIcon name="tux-king" size={52} animate="wobble" alt="" />
+      </div>
+      <h3 class="text-xl sm:text-2xl font-extrabold">The schedule is taking a break</h3>
+      <p class="font-semibold leading-relaxed">
+        We could not reach the games server just now, so the seven-day lineup is missing from this
+        page. Nothing is cancelled — everything else here is still on.
+      </p>
+      <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
+        <button type="button" class="btn-brand cursor-pointer" onClick={() => location.reload()}>
+          Try again
+        </button>
+        <a href="/code-a-pookalam" class="btn-accent">
+          Code-a-Pookalam
+        </a>
+        <a href="/comics" class="btn-ghost">
+          Read the comics
+        </a>
+      </div>
+      <p class="comment">it is not you, it is our database. give it a moment.</p>
+    </div>
+  );
+}
+
 export default function Home() {
   const games = createAsync(() => getGames());
   const me = createAsync(() => getMe());
+
+  /*
+   * Three states, not two. `createAsync` is `undefined` until the schedule
+   * resolves, and `getGames` degrades to an empty list when the database is
+   * unreachable — so "still loading" and "could not load" are different
+   * pictures, and neither of them is allowed to take the rest of the page
+   * (which is all static copy) down with it.
+   */
+  const scheduleLoading = () => games() === undefined;
+  const scheduleMissing = () => games()?.length === 0;
 
   const [selectedDay, setSelectedDay] = createSignal<number>(1);
   const currentActiveDay = () => {
@@ -135,6 +181,12 @@ export default function Home() {
   // Assemble full 7-day schedule
   const fullSchedule = () => {
     const rawGames = games() ?? [];
+    /*
+     * No schedule at all is not the same as a schedule with one entry: padding
+     * a lone Day 7 onto nothing would render a festival week that does not
+     * exist. Leave it empty and let the section say so.
+     */
+    if (rawGames.length === 0) return [];
     const list = [...rawGames];
 
     // Check if Day 7 is in the DB games list, otherwise append Day 7 ELO Voting
@@ -163,17 +215,22 @@ export default function Home() {
     return sched.find((g) => g.day === selectedDay()) ?? sched[0];
   };
 
-  const pookalamDeadline = () => {
+  /*
+   * Null when the schedule has not arrived. The old fallback — "six days from
+   * whenever you loaded the page" — was a countdown to a date nobody had set,
+   * and it differed between the server render and the browser. Better to admit
+   * the deadline is unknown than to invent one that ticks wrong.
+   */
+  const pookalamDeadline = (): Date | null => {
     const list = games();
-    if (list && list.length > 0) {
-      const day6 = list.find((g) => g.day === 6);
-      if (day6?.endAt) return new Date(day6.endAt);
-      const day1 = list.find((g) => g.day === 1);
-      if (day1?.releaseAt) {
-        return new Date(new Date(day1.releaseAt).getTime() + 6 * 24 * 3600 * 1000);
-      }
+    if (!list || list.length === 0) return null;
+    const day6 = list.find((g) => g.day === 6);
+    if (day6?.endAt) return new Date(day6.endAt);
+    const day1 = list.find((g) => g.day === 1);
+    if (day1?.releaseAt) {
+      return new Date(new Date(day1.releaseAt).getTime() + 6 * 24 * 3600 * 1000);
     }
-    return new Date(Date.now() + 6 * 24 * 3600 * 1000);
+    return null;
   };
 
   return (
@@ -354,7 +411,16 @@ export default function Home() {
                 </div>
 
                 <div class="flex flex-wrap items-start justify-center sm:justify-start gap-3.5">
-                  <Countdown target={pookalamDeadline()} doneLabel="Submissions Closed" />
+                  <Show
+                    when={pookalamDeadline()}
+                    fallback={
+                      <span class="sticker" style={{ "--pop": "var(--paper-3)" }}>
+                        Open all week
+                      </span>
+                    }
+                  >
+                    {(deadline) => <Countdown target={deadline()} doneLabel="Submissions Closed" />}
+                  </Show>
                   <a
                     href="/code-a-pookalam"
                     class="btn-brand text-xs sm:text-sm px-4 h-[35px] sm:h-[37px] inline-flex items-center gap-1.5 shrink-0"
@@ -385,8 +451,12 @@ export default function Home() {
         confettiSeed="games-sec"
         confettiCount={5}
       >
-        <Show when={!games()}>
+        <Show when={scheduleLoading()}>
           <p class="font-semibold text-center py-6">Loading the schedule…</p>
+        </Show>
+
+        <Show when={scheduleMissing()}>
+          <ScheduleUnavailable />
         </Show>
 
         <Show when={activeGame()}>

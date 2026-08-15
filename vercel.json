@@ -2,5 +2,38 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "solidstart-1",
   "installCommand": "corepack pnpm install --frozen-lockfile",
-  "buildCommand": "vp build"
+  "buildCommand": "vp build",
+  "headers": [
+    {
+      "source": "/fonts/(.*)",
+      "headers": [{ "key": "cache-control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/sprites/(.*)",
+      "headers": [
+        {
+          "key": "cache-control",
+          "value": "public, max-age=86400, s-maxage=31536000, stale-while-revalidate=604800"
+        }
+      ]
+    },
+    {
+      "source": "/images/(.*)",
+      "headers": [
+        {
+          "key": "cache-control",
+          "value": "public, max-age=86400, s-maxage=31536000, stale-while-revalidate=604800"
+        }
+      ]
+    },
+    {
+      "source": "/previous-pookalam/(.*)",
+      "headers": [
+        {
+          "key": "cache-control",
+          "value": "public, max-age=86400, s-maxage=31536000, stale-while-revalidate=604800"
+        }
+      ]
+    }
+  ]
 }

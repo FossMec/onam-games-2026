@@ -23,7 +23,7 @@ const SECTIONS = [
   {
     title: "Where data lives",
     body: [
-      "Data is stored on Supabase (hosted Postgres in Singapore) and, when configured, Upstash Redis for rate limiting and caching. Processing happens on Vercel's serverless platform.",
+      "Data is stored on Supabase (hosted Postgres in Singapore). Processing happens on Vercel's serverless platform.",
       "We retain gameplay and account data for the duration of the event and a reasonable period afterwards for results, prize distribution, and record-keeping.",
     ],
   },
@@ -40,7 +40,7 @@ const SECTIONS = [
     title: "Sharing",
     body: [
       "Your public leaderboard name, score, and (where shown) avatar and college are visible to other players as part of the game.",
-      "We share data with service providers (Vercel, Supabase, Upstash) only to the extent needed to operate the site.",
+      "We share data with service providers (Vercel, Supabase) only to the extent needed to operate the site.",
       "We will not share your personal data with other third parties unless required by law.",
     ],
   },

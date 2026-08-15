@@ -50,7 +50,7 @@ def clean_sprite(crop):
 
 def main():
     os.makedirs("public/sprites/jump", exist_ok=True)
-    sheet_path = "public/images-raw/maveli-jump-sprite.jpeg"
+    sheet_path = "assets-raw/maveli-jump-sprite.jpeg"
     if not os.path.exists(sheet_path):
         print(f"Missing {sheet_path}")
         return

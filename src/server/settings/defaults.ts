@@ -57,12 +57,6 @@ export const settingsRegistry: SettingDef[] = [
     defaultValue: true,
   },
   {
-    key: "anti_cheat.speed_p99_factor",
-    group: "anti-cheat",
-    description: "Submissions faster than p99 x factor (with moves) are suspicious",
-    defaultValue: 0.1,
-  },
-  {
     key: "anti_cheat.min_plausible_ms",
     group: "anti-cheat",
     description: "Minimum plausible completion time (ms)",

@@ -132,6 +132,8 @@ export async function resolveSchedule(
   previewAt: Date | null;
   testerReleaseAt: Date | null;
   status: GameStatus;
+  /** Raw `schedule.event_start_date` — lets callers reuse the settings fetch. */
+  eventStartDate: string;
 }> {
   const scheduleSettings = settings ?? (await getScheduleSettings());
   const releaseAt = computeRelease(game, scheduleSettings);
@@ -142,6 +144,7 @@ export async function resolveSchedule(
       previewAt: null,
       testerReleaseAt: null,
       status: "upcoming",
+      eventStartDate: scheduleSettings.eventStartDate,
     };
   }
   const endAt =
@@ -171,7 +174,14 @@ export async function resolveSchedule(
   } else {
     status = "upcoming";
   }
-  return { releaseAt, endAt, previewAt, testerReleaseAt, status };
+  return {
+    releaseAt,
+    endAt,
+    previewAt,
+    testerReleaseAt,
+    status,
+    eventStartDate: scheduleSettings.eventStartDate,
+  };
 }
 
 function toCard(
@@ -243,12 +253,12 @@ function maskCard(card: GameCard): GameCard {
 
 export async function getGamesList(viewerRole: ViewerRole): Promise<GameCard[]> {
   const db = getDb();
-  const rows = await db
-    .select()
-    .from(games)
-    .where(eq(games.published, true))
-    .orderBy(asc(games.day));
-  const settings = await getScheduleSettings();
+  // The schedule settings do not depend on the rows, so the two go out
+  // together rather than one after the other.
+  const [rows, settings] = await Promise.all([
+    db.select().from(games).where(eq(games.published, true)).orderBy(asc(games.day)),
+    getScheduleSettings(),
+  ]);
   const cards = await Promise.all(
     rows.map(async (game) => toCard(game, await resolveSchedule(game, viewerRole, settings))),
   );
@@ -260,13 +270,17 @@ export async function getGameBySlug(
   viewerRole: ViewerRole,
 ): Promise<GameCard | null> {
   const db = getDb();
-  const [game] = await db
-    .select()
-    .from(games)
-    .where(and(eq(games.slug, slug), eq(games.published, true)))
-    .limit(1);
+  // Same as the list: the row and the schedule settings are independent reads.
+  const [[game], settings] = await Promise.all([
+    db
+      .select()
+      .from(games)
+      .where(and(eq(games.slug, slug), eq(games.published, true)))
+      .limit(1),
+    getScheduleSettings(),
+  ]);
   if (!game) return null;
-  const card = toCard(game, await resolveSchedule(game, viewerRole));
+  const card = toCard(game, await resolveSchedule(game, viewerRole, settings));
   /*
    * Masked here too, but the slug is left intact: the caller already typed it,
    * so blanking it would only break the page they are looking at. Everything

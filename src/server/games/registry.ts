@@ -10,7 +10,7 @@ import * as wend from "./impl/wend";
  * so dropping in the real pookalam is a DB edit, not a deploy. Regenerate the
  * placeholder with `node scripts/make-pookalam.mjs`.
  */
-const DEFAULT_POOKALAM = "/pookalam.jpeg";
+const DEFAULT_POOKALAM = "/images/games/pookalam.webp";
 
 /**
  * Tokens get typed off a phone screen, read off paper, and pasted out of URLs.
@@ -337,7 +337,10 @@ export const GAMES: readonly GameDef[] = [
       const expected = await getSetting<string>("hunt.final_token", "");
       // Fail closed: an unset token must never accept an arbitrary guess.
       if (!expected.trim()) {
-        return { valid: false, reason: "The hunt is not accepting tokens yet." };
+        return {
+          valid: false,
+          reason: "The hunt is not accepting tokens yet.",
+        };
       }
       return normalizeToken(claimed) === normalizeToken(expected)
         ? { valid: true }
