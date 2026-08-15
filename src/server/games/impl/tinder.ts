@@ -137,11 +137,11 @@ export function checkPass(
 export function explainCards(
   seed: string,
   ids: readonly string[],
-): { id: string; open: boolean; why: string }[] {
+): { id: string; open: boolean; why: string; fact: string }[] {
   const deck = new Map(dealDeck(seed).map((card) => [card.id, card]));
   return ids.flatMap((id) => {
     const card = deck.get(id);
-    return card ? [{ id: card.id, open: card.open, why: card.why }] : [];
+    return card ? [{ id: card.id, open: card.open, why: card.why, fact: card.fact }] : [];
   });
 }
 
@@ -193,12 +193,13 @@ export function verify(input: VerifyInput): VerifyResult {
  */
 export function revealDeck(
   seed: string,
-): { id: string; name: string; category: string; open: boolean; why: string }[] {
+): { id: string; name: string; category: string; open: boolean; why: string; fact: string }[] {
   return dealDeck(seed).map((card) => ({
     id: card.id,
     name: card.name,
     category: card.category,
     open: card.open,
     why: card.why,
+    fact: card.fact,
   }));
 }

@@ -28,6 +28,7 @@ export interface TinderRevealCard {
   category: string;
   open: boolean;
   why: string;
+  fact: string;
 }
 
 export interface TinderRecapProps {
@@ -142,7 +143,8 @@ export function TinderRecap(props: TinderRecapProps) {
                       </p>
                     }
                   >
-                    <p class="text-sm text-muted">{answer()!.why}</p>
+                    <p class="text-sm font-semibold">{answer()!.why}</p>
+                    <p class="text-sm leading-snug text-muted">{answer()!.fact}</p>
                   </Show>
                 </div>
 

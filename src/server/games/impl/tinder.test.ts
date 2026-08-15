@@ -7,6 +7,7 @@ import {
   explainCards,
   verify,
 } from "./tinder";
+import { TINDER_CARDS } from "../data/tinder-cards";
 
 /**
  * The verifier is the only thing standing between the leaderboard and a forged
@@ -185,5 +186,47 @@ describe("explainCards", () => {
 
   it("silently drops ids that are not in this player's deck", () => {
     expect(explainCards(SEED, ["not-a-card"])).toEqual([]);
+  });
+
+  /*
+   * The penalty screen is three seconds a player cannot skip, so the text on it
+   * has to be worth those three seconds. An empty or missing `fact` would be a
+   * blank stare instead of a teaching moment.
+   */
+  it("has something real to say about every card it explains", () => {
+    const deck = dealDeck(SEED);
+    for (const card of explainCards(
+      SEED,
+      deck.map((c) => c.id),
+    )) {
+      expect(card.why.length).toBeGreaterThan(0);
+      expect(card.fact.length).toBeGreaterThan(40);
+    }
+  });
+});
+
+describe("card pool", () => {
+  it("gives every card a fact, not just a licence tag", () => {
+    for (const card of TINDER_CARDS) {
+      expect(card.fact, card.id).toBeTruthy();
+      expect(card.fact.length, card.id).toBeGreaterThan(40);
+    }
+  });
+
+  /*
+   * The category is the card's public "bio" line, so a category appearing on
+   * only one side of the deck would silently be a free answer — swipe right on
+   * anything labelled "Kernel". Every category must be ambiguous on its own.
+   */
+  it("never lets a category give the answer away", () => {
+    const sides = new Map<string, Set<boolean>>();
+    for (const card of TINDER_CARDS) {
+      if (!sides.has(card.category)) sides.set(card.category, new Set());
+      sides.get(card.category)!.add(card.open);
+    }
+    const giveaways = [...sides.entries()]
+      .filter(([, seen]) => seen.size === 1)
+      .map(([category]) => category);
+    expect(giveaways).toEqual([]);
   });
 });

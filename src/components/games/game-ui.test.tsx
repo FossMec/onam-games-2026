@@ -34,9 +34,19 @@ describe("ssr smoke", () => {
       <TinderRecap
         cards={cards}
         passes={passes}
-        reveal={[{ id: "firefox", name: "Firefox", category: "Browser", open: true, why: "MPL." }]}
+        reveal={[
+          {
+            id: "firefox",
+            name: "Firefox",
+            category: "Browser",
+            open: true,
+            why: "MPL.",
+            fact: "Mozilla's browser, and the last major engine that isn't Chromium.",
+          },
+        ]}
       />
     ));
     expect(withReveal).toContain("MPL.");
+    expect(withReveal).toContain("last major engine");
   });
 });

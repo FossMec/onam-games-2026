@@ -303,7 +303,14 @@ export async function getMyAttemptBySlug(
 
 export interface TinderRecap {
   kind: "tinder";
-  cards: { id: string; name: string; category: string; open: boolean; why: string }[];
+  cards: {
+    id: string;
+    name: string;
+    category: string;
+    open: boolean;
+    why: string;
+    fact: string;
+  }[];
 }
 
 /**

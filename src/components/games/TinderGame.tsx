@@ -40,7 +40,10 @@ interface Decision {
 interface Verdict {
   id: string;
   open: boolean;
+  /** The one-line licence verdict. */
   why: string;
+  /** One or two lines on what the project actually is. */
+  fact: string;
 }
 
 export interface TinderGameProps {
@@ -73,6 +76,8 @@ export interface TinderProgress {
 const SWIPE_THRESHOLD = 80;
 /** Mirrors `WRONG_SWIPE_PENALTY_MS` on the server. Display only. */
 const PENALTY_MS = 3_000;
+/** How long a swiped card takes to leave. Must match the CSS animation. */
+const FLY_MS = 300;
 
 const POPS = [
   "var(--pop-red)",
@@ -212,14 +217,29 @@ export function TinderGame(props: TinderGameProps) {
     if (ungraded.length > 0) void grade(ungraded, false);
   });
 
-  /** Shows queued penalties one at a time, three seconds each. */
+  /**
+   * Shows queued penalties one at a time, three seconds each.
+   *
+   * The timer is a plain variable, NOT an `onCleanup` inside this effect. It
+   * was, and that hung the game: `onCleanup` registered in an effect fires
+   * before every *re-run* of that effect, and `setShowing`/`setPending` here
+   * re-run it immediately — so the three-second timer was cancelled the instant
+   * it was created and the penalty screen stayed up forever. Cleanup belongs to
+   * the component's lifetime, which is the only thing that should cancel it.
+   */
+  let penaltyTimer: ReturnType<typeof setTimeout> | undefined;
+  let flyTimer: ReturnType<typeof setTimeout> | undefined;
+  onCleanup(() => {
+    clearTimeout(penaltyTimer);
+    clearTimeout(flyTimer);
+  });
+
   createEffect(() => {
     if (showing() || pending().length === 0) return;
     const [next, ...rest] = pending();
     setPending(rest);
     setShowing(next);
-    const timer = setTimeout(() => setShowing(null), PENALTY_MS);
-    onCleanup(() => clearTimeout(timer));
+    penaltyTimer = setTimeout(() => setShowing(null), PENALTY_MS);
   });
 
   /* ------------------------------------------------------------ pass logic */
@@ -280,8 +300,10 @@ export function TinderGame(props: TinderGameProps) {
     report({ queue: rest, decisions: nextDecisions });
     void grade([decision], true);
 
-    const timer = setTimeout(() => setFlying(null), 260);
-    onCleanup(() => clearTimeout(timer));
+    // Plain variable, for the same reason as the penalty timer: this runs from
+    // an event handler, where there is no reactive owner to hang a cleanup on.
+    clearTimeout(flyTimer);
+    flyTimer = setTimeout(() => setFlying(null), FLY_MS);
   };
 
   /* ---------------------------------------------------------------- input */
@@ -323,7 +345,14 @@ export function TinderGame(props: TinderGameProps) {
   });
 
   const tilt = () => dragX() / 14;
-  const verdict = () => (dragX() > 30 ? "open" : dragX() < -30 ? "closed" : null);
+  const verdict = () => (dragX() > 20 ? "open" : dragX() < -20 ? "closed" : null);
+  /**
+   * How committed the drag is, 0..1. The stamp fades and grows into place with
+   * the swipe rather than popping in at a threshold, so you can feel where the
+   * commit point is before you let go.
+   */
+  const commitment = () =>
+    Math.min(1, Math.max(0, (Math.abs(dragX()) - 20) / (SWIPE_THRESHOLD - 20)));
 
   const penaltySeconds = () => (penaltyMs() / 1000).toFixed(0);
 
@@ -405,7 +434,7 @@ export function TinderGame(props: TinderGameProps) {
                 >
                   <CardFace card={card()} id={id} />
 
-                  {/* Swipe verdict stamps, comic-style. */}
+                  {/* Swipe verdict stamps, comic-style, growing with the drag. */}
                   <Show when={isTop() && verdict()}>
                     <span
                       class="sticker absolute top-5 text-xl"
@@ -413,7 +442,8 @@ export function TinderGame(props: TinderGameProps) {
                         "--pop": verdict() === "open" ? "var(--pop-teal)" : "var(--pop-red)",
                         left: verdict() === "open" ? "1rem" : undefined,
                         right: verdict() === "closed" ? "1rem" : undefined,
-                        transform: `rotate(${verdict() === "open" ? -12 : 12}deg)`,
+                        transform: `rotate(${verdict() === "open" ? -12 : 12}deg) scale(${0.7 + 0.3 * commitment()})`,
+                        opacity: 0.35 + 0.65 * commitment(),
                         "border-width": "var(--ink-w-bold)",
                       }}
                     >
@@ -426,21 +456,43 @@ export function TinderGame(props: TinderGameProps) {
           </For>
         </Show>
 
-        {/* The card that was just swiped, sailing off in the chosen direction. */}
-        <Show when={flying()}>
-          <article
-            class="pointer-events-none absolute inset-0 overflow-hidden rounded-lg"
-            style={{
-              background: "var(--paper-2)",
-              border: "var(--ink-w-bold) solid var(--ink)",
-              transform: `translateX(${flying()!.dir * 140}%) rotate(${flying()!.dir * 22}deg)`,
-              opacity: 0,
-              transition: "transform 260ms ease-in, opacity 260ms ease-in",
-              "z-index": 20,
-            }}
-          >
-            <CardFace card={byId().get(flying()!.id)} id={flying()!.id} />
-          </article>
+        {/*
+          The card that was just swiped, sailing off in the chosen direction.
+
+          A keyframe animation, not a transition. This element is *mounted*
+          already carrying its end transform, so there is no start state for a
+          transition to run from and the card simply blinked out of existence —
+          the swipe had no follow-through at all. An animation always plays from
+          its own 0%, whatever the element looked like when it appeared.
+        */}
+        <Show when={flying()} keyed>
+          {(card) => (
+            <article
+              class="pointer-events-none absolute inset-0 overflow-hidden rounded-lg"
+              style={{
+                background: "var(--paper-2)",
+                border: "var(--ink-w-bold) solid var(--ink)",
+                "--dir": card.dir,
+                animation: `card-fly-out ${FLY_MS}ms cubic-bezier(0.4, 0, 0.9, 0.4) forwards`,
+                "z-index": 20,
+              }}
+            >
+              <CardFace card={byId().get(card.id)} id={card.id} />
+              {/* The verdict rides out with the card. */}
+              <span
+                class="sticker absolute top-5 text-xl"
+                style={{
+                  "--pop": card.dir > 0 ? "var(--pop-teal)" : "var(--pop-red)",
+                  left: card.dir > 0 ? "1rem" : undefined,
+                  right: card.dir < 0 ? "1rem" : undefined,
+                  transform: `rotate(${card.dir > 0 ? -12 : 12}deg)`,
+                  "border-width": "var(--ink-w-bold)",
+                }}
+              >
+                {card.dir > 0 ? "FREE!" : "NOPE"}
+              </span>
+            </article>
+          )}
         </Show>
 
         {/* ------------------------------------------------ penalty screen */}
@@ -542,7 +594,7 @@ function CardFace(props: { card: TinderCardView | undefined; id: string }) {
 function PenaltyScreen(props: { verdict: Verdict; card: TinderCardView | undefined }) {
   return (
     <div
-      class="absolute inset-0 z-30 grid place-items-center rounded-lg p-5 text-center"
+      class="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 overflow-y-auto rounded-lg px-5 py-6 text-center"
       style={{
         background: "var(--ink)",
         border: "var(--ink-w-bold) solid var(--ink)",
@@ -551,77 +603,72 @@ function PenaltyScreen(props: { verdict: Verdict; card: TinderCardView | undefin
       role="status"
       aria-live="polite"
     >
-      <div class="space-y-3">
-        <p
-          class="text-4xl leading-none"
-          style={{
-            "font-family": "var(--font-stack-comic)",
-            color: "var(--pop-red)",
-            "-webkit-text-stroke": "2px var(--paper)",
-            "paint-order": "stroke fill",
-          }}
-        >
-          AYYO!
-        </p>
-
+      {/* Verdict, mark and name on one tight block. */}
+      <div class="flex items-center gap-3">
         <div
-          class="mx-auto grid h-20 w-20 place-items-center rounded-full"
-          style={{ background: "var(--paper-2)", border: "var(--ink-w-bold) solid var(--paper)" }}
+          class="grid h-14 w-14 shrink-0 place-items-center rounded-full"
+          style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--paper)" }}
         >
-          <ProjectMark id={props.verdict.id} name={props.card?.name ?? ""} size={56} />
+          <ProjectMark id={props.verdict.id} name={props.card?.name ?? ""} size={40} />
         </div>
-
-        <div class="space-y-1">
+        <div class="text-left">
           <p
             class="leading-tight"
             style={{
               "font-family": "var(--font-stack-display)",
               "font-weight": 800,
-              "font-size": "1.15rem",
+              "font-size": "1.25rem",
               color: "var(--paper)",
             }}
           >
             {props.card?.name}
           </p>
           <span
-            class="sticker text-sm"
-            style={{
-              "--pop": props.verdict.open ? "var(--pop-teal)" : "var(--pop-red)",
-            }}
+            class="sticker text-xs"
+            style={{ "--pop": props.verdict.open ? "var(--pop-teal)" : "var(--pop-red)" }}
           >
             {props.verdict.open ? "is open source" : "is proprietary"}
           </span>
-          <p class="pt-1 text-sm font-semibold" style={{ color: "var(--paper-3)" }}>
-            {props.verdict.why}
-          </p>
         </div>
+      </div>
 
-        {/* The 3s you are paying for it. */}
-        <div class="flex items-center justify-center gap-2">
-          <svg width="34" height="34" viewBox="0 0 36 36" aria-hidden="true">
-            <circle cx="18" cy="18" r="15" fill="none" stroke="var(--ink-soft)" stroke-width="4" />
-            <circle
-              cx="18"
-              cy="18"
-              r="15"
-              fill="none"
-              stroke="var(--pop-yellow)"
-              stroke-width="4"
-              stroke-linecap="round"
-              transform="rotate(-90 18 18)"
-              style={{
-                "stroke-dasharray": "94.2",
-                animation: "penalty-drain 3s linear forwards",
-              }}
-            />
-          </svg>
-          <span
-            class="tabular-nums text-lg font-bold"
-            style={{ color: "var(--pop-yellow)", "font-family": "var(--font-stack-mono)" }}
-          >
-            +3s
-          </span>
-        </div>
+      <p class="text-base font-extrabold" style={{ color: "var(--pop-yellow)" }}>
+        {props.verdict.why}
+      </p>
+
+      {/* The part actually worth three seconds. */}
+      <p
+        class="max-w-[30ch] text-sm font-semibold leading-snug"
+        style={{ color: "var(--paper-3)" }}
+      >
+        {props.verdict.fact}
+      </p>
+
+      {/* The 3s you are paying for it. */}
+      <div class="flex items-center gap-2 pt-1">
+        <svg width="30" height="30" viewBox="0 0 36 36" aria-hidden="true">
+          <circle cx="18" cy="18" r="15" fill="none" stroke="var(--ink-soft)" stroke-width="4" />
+          <circle
+            cx="18"
+            cy="18"
+            r="15"
+            fill="none"
+            stroke="var(--pop-yellow)"
+            stroke-width="4"
+            stroke-linecap="round"
+            transform="rotate(-90 18 18)"
+            style={{
+              "stroke-dasharray": "94.2",
+              animation: `penalty-drain ${PENALTY_MS}ms linear forwards`,
+            }}
+          />
+        </svg>
+        <span
+          class="tabular-nums text-lg font-bold"
+          style={{ color: "var(--pop-yellow)", "font-family": "var(--font-stack-mono)" }}
+        >
+          +3s
+        </span>
       </div>
     </div>
   );

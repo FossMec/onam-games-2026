@@ -44,69 +44,116 @@ function Stage(props: { children: JSX.Element; seed: string; pop?: string }) {
   );
 }
 
-/** Swipe right on the free one, swipe left on the other one. */
+/**
+ * Swipe right on the free one, left on the one that bills you.
+ *
+ * The two demo products are invented — "Libre Notes" and "Notes Pro". They have
+ * to be: every real name is a card somebody is about to be dealt, and showing
+ * one here with its answer stamped on it would be handing over a free point.
+ * A matched pair in the same category also teaches the actual mechanic better
+ * than two unrelated products would — the difference between them is the only
+ * thing that matters.
+ */
 function TinderDemo() {
   return (
     <Stage seed="demo-tinder">
-      <div class="absolute inset-0 grid place-items-center">
-        <div class="relative" style={{ width: "104px", height: "132px" }}>
-          {/* The card underneath, revealed when the top one leaves. */}
-          <DemoCard label="EULA" pop="var(--pop-red)" />
+      <div class="absolute inset-0 grid place-items-center pb-6">
+        <div class="relative" style={{ width: "112px", height: "126px" }}>
+          {/* The rest of the deck, hinted at. */}
+          <div
+            class="absolute inset-0 rounded"
+            style={{
+              background: "var(--paper-3)",
+              border: "var(--ink-w) solid var(--ink)",
+              transform: "translateY(16px) scale(0.9)",
+            }}
+          />
+
+          {/* Second card: rises as the first leaves, then swipes left. */}
           <div
             class="absolute inset-0"
-            style={{ animation: "demo-swipe-right 5s ease-in-out infinite" }}
+            style={{ "z-index": 2, animation: "demo-card-paid 6s ease-in-out infinite" }}
           >
-            <DemoCard label="GPL" pop="var(--pop-teal)" />
-          </div>
-          <div
-            class="absolute inset-0"
-            style={{ animation: "demo-swipe-left 5s ease-in-out infinite" }}
-          >
-            <DemoCard label="EULA" pop="var(--pop-red)" />
+            <DemoCard name="Notes Pro" price="$9.99 / month" pop="var(--pop-red)" locked />
+            <span
+              class="sticker absolute left-1.5 top-1.5 text-[0.6rem]"
+              style={{
+                "--pop": "var(--pop-red)",
+                animation: "demo-stamp-paid 6s ease-in-out infinite",
+              }}
+            >
+              NOPE
+            </span>
           </div>
 
-          <span
-            class="sticker absolute -right-8 top-3 text-xs"
-            style={{ "--pop": "var(--pop-teal)", animation: "demo-stamp 5s ease-in-out infinite" }}
+          {/* Top card: swipes right straight away. It must be on top — that is
+              the whole point of a deck, and the first version had it behind. */}
+          <div
+            class="absolute inset-0"
+            style={{ "z-index": 3, animation: "demo-card-free 6s ease-in-out infinite" }}
           >
-            FREE!
-          </span>
-          <span
-            class="sticker absolute -left-8 top-3 text-xs"
-            style={{
-              "--pop": "var(--pop-red)",
-              animation: "demo-stamp-late 5s ease-in-out infinite",
-            }}
-          >
-            NOPE
-          </span>
+            <DemoCard name="Libre Notes" price="free, forever" pop="var(--pop-teal)" />
+            <span
+              class="sticker absolute right-1.5 top-1.5 text-[0.6rem]"
+              style={{
+                "--pop": "var(--pop-teal)",
+                animation: "demo-stamp-free 6s ease-in-out infinite",
+              }}
+            >
+              FREE!
+            </span>
+          </div>
         </div>
       </div>
 
       <div class="absolute inset-x-0 bottom-1.5 flex items-center justify-between px-3 text-[0.65rem] font-extrabold uppercase tracking-wider">
-        <span style={{ color: "var(--pop-red)" }}>← proprietary</span>
-        <span style={{ color: "var(--pop-teal-deep)" }}>open source →</span>
+        <span style={{ color: "var(--pop-red)" }}>← left: it wants your card</span>
+        <span style={{ color: "var(--pop-teal-deep)" }}>right: actually free →</span>
       </div>
     </Stage>
   );
 }
 
-function DemoCard(props: { label: string; pop: string }) {
+function DemoCard(props: { name: string; price: string; pop: string; locked?: boolean }) {
   return (
     <div
-      class="grid h-full w-full place-items-center rounded"
+      class="flex h-full w-full flex-col overflow-hidden rounded"
       style={{ background: PAPER, border: "var(--ink-w) solid var(--ink)" }}
     >
+      <div class="relative grid flex-1 place-items-center" style={{ background: props.pop }}>
+        <div class="halftone absolute inset-0" aria-hidden="true" />
+        {/* An open padlock or a shut one. The whole joke in one glyph. */}
+        <svg width="34" height="34" viewBox="0 0 32 32" aria-hidden="true">
+          <rect
+            x="7"
+            y="14"
+            width="18"
+            height="14"
+            rx="3"
+            fill={PAPER}
+            stroke={INK}
+            stroke-width="2.5"
+          />
+          <path
+            d={props.locked ? "M11 14v-4a5 5 0 0 1 10 0v4" : "M11 14v-4a5 5 0 0 1 10 0"}
+            fill="none"
+            stroke={INK}
+            stroke-width="2.5"
+            stroke-linecap="round"
+          />
+        </svg>
+      </div>
       <div
-        class="grid h-14 w-14 place-items-center rounded-full"
-        style={{ background: props.pop, border: "var(--ink-w) solid var(--ink)" }}
+        class="px-1.5 py-1 text-center"
+        style={{ "border-top": "var(--ink-w) solid var(--ink)" }}
       >
-        <span
-          class="text-[0.6rem]"
+        <p
+          class="truncate text-[0.7rem] leading-tight"
           style={{ "font-family": "var(--font-stack-display)", "font-weight": 800 }}
         >
-          {props.label}
-        </span>
+          {props.name}
+        </p>
+        <p class="truncate text-[0.6rem] font-bold text-muted">{props.price}</p>
       </div>
     </div>
   );
