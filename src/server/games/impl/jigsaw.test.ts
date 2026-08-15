@@ -138,6 +138,22 @@ describe("verify", () => {
     expect(run({ ...solvedRun(5, 5), moveLog: [] }).valid).toBe(false);
   });
 
+  /*
+   * The regression: one drag can close several joins at once, so a 25-piece
+   * board is legitimately finished in far fewer than 24 drags. Requiring
+   * `count - 1` entries rejected completed, provably correct puzzles for the
+   * crime of being assembled efficiently.
+   */
+  it("accepts a correct board assembled in fewer drags than it has pieces", () => {
+    const efficient = {
+      ...solvedRun(5, 5),
+      moveLog: Array.from({ length: 12 }, (_, i) => ({ p: i, t: (i + 1) * 900 })),
+    };
+    const result = run(efficient);
+    expect(result.reason).toBeUndefined();
+    expect(result.valid).toBe(true);
+  });
+
   it("rejects timestamps that run backwards", () => {
     const submission = solvedRun(5, 5);
     submission.moveLog[5] = { p: 5, t: 10 };

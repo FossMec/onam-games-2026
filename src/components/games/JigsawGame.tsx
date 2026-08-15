@@ -144,6 +144,33 @@ export function JigsawGame(props: JigsawGameProps) {
   const groupCount = createMemo(() => new Set(pieces().map((p) => p.groupId)).size);
   const solved = () => pieces().length > 0 && groupCount() === 1;
 
+  /**
+   * The window onto the board, in cell units.
+   *
+   * While playing it is the whole scattered area — pieces need somewhere to
+   * live. The moment the puzzle comes together that space is dead weight: the
+   * finished pookalam sat in a corner at a third of the width with two thirds
+   * of the panel empty, which is a poor look at the one moment the player has
+   * earned a good one. Solved, the view crops to the picture itself.
+   *
+   * The margin leaves room for tabs on the outer edge, which bulge up to 0.325
+   * of a cell beyond the piece.
+   */
+  const MARGIN = 0.4;
+  const viewport = createMemo(() => {
+    if (!solved()) {
+      return { ox: 0, oy: 0, w: cols() * SPREAD, h: rows() * SPREAD };
+    }
+    const xs = pieces().map((p) => p.x);
+    const ys = pieces().map((p) => p.y);
+    return {
+      ox: Math.min(...xs) - MARGIN,
+      oy: Math.min(...ys) - MARGIN,
+      w: cols() + MARGIN * 2,
+      h: rows() + MARGIN * 2,
+    };
+  });
+
   const report = (next: Piece[], log: Move[]) => {
     props.onProgress?.({ pieces: next, moveLog: log });
   };
@@ -155,7 +182,7 @@ export function JigsawGame(props: JigsawGameProps) {
   let startPositions: Piece[] = [];
 
   /** Board width in px per cell unit — everything is stored in cell units. */
-  const unit = () => (board?.getBoundingClientRect().width ?? 1) / (cols() * SPREAD);
+  const unit = () => (board?.getBoundingClientRect().width ?? 1) / viewport().w;
 
   const onPointerDown = (event: PointerEvent, piece: Piece) => {
     if (props.disabled || solved()) return;
@@ -341,7 +368,7 @@ export function JigsawGame(props: JigsawGameProps) {
         class="relative mx-auto w-full"
         style={{
           "max-width": "min(100%, 34rem)",
-          "aspect-ratio": `${cols() * SPREAD} / ${rows() * SPREAD}`,
+          "aspect-ratio": `${viewport().w} / ${viewport().h}`,
           background: "var(--paper-2)",
           border: "var(--ink-w-bold) solid var(--ink)",
           "border-radius": "var(--radius)",
@@ -363,13 +390,15 @@ export function JigsawGame(props: JigsawGameProps) {
               onPointerCancel={onPointerUp}
               style={{
                 position: "absolute",
-                left: `${(piece.x / (cols() * SPREAD)) * 100}%`,
-                top: `${(piece.y / (rows() * SPREAD)) * 100}%`,
-                width: `${(1 / (cols() * SPREAD)) * 100}%`,
-                height: `${(1 / (rows() * SPREAD)) * 100}%`,
+                left: `${((piece.x - viewport().ox) / viewport().w) * 100}%`,
+                top: `${((piece.y - viewport().oy) / viewport().h) * 100}%`,
+                width: `${(1 / viewport().w) * 100}%`,
+                height: `${(1 / viewport().h) * 100}%`,
                 cursor: props.disabled || solved() ? "default" : "grab",
                 "z-index": piece.groupId === activeGroup() ? 10 : 1,
                 "touch-action": "none",
+                // Only once nothing can move again, so a drag is never animated.
+                transition: solved() ? "left 320ms ease, top 320ms ease" : "none",
               }}
             >
               <PieceArt id={piece.id} />

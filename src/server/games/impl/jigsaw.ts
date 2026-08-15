@@ -200,9 +200,25 @@ export function verify(input: VerifyInput): VerifyResult {
    * at the top of this file.
    */
   const log = submission.moveLog;
-  // Assembling N pieces takes at least N-1 joins, so a shorter log did not
-  // happen. This is a floor on effort, not a correctness check.
-  if (!Array.isArray(log) || log.length < count - 1) {
+  /*
+   * A token floor, and deliberately only a token one.
+   *
+   * This used to demand `count - 1` entries, on the reasoning that assembling N
+   * pieces takes N-1 joins. The premise is right and the conclusion is wrong:
+   * the log records one entry per *drag*, not per join, and a single drag can
+   * close several joins at once — the snap loop keeps merging while the dragged
+   * group has neighbours to merge with. So a player who assembles efficiently
+   * finishes a 25-piece board in well under 24 drags and had their completed,
+   * provably correct puzzle rejected with "move log too short". Being good at
+   * the game was the failure condition.
+   *
+   * Nothing is lost by relaxing it, because the length of this log was never a
+   * real defence: fabricating twenty-four plausible entries is trivial, and a
+   * script would have done so. What actually guards this game is the layout
+   * check above, `minPlausibleMs` against the server's own clock, and the
+   * timestamp bounds below. The log is timing evidence, not proof of effort.
+   */
+  if (!Array.isArray(log) || log.length < 2) {
     return { valid: false, reason: "Move log missing or too short." };
   }
   if (log.length > count * 60) {
