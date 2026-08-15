@@ -586,13 +586,13 @@ export function JumpGame(props: JumpGameProps) {
               </p>
               <div class="flex flex-wrap items-center justify-center gap-2 pt-2 text-[0.75rem]">
                 <span class="badge" style={{ "--pop": "var(--pop-teal)" }}>
-                  🌿 Safe Floor
+                  Safe Floor
                 </span>
                 <span class="badge" style={{ "--pop": "var(--pop-orange)" }}>
-                  ☂️ Max Jump
+                  Max Jump Spring
                 </span>
                 <span class="badge" style={{ "--pop": "var(--pop-blue)" }}>
-                  🎈 Auto-Glide
+                  Auto-Glide
                 </span>
               </div>
             </div>
@@ -601,7 +601,7 @@ export function JumpGame(props: JumpGameProps) {
       </div>
 
       <div class="flex flex-wrap items-center justify-between gap-1 text-[0.75rem] text-muted">
-        <p>☂️ Orange = Max Spring Jump · 🎈 Balloon = Auto Climb · Stomp enemies on head!</p>
+        <p>Orange = Max Spring Jump · Balloon = Auto Climb · Stomp enemies on head!</p>
       </div>
     </div>
   );

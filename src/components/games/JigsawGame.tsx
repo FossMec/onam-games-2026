@@ -294,10 +294,12 @@ export function JigsawGame(props: JigsawGameProps) {
     return out;
   });
 
+  const instanceId = Math.random().toString(36).slice(2, 8);
+
   const PieceArt = (p: { id: number }) => {
     const c = p.id % cols();
     const r = Math.floor(p.id / cols());
-    const clipId = `jig-clip-${p.id}`;
+    const clipId = `jig-clip-${instanceId}-${p.id}`;
     // Overdraw so tabs bulging outside the cell still carry artwork.
     const pad = CELL * 0.35;
     return (

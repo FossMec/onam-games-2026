@@ -57,47 +57,241 @@ const COMIC_BOOKS: ComicBook[] = [
   },
 ];
 
+/** Issue 6, left leaf: the invitation to send in a comic. */
+function CommunityLeftPage() {
+  return (
+    /* Issue 6 Left Page: Memphis Comic Card Invite */
+    <div
+      class="w-full h-full flex flex-col justify-between p-4 sm:p-6 rounded-l-xl relative overflow-hidden text-center"
+      style={{ background: "var(--pop-yellow)" }}
+    >
+      <Confetti seed="issue6-left" count={6} animate />
+      <Halftone opacity={0.12} class="absolute inset-0 pointer-events-none" />
+
+      <div class="relative z-10 flex items-center justify-between pb-1">
+        <span class="text-[10px] font-black uppercase text-[var(--ink)]">Issue 6</span>
+        <span
+          class="badge text-[10px] font-black uppercase px-2 py-0.5 bg-[var(--pop-pink)] text-white"
+          style={{ border: "1.5px solid var(--ink)" }}
+        >
+          <Sparkles size={11} class="inline mr-1" />
+          Ideas Wanted
+        </span>
+      </div>
+
+      <div class="relative z-10 my-auto space-y-2 max-w-xs mx-auto">
+        <SpriteIcon name="tux-king" size={40} animate="wobble" interactive class="mx-auto" />
+        <h2
+          class="text-xl sm:text-2xl font-black text-[var(--ink)] m-0 leading-tight"
+          style={{ "font-family": "var(--font-stack-display)" }}
+        >
+          Need More FOSS Comics?
+        </h2>
+        <p class="text-xs sm:text-sm font-black text-[var(--pop-red)]">
+          Got a funny comic idea? Share it with us!
+        </p>
+        <p class="text-[11px] font-semibold text-[var(--ink)]/85 bg-[var(--paper)]/85 p-2.5 rounded-lg border border-[var(--ink)]/30">
+          Have a hilarious story about Linux, PRs, merge conflicts, or Maveli in tech? We'll make it
+          into the next official comic!
+        </p>
+      </div>
+
+      <div class="relative z-10 pt-1">
+        <span class="text-[10px] font-bold text-[var(--ink)]/60">
+          Turn to right page for Instagram DM →
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Issue 6, right leaf: where to send it. */
+function CommunityRightPage() {
+  return (
+    /* Issue 6 Right Page: Instagram DM Action Card */
+    <div
+      class="w-full h-full flex flex-col justify-between p-4 sm:p-6 rounded-r-xl relative overflow-hidden text-center"
+      style={{ background: "var(--pop-teal)" }}
+    >
+      <Confetti seed="issue6-right" count={6} animate />
+      <Halftone opacity={0.12} class="absolute inset-0 pointer-events-none" />
+
+      <div class="relative z-10 flex items-center justify-between pb-1">
+        <span class="text-[10px] font-bold text-[var(--ink)]">Right Page</span>
+        <span class="badge text-[10px] font-black uppercase px-2 py-0.5 bg-[var(--paper)] text-[var(--ink)]">
+          @foss_mec
+        </span>
+      </div>
+
+      <div class="relative z-10 my-auto space-y-3 max-w-xs mx-auto">
+        <SpriteIcon name="foss-mec-badge" size={40} animate="float" interactive class="mx-auto" />
+        <h3
+          class="text-lg sm:text-xl font-black text-[var(--ink)] m-0"
+          style={{ "font-family": "var(--font-stack-display)" }}
+        >
+          DM Us On Instagram
+        </h3>
+        <p class="text-xs font-semibold text-[var(--ink)]/85">
+          Slide into our DMs with your comic scripts, jokes, or sketches:
+        </p>
+
+        <a
+          href="https://instagram.com/foss_mec"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn-brand text-xs sm:text-sm px-4 py-2.5 inline-flex items-center justify-center gap-2 shadow-xs cursor-pointer w-full"
+          style={{ background: "var(--pop-pink)", color: "white" }}
+        >
+          <Send size={15} strokeWidth={2.5} />
+          <span>DM @foss_mec on Instagram →</span>
+        </a>
+
+        <div class="pt-1">
+          <a
+            href="/"
+            class="btn-ghost text-xs py-1 px-3 inline-flex items-center gap-1 cursor-pointer"
+          >
+            <span>Play Today's Game</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="relative z-10 pt-1">
+        <span class="text-[10px] font-bold text-[var(--ink)]/70">
+          FOSS MEC · Model Engineering College
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One face of one leaf.
+ *
+ * Both the settled spread and the leaf mid-turn draw their pages through here,
+ * which is the whole reason the turn can be honest: the back of a turning page
+ * is rendered by exactly the same code as the page it becomes.
+ */
+function PageFace(props: { issue: number; side: "left" | "right" }) {
+  const book = () => (props.issue < COMIC_BOOKS.length ? COMIC_BOOKS[props.issue] : null);
+  return (
+    <Show
+      when={book()}
+      fallback={props.side === "left" ? <CommunityLeftPage /> : <CommunityRightPage />}
+    >
+      <img
+        src={props.side === "left" ? book()!.leftImage : book()!.rightImage}
+        alt={`${book()!.tag} ${props.side} page`}
+        class="w-full h-full object-fill select-none block"
+        loading="eager"
+        draggable={false}
+      />
+    </Show>
+  );
+}
+
 export default function ComicsPage() {
   // 0..4 = Comics 1..5, 5 = Comic 6 (Community Card)
   const [currentIssue, setCurrentIssue] = createSignal(0);
   const [viewMode, setViewMode] = createSignal<"flip" | "scroll">("flip");
   /*
-   * A turn is two half-rotations, not one full one.
+   * A real page turn, with a real reverse side.
    *
-   * The page used to rotate a full 180° while its content was swapped halfway
-   * through. Past 90° you are looking at the *back* of the leaf, and with no
-   * back face to show, the browser renders the front one mirrored — so the
-   * second half of every turn displayed the page reversed before snapping flat.
-   * That read as the old page flashing back.
+   * The first attempt at this rotated a leaf a full 180° and swapped its
+   * content halfway; the second swung it out to edge-on, swapped, and swung it
+   * back. Both avoided the actual problem instead of solving it — a turning
+   * page has *two* faces, and the one you see after 90° is the back of the
+   * sheet you are lifting.
    *
-   * So: swing out to edge-on (90°, invisible), swap the content while nothing
-   * is on screen, then swing the new page back in from the far edge. The
-   * viewer never sees a backface, and the swap happens in the one frame where
-   * the leaf has no width.
+   * In a bound book that back is not a mirror of the page you left. Turn a
+   * right-hand page and its reverse lands as the new *left*-hand page. So the
+   * leaf carries the page being left on its front and the page it becomes on
+   * its back, and `backface-visibility` hands over between them exactly at the
+   * halfway point. Underneath, the spread already shows the destination, so the
+   * leaf lifts to reveal it the way paper does.
    */
-  const [flip, setFlip] = createSignal<{ dir: "next" | "prev"; phase: "out" | "in" } | null>(null);
+  const [turning, setTurning] = createSignal<{
+    dir: "next" | "prev";
+    from: number;
+    to: number;
+  } | null>(null);
 
-  const HALF_TURN_MS = 220;
+  const TURN_MS = 620;
   const totalIssues = 6;
 
-  const isCommunityCard = () => currentIssue() === 5;
-  const activeBook = () => (currentIssue() < 5 ? COMIC_BOOKS[currentIssue()] : null);
+  /*
+   * How far through the turn we are, 0 to 1, and whether that value is being
+   * eased or held.
+   *
+   * Splitting progress from the turn itself is what lets a finger drive the
+   * page. A button press eases progress from 0 to 1 over `TURN_MS`; a drag
+   * writes it straight from the pointer with easing switched off, so the paper
+   * sits exactly where the hand left it and reverses if the hand does.
+   */
+  const [progress, setProgress] = createSignal(0);
+  const [easing, setEasing] = createSignal(true);
 
-  const goToIssue = (nextIssue: number, dir: "next" | "prev") => {
-    if (flip() || nextIssue === currentIssue()) return;
-    setFlip({ dir, phase: "out" });
+  const isCommunityCard = () => currentIssue() === 5;
+  const activeBook = () =>
+    currentIssue() < COMIC_BOOKS.length ? COMIC_BOOKS[currentIssue()] : null;
+
+  const targetFor = (dir: "next" | "prev") =>
+    dir === "next"
+      ? currentIssue() < totalIssues - 1
+        ? currentIssue() + 1
+        : 0
+      : currentIssue() > 0
+        ? currentIssue() - 1
+        : totalIssues - 1;
+
+  /** Land the turn: either commit to the destination, or fall back. */
+  const settle = (commit: boolean) => {
+    const t = turning();
+    if (!t) return;
+    setEasing(true);
+    setProgress(commit ? 1 : 0);
     window.setTimeout(() => {
-      setCurrentIssue(nextIssue);
-      setFlip({ dir, phase: "in" });
-    }, HALF_TURN_MS);
-    window.setTimeout(() => setFlip(null), HALF_TURN_MS * 2);
+      if (commit) setCurrentIssue(t.to);
+      setTurning(null);
+      setEasing(true);
+      setProgress(0);
+    }, TURN_MS);
   };
 
-  /** The animation class for a leaf, or "" when it is not the one turning. */
-  const leafClass = (side: "next" | "prev") => {
-    const state = flip();
-    if (!state || state.dir !== side) return "";
-    return state.phase === "out" ? `leaf-out-${side}` : `leaf-in-${side}`;
+  const goToIssue = (nextIssue: number, dir: "next" | "prev") => {
+    if (turning() || nextIssue === currentIssue()) return;
+    setTurning({ dir, from: currentIssue(), to: nextIssue });
+    setEasing(false);
+    setProgress(0);
+    // One frame with the leaf flat and un-eased, so the transition has a
+    // starting value to animate away from rather than snapping straight to 1.
+    requestAnimationFrame(() => {
+      setEasing(true);
+      setProgress(1);
+    });
+    window.setTimeout(() => {
+      setCurrentIssue(nextIssue);
+      setTurning(null);
+      setProgress(0);
+    }, TURN_MS);
+  };
+
+  /*
+   * Which issue each half of the settled spread is showing.
+   *
+   * Mid-turn the two halves belong to different issues: the side the leaf is
+   * lifting off already shows where you are going, while the far side still
+   * shows where you were until the leaf lands on it.
+   */
+  const leftIssue = () => {
+    const t = turning();
+    if (!t) return currentIssue();
+    return t.dir === "next" ? t.from : t.to;
+  };
+  const rightIssue = () => {
+    const t = turning();
+    if (!t) return currentIssue();
+    return t.dir === "next" ? t.to : t.from;
   };
 
   const prevIssue = () => {
@@ -132,26 +326,108 @@ export default function ComicsPage() {
    * scroll, and stealing that would trap them on the page. Only a clearly
    * horizontal travel past the threshold counts as a turn.
    */
-  const SWIPE_MIN_PX = 45;
-  let touchStartX = 0;
-  let touchStartY = 0;
+  let stageRef: HTMLDivElement | undefined;
 
-  const onTouchStart = (e: TouchEvent) => {
-    const point = e.changedTouches[0];
-    touchStartX = point.clientX;
-    touchStartY = point.clientY;
-  };
+  /*
+   * Drag-to-turn: the paper follows the finger.
+   *
+   * Releasing and *then* animating is what a carousel does, not what a book
+   * does. Here the pointer writes `progress` directly on every move, so the
+   * page hangs off the hand — you can take it halfway, stop, look, and pull it
+   * back. Only on release does anything ease: past a third of the way it falls
+   * open, short of that it drops closed.
+   *
+   * A drag is worth half the spread, which is the distance the page's free edge
+   * actually travels, so the paper keeps pace with the finger instead of
+   * racing it.
+   *
+   * Pointer events rather than touch: one path covers finger, pen and mouse.
+   * Pointer capture keeps the events coming even when the finger slides off the
+   * element mid-turn, which is otherwise a very easy way to strand a page at
+   * 60°.
+   */
+  const COMMIT_AT = 0.34;
 
-  const onTouchEnd = (e: TouchEvent) => {
-    const point = e.changedTouches[0];
-    const dx = point.clientX - touchStartX;
-    const dy = point.clientY - touchStartY;
-    if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) <= Math.abs(dy)) return;
-    // Swiping left drags the page leftward, which advances — the same
-    // direction the paper moves in the animation.
-    if (dx < 0) nextIssue();
-    else prevIssue();
-  };
+  onMount(() => {
+    const stage = stageRef;
+    if (!stage) return;
+
+    let startX = 0;
+    let startY = 0;
+    let active = false;
+    let decided = false;
+    let pointerId: number | null = null;
+
+    const reset = () => {
+      active = false;
+      decided = false;
+      pointerId = null;
+    };
+
+    const down = (e: PointerEvent) => {
+      if (turning()) return;
+      active = true;
+      decided = false;
+      startX = e.clientX;
+      startY = e.clientY;
+      pointerId = e.pointerId;
+    };
+
+    const move = (e: PointerEvent) => {
+      if (!active) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      if (!decided) {
+        // Wait until the gesture has committed to an axis. A mostly-vertical
+        // drag belongs to the scroller, not to us.
+        if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return;
+        if (Math.abs(dx) <= Math.abs(dy)) {
+          reset();
+          return;
+        }
+        decided = true;
+        const dir = dx < 0 ? "next" : "prev";
+        setTurning({ dir, from: currentIssue(), to: targetFor(dir) });
+        setEasing(false);
+        setProgress(0);
+        try {
+          stage.setPointerCapture(e.pointerId);
+        } catch {
+          // Capture is a nicety; the gesture still works without it.
+        }
+      }
+
+      const span = Math.max(1, stage.getBoundingClientRect().width / 2);
+      setProgress(Math.min(1, Math.max(0, Math.abs(dx) / span)));
+    };
+
+    const up = () => {
+      if (!active) return;
+      const wasDragging = decided;
+      const p = progress();
+      if (pointerId !== null) {
+        try {
+          stage.releasePointerCapture(pointerId);
+        } catch {
+          // Already released — nothing to undo.
+        }
+      }
+      reset();
+      if (wasDragging) settle(p >= COMMIT_AT);
+    };
+
+    stage.addEventListener("pointerdown", down, { passive: true });
+    stage.addEventListener("pointermove", move, { passive: true });
+    stage.addEventListener("pointerup", up, { passive: true });
+    stage.addEventListener("pointercancel", up, { passive: true });
+    onCleanup(() => {
+      stage.removeEventListener("pointerdown", down);
+      stage.removeEventListener("pointermove", move);
+      stage.removeEventListener("pointerup", up);
+      stage.removeEventListener("pointercancel", up);
+    });
+  });
 
   return (
     <>
@@ -161,78 +437,54 @@ export default function ComicsPage() {
         .book-stage {
           perspective: 2200px;
         }
-        .leaf-out-next,
-        .leaf-in-next,
-        .leaf-out-prev,
-        .leaf-in-prev {
+        /*
+          The leaf sits over one half of the spread and rotates on the spine.
+          preserve-3d keeps its two faces in real 3D space; without it the
+          browser flattens them and the back never appears at all.
+        */
+        .book-leaf {
+          position: absolute;
+          top: 0;
+          width: 50%;
+          height: 100%;
           transform-style: preserve-3d;
-          /* Never render the reverse of a page — that was the flash. */
+          z-index: 40;
+          pointer-events: none;
+        }
+        .book-leaf-next {
+          left: 50%;
+          transform-origin: left center;
+        }
+        .book-leaf-prev {
+          left: 0;
+          transform-origin: right center;
+        }
+        /*
+          Paper standing on edge catches less light — done with an ink overlay,
+          never a filter.
+
+          A filter on the leaf silently forces preserve-3d back to flat, which
+          collapses the two faces onto one plane: the turn then showed the front
+          face mirrored for its whole second half instead of handing over to the
+          back. Same for opacity below 1 and any overflow on the leaf itself.
+        */
+        .book-shade {
+          position: absolute;
+          inset: 0;
+          background: #22202b;
+          opacity: 0;
+          pointer-events: none;
+        }
+        .book-face {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
           backface-visibility: hidden;
-          z-index: 30;
+          -webkit-backface-visibility: hidden;
         }
-        .leaf-out-next {
-          animation: leafOutNext 0.22s ease-in forwards;
-          transform-origin: left center;
-        }
-        .leaf-in-next {
-          animation: leafInNext 0.22s ease-out forwards;
-          transform-origin: left center;
-        }
-        .leaf-out-prev {
-          animation: leafOutPrev 0.22s ease-in forwards;
-          transform-origin: right center;
-        }
-        .leaf-in-prev {
-          animation: leafInPrev 0.22s ease-out forwards;
-          transform-origin: right center;
-        }
-        @keyframes leafOutNext {
-          from {
-            transform: rotateY(0deg);
-            box-shadow: inset 10px 0 20px rgba(0, 0, 0, 0.05);
-          }
-          to {
-            transform: rotateY(-90deg) scale(0.97);
-            box-shadow: inset 40px 0 40px rgba(0, 0, 0, 0.25), -15px 0 30px rgba(0, 0, 0, 0.2);
-          }
-        }
-        @keyframes leafInNext {
-          from {
-            transform: rotateY(90deg) scale(0.97);
-            box-shadow: inset 40px 0 40px rgba(0, 0, 0, 0.25), -15px 0 30px rgba(0, 0, 0, 0.2);
-          }
-          to {
-            transform: rotateY(0deg);
-            box-shadow: inset 10px 0 20px rgba(0, 0, 0, 0.05);
-          }
-        }
-        @keyframes leafOutPrev {
-          from {
-            transform: rotateY(0deg);
-            box-shadow: inset -10px 0 20px rgba(0, 0, 0, 0.05);
-          }
-          to {
-            transform: rotateY(90deg) scale(0.97);
-            box-shadow: inset -40px 0 40px rgba(0, 0, 0, 0.25), 15px 0 30px rgba(0, 0, 0, 0.2);
-          }
-        }
-        @keyframes leafInPrev {
-          from {
-            transform: rotateY(-90deg) scale(0.97);
-            box-shadow: inset -40px 0 40px rgba(0, 0, 0, 0.25), 15px 0 30px rgba(0, 0, 0, 0.2);
-          }
-          to {
-            transform: rotateY(0deg);
-            box-shadow: inset -10px 0 20px rgba(0, 0, 0, 0.05);
-          }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .leaf-out-next,
-          .leaf-in-next,
-          .leaf-out-prev,
-          .leaf-in-prev {
-            animation-duration: 0.01s;
-          }
+        /* Pre-rotated, so it reads the right way round once the leaf passes 90°. */
+        .book-face-back {
+          transform: rotateY(180deg);
         }
       `}</style>
 
@@ -249,8 +501,7 @@ export default function ComicsPage() {
           normal flow, where the surrounding chrome is not in the way.
         */}
         <div
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
+          ref={(el) => (stageRef = el)}
           class="fixed inset-0 z-50 h-dvh w-screen overscroll-contain px-2 py-2 flex flex-col justify-between overflow-hidden select-none sm:static sm:z-auto sm:h-[calc(100dvh-4.25rem)] sm:w-full sm:max-w-5xl sm:mx-auto sm:px-4"
           style={{ background: "var(--paper)", "touch-action": "pan-y" }}
         >
@@ -327,161 +578,54 @@ export default function ComicsPage() {
                 }}
               />
 
-              {/* ----------------- LEFT SIDE OF BOOK (Panels 1 & 3) ----------------- */}
+              {/* ----------------- THE SETTLED SPREAD ----------------- */}
               <div
-                class={`w-1/2 h-full flex flex-col justify-center overflow-hidden relative p-0 ${leafClass(
-                  "prev",
-                )}`}
-                style={{
-                  background: "var(--paper)",
-                }}
+                class="w-1/2 h-full overflow-hidden relative"
+                style={{ background: "var(--paper)" }}
               >
-                <Show
-                  when={!isCommunityCard()}
-                  fallback={
-                    /* Issue 6 Left Page: Memphis Comic Card Invite */
-                    <div
-                      class="w-full h-full flex flex-col justify-between p-4 sm:p-6 rounded-l-xl relative overflow-hidden text-center"
-                      style={{ background: "var(--pop-yellow)" }}
-                    >
-                      <Confetti seed="issue6-left" count={6} animate />
-                      <Halftone opacity={0.12} class="absolute inset-0 pointer-events-none" />
-
-                      <div class="relative z-10 flex items-center justify-between pb-1">
-                        <span class="text-[10px] font-black uppercase text-[var(--ink)]">
-                          Issue 6
-                        </span>
-                        <span
-                          class="badge text-[10px] font-black uppercase px-2 py-0.5 bg-[var(--pop-pink)] text-white"
-                          style={{ border: "1.5px solid var(--ink)" }}
-                        >
-                          <Sparkles size={11} class="inline mr-1" />
-                          Ideas Wanted
-                        </span>
-                      </div>
-
-                      <div class="relative z-10 my-auto space-y-2 max-w-xs mx-auto">
-                        <SpriteIcon
-                          name="tux-king"
-                          size={40}
-                          animate="wobble"
-                          interactive
-                          class="mx-auto"
-                        />
-                        <h2
-                          class="text-xl sm:text-2xl font-black text-[var(--ink)] m-0 leading-tight"
-                          style={{ "font-family": "var(--font-stack-display)" }}
-                        >
-                          Need More FOSS Comics?
-                        </h2>
-                        <p class="text-xs sm:text-sm font-black text-[var(--pop-red)]">
-                          Got a funny comic idea? Share it with us!
-                        </p>
-                        <p class="text-[11px] font-semibold text-[var(--ink)]/85 bg-[var(--paper)]/85 p-2.5 rounded-lg border border-[var(--ink)]/30">
-                          Have a hilarious story about Linux, PRs, merge conflicts, or Maveli in
-                          tech? We'll make it into the next official comic!
-                        </p>
-                      </div>
-
-                      <div class="relative z-10 pt-1">
-                        <span class="text-[10px] font-bold text-[var(--ink)]/60">
-                          Turn to right page for Instagram DM →
-                        </span>
-                      </div>
-                    </div>
-                  }
-                >
-                  <img
-                    src={activeBook()?.leftImage}
-                    alt={`${activeBook()?.tag} Left Page (Panels 1 & 3)`}
-                    class="w-full h-full object-fill select-none block"
-                    loading="eager"
-                  />
-                </Show>
+                <PageFace issue={leftIssue()} side="left" />
+              </div>
+              <div
+                class="w-1/2 h-full overflow-hidden relative"
+                style={{ background: "var(--paper)" }}
+              >
+                <PageFace issue={rightIssue()} side="right" />
               </div>
 
-              {/* ----------------- RIGHT SIDE OF BOOK (Panels 2 & 4) ----------------- */}
-              <div
-                class={`w-1/2 h-full flex flex-col justify-center overflow-hidden relative p-0 ${leafClass(
-                  "next",
-                )}`}
-                style={{
-                  background: "var(--paper)",
-                }}
-              >
-                <Show
-                  when={!isCommunityCard()}
-                  fallback={
-                    /* Issue 6 Right Page: Instagram DM Action Card */
-                    <div
-                      class="w-full h-full flex flex-col justify-between p-4 sm:p-6 rounded-r-xl relative overflow-hidden text-center"
-                      style={{ background: "var(--pop-teal)" }}
-                    >
-                      <Confetti seed="issue6-right" count={6} animate />
-                      <Halftone opacity={0.12} class="absolute inset-0 pointer-events-none" />
-
-                      <div class="relative z-10 flex items-center justify-between pb-1">
-                        <span class="text-[10px] font-bold text-[var(--ink)]">Right Page</span>
-                        <span class="badge text-[10px] font-black uppercase px-2 py-0.5 bg-[var(--paper)] text-[var(--ink)]">
-                          @foss_mec
-                        </span>
-                      </div>
-
-                      <div class="relative z-10 my-auto space-y-3 max-w-xs mx-auto">
-                        <SpriteIcon
-                          name="foss-mec-badge"
-                          size={40}
-                          animate="float"
-                          interactive
-                          class="mx-auto"
-                        />
-                        <h3
-                          class="text-lg sm:text-xl font-black text-[var(--ink)] m-0"
-                          style={{ "font-family": "var(--font-stack-display)" }}
-                        >
-                          DM Us On Instagram
-                        </h3>
-                        <p class="text-xs font-semibold text-[var(--ink)]/85">
-                          Slide into our DMs with your comic scripts, jokes, or sketches:
-                        </p>
-
-                        <a
-                          href="https://instagram.com/foss_mec"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="btn-brand text-xs sm:text-sm px-4 py-2.5 inline-flex items-center justify-center gap-2 shadow-xs cursor-pointer w-full"
-                          style={{ background: "var(--pop-pink)", color: "white" }}
-                        >
-                          <Send size={15} strokeWidth={2.5} />
-                          <span>DM @foss_mec on Instagram →</span>
-                        </a>
-
-                        <div class="pt-1">
-                          <a
-                            href="/"
-                            class="btn-ghost text-xs py-1 px-3 inline-flex items-center gap-1 cursor-pointer"
-                          >
-                            <span>Play Today's Game</span>
-                          </a>
-                        </div>
-                      </div>
-
-                      <div class="relative z-10 pt-1">
-                        <span class="text-[10px] font-bold text-[var(--ink)]/70">
-                          FOSS MEC · Model Engineering College
-                        </span>
-                      </div>
+              {/* ----------------- THE TURNING LEAF ----------------- */}
+              <Show when={turning()}>
+                {(turn) => (
+                  <div
+                    class={`book-leaf ${turn().dir === "next" ? "book-leaf-next" : "book-leaf-prev"}`}
+                    aria-hidden="true"
+                    style={{
+                      transform: `rotateY(${(turn().dir === "next" ? -180 : 180) * progress()}deg)`,
+                      transition: easing()
+                        ? `transform ${TURN_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`
+                        : "none",
+                    }}
+                  >
+                    <div class="book-face" style={{ background: "var(--paper)" }}>
+                      <PageFace
+                        issue={turn().from}
+                        side={turn().dir === "next" ? "right" : "left"}
+                      />
+                      <div
+                        class="book-shade"
+                        style={{ opacity: Math.sin(progress() * Math.PI) * 0.34 }}
+                      />
                     </div>
-                  }
-                >
-                  <img
-                    src={activeBook()?.rightImage}
-                    alt={`${activeBook()?.tag} Right Page (Panels 2 & 4)`}
-                    class="w-full h-full object-fill select-none block"
-                    loading="eager"
-                  />
-                </Show>
-              </div>
+                    {/*
+                      The reverse. Turning a right page leftwards puts its back
+                      down as the new left page — so that is literally what is
+                      drawn here, not a mirror of the front.
+                    */}
+                    <div class="book-face book-face-back" style={{ background: "var(--paper)" }}>
+                      <PageFace issue={turn().to} side={turn().dir === "next" ? "left" : "right"} />
+                    </div>
+                  </div>
+                )}
+              </Show>
             </div>
           </div>
 
@@ -490,7 +634,7 @@ export default function ComicsPage() {
             <button
               type="button"
               onClick={prevIssue}
-              disabled={flip() !== null}
+              disabled={turning() !== null}
               class="btn-brand text-xs px-3.5 py-1.5 inline-flex items-center gap-1 cursor-pointer shadow-xs disabled:opacity-50"
             >
               <ChevronLeft size={15} strokeWidth={3} />
@@ -503,7 +647,7 @@ export default function ComicsPage() {
                   <button
                     type="button"
                     onClick={() => goToIssue(idx, idx > currentIssue() ? "next" : "prev")}
-                    disabled={flip() !== null}
+                    disabled={turning() !== null}
                     class={`w-7 h-7 sm:w-8 sm:h-8 rounded-md font-black text-xs grid place-items-center cursor-pointer transition-colors ${
                       currentIssue() === idx
                         ? "bg-[var(--pop-yellow)] text-[var(--ink)] border-2 border-[var(--ink)] shadow-xs"
@@ -520,7 +664,7 @@ export default function ComicsPage() {
             <button
               type="button"
               onClick={nextIssue}
-              disabled={flip() !== null}
+              disabled={turning() !== null}
               class="btn-brand text-xs px-3.5 py-1.5 inline-flex items-center gap-1 cursor-pointer shadow-xs disabled:opacity-50"
             >
               <span>Next Issue</span>

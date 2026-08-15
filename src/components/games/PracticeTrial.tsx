@@ -1,3 +1,4 @@
+import { CheckCircle2 } from "lucide-solid";
 import { Show, createSignal } from "solid-js";
 import { Confetti } from "~/components/art/Confetti";
 import { JigsawGame } from "./JigsawGame";
@@ -127,16 +128,16 @@ export function InteractiveTrial(props: InteractiveTrialProps) {
                   kind: "jigsaw",
                   cols: 2,
                   rows: 2,
-                  imageUrl: "/images/games/pookalam-jigsaw.webp",
+                  imageUrl: "/images/memes/sudo-mkdir-pookalam.webp",
                   hEdges: [
                     [
-                      { dir: 1, offset: 0.5, neck: 0.12, head: 0.18, skew: 0 },
-                      { dir: -1, offset: 0.5, neck: 0.12, head: 0.18, skew: 0 },
+                      { dir: 1, offset: 0.5, neck: 0.12, head: 0.2, skew: 0 },
+                      { dir: -1, offset: 0.46, neck: 0.12, head: 0.2, skew: 0 },
                     ],
                   ],
                   vEdges: [
-                    [{ dir: 1, offset: 0.5, neck: 0.12, head: 0.18, skew: 0 }],
-                    [{ dir: -1, offset: 0.5, neck: 0.12, head: 0.18, skew: 0 }],
+                    [{ dir: -1, offset: 0.52, neck: 0.12, head: 0.2, skew: 0 }],
+                    [{ dir: 1, offset: 0.48, neck: 0.12, head: 0.2, skew: 0 }],
                   ],
                   scatter: [
                     { id: 0, x: 0.1, y: 0.1 },
@@ -183,8 +184,10 @@ export function InteractiveTrial(props: InteractiveTrialProps) {
       </div>
 
       <Show when={cleared()}>
-        <div class="p-2 rounded border-2 border-ink bg-pop-teal text-ink text-center text-xs font-extrabold animate-sheet-in">
-          <Confetti seed="trial-win" count={4} />🎉 Practice Cleared! You're ready for the real run.
+        <div class="p-2 rounded border-2 border-ink bg-pop-teal text-ink text-center text-xs font-extrabold animate-sheet-in flex items-center justify-center gap-1.5">
+          <Confetti seed="trial-win" count={4} />
+          <CheckCircle2 size={16} strokeWidth={2.5} class="shrink-0" />
+          <span>Practice Cleared! You're ready for the real run.</span>
         </div>
       </Show>
     </div>

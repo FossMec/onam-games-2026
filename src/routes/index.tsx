@@ -75,6 +75,40 @@ const statusSticker: Record<string, { label: string; pop: string }> = {
   closed: { label: "Catch up", pop: "var(--pop-blue)" },
 };
 
+/**
+ * A paragraph that is short on a phone and whole on a desktop.
+ *
+ * The blurbs are three or four lines of prose each, which on a wide screen is
+ * a comfortable read and on a 390px one is most of the viewport before the
+ * reader reaches anything they can press. Clamping without an escape hatch
+ * would just hide the copy, so the clamp comes with a control — and both
+ * disappear above `sm`, where there was never a problem.
+ */
+function ReadMore(props: { text: string; class?: string; lines?: 3 | 4 }) {
+  const [open, setOpen] = createSignal(false);
+  return (
+    <div class="space-y-1">
+      <p
+        class={props.class}
+        classList={{
+          "sm:line-clamp-none": true,
+          "line-clamp-3": !open() && (props.lines ?? 4) === 3,
+          "line-clamp-4": !open() && (props.lines ?? 4) === 4,
+        }}
+      >
+        {props.text}
+      </p>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        class="sm:hidden cursor-pointer text-[11px] font-black uppercase tracking-wider underline decoration-2 underline-offset-2 opacity-70"
+      >
+        {open() ? "show less" : "read more"}
+      </button>
+    </div>
+  );
+}
+
 function Section(props: {
   title: string;
   children: unknown;
@@ -83,10 +117,15 @@ function Section(props: {
   confettiCount?: number;
 }) {
   return (
-    <section id={props.id} class="relative space-y-5 scroll-mt-28">
+    <section id={props.id} class="relative space-y-3.5 sm:space-y-5 scroll-mt-28">
       <Show when={props.confettiSeed}>
         <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-          <Confetti seed={props.confettiSeed!} count={props.confettiCount ?? 6} animate />
+          <Confetti
+            seed={props.confettiSeed!}
+            count={props.confettiCount ?? 6}
+            opacity={0.3}
+            animate
+          />
         </div>
       </Show>
       <h2 class="rule">{props.title}</h2>
@@ -246,7 +285,7 @@ export default function Home() {
   };
 
   return (
-    <main class="container space-y-14 py-6">
+    <main class="container space-y-9 py-4 sm:space-y-14 sm:py-6">
       <Title>{EVENT.name}</Title>
 
       {/* ------------------------------------------------------------- hero */}
@@ -257,7 +296,7 @@ export default function Home() {
           background: "var(--paper-2)",
         }}
       >
-        <Confetti seed="hero" count={10} animate />
+        <Confetti seed="hero" count={10} opacity={0.45} animate />
         <SpriteScatter
           seed="hero-sprites"
           count={7}
@@ -303,11 +342,20 @@ export default function Home() {
           >
             {EVENT.tagline}
           </p>
-          <p class="mx-auto max-w-2xl text-sm sm:text-base font-bold leading-relaxed">
+          {/*
+            Kept in the document for search engines and screen readers, hidden
+            on a phone. It and the blurb below cover the same ground, and two
+            paragraphs of it is most of a mobile screen before anyone reaches a
+            button. `hidden` still renders the text into the HTML, so nothing
+            is lost to a crawler.
+          */}
+          <p class="mx-auto hidden max-w-2xl text-sm font-bold leading-relaxed sm:block sm:text-base">
             FOSS Onam Games is a free, open-source online festival by FOSS MEC featuring daily
             browser games, fair-play leaderboards, and the Code-a-Pookalam community art contest.
           </p>
-          <p class="mx-auto max-w-2xl font-semibold leading-relaxed">{EVENT.blurb}</p>
+          <div class="mx-auto max-w-2xl">
+            <ReadMore text={EVENT.blurb} class="font-semibold leading-relaxed" />
+          </div>
 
           {/* Linus Sadya Meme Sticker in Hero (Clicking scrolls to games section) */}
           <div class="flex justify-center py-1">
@@ -359,7 +407,7 @@ export default function Home() {
             background: "var(--pop-pink)",
           }}
         >
-          <Confetti seed="pookalam-box" count={6} animate />
+          <Confetti seed="pookalam-box" count={6} opacity={0.4} animate />
           <Halftone opacity={0.12} />
           <div class="art-over flex flex-col sm:flex-row gap-4 sm:gap-6 items-center sm:items-start">
             {/* 1:1 Square Artwork */}
@@ -395,12 +443,11 @@ export default function Home() {
               >
                 {POOKALAM.tagline}
               </p>
-              <p
-                class="text-xs sm:text-sm font-semibold leading-relaxed"
-                style={{ color: "var(--ink)" }}
-              >
-                {POOKALAM.blurb}
-              </p>
+              <ReadMore
+                text={POOKALAM.blurb}
+                lines={3}
+                class="text-xs sm:text-sm font-semibold leading-relaxed text-[var(--ink)]"
+              />
 
               {/* Inline badges row */}
               <div class="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 pt-0.5">
@@ -727,7 +774,21 @@ export default function Home() {
                   >
                     Select Day to Preview
                   </p>
-                  <div class="grid grid-cols-2 xs:grid-cols-4 sm:grid-cols-7 gap-2.5">
+                  {/*
+                    A swipeable strip on a phone, the full grid from `sm` up.
+
+                    Seven cards in two columns is four rows of thumbnails —
+                    roughly 800px of scrolling for a control that is meant to be
+                    glanceable. Laid on one horizontal rail it costs one card's
+                    height, reads as a filmstrip of the week, and the day you
+                    are on is already the one scrolled into view. Snap points
+                    keep the cards from stopping half off the edge.
+
+                    `-mx-4 px-4` lets the rail bleed to the screen edges so it
+                    is obvious there is more to the right, while the cards still
+                    line up with the text above them.
+                  */}
+                  <div class="-mx-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-7 sm:overflow-visible sm:px-0">
                     <For each={fullSchedule()}>
                       {(item) => {
                         const isSelected = item.day === selectedDay();
@@ -738,7 +799,7 @@ export default function Home() {
                           <button
                             type="button"
                             onClick={() => selectDay(item.day)}
-                            class={`card p-2 text-center flex flex-col items-center justify-between gap-1.5 transition-all cursor-pointer ${
+                            class={`card w-[7.5rem] shrink-0 snap-start sm:w-auto p-2 text-center flex flex-col items-center justify-between gap-1.5 transition-all cursor-pointer ${
                               DAY_POPS[(item.day - 1) % DAY_POPS.length]
                             } ${
                               isSelected
@@ -964,7 +1025,7 @@ export default function Home() {
         class="card pop-teal p-6 sm:p-8 relative overflow-hidden text-center sm:text-left shadow-sm"
         style={{ border: "var(--ink-w-bold) solid var(--ink)" }}
       >
-        <Confetti seed="comics-teaser" count={8} animate />
+        <Confetti seed="comics-teaser" count={8} opacity={0.4} animate />
         <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
           <div class="space-y-2.5 max-w-xl">
             <div class="flex items-center justify-center sm:justify-start gap-2">
@@ -1049,7 +1110,7 @@ export default function Home() {
             background: "var(--pop-yellow)",
           }}
         >
-          <Confetti seed="cta" count={6} />
+          <Confetti seed="cta" count={6} opacity={0.45} />
           <SpriteScatter
             seed="cta-spr"
             count={5}

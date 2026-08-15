@@ -1,3 +1,4 @@
+import { BookOpen, Gamepad2 } from "lucide-solid";
 import { For, Show, createSignal, onCleanup, onMount, type JSX } from "solid-js";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
@@ -697,25 +698,27 @@ export function HowToPlayPanel(props: { gameType: string; steps: string[]; title
           <div class="flex gap-1.5 p-1 rounded-lg border-2 border-ink bg-paper-3">
             <button
               type="button"
-              class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all ${
+              class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer ${
                 tab() === "rules"
                   ? "bg-pop-yellow text-ink border border-ink shadow-xs"
                   : "text-muted hover:text-ink"
               }`}
               onClick={() => setTab("rules")}
             >
-              📖 Rules & Demo
+              <BookOpen size={14} strokeWidth={2.5} />
+              <span>Rules & Demo</span>
             </button>
             <button
               type="button"
-              class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all ${
+              class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer ${
                 tab() === "trial"
                   ? "bg-pop-teal text-ink border border-ink shadow-xs"
                   : "text-muted hover:text-ink"
               }`}
               onClick={() => setTab("trial")}
             >
-              🕹️ Play Trial
+              <Gamepad2 size={14} strokeWidth={2.5} />
+              <span>Play Trial</span>
             </button>
           </div>
 
@@ -800,25 +803,27 @@ export function HowToPlayModal(props: HowToPlayModalProps) {
         <div class="flex gap-1.5 p-1 rounded-lg border-2 border-ink bg-paper-3">
           <button
             type="button"
-            class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all ${
+            class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer ${
               tab() === "rules"
                 ? "bg-pop-yellow text-ink border border-ink shadow-xs"
                 : "text-muted hover:text-ink"
             }`}
             onClick={() => setTab("rules")}
           >
-            📖 Rules & Demo
+            <BookOpen size={14} strokeWidth={2.5} />
+            <span>Rules & Demo</span>
           </button>
           <button
             type="button"
-            class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all ${
+            class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer ${
               tab() === "trial"
                 ? "bg-pop-teal text-ink border border-ink shadow-xs"
                 : "text-muted hover:text-ink"
             }`}
             onClick={() => setTab("trial")}
           >
-            🕹️ Play Trial
+            <Gamepad2 size={14} strokeWidth={2.5} />
+            <span>Play Trial</span>
           </button>
         </div>
 
