@@ -109,7 +109,13 @@ export default function GamePage() {
   const [error, setError] = createSignal("");
   const [result, setResult] = createSignal<FinishPayload | null>(null);
   const [huntToken, setHuntToken] = createSignal("");
-  const [howToOpen, setHowToOpen] = createSignal(false);
+  /**
+   * The rules screen, in one of two modes.
+   *
+   *   "start"  on the way into a run — ends with the button that starts it
+   *   "read"   reference only, for a player already mid-run
+   */
+  const [howTo, setHowTo] = createSignal<"start" | "read" | null>(null);
   /** The playable board from the server. Never contains the solution. */
   const [view, setView] = createSignal<GameView | null>(null);
   const [rehydrated, setRehydrated] = createSignal(false);
@@ -220,12 +226,18 @@ export default function GamePage() {
   /** Opens the rules first; the clock only starts from inside the modal. */
   const openHowTo = () => {
     setError("");
-    setHowToOpen(true);
+    setHowTo("start");
   };
+
+  /**
+   * The rules on their own. Opens read-only whenever a run is already under
+   * way, so nothing on that screen can be mistaken for restarting it.
+   */
+  const openRules = () => setHowTo(attemptToken() ? "read" : "start");
 
   const confirmStart = async () => {
     await start();
-    setHowToOpen(false);
+    setHowTo(null);
   };
 
   /**
@@ -336,8 +348,8 @@ export default function GamePage() {
   const playable = () =>
     game() && (game()!.status === "live" || game()!.status === "tester" || isCatchUp());
 
-  /** Testers and admins play without a run limit, so they are never "finished". */
-  const unlimited = () => result()?.unlimited ?? attempt()?.unlimited ?? false;
+  /** Testers, admins, and closed games play without a run limit for fun. */
+  const unlimited = () => result()?.unlimited ?? attempt()?.unlimited ?? isCatchUp() ?? false;
   const attemptsLeft = () => result()?.attemptsRemaining ?? attempt()?.attemptsRemaining ?? 0;
   const isRetryGame = () => (game()?.maxAttempts ?? 1) > 1;
 
@@ -492,6 +504,7 @@ export default function GamePage() {
           title={game()!.title}
           status={game()!.status}
           elapsed={attemptToken() ? elapsed() : null}
+          onHowTo={(game()!.howTo?.length ?? 0) > 0 ? openRules : undefined}
         />
 
         {/*
@@ -841,15 +854,15 @@ export default function GamePage() {
         </Show>
       </Show>
 
-      <Show when={howToOpen() && game()}>
+      <Show when={howTo() && game()}>
         <HowToPlayModal
           gameType={game()!.gameType}
           title={game()!.title}
           steps={game()!.howTo}
-          startLabel={startLabel()}
+          startLabel={howTo() === "start" ? startLabel() : undefined}
           busy={busy()}
-          onStart={() => void confirmStart()}
-          onClose={() => setHowToOpen(false)}
+          onStart={howTo() === "start" ? () => void confirmStart() : undefined}
+          onClose={() => setHowTo(null)}
         />
       </Show>
     </main>
@@ -885,6 +898,8 @@ function GameBar(props: {
   status: string;
   /** Seconds elapsed, or null when no run is open. */
   elapsed: number | null;
+  /** Opens the rules. Always available — see the note on the button. */
+  onHowTo?: () => void;
 }) {
   const chip = () => STATUS_CHIP[props.status] ?? STATUS_CHIP.upcoming;
   const playing = () => props.elapsed !== null;
@@ -937,6 +952,33 @@ function GameBar(props: {
         <span class="badge ml-auto shrink-0" style={{ "--pop": chip().pop }}>
           {chip().label}
         </span>
+      </Show>
+
+      {/*
+        The rules, from anywhere, at any point.
+
+        They used to be reachable only through the start button, which meant
+        that the moment a run began — or was resumed the next day — there was no
+        way back to them at all. On a jigsaw you picked up hours later that is
+        precisely when you want them. Mid-run it opens read-only, with no button
+        that could be mistaken for restarting the attempt.
+      */}
+      <Show when={props.onHowTo}>
+        <button
+          type="button"
+          class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5"
+          style={{
+            background: "var(--pop-yellow)",
+            border: "var(--ink-w) solid var(--ink)",
+            "font-family": "var(--font-stack-display)",
+            "font-weight": 800,
+          }}
+          onClick={props.onHowTo}
+          aria-label="How to play"
+          title="How to play"
+        >
+          ?
+        </button>
       </Show>
     </div>
   );

@@ -535,10 +535,17 @@ export interface HowToPlayModalProps {
   gameType: string;
   title: string;
   steps: string[];
-  /** Label for the confirm button — "Start game", "Go again", "Resume". */
-  startLabel: string;
+  /**
+   * Label for the confirm button — "Start game", "Go again", "Resume".
+   *
+   * Omit it, along with `onStart`, to open the same screen purely as
+   * reference. That is the mid-run case: a player who has already started and
+   * wants to re-read the rules must not be shown a button that looks like it
+   * might restart their attempt.
+   */
+  startLabel?: string;
   busy?: boolean;
-  onStart: () => void;
+  onStart?: () => void;
   onClose: () => void;
 }
 
@@ -601,21 +608,35 @@ export function HowToPlayModal(props: HowToPlayModalProps) {
         <GameDemo gameType={props.gameType} />
         <Steps steps={props.steps} />
 
-        <p class="comment">read it now. the clock starts when you press the button.</p>
+        <Show
+          when={props.onStart}
+          fallback={<p class="comment">your clock is still running, by the way.</p>}
+        >
+          <p class="comment">read it now. the clock starts when you press the button.</p>
+        </Show>
 
-        <div class="flex flex-col gap-2 sm:flex-row-reverse">
-          <button
-            type="button"
-            class="btn-brand flex-1 text-lg"
-            disabled={props.busy}
-            onClick={props.onStart}
-          >
-            {props.busy ? "Starting…" : props.startLabel}
-          </button>
-          <button type="button" class="btn-ghost sm:flex-none" onClick={props.onClose}>
-            Not yet
-          </button>
-        </div>
+        <Show
+          when={props.onStart}
+          fallback={
+            <button type="button" class="btn-brand w-full text-lg" onClick={props.onClose}>
+              Got it
+            </button>
+          }
+        >
+          <div class="flex flex-col gap-2 sm:flex-row-reverse">
+            <button
+              type="button"
+              class="btn-brand flex-1 text-lg"
+              disabled={props.busy}
+              onClick={props.onStart}
+            >
+              {props.busy ? "Starting…" : props.startLabel}
+            </button>
+            <button type="button" class="btn-ghost sm:flex-none" onClick={props.onClose}>
+              Not yet
+            </button>
+          </div>
+        </Show>
       </div>
     </div>
   );
