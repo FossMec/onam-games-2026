@@ -927,15 +927,23 @@ a {
   }
 }
 
-/* A piece travelling from the tray to its slot, then locking. */
-@keyframes demo-slot {
+/*
+ * Four loose pieces drifting into one lump, then coming apart to go again.
+ * Each piece starts offset by its own `--from-x`/`--from-y` and settles at its
+ * true position — the pieces join to each other, not into slots, which is the
+ * one thing this jigsaw's demo has to communicate.
+ */
+@keyframes demo-join {
   0%,
   10% {
-    transform: translate(0, 0) rotate(-6deg);
+    transform: translate(var(--from-x, 0), var(--from-y, 0)) rotate(-3deg);
   }
-  45%,
+  55%,
+  85% {
+    transform: translate(0, 0) rotate(0deg);
+  }
   100% {
-    transform: translate(var(--to-x, 0), var(--to-y, 0)) rotate(0deg);
+    transform: translate(var(--from-x, 0), var(--from-y, 0)) rotate(-3deg);
   }
 }
 

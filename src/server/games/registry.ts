@@ -178,9 +178,11 @@ export const GAMES: readonly GameDef[] = [
       tagline: "Radial symmetry was a mistake and you are about to find out why.",
       hint: "Every piece looks like every other piece. That is the joke.",
       howTo: [
-        "Drag the pieces onto the board.",
-        "Edges snap when they are close enough and actually correct.",
-        "The pookalam is rotationally symmetric. Good luck with that.",
+        "Every piece is loose on one board. Drag them around.",
+        "There are no slots. Pieces join to each other — get two neighbours close enough and they snap together.",
+        "Once joined they move as one lump, so drag the lump.",
+        "You're done when everything is a single lump. It can sit anywhere on the board.",
+        "The pookalam is rotationally symmetric, so every piece looks like every other piece. That is the joke, and it is on you.",
       ],
     },
     generate: (seed, difficulty, assets) =>

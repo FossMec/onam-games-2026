@@ -1,4 +1,5 @@
 import { For, createMemo, createSignal, onMount } from "solid-js";
+import { edgesForPiece, pieceOutline, type JigsawTab } from "~/lib/jigsaw-shape";
 
 /**
  * Pookalam Jigsaw board.
@@ -21,13 +22,7 @@ import { For, createMemo, createSignal, onMount } from "solid-js";
  * one-line change.
  */
 
-export interface JigsawTab {
-  dir: 1 | -1;
-  offset: number;
-  neck: number;
-  head: number;
-  skew: number;
-}
+export type { JigsawTab };
 
 export interface JigsawViewData {
   kind: "jigsaw";
@@ -81,52 +76,13 @@ const SPREAD = 1.6;
 /** How close two pieces must be to snap, in cell units. */
 const SNAP = 0.3;
 
-/**
- * One edge of a piece, from `from` to `to` in unit space.
- *
- * `sign` flips the tab so two neighbours interlock: the same edge spec drawn
- * from one side must be the exact negative of the other, or the pieces will
- * not marry up.
+/*
+ * Piece outlines live in `~/lib/jigsaw-shape`, which is where the rule that a
+ * shared edge must be the identical curve from both sides is enforced and
+ * tested. That used to be done inline here, and got it wrong: an off-centre tab
+ * came out mirrored when its neighbour drew it, so the knob and the hole sat in
+ * different places along the edge and the pieces visibly did not fit.
  */
-function edgePath(
-  from: [number, number],
-  to: [number, number],
-  tab: JigsawTab | null,
-  sign: number,
-): string {
-  if (!tab) return `L ${to[0]} ${to[1]}`;
-
-  const dx = to[0] - from[0];
-  const dy = to[1] - from[1];
-  // Perpendicular, pointing "out" of the piece.
-  const nx = -dy;
-  const ny = dx;
-  const bulge = tab.dir * sign * tab.head;
-
-  const at = (t: number, out: number): [number, number] => [
-    from[0] + dx * t + nx * out,
-    from[1] + dy * t + ny * out,
-  ];
-
-  const a = tab.offset - tab.neck;
-  const b = tab.offset + tab.neck;
-  const skew = tab.skew;
-
-  const p1 = at(a, 0);
-  const c1 = at(a + tab.neck * 0.2, bulge * 0.35);
-  const c2 = at(a - tab.neck * 0.5 + skew, bulge * 1.15);
-  const p2 = at(tab.offset + skew, bulge * 1.25);
-  const c3 = at(b + tab.neck * 0.5 + skew, bulge * 1.15);
-  const c4 = at(b - tab.neck * 0.2, bulge * 0.35);
-  const p3 = at(b, 0);
-
-  return (
-    `L ${p1[0]} ${p1[1]} ` +
-    `C ${c1[0]} ${c1[1]} ${c2[0]} ${c2[1]} ${p2[0]} ${p2[1]} ` +
-    `C ${c3[0]} ${c3[1]} ${c4[0]} ${c4[1]} ${p3[0]} ${p3[1]} ` +
-    `L ${to[0]} ${to[1]}`
-  );
-}
 
 export function JigsawGame(props: JigsawGameProps) {
   let board: HTMLDivElement | undefined;
@@ -273,19 +229,8 @@ export function JigsawGame(props: JigsawGameProps) {
   const paths = createMemo(() => {
     const out: string[] = [];
     for (let id = 0; id < count(); id += 1) {
-      const c = id % cols();
-      const r = Math.floor(id / cols());
-      const top = r > 0 ? props.view.hEdges[r - 1][c] : null;
-      const bottom = r < rows() - 1 ? props.view.hEdges[r][c] : null;
-      const left = c > 0 ? props.view.vEdges[r][c - 1] : null;
-      const right = c < cols() - 1 ? props.view.vEdges[r][c] : null;
       out.push(
-        `M 0 0 ` +
-          edgePath([0, 0], [CELL, 0], top, -1) +
-          edgePath([CELL, 0], [CELL, CELL], right, 1) +
-          edgePath([CELL, CELL], [0, CELL], bottom, 1) +
-          edgePath([0, CELL], [0, 0], left, -1) +
-          "Z",
+        pieceOutline(CELL, edgesForPiece(id, cols(), rows(), props.view.hEdges, props.view.vEdges)),
       );
     }
     return out;

@@ -1,6 +1,7 @@
 import { For, Show, createSignal, onCleanup, onMount, type JSX } from "solid-js";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
+import { edgesForPiece, pieceOutline, type JigsawTab } from "~/lib/jigsaw-shape";
 
 /**
  * How to play — the rules, and a toy board that plays itself.
@@ -166,74 +167,74 @@ function DemoCard(props: { name: string; sub: string; pop: string; locked?: bool
   );
 }
 
-/** Pieces drop into the board and lock. */
+/**
+ * Four pieces drifting together into one lump.
+ *
+ * Drawn with the real `pieceOutline`, on fixed tabs — so what a player watches
+ * here is exactly the geometry they are about to drag around, tab for socket.
+ * The earlier version showed a 3x3 of dashed slots with squares dropping into
+ * them, which described a completely different game: this jigsaw has no slots,
+ * the pieces join to *each other*, and that is the one thing the demo has to
+ * get across.
+ */
+const DEMO_CELL = 44;
+
+/** One tab spec per shared edge of the 2x2. Fixed, so the demo is stable. */
+const DEMO_H: JigsawTab[][] = [
+  [
+    { dir: 1, offset: 0.5, neck: 0.12, head: 0.2, skew: 0 },
+    { dir: -1, offset: 0.46, neck: 0.12, head: 0.2, skew: 0 },
+  ],
+];
+const DEMO_V: JigsawTab[][] = [
+  [{ dir: -1, offset: 0.52, neck: 0.12, head: 0.2, skew: 0 }],
+  [{ dir: 1, offset: 0.48, neck: 0.12, head: 0.2, skew: 0 }],
+];
+
+const DEMO_PIECES = [
+  { id: 0, col: 0, row: 0, from: "-26px, -20px", pop: "var(--pop-red)" },
+  { id: 1, col: 1, row: 0, from: "30px, -22px", pop: "var(--pop-yellow)" },
+  { id: 2, col: 0, row: 1, from: "-30px, 22px", pop: "var(--pop-teal)" },
+  { id: 3, col: 1, row: 1, from: "26px, 24px", pop: "var(--pop-pink)" },
+];
+
 function JigsawDemo() {
   return (
     <Stage seed="demo-jigsaw">
-      <div class="absolute inset-0 grid place-items-center">
-        <svg viewBox="0 0 200 120" width="100%" height="100%" aria-hidden="true">
-          {/* The board: a 3x3 of empty slots. */}
-          <For each={[0, 1, 2]}>
-            {(row) => (
-              <For each={[0, 1, 2]}>
-                {(col) => (
-                  <rect
-                    x={104 + col * 26}
-                    y={20 + row * 26}
-                    width="24"
-                    height="24"
-                    fill={PAPER}
+      <div class="absolute inset-0 grid place-items-center pb-5">
+        <svg
+          viewBox="-30 -28 148 144"
+          width="150"
+          height="146"
+          aria-hidden="true"
+          style={{ overflow: "visible" }}
+        >
+          <For each={DEMO_PIECES}>
+            {(piece, i) => (
+              <g
+                style={{
+                  "--from-x": piece.from.split(",")[0],
+                  "--from-y": piece.from.split(",")[1].trim(),
+                  animation: "demo-join 5s ease-in-out infinite",
+                  "animation-delay": `${i() * 0.09}s`,
+                }}
+              >
+                <g transform={`translate(${piece.col * DEMO_CELL} ${piece.row * DEMO_CELL})`}>
+                  <path
+                    d={pieceOutline(DEMO_CELL, edgesForPiece(piece.id, 2, 2, DEMO_H, DEMO_V))}
+                    fill={piece.pop}
                     stroke={INK}
-                    stroke-width="2"
-                    stroke-dasharray="4 3"
+                    stroke-width="2.5"
+                    stroke-linejoin="round"
                   />
-                )}
-              </For>
+                </g>
+              </g>
             )}
           </For>
-
-          {/* Two pieces travelling from the tray into their slots. */}
-          <g
-            style={{
-              "--to-x": "82px",
-              "--to-y": "-14px",
-              animation: "demo-slot 4s ease-in-out infinite",
-            }}
-          >
-            <rect
-              x="24"
-              y="48"
-              width="24"
-              height="24"
-              fill="var(--pop-yellow)"
-              stroke={INK}
-              stroke-width="2.5"
-            />
-            <circle cx="36" cy="60" r="5" fill="var(--pop-red)" stroke={INK} stroke-width="2" />
-          </g>
-          <g
-            style={{
-              "--to-x": "56px",
-              "--to-y": "12px",
-              animation: "demo-slot 4s ease-in-out infinite",
-              "animation-delay": "0.6s",
-            }}
-          >
-            <rect
-              x="48"
-              y="26"
-              width="24"
-              height="24"
-              fill="var(--pop-teal)"
-              stroke={INK}
-              stroke-width="2.5"
-            />
-            <path d="M52 46 68 30" stroke={INK} stroke-width="2.5" />
-          </g>
         </svg>
       </div>
       <p class="absolute inset-x-0 bottom-1 text-center text-[0.65rem] font-extrabold uppercase tracking-wider text-muted">
-        close enough + correct = snap
+        pieces join to each other · close enough + correct = snap
       </p>
     </Stage>
   );
