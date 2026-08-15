@@ -45,14 +45,21 @@ function Stage(props: { children: JSX.Element; seed: string; pop?: string }) {
 }
 
 /**
- * Swipe right on the free one, left on the one that bills you.
+ * Swipe right on the one whose source you can read.
  *
- * The two demo products are invented — "Libre Notes" and "Notes Pro". They have
- * to be: every real name is a card somebody is about to be dealt, and showing
- * one here with its answer stamped on it would be handing over a free point.
- * A matched pair in the same category also teaches the actual mechanic better
- * than two unrelated products would — the difference between them is the only
- * thing that matters.
+ * The framing here matters more than the animation. An earlier version labelled
+ * the two cards "free, forever" and "$9.99 / month", which taught precisely the
+ * wrong lesson — that open source means costs nothing. That is the single most
+ * common misunderstanding this game exists to correct, and half the deck is
+ * built on it: Obsidian costs nothing and is proprietary; Chrome costs nothing
+ * and is proprietary. The test is whether you can read, change and share the
+ * code, so the demo says that and nothing about money.
+ *
+ * The two products are invented — every real name is a card somebody is about
+ * to be dealt, and showing one here with its answer stamped on it would be
+ * handing over a free point. A matched pair in one category also teaches the
+ * mechanic better than two unrelated products: the difference between them is
+ * the only thing being asked about.
  */
 function TinderDemo() {
   return (
@@ -74,7 +81,7 @@ function TinderDemo() {
             class="absolute inset-0"
             style={{ "z-index": 2, animation: "demo-card-paid 6s ease-in-out infinite" }}
           >
-            <DemoCard name="Notes Pro" price="$9.99 / month" pop="var(--pop-red)" locked />
+            <DemoCard name="Notes Pro" sub="source: sealed" pop="var(--pop-red)" locked />
             <span
               class="sticker absolute left-1.5 top-1.5 text-[0.6rem]"
               style={{
@@ -92,7 +99,7 @@ function TinderDemo() {
             class="absolute inset-0"
             style={{ "z-index": 3, animation: "demo-card-free 6s ease-in-out infinite" }}
           >
-            <DemoCard name="Libre Notes" price="free, forever" pop="var(--pop-teal)" />
+            <DemoCard name="Libre Notes" sub="source: readable" pop="var(--pop-teal)" />
             <span
               class="sticker absolute right-1.5 top-1.5 text-[0.6rem]"
               style={{
@@ -107,14 +114,14 @@ function TinderDemo() {
       </div>
 
       <div class="absolute inset-x-0 bottom-1.5 flex items-center justify-between px-3 text-[0.65rem] font-extrabold uppercase tracking-wider">
-        <span style={{ color: "var(--pop-red)" }}>← left: it wants your card</span>
-        <span style={{ color: "var(--pop-teal-deep)" }}>right: actually free →</span>
+        <span style={{ color: "var(--pop-red)" }}>← closed source</span>
+        <span style={{ color: "var(--pop-teal-deep)" }}>open source →</span>
       </div>
     </Stage>
   );
 }
 
-function DemoCard(props: { name: string; price: string; pop: string; locked?: boolean }) {
+function DemoCard(props: { name: string; sub: string; pop: string; locked?: boolean }) {
   return (
     <div
       class="flex h-full w-full flex-col overflow-hidden rounded"
@@ -153,7 +160,7 @@ function DemoCard(props: { name: string; price: string; pop: string; locked?: bo
         >
           {props.name}
         </p>
-        <p class="truncate text-[0.6rem] font-bold text-muted">{props.price}</p>
+        <p class="truncate text-[0.6rem] font-bold text-muted">{props.sub}</p>
       </div>
     </div>
   );

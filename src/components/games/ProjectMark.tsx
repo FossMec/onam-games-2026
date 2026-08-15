@@ -1,4 +1,5 @@
 import { For, Show, type JSX } from "solid-js";
+import { BRAND_ICONS } from "~/lib/brand-icons";
 
 /**
  * Project marks for the Tinder deck.
@@ -1321,22 +1322,63 @@ export interface ProjectMarkProps {
   class?: string;
 }
 
+/**
+ * The project's mark, in the best form available for it.
+ *
+ * Preference order, and the order matters:
+ *
+ *   1. the real logo, from the baked simple-icons table
+ *   2. a hand-drawn homage, for brands that set does not carry
+ *   3. a generated Memphis emblem, so nothing is ever blank
+ *
+ * The real logo wins because recognition is the game: you are being asked
+ * whether you know what a thing *is*, and people know these by their marks long
+ * before they know them by name. See `lib/brand-icons.ts` for why some brands
+ * are deliberately excluded even though a logo exists for them.
+ */
 export function ProjectMark(props: ProjectMarkProps) {
+  const brand = () => BRAND_ICONS[props.id];
   const drawing = () => MARKS[props.id];
 
   return (
-    <svg
-      viewBox="0 0 100 100"
-      width={props.size ?? 96}
-      height={props.size ?? 96}
-      class={props.class}
-      role="presentation"
-      aria-hidden="true"
-      style={{ overflow: "visible" }}
+    <Show
+      when={brand()}
+      fallback={
+        <svg
+          viewBox="0 0 100 100"
+          width={props.size ?? 96}
+          height={props.size ?? 96}
+          class={props.class}
+          role="presentation"
+          aria-hidden="true"
+          style={{ overflow: "visible" }}
+        >
+          <Show when={drawing()} fallback={<GenericMark id={props.id} name={props.name} />}>
+            {drawing()!()}
+          </Show>
+        </svg>
+      }
     >
-      <Show when={drawing()} fallback={<GenericMark id={props.id} name={props.name} />}>
-        {drawing()!()}
-      </Show>
-    </svg>
+      {/*
+        Sat on a paper disc with a heavy ink ring, so a flat vendor silhouette
+        still reads as part of a comic panel rather than a favicon dropped onto
+        it. The mark keeps its own brand colour — that is what makes it
+        recognisable at a glance, which is the entire reason it is here.
+      */}
+      <svg
+        viewBox="0 0 100 100"
+        width={props.size ?? 96}
+        height={props.size ?? 96}
+        class={props.class}
+        role="img"
+        aria-label={props.name}
+        style={{ overflow: "visible" }}
+      >
+        <circle cx="50" cy="50" r="46" fill={PAPER} stroke={INK} stroke-width="4" />
+        <g transform="translate(24 24) scale(2.166)">
+          <path d={brand()!.path} fill={brand()!.hex} />
+        </g>
+      </svg>
+    </Show>
   );
 }
