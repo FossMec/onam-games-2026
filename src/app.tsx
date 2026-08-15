@@ -100,7 +100,7 @@ export default function App() {
               </Suspense>
             </ErrorBoundary>
             <div class="flex-1">
-              <ErrorBoundary fallback={(_error, reset) => <AppError reset={reset} />}>
+              <ErrorBoundary fallback={(error, reset) => <AppError error={error} reset={reset} />}>
                 <Suspense>
                   {/* Closed beta: testers only, until `access.closed_beta` is off. */}
                   <BetaGate>{props.children}</BetaGate>

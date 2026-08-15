@@ -1,7 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import type { FingerprintSignals } from "~/lib/fingerprint";
 import { bindDeviceToUser } from "~/server/anti-cheat/device";
-import { logActivity } from "~/server/anti-cheat/log";
+import { logActivity, logSuspicious } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
 import { authSessions, testers, users } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
@@ -24,6 +24,7 @@ const USER_SELECT = {
   avatarUrl: users.avatarUrl,
   instagramHandle: users.instagramHandle,
   whatsappNumber: users.whatsappNumber,
+  occupation: users.occupation,
   college: users.college,
   collegeOther: users.collegeOther,
   branch: users.branch,
@@ -49,11 +50,12 @@ export interface PublicUser {
   avatarUrl: string | null;
   instagramHandle: string | null;
   whatsappNumber: string | null;
+  occupation: string | null;
   college: "mec" | "other" | null;
   collegeOther: string | null;
   branch: "cs" | "cu" | "ee" | "eb" | "ec" | "ev" | "me" | "other" | null;
   branchOther: string | null;
-  batch: "27" | "28" | "29" | "30" | "<=26" | null;
+  batch: "26" | "27" | "28" | "29" | "30" | "<=26" | "na" | null;
   div: "none" | "a" | "b" | "c";
   role: "player" | "tester" | "admin";
   banLevel: number;
@@ -139,6 +141,49 @@ export async function completeOAuthSignIn(
   }
 
   const meta = getRequestMeta();
+
+  /*
+   * One live session per account, and a record of every account that needed
+   * more than one.
+   *
+   * Signing in anywhere revokes everywhere else, so an account cannot be played
+   * from two places at once — the shared-login case that device binding alone
+   * does not cover, because a borrowed account on a second phone is a second
+   * *device*, not a second user.
+   *
+   * The log is deliberately noisy. Most entries will be somebody moving from
+   * their phone to their laptop, which is innocent and expected; that is an
+   * acceptable price for catching the ones that are not, since nothing here
+   * blocks or bans on its own and a human reads the list before prizes go out.
+   */
+  const displaced = await db
+    .update(authSessions)
+    .set({ revokedAt: new Date() })
+    .where(and(eq(authSessions.userId, userId), isNull(authSessions.revokedAt)))
+    .returning({ id: authSessions.id, deviceId: authSessions.deviceId, ip: authSessions.ip });
+
+  const otherDevices = [
+    ...new Set(displaced.map((row) => row.deviceId).filter((id) => id && id !== bind.deviceId)),
+  ];
+  if (displaced.length > 0) {
+    await logSuspicious({
+      userId,
+      deviceId: bind.deviceId,
+      ip: meta.ip,
+      eventType: otherDevices.length > 0 ? "session_moved_device" : "session_replaced",
+      severity: otherDevices.length > 0 ? "warn" : "info",
+      actionTaken: "flag",
+      details: {
+        revokedSessions: displaced.length,
+        previousDeviceIds: otherDevices,
+        previousIps: [...new Set(displaced.map((row) => row.ip).filter(Boolean))],
+        newDeviceId: bind.deviceId,
+        newIp: meta.ip,
+        userAgent: meta.userAgent,
+      },
+    });
+  }
+
   const [sess] = await db
     .insert(authSessions)
     .values({
@@ -156,12 +201,36 @@ export async function completeOAuthSignIn(
 
   await writeAuthCookie({ sid: sess.id, deviceId: bind.deviceId });
 
+  /*
+   * The whole signal set, every sign-in, not just the two fields a rule
+   * happens to read today.
+   *
+   * `devices.fingerprint_json` only ever holds the *latest* fingerprint for a
+   * device — each sign-in overwrites it. Keeping a copy per login turns that
+   * into a history, which is where the interesting shapes live: a hardware
+   * signature that changes under one account, a canvas hash that appears under
+   * two, a visitor id that migrates between accounts. None of that is
+   * recoverable later from a column that was overwritten.
+   */
   await logActivity({
     userId,
     deviceId: bind.deviceId,
     ip: meta.ip,
     eventType: existing ? "login" : "signup",
-    meta: { deviceHash: bind.deviceHash, idStability: signals.idStability },
+    meta: {
+      deviceHash: bind.deviceHash,
+      fpVisitorId: fpVisitorId ?? null,
+      email,
+      isNewUser: !existing,
+      isTester: !!tester,
+      sessionId: sess.id,
+      revokedOtherSessions: displaced.length,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+      country: meta.country,
+      city: meta.city,
+      signals,
+    },
   });
 
   return { userId, onboardingCompleted: existing?.onboardingCompleted ?? false };

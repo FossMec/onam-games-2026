@@ -113,7 +113,12 @@ export async function completeSignIn(
   fingerprint: FingerprintSignals,
   fpVisitorId?: string | null,
 ) {
-  return completeOAuthSignIn(session, fingerprint, fpVisitorId);
+  try {
+    return await completeOAuthSignIn(session, fingerprint, fpVisitorId);
+  } catch (error) {
+    console.error("[server] completeSignIn failed:", error);
+    throw error;
+  }
 }
 
 export async function signOutAction() {

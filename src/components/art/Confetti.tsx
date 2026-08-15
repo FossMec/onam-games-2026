@@ -152,6 +152,7 @@ export interface ConfettiProps {
   /** Ambient drift. Off by default; never enable on a gameplay surface. */
   animate?: boolean;
   class?: string;
+  opacity?: number;
 }
 
 export function Confetti(props: ConfettiProps) {
@@ -187,7 +188,7 @@ export function Confetti(props: ConfettiProps) {
               transform: `rotate(${piece.spin}deg)`,
               "animation-delay": `${piece.delay}s`,
               "animation-duration": `${piece.duration}s`,
-              opacity: 0.9,
+              opacity: props.opacity ?? 0.9,
             }}
           >
             <ConfettiShape kind={piece.kind} color={piece.color} />

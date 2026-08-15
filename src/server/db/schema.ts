@@ -15,7 +15,7 @@ import {
 
 export const collegeEnum = pgEnum("college", ["mec", "other"]);
 export const branchEnum = pgEnum("branch", ["cs", "cu", "ee", "eb", "ec", "ev", "me", "other"]);
-export const batchEnum = pgEnum("batch", ["27", "28", "29", "30", "<=26"]);
+export const batchEnum = pgEnum("batch", ["26", "27", "28", "29", "30", "<=26", "na"]);
 export const divEnum = pgEnum("div", ["none", "a", "b", "c"]);
 export const roleEnum = pgEnum("role", ["player", "tester", "admin"]);
 
@@ -29,6 +29,7 @@ export const users = pgTable(
     avatarUrl: text("avatar_url"),
     instagramHandle: text("instagram_handle"),
     whatsappNumber: text("whatsapp_number"),
+    occupation: text("occupation"),
     college: collegeEnum("college"),
     /** Free text when `college = 'other'`; shown on public boards, so moderated. */
     collegeOther: text("college_other"),
@@ -74,6 +75,9 @@ export const devices = pgTable(
     webglHash: text("webgl_hash"),
     fontHash: text("font_hash"),
     screenHash: text("screen_hash"),
+    audioHash: text("audio_hash"),
+    /** WebRTC-leaked LAN address. Identical across browsers on one machine. */
+    localIp: text("local_ip"),
     userAgent: text("user_agent"),
     platform: text("platform"),
     firstIp: text("first_ip"),
@@ -92,7 +96,20 @@ export const devices = pgTable(
   },
   (t) => [
     index("devices_last_seen_idx").on(t.lastSeenAt),
+    /*
+     * One index per signal the account-linking pass ORs over. Postgres can
+     * combine them with a bitmap OR, so looking up "every device sharing any
+     * signal with this one" stays an index scan instead of degrading into a
+     * full table scan once the festival fills this table up.
+     */
     index("devices_hardware_hash_idx").on(t.hardwareHash),
+    index("devices_fp_visitor_idx").on(t.fpVisitorId),
+    index("devices_canvas_hash_idx").on(t.canvasHash),
+    index("devices_webgl_hash_idx").on(t.webglHash),
+    index("devices_font_hash_idx").on(t.fontHash),
+    index("devices_audio_hash_idx").on(t.audioHash),
+    index("devices_local_ip_idx").on(t.localIp),
+    index("devices_last_ip_idx").on(t.lastIp),
   ],
 );
 

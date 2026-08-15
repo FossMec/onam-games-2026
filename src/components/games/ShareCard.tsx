@@ -1,28 +1,8 @@
+import { Camera, Download, Eye, EyeOff, Maximize2, Share2, Trash2, X } from "lucide-solid";
 import { Show, createEffect, createSignal, on, onCleanup, onMount } from "solid-js";
-import { Download, Maximize2, Share2, X } from "lucide-solid";
+import { fileToWebpDataUrl } from "~/lib/avatar";
 import { canvasToBlob, captionFor, renderShareCard, type ShareCardData } from "~/lib/share-card";
 import { shareFileName } from "~/lib/share-copy";
-
-/**
- * The share card, on screen and on its way out.
- *
- * The card is *shown*, not hidden behind a button. A player who can see the
- * thing they would be posting shares far more often than one who has to press
- * "Share" to find out what it looks like — so this renders inline in the win
- * modal, the moment the run lands, with the buttons underneath it.
- *
- * Two details here are load-bearing and easy to undo by accident:
- *
- *  - The PNG is built **when the component mounts**, not when Share is pressed.
- *    iOS Safari only opens the share sheet if `navigator.share` is called
- *    inside the user gesture, and awaiting `toBlob()` first loses that gesture.
- *    By the time the button exists, the file already does.
- *
- *  - The preview is an `<img>` built from the blob, not the live `<canvas>`.
- *    Long-pressing an image on iOS offers "Save Image"; long-pressing a canvas
- *    offers nothing. That fallback is the last line of defence on a browser
- *    with no file sharing and a blocked download.
- */
 
 type Phase = "drawing" | "ready" | "failed";
 
@@ -39,26 +19,56 @@ export function ShareCard(props: ShareCardProps) {
   const [zoomed, setZoomed] = createSignal(false);
   const [note, setNote] = createSignal("");
 
+  // Customization signals
+  const [hideAvatar, setHideAvatar] = createSignal(false);
+  const [hideCollege, setHideCollege] = createSignal(false);
+  const [hideBranch, setHideBranch] = createSignal(false);
+  const [hideBatch, setHideBatch] = createSignal(false);
+  const [hideInstagram, setHideInstagram] = createSignal(false);
+  const [customPhoto, setCustomPhoto] = createSignal<string | null>(null);
+  const [showOptions, setShowOptions] = createSignal(false);
+
   const caption = () => captionFor(props.data);
 
   /**
    * Everything that changes what the card looks like.
-   *
-   * The rank arrives a moment after the run does — it is a second round trip —
-   * so the first `data` a card is handed usually has `rank: null`. Redrawing on
-   * this signature is what turns that first "just for fun" card into the real
-   * one with `#3 of 47` on it, instead of leaving the player with a card that
-   * quietly under-sells them. Comparing a signature rather than object identity
-   * keeps an unrelated re-render from redrawing a 1080×1920 canvas.
    */
   const signature = () => {
     const d = props.data;
-    return [d.seed, d.rank, d.fieldSize, d.playerName, d.college, d.instagram, d.origin].join("|");
+    return [
+      d.seed,
+      d.rank,
+      d.fieldSize,
+      d.playerName,
+      d.college,
+      d.branch,
+      d.batch,
+      d.instagram,
+      d.origin,
+      hideAvatar(),
+      hideCollege(),
+      hideBranch(),
+      hideBatch(),
+      hideInstagram(),
+      customPhoto(),
+    ].join("|");
   };
 
   createEffect(
     on(signature, () => {
-      const data = props.data;
+      const d = props.data;
+      const data: ShareCardData = {
+        ...d,
+        customPhoto: customPhoto(),
+        options: {
+          hideAvatar: hideAvatar(),
+          hideCollege: hideCollege(),
+          hideBranch: hideBranch(),
+          hideBatch: hideBatch(),
+          hideInstagram: hideInstagram(),
+        },
+      };
+
       let cancelled = false;
       setPhase("drawing");
       void (async () => {
@@ -70,7 +80,11 @@ export function ShareCard(props: ShareCardProps) {
             if (previous) URL.revokeObjectURL(previous);
             return URL.createObjectURL(blob);
           });
-          setFile(new File([blob], shareFileName(data.gameSlug), { type: "image/png" }));
+          setFile(
+            new File([blob], shareFileName(data.gameSlug), {
+              type: "image/png",
+            }),
+          );
           setPhase("ready");
         } catch {
           if (!cancelled) setPhase("failed");
@@ -87,14 +101,6 @@ export function ShareCard(props: ShareCardProps) {
     if (current) URL.revokeObjectURL(current);
   });
 
-  /*
-   * Escape closes the full-screen card, and *only* that.
-   *
-   * Registered on the capture phase so it runs before the win modal's own
-   * window listener, which would otherwise close the whole celebration behind
-   * the overlay — one Escape, two dialogs gone, and the player back on the page
-   * wondering what happened.
-   */
   onMount(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || !zoomed()) return;
@@ -104,6 +110,17 @@ export function ShareCard(props: ShareCardProps) {
     window.addEventListener("keydown", onKey, { capture: true });
     onCleanup(() => window.removeEventListener("keydown", onKey, { capture: true }));
   });
+
+  const onPhotoSelect = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const dataUrl = await fileToWebpDataUrl(file);
+      setCustomPhoto(dataUrl);
+      setHideAvatar(false);
+    } catch {
+      setNote("Could not load that photo.");
+    }
+  };
 
   const download = () => {
     const href = url();
@@ -118,30 +135,25 @@ export function ShareCard(props: ShareCardProps) {
   };
 
   const share = async () => {
-    const payload = { files: file() ? [file()!] : [], title: "FOSS Onam Games", text: caption() };
-    const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };
+    const payload = {
+      files: file() ? [file()!] : [],
+      title: "FOSS Onam Games",
+      text: caption(),
+    };
+    const nav = navigator as Navigator & {
+      canShare?: (data: ShareData) => boolean;
+    };
     if (file() && nav.share && nav.canShare?.(payload)) {
       try {
         await nav.share(payload);
         return;
       } catch (error) {
-        // Dismissing the sheet is a decision, not a failure. Anything else and
-        // we quietly fall through to the download, which always works.
         if ((error as DOMException)?.name === "AbortError") return;
       }
     }
     download();
   };
 
-  /*
-   * The preview.
-   *
-   * Tapping it opens the card full screen rather than firing the share sheet.
-   * At 118px the card is a thumbnail — before a player posts something with
-   * their name and college on it, they want to *read* it, and an image that
-   * cannot be enlarged is the one thing every phone user expects to be able
-   * to do. Share is the button right beside it, and again inside the overlay.
-   */
   const preview = () => (
     <div
       class="relative shrink-0 overflow-hidden rounded"
@@ -168,8 +180,6 @@ export function ShareCard(props: ShareCardProps) {
         }
       }}
     >
-      {/* Keep the previous card up while a redraw is in flight — blanking it
-          mid-look reads as a glitch, and the redraw is only a refinement. */}
       <Show
         when={url()}
         fallback={
@@ -183,14 +193,10 @@ export function ShareCard(props: ShareCardProps) {
         <img src={url()} alt="Your FOSS Onam Games score card" class="h-full w-full object-cover" />
       </Show>
 
-      {/* The enlarge affordance, as a sticker on the card rather than a button
-          under it — a whole row of chrome to say "this picture is a picture". */}
       <Show when={phase() === "ready"}>
         <span
           class="pointer-events-none absolute grid place-items-center rounded"
           style={{
-            // Top right: the corner of the card carrying decoration rather than
-            // words. Bottom right sat on the footer and covered "fossmec".
             right: "5px",
             top: "5px",
             width: props.compact ? "24px" : "30px",
@@ -217,7 +223,7 @@ export function ShareCard(props: ShareCardProps) {
           onClick={() => void share()}
         >
           <Share2 size={props.compact ? 17 : 20} />
-          {phase() === "ready" ? "Share" : "Drawing…"}
+          {phase() === "ready" ? "Share Card" : "Drawing…"}
         </button>
         <button
           type="button"
@@ -228,22 +234,19 @@ export function ShareCard(props: ShareCardProps) {
           <Download size={16} />
           Save image
         </button>
-        <Show when={props.compact}>
-          <p class="text-center font-mono text-[0.65rem] leading-tight text-muted">
-            tap the card to enlarge
-          </p>
-        </Show>
+        <button
+          type="button"
+          class="btn-ghost flex items-center justify-center gap-1.5 text-xs py-1"
+          onClick={() => setShowOptions((v) => !v)}
+        >
+          <span>{showOptions() ? "Hide options" : "Customize card"}</span>
+        </button>
       </div>
     </Show>
   );
 
   return (
-    <div class="space-y-2">
-      {/*
-        Side by side when compact. Stacked, this block was taller than the rest
-        of the win modal put together and pushed "Go again" off the screen —
-        which is a strange thing to do to the two buttons a player came for.
-      */}
+    <div class="space-y-3">
       <div
         classList={{
           "flex items-stretch gap-3 text-left": props.compact,
@@ -254,6 +257,129 @@ export function ShareCard(props: ShareCardProps) {
         {actions()}
       </div>
 
+      {/* Card Details Customization Controls */}
+      <Show when={showOptions()}>
+        <div class="card p-3 space-y-2.5 text-left bg-[var(--paper-2)] border-2 border-[var(--ink)]">
+          <p class="font-extrabold text-xs text-[var(--ink)]">Customize details on this card:</p>
+
+          {/* Toggle buttons for details */}
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => setHideAvatar((v) => !v)}
+              class={`px-2.5 py-1 rounded-md text-xs font-bold border flex items-center gap-1 cursor-pointer transition-all ${
+                !hideAvatar()
+                  ? "bg-[var(--ink)] text-white border-[var(--ink)]"
+                  : "bg-[var(--paper-1)] text-[var(--ink-soft)] border-[var(--ink-soft)] line-through"
+              }`}
+            >
+              <Show when={!hideAvatar()} fallback={<EyeOff size={13} />}>
+                <Eye size={13} />
+              </Show>
+              <span>Photo</span>
+            </button>
+
+            <Show when={props.data.college}>
+              <button
+                type="button"
+                onClick={() => setHideCollege((v) => !v)}
+                class={`px-2.5 py-1 rounded-md text-xs font-bold border flex items-center gap-1 cursor-pointer transition-all ${
+                  !hideCollege()
+                    ? "bg-[var(--ink)] text-white border-[var(--ink)]"
+                    : "bg-[var(--paper-1)] text-[var(--ink-soft)] border-[var(--ink-soft)] line-through"
+                }`}
+              >
+                <Show when={!hideCollege()} fallback={<EyeOff size={13} />}>
+                  <Eye size={13} />
+                </Show>
+                <span>College</span>
+              </button>
+            </Show>
+
+            <Show when={props.data.branch}>
+              <button
+                type="button"
+                onClick={() => setHideBranch((v) => !v)}
+                class={`px-2.5 py-1 rounded-md text-xs font-bold border flex items-center gap-1 cursor-pointer transition-all ${
+                  !hideBranch()
+                    ? "bg-[var(--ink)] text-white border-[var(--ink)]"
+                    : "bg-[var(--paper-1)] text-[var(--ink-soft)] border-[var(--ink-soft)] line-through"
+                }`}
+              >
+                <Show when={!hideBranch()} fallback={<EyeOff size={13} />}>
+                  <Eye size={13} />
+                </Show>
+                <span>Branch</span>
+              </button>
+            </Show>
+
+            <Show when={props.data.batch && props.data.batch !== "na"}>
+              <button
+                type="button"
+                onClick={() => setHideBatch((v) => !v)}
+                class={`px-2.5 py-1 rounded-md text-xs font-bold border flex items-center gap-1 cursor-pointer transition-all ${
+                  !hideBatch()
+                    ? "bg-[var(--ink)] text-white border-[var(--ink)]"
+                    : "bg-[var(--paper-1)] text-[var(--ink-soft)] border-[var(--ink-soft)] line-through"
+                }`}
+              >
+                <Show when={!hideBatch()} fallback={<EyeOff size={13} />}>
+                  <Eye size={13} />
+                </Show>
+                <span>Batch</span>
+              </button>
+            </Show>
+
+            <Show when={props.data.instagram}>
+              <button
+                type="button"
+                onClick={() => setHideInstagram((v) => !v)}
+                class={`px-2.5 py-1 rounded-md text-xs font-bold border flex items-center gap-1 cursor-pointer transition-all ${
+                  !hideInstagram()
+                    ? "bg-[var(--ink)] text-white border-[var(--ink)]"
+                    : "bg-[var(--paper-1)] text-[var(--ink-soft)] border-[var(--ink-soft)] line-through"
+                }`}
+              >
+                <Show when={!hideInstagram()} fallback={<EyeOff size={13} />}>
+                  <Eye size={13} />
+                </Show>
+                <span>Instagram</span>
+              </button>
+            </Show>
+          </div>
+
+          {/* Photo attachment controls */}
+          <div class="flex items-center gap-2 pt-1 border-t border-[var(--ink-soft)]">
+            <label
+              for="card-photo-input"
+              class="btn-ghost py-1 px-2.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            >
+              <Camera size={14} />
+              <span>{customPhoto() ? "Change card photo" : "Add custom photo"}</span>
+            </label>
+            <input
+              id="card-photo-input"
+              type="file"
+              accept="image/*"
+              class="sr-only"
+              onChange={(e) => onPhotoSelect(e.currentTarget.files?.[0])}
+            />
+
+            <Show when={customPhoto()}>
+              <button
+                type="button"
+                onClick={() => setCustomPhoto(null)}
+                class="btn-ghost py-1 px-2 text-xs font-bold text-[var(--pop-red)] flex items-center gap-1"
+                title="Reset to default avatar"
+              >
+                <Trash2 size={13} />
+                <span>Reset photo</span>
+              </button>
+            </Show>
+          </div>
+        </div>
+      </Show>
+
       <Show when={note()}>
         <p class="text-center font-mono text-xs text-muted">{note()}</p>
       </Show>
@@ -263,12 +389,7 @@ export function ShareCard(props: ShareCardProps) {
         </p>
       </Show>
 
-      {/*
-        Full screen: the card, as large as the screen allows, over an almost
-        opaque backdrop. It sits above the win modal (z-60 to its z-50) and
-        carries its own Share button, so a player who opened it to read the
-        thing can post it without going back a step.
-      */}
+      {/* Full screen view */}
       <Show when={zoomed() && url()}>
         <div
           class="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-3 p-4"
@@ -286,12 +407,9 @@ export function ShareCard(props: ShareCardProps) {
             class="max-h-[78vh] w-auto max-w-full rounded object-contain"
             style={{ border: "var(--ink-w) solid var(--ink)" }}
           />
-          {/* Close is the X in the corner, where a full-screen image always
-              puts it — not a third full-width button under the two that do
-              something. */}
           <button
             type="button"
-            class="absolute grid place-items-center rounded-full"
+            class="absolute grid place-items-center rounded-full cursor-pointer"
             style={{
               top: "1rem",
               right: "1rem",
@@ -310,7 +428,7 @@ export function ShareCard(props: ShareCardProps) {
           <div class="grid w-full max-w-xs grid-cols-2 gap-2">
             <button
               type="button"
-              class="btn-brand flex items-center justify-center gap-2"
+              class="btn-brand flex items-center justify-center gap-2 cursor-pointer"
               onClick={() => void share()}
             >
               <Share2 size={18} />
@@ -318,7 +436,7 @@ export function ShareCard(props: ShareCardProps) {
             </button>
             <button
               type="button"
-              class="btn-ghost flex items-center justify-center gap-2 text-sm"
+              class="btn-ghost flex items-center justify-center gap-2 text-sm cursor-pointer"
               onClick={download}
             >
               <Download size={16} />
@@ -331,10 +449,6 @@ export function ShareCard(props: ShareCardProps) {
   );
 }
 
-/**
- * The same card in its own dialog, for the places where it is not already on
- * screen — the settled result panel and the leaderboard's own-rank row.
- */
 export function ShareCardModal(props: { data: ShareCardData; onClose: () => void }) {
   onMount(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -361,11 +475,9 @@ export function ShareCardModal(props: { data: ShareCardData; onClose: () => void
       }}
     >
       <div class="card anim-sheet-in pop-pink my-auto w-full max-w-sm space-y-3 text-center">
-        {/* An X in the corner, not a button in the stack. Closing is not one of
-            the two things this dialog is for. */}
         <button
           type="button"
-          class="absolute grid place-items-center rounded-full"
+          class="absolute grid place-items-center rounded-full cursor-pointer"
           style={{
             top: "0.9rem",
             right: "0.75rem",

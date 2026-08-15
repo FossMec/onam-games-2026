@@ -313,10 +313,7 @@ export default function DesignLanguage() {
             <For each={MEMPHIS_MOTIFS}>
               {(motif) => (
                 <div class="card card-plain p-4 flex items-start gap-3.5 bg-[var(--paper-2)]">
-                  <div
-                    class="w-12 h-12 rounded-lg grid place-items-center shrink-0 border-2 border-[var(--ink)] bg-[var(--paper)]"
-                    style={{ "box-shadow": "2px 2px 0 var(--ink)" }}
-                  >
+                  <div class="w-12 h-12 rounded-lg grid place-items-center shrink-0 border-2 border-[var(--ink)] bg-[var(--paper)]">
                     <div class="w-7 h-7">
                       <ConfettiShape kind={motif.shape} color={motif.color} />
                     </div>

@@ -17,7 +17,16 @@
  */
 
 /** Evidence that two device records belong to one human, weakest first. */
-export type LinkSignal = "ip" | "screen" | "fonts" | "webgl" | "canvas" | "hardware" | "fpVisitor";
+export type LinkSignal =
+  | "ip"
+  | "screen"
+  | "fonts"
+  | "webgl"
+  | "audio"
+  | "localIp"
+  | "canvas"
+  | "hardware"
+  | "fpVisitor";
 
 /**
  * How much each match is worth, out of 100.
@@ -30,6 +39,12 @@ export type LinkSignal = "ip" | "screen" | "fonts" | "webgl" | "canvas" | "hardw
  *   fonts      the installed font set. Fairly distinctive, survives a browser
  *              change, but common on stock phones.
  *   webgl      the GPU string. Same GPU across two browsers on one machine.
+ *   audio      the audio stack's rendering quirks. Hardware and OS influenced,
+ *              and it survives a cleared profile.
+ *   localIp    the private LAN address, which belongs to the *machine* — two
+ *              browsers on one phone report the same one. Not globally unique
+ *              (half the routers on earth hand out 192.168.1.x), so it is
+ *              priced to need company rather than to convict alone.
  *   canvas     rendering quirks: GPU *and* driver *and* browser. Distinctive.
  *   hardware   the composite hardware signature, already browser-independent.
  *   fpVisitor  FingerprintJS. The strongest single thing here: it is built to
@@ -38,13 +53,23 @@ export type LinkSignal = "ip" | "screen" | "fonts" | "webgl" | "canvas" | "hardw
  *
  * Nothing except `fpVisitor` alone crosses the flag line, and even it does not
  * reach the top band by itself — a match needs corroboration to be called
- * near-certain.
+ * near-certain. Note the deliberate pairing: `ip` + `localIp` together (30)
+ * reach review, because the same public *and* private address is one machine
+ * on one network rather than two people in one house.
+ *
+ * A caveat the numbers cannot express: on iOS every browser is WebKit and the
+ * GPU reports as a generic "Apple GPU", with no `deviceMemory`, no `vibrate`
+ * and no client-hint model. `hardware` there carries far less entropy than on
+ * Android, and two identical iPhones in one timezone can genuinely collide.
+ * Read an iOS-only `hardware` match as a lead, not a conclusion.
  */
 const WEIGHTS: Record<LinkSignal, number> = {
   ip: 10,
   screen: 5,
   fonts: 10,
   webgl: 20,
+  audio: 20,
+  localIp: 20,
   canvas: 25,
   hardware: 35,
   fpVisitor: 55,
@@ -87,6 +112,8 @@ export interface DeviceSignals {
   webglHash: string | null;
   fontHash: string | null;
   screenHash: string | null;
+  audioHash: string | null;
+  localIp: string | null;
   lastIp: string | null;
 }
 
@@ -104,6 +131,8 @@ export function matchSignals(a: DeviceSignals, b: DeviceSignals): LinkSignal[] {
   if (agree(a.fpVisitorId, b.fpVisitorId)) matched.push("fpVisitor");
   if (agree(a.hardwareHash, b.hardwareHash)) matched.push("hardware");
   if (agree(a.canvasHash, b.canvasHash)) matched.push("canvas");
+  if (agree(a.audioHash, b.audioHash)) matched.push("audio");
+  if (agree(a.localIp, b.localIp)) matched.push("localIp");
   if (agree(a.webglHash, b.webglHash)) matched.push("webgl");
   if (agree(a.fontHash, b.fontHash)) matched.push("fonts");
   if (agree(a.screenHash, b.screenHash)) matched.push("screen");

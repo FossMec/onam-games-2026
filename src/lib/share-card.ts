@@ -542,12 +542,39 @@ function scatterConfetti(
 
 /* --------------------------------------------------------------- loading  */
 
-/**
- * Same-origin images only — see the note at the top of this file. A failed
- * load resolves to `null` rather than rejecting: a missing sprite should cost
- * the card a sticker, never the whole render.
- */
-function loadImage(src: string): Promise<HTMLImageElement | null> {
+async function loadImage(src: string): Promise<HTMLImageElement | null> {
+  if (!src) return null;
+
+  // Data URLs are already local in-memory
+  if (src.startsWith("data:")) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  }
+
+  // Cross-origin URLs: fetch with CORS and create local object URL to avoid tainting canvas
+  if (src.startsWith("http://") || src.startsWith("https://")) {
+    try {
+      const res = await fetch(src, { mode: "cors" });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = blobUrl;
+      });
+    } catch {
+      // If CORS fetch fails, resolve null so the card draws the initial medallion safely
+      return null;
+    }
+  }
+
+  // Same-origin local static assets
   return new Promise((resolve) => {
     const img = new Image();
     img.decoding = "async";
@@ -588,8 +615,14 @@ export async function ensureFonts(): Promise<void> {
 
 export interface ShareCardData {
   playerName: string;
+  avatarUrl?: string | null;
+  customPhoto?: string | null;
   /** Already resolved to a display label ("Model Engineering College", etc). */
   college?: string | null;
+  branch?: string | null;
+  branchOther?: string | null;
+  batch?: string | null;
+  occupation?: string | null;
   /** Handle without the `@`. Omitted from the card when absent. */
   instagram?: string | null;
   gameTitle: string;
@@ -607,6 +640,13 @@ export interface ShareCardData {
   seed: string;
   /** When the card was drawn. Defaults to now; injectable so tests can pin it. */
   generatedAt?: Date;
+  options?: {
+    hideAvatar?: boolean;
+    hideCollege?: boolean;
+    hideBranch?: boolean;
+    hideBatch?: boolean;
+    hideInstagram?: boolean;
+  };
 }
 
 /** The caption that travels with the image. */
@@ -637,11 +677,14 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   await ensureFonts();
 
   const spriteName = spriteFor(tier, seed) as SpriteName;
-  const [memeImg, badgeImg, spriteImg, secondSpriteImg] = await Promise.all([
+  const photoUrl = !data.options?.hideAvatar ? data.customPhoto || data.avatarUrl : null;
+
+  const [memeImg, badgeImg, spriteImg, secondSpriteImg, photoImg] = await Promise.all([
     loadImage(memeFor(seed)),
     loadImage("/sprites/icons/foss-mec-badge.png"),
     loadImage(`/sprites/icons/${spriteName}.png`),
     loadImage("/sprites/icons/pookalam-flower.png"),
+    photoUrl ? loadImage(photoUrl).catch(() => null) : Promise.resolve(null),
   ]);
 
   const canvas = document.createElement("canvas");
@@ -675,13 +718,10 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   burst(ctx, 96, panel.y + panel.h - 40, 210, 12, POP.yellow, `${seed}-b2`, 7);
 
   /* ---- 4. Memphis confetti (secretly Onam) ---------------------------- */
-  // Decoration goes in the gaps, never over anything anybody has to read.
   const memeBox = MEME_BOX;
   scatterConfetti(ctx, seed, 12, [
     panel,
     memeBox,
-    // Tight boxes around the things that must stay legible, rather than whole
-    // bands — otherwise the keep-outs cover the card and no confetti lands.
     { x: 55, y: 66, w: 175, h: 180 },
     { x: 232, y: 76, w: 660, h: 150 },
     { x: SHOUT.cx - SHOUT.r, y: SHOUT.cy - SHOUT.r, w: SHOUT.r * 2, h: SHOUT.r * 2 },
@@ -698,8 +738,6 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
     ctx.restore();
   }
 
-  // The wordmark treatment from `app.css`: the same word twice, flat yellow
-  // copy nudged down-right, ink face on top. A second letterform, not a shadow.
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "left";
   const markSize = fitSize(ctx, "FOSS × ONAM", 620, "logo", 76, 48);
@@ -713,8 +751,6 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   ctx.fillStyle = INK_SOFT;
   ctx.fillText(`DAY ${data.day} · ${data.gameTitle.toUpperCase()}`, 256, 200);
 
-  // Whose thing this is. The same attribution the nav carries, so a card
-  // screenshotted out of context still says who ran the event.
   ctx.font = font("display", 27, 800);
   ctx.fillStyle = TEAL_DEEP;
   ctx.fillText("BY FOSSMEC", 256, 240);
@@ -725,8 +761,6 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   ctx.clip();
   ctx.fillStyle = panelA;
   ctx.fillRect(panel.x, panel.y, panel.w, panel.h);
-  // Diagonal two-tone split — flat colour blocking, the way a risograph would
-  // have done it with two passes.
   ctx.beginPath();
   ctx.moveTo(panel.x + panel.w * 0.46, panel.y);
   ctx.lineTo(panel.x + panel.w, panel.y);
@@ -747,48 +781,141 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   const chipW = panel.w - 92;
   const centreX = chipX + chipW / 2;
 
-  const secondLine = data.college?.trim() || (data.instagram ? `@${data.instagram}` : "");
-  const thirdLine = data.college?.trim() && data.instagram ? `@${data.instagram}` : "";
+  // Resolve detail lines according to toggle options
+  const showCollege = !data.options?.hideCollege && !!data.college?.trim();
+  const showBranch = !data.options?.hideBranch && !!data.branch;
+  const showBatch = !data.options?.hideBatch && !!data.batch && data.batch !== "na";
+  const showInsta = !data.options?.hideInstagram && !!data.instagram?.trim();
 
-  // Chip 1 — the name. The largest type on the card.
-  const nameChip = { y: panel.y + 60, h: secondLine ? 196 : 230 };
-  inkedRect(ctx, chipX, nameChip.y, chipW, nameChip.h, 26, PAPER_2, 7);
+  const collegeText = showCollege ? data.college!.trim() : "";
+  const branchBatchParts: string[] = [];
+  if (showBranch) {
+    branchBatchParts.push(
+      data.branch === "other" && data.branchOther ? data.branchOther : data.branch!.toUpperCase(),
+    );
+  }
+  if (showBatch) {
+    branchBatchParts.push(data.batch!.startsWith("2") ? `Batch ${data.batch}` : data.batch!);
+  }
+  const branchBatchText = branchBatchParts.join(" · ");
+  const instaText = showInsta ? `@${data.instagram!.trim()}` : "";
+
+  // Compute detail lines
+  const detailLines: { text: string; isHandle?: boolean }[] = [];
+  if (collegeText) detailLines.push({ text: collegeText });
+  if (branchBatchText) detailLines.push({ text: branchBatchText });
+  if (instaText) detailLines.push({ text: instaText, isHandle: true });
+
+  const hasDetails = detailLines.length > 0;
+  const hasPhoto = !!photoImg;
+
+  // Chip 1 — the name + optional avatar photo
+  const nameChipH = hasPhoto ? 210 : hasDetails ? 180 : 220;
+  const nameChipY = panel.y + 50;
+  inkedRect(ctx, chipX, nameChipY, chipW, nameChipH, 26, PAPER_2, 7);
+
   const name = data.playerName.trim().toUpperCase() || "PLAYER";
-  const nameSize = fitSize(ctx, name, chipW - 70, "display", 96, 40, 800);
-  ctx.textAlign = "center";
-  ctx.font = font("display", nameSize, 800);
-  ctx.fillStyle = INK;
-  ctx.fillText(name, centreX, nameChip.y + nameChip.h / 2 + (secondLine ? 4 : 16));
-  ctx.font = font("mono", 26, 700);
-  ctx.fillStyle = INK_SOFT;
-  ctx.fillText("PLAYED FOSS ONAM GAMES", centreX, nameChip.y + nameChip.h - 34);
 
-  // Chip 2 — college and handle. Skipped entirely when the player gave
-  // neither, and the layout closes up rather than leaving a hole.
-  let cursor = nameChip.y + nameChip.h + 26;
-  if (secondLine) {
-    const infoH = thirdLine ? 168 : 132;
-    inkedRect(ctx, chipX, cursor, chipW, infoH, 26, PAPER_2, 7);
-    const size = fitSize(ctx, secondLine.toUpperCase(), chipW - 70, "display", 56, 28, 800);
-    ctx.font = font("display", size, 800);
+  if (hasPhoto && photoImg) {
+    const photoSize = 130;
+    const photoX = chipX + 36;
+    const photoY = nameChipY + (nameChipH - photoSize) / 2;
+
+    // Draw round cropped photo
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(photoX + photoSize / 2, photoY + photoSize / 2, photoSize / 2, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+
+    const pMin = Math.min(photoImg.width, photoImg.height);
+    const pSx = (photoImg.width - pMin) / 2;
+    const pSy = (photoImg.height - pMin) / 2;
+    ctx.drawImage(photoImg, pSx, pSy, pMin, pMin, photoX, photoY, photoSize, photoSize);
+    ctx.restore();
+
+    // Ink border around photo
+    ctx.beginPath();
+    ctx.arc(photoX + photoSize / 2, photoY + photoSize / 2, photoSize / 2, 0, Math.PI * 2);
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+
+    // Name text next to photo
+    const textLeft = photoX + photoSize + 30;
+    const textW = chipX + chipW - textLeft - 20;
+    const nameSize = fitSize(ctx, name, textW, "display", 76, 36, 800);
+    ctx.textAlign = "left";
+    ctx.font = font("display", nameSize, 800);
     ctx.fillStyle = INK;
-    ctx.fillText(secondLine.toUpperCase(), centreX, cursor + (thirdLine ? 78 : 86));
-    if (thirdLine) {
-      ctx.font = font("mono", 34, 700);
-      ctx.fillStyle = POP.pink;
-      inkedText(ctx, thirdLine, centreX, cursor + 132, POP.pink, 5);
-    }
-    cursor += infoH + 26;
+    ctx.fillText(name, textLeft, nameChipY + nameChipH / 2 + 6);
+    ctx.font = font("mono", 22, 700);
+    ctx.fillStyle = INK_SOFT;
+    ctx.fillText("PLAYED FOSS ONAM GAMES", textLeft, nameChipY + nameChipH - 32);
+  } else {
+    const nameSize = fitSize(ctx, name, chipW - 70, "display", 92, 40, 800);
+    ctx.textAlign = "center";
+    ctx.font = font("display", nameSize, 800);
+    ctx.fillStyle = INK;
+    ctx.fillText(name, centreX, nameChipY + nameChipH / 2 + (hasDetails ? 4 : 14));
+    ctx.font = font("mono", 24, 700);
+    ctx.fillStyle = INK_SOFT;
+    ctx.fillText("PLAYED FOSS ONAM GAMES", centreX, nameChipY + nameChipH - 30);
   }
 
-  // Row 3 — the rank medallion on the left, the figure on the right. Same
-  // arrangement as the reference card: a badge and a number, side by side.
-  const rowH = panel.y + panel.h - 56 - cursor;
-  const medallionR = Math.min(rowH / 2, 132);
+  // Chip 2 — dynamic details chip
+  let cursor = nameChipY + nameChipH + 22;
+  if (hasDetails) {
+    const infoH = detailLines.length === 1 ? 110 : detailLines.length === 2 ? 148 : 180;
+    inkedRect(ctx, chipX, cursor, chipW, infoH, 26, PAPER_2, 7);
+    ctx.textAlign = "center";
+
+    if (detailLines.length === 1) {
+      const line = detailLines[0];
+      const size = fitSize(ctx, line.text.toUpperCase(), chipW - 60, "display", 50, 24, 800);
+      ctx.font = font(line.isHandle ? "mono" : "display", size, 800);
+      ctx.fillStyle = line.isHandle ? POP.pink : INK;
+      ctx.fillText(line.text.toUpperCase(), centreX, cursor + infoH / 2 + 14);
+    } else if (detailLines.length === 2) {
+      const line1 = detailLines[0];
+      const line2 = detailLines[1];
+      const size1 = fitSize(ctx, line1.text.toUpperCase(), chipW - 60, "display", 44, 22, 800);
+      ctx.font = font(line1.isHandle ? "mono" : "display", size1, 800);
+      ctx.fillStyle = line1.isHandle ? POP.pink : INK;
+      ctx.fillText(line1.text.toUpperCase(), centreX, cursor + 58);
+
+      const size2 = fitSize(ctx, line2.text.toUpperCase(), chipW - 60, "display", 38, 20, 800);
+      ctx.font = font(line2.isHandle ? "mono" : "display", size2, 800);
+      ctx.fillStyle = line2.isHandle ? POP.pink : INK_SOFT;
+      ctx.fillText(line2.text.toUpperCase(), centreX, cursor + 112);
+    } else {
+      // 3 lines
+      const line1 = detailLines[0];
+      const line2 = detailLines[1];
+      const line3 = detailLines[2];
+      ctx.font = font("display", 38, 800);
+      ctx.fillStyle = INK;
+      ctx.fillText(line1.text.toUpperCase(), centreX, cursor + 48);
+
+      ctx.font = font("display", 32, 700);
+      ctx.fillStyle = INK_SOFT;
+      ctx.fillText(line2.text.toUpperCase(), centreX, cursor + 96);
+
+      ctx.font = font("mono", 32, 700);
+      ctx.fillStyle = POP.pink;
+      inkedText(ctx, line3.text, centreX, cursor + 148, POP.pink, 4);
+    }
+
+    cursor += infoH + 22;
+  }
+
+  // Row 3 — the rank medallion on the left, the figure on the right.
+  const rowH = panel.y + panel.h - 46 - cursor;
+  const medallionR = Math.min(rowH / 2, 126);
   const medallionCx = chipX + medallionR + 10;
   const medallionCy = cursor + rowH / 2;
 
-  burst(ctx, medallionCx, medallionCy, medallionR + 22, 16, burstColor, `${seed}-rank`, 7);
+  burst(ctx, medallionCx, medallionCy, medallionR + 20, 16, burstColor, `${seed}-rank`, 7);
   ctx.textAlign = "center";
   if (data.rank) {
     const rankText = `#${data.rank}`;
@@ -818,27 +945,44 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   ctx.fillStyle = INK_SOFT;
   ctx.fillText(figure.label, figureCx, cursor + rowH - 34);
 
-  /* ---- 8. meme sticker ------------------------------------------------ */
-  if (memeImg) {
+  /* ---- 8. prominent meme / player photo card -------------------------- */
+  const displayCardImg = photoImg || memeImg;
+  if (displayCardImg) {
     ctx.save();
     ctx.translate(memeBox.x + memeBox.w / 2, memeBox.y + memeBox.h / 2);
     ctx.rotate(rad(-3.5));
     const frame = memeBox.w;
-    // Cover-crop to a square so a portrait meme is never squashed.
-    const side = Math.min(memeImg.width, memeImg.height);
-    const sx = (memeImg.width - side) / 2;
-    const sy = (memeImg.height - side) / 2;
+    // Cover-crop to a square so a portrait/photo is never squashed.
+    const side = Math.min(displayCardImg.width, displayCardImg.height);
+    const sx = (displayCardImg.width - side) / 2;
+    const sy = (displayCardImg.height - side) / 2;
     ctx.save();
     roundRectPath(ctx, -frame / 2, -frame / 2, frame, frame, 22);
     ctx.clip();
     ctx.fillStyle = PAPER_2;
     ctx.fillRect(-frame / 2, -frame / 2, frame, frame);
-    ctx.drawImage(memeImg, sx, sy, side, side, -frame / 2, -frame / 2, frame, frame);
+    ctx.drawImage(displayCardImg, sx, sy, side, side, -frame / 2, -frame / 2, frame, frame);
     ctx.restore();
     roundRectPath(ctx, -frame / 2, -frame / 2, frame, frame, 22);
     ctx.lineWidth = 9;
     ctx.strokeStyle = INK;
     ctx.stroke();
+
+    // If custom photo or player photo is featured, add a prominent comic stamp/badge across the bottom
+    if (photoImg && displayCardImg === photoImg) {
+      const tagText = "★ PLAYER PHOTO ★";
+      ctx.font = font("display", 24, 800);
+      const tagW = ctx.measureText(tagText).width + 28;
+      const tagH = 36;
+      const tagX = -tagW / 2;
+      const tagY = frame / 2 - tagH - 12;
+
+      inkedRect(ctx, tagX, tagY, tagW, tagH, 8, POP.yellow, 4);
+      ctx.fillStyle = INK;
+      ctx.textAlign = "center";
+      ctx.fillText(tagText, 0, tagY + 25);
+    }
+
     ctx.restore();
   }
 

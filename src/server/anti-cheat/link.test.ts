@@ -14,6 +14,8 @@ const blank: DeviceSignals = {
   webglHash: null,
   fontHash: null,
   screenHash: null,
+  audioHash: null,
+  localIp: null,
   lastIp: null,
 };
 
@@ -61,8 +63,39 @@ describe("scoreLink", () => {
     expect(verdict.severity).toBe("critical");
   });
 
+  it("flags two browsers on one phone via the private LAN address", () => {
+    // Chrome and Firefox on the same handset: different localStorage ids, so
+    // different device hashes, but the machine's own address is the machine's.
+    // Public + private address together is one device on one network.
+    const verdict = scoreLink(["ip", "localIp"]);
+    expect(verdict.confidence).toBeGreaterThanOrEqual(REVIEW_THRESHOLD);
+    expect(verdict.severity).toBe("warn");
+  });
+
+  it("treats an audio match as corroboration, not proof", () => {
+    // Alone it is below review — audio stacks are shared by every device of a
+    // given model and OS. With the hardware signature behind it (55) it reaches
+    // review and gets flagged, but stays short of the near-certain band, which
+    // is reserved for evidence that survives a deliberate attempt to hide.
+    expect(scoreLink(["audio"]).confidence).toBeLessThan(REVIEW_THRESHOLD);
+    const corroborated = scoreLink(["audio", "hardware"]);
+    expect(corroborated.confidence).toBeGreaterThanOrEqual(REVIEW_THRESHOLD);
+    expect(corroborated.confidence).toBeLessThan(STRONG_THRESHOLD);
+    expect(corroborated.severity).toBe("warn");
+  });
+
   it("never exceeds 100 or double-counts a repeated signal", () => {
-    const all = scoreLink(["fpVisitor", "hardware", "canvas", "webgl", "fonts", "screen", "ip"]);
+    const all = scoreLink([
+      "fpVisitor",
+      "hardware",
+      "canvas",
+      "audio",
+      "localIp",
+      "webgl",
+      "fonts",
+      "screen",
+      "ip",
+    ]);
     expect(all.confidence).toBe(100);
     expect(scoreLink(["canvas", "canvas", "canvas"]).confidence).toBe(
       scoreLink(["canvas"]).confidence,

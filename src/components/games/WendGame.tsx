@@ -223,10 +223,10 @@ export function WendGame(props: WendGameProps) {
   };
 
   return (
-    <div class="space-y-3.5">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <span class="badge font-black text-xs" style={{ "--pop": "var(--pop-blue)" }}>
-          {covered()}/{props.view.openCells} tiles covered
+    <div class="mx-auto flex h-full w-full max-w-sm flex-col justify-between space-y-1.5 text-center">
+      <div class="flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <span class="badge text-xs" style={{ "--pop": "var(--pop-blue)" }}>
+          {covered()}/{props.view.openCells} tiles
         </span>
         <Show
           when={path().length > 0}
@@ -246,10 +246,8 @@ export function WendGame(props: WendGameProps) {
       </div>
 
       <div
-        class="mx-auto w-full select-none relative overflow-hidden"
+        class="relative mx-auto my-auto aspect-square w-full max-w-[26rem] max-h-[min(50dvh,370px)] select-none overflow-hidden"
         style={{
-          "max-width": "min(100%, 26rem)",
-          "aspect-ratio": "1 / 1",
           background: "var(--paper)",
           border: "var(--ink-w-bold) solid var(--ink)",
           "border-radius": "var(--radius)",

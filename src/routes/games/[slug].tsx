@@ -567,7 +567,12 @@ export default function GamePage() {
     if (!g || !user || !landed?.valid) return null;
     return {
       playerName: user.name,
+      avatarUrl: user.avatarUrl,
       college: collegeLabel(user.college, user.collegeOther),
+      branch: user.branch,
+      branchOther: user.branchOther,
+      batch: user.batch,
+      occupation: user.occupation,
       instagram: user.instagramHandle,
       gameTitle: g.title,
       gameSlug: slug(),
@@ -605,20 +610,18 @@ export default function GamePage() {
 
       <Show when={game()}>
         {/*
-          One line, always. While a run is open it carries the title and the
-          clock and nothing else, because everything below it is the board —
-          this page had grown four stacked panels above the game, which on a
-          phone meant scrolling past the whole preamble to reach the thing you
-          came to play. The preamble now lives inside the start panel, and the
-          start panel is gone the moment you are playing.
+          One line, always when not playing. Inside the game, GameBar is placed
+          at the top of the fullscreen in-game viewport.
         */}
-        <GameBar
-          day={game()!.day}
-          title={game()!.title}
-          status={game()!.status}
-          elapsed={attemptToken() ? elapsed() : null}
-          onHowTo={(game()!.howTo?.length ?? 0) > 0 ? openRules : undefined}
-        />
+        <Show when={!attemptToken()}>
+          <GameBar
+            day={game()!.day}
+            title={game()!.title}
+            status={game()!.status}
+            elapsed={null}
+            onHowTo={(game()!.howTo?.length ?? 0) > 0 ? openRules : undefined}
+          />
+        </Show>
 
         {/*
           The warning modal and the benched banner both live in the app shell
@@ -640,7 +643,6 @@ export default function GamePage() {
               class="relative mx-auto w-full max-w-[240px] overflow-hidden rounded-xl bg-[var(--paper-3)]"
               style={{
                 border: "var(--ink-w-bold) solid var(--ink)",
-                "box-shadow": "3px 3px 0 var(--ink)",
               }}
             >
               <img
@@ -704,17 +706,6 @@ export default function GamePage() {
 
         <Show when={playable() && !banState()?.blocksPlay}>
           {/* ------------------------------------------------------ idle */}
-          {/*
-            The whole pre-game screen, in one panel: what it is, how it ranks,
-            what the day's caveat is, and the one button that applies — sign in,
-            finish your profile, or start. Those used to be three separate cards
-            stacked above a fourth, which meant a signed-out visitor scrolled
-            past two boxes before learning what the game even was.
-
-            Suppressed once a run has landed: the result card carries its own
-            "Go again", and two start buttons on one screen is a question rather
-            than an invitation.
-          */}
           <Show when={!attemptToken() && !finished() && !result()}>
             <StartPanel
               slug={slug()}
@@ -737,117 +728,132 @@ export default function GamePage() {
           </Show>
 
           {/* --------------------------------------------------- in play */}
-          {/* No card, no chrome, no preamble. The board is the page. */}
+          {/* Fullscreen 100dvh/100dvw viewport on mobile with no header/footer overflow */}
           <Show when={me()?.onboardingCompleted && attemptToken()}>
-            <div class="space-y-3 text-center">
-              <Show when={isHunt()}>
-                <div class="space-y-3">
-                  <input
-                    value={huntToken()}
-                    onInput={(e) => setHuntToken(e.currentTarget.value)}
-                    placeholder="Paste the final token"
-                    class="input text-center font-mono"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => finish({ token: huntToken() })}
-                    disabled={busy() || !huntToken().trim()}
-                    class="btn-brand px-8 py-3 text-lg"
+            <div
+              class="fixed inset-0 z-40 flex flex-col justify-between overflow-hidden bg-[var(--paper-1)] p-2 sm:p-4 select-none"
+              style={{ "touch-action": "none", "overscroll-behavior": "none" }}
+            >
+              <div class="mx-auto w-full max-w-2xl shrink-0">
+                <GameBar
+                  day={game()!.day}
+                  title={game()!.title}
+                  status={game()!.status}
+                  elapsed={elapsed()}
+                  onHowTo={(game()!.howTo?.length ?? 0) > 0 ? openRules : undefined}
+                />
+              </div>
+
+              <div class="mx-auto my-auto flex flex-1 min-h-0 w-full max-w-2xl flex-col items-center justify-center overflow-hidden py-1 text-center">
+                <Show when={isHunt()}>
+                  <div class="space-y-3 w-full max-w-sm">
+                    <input
+                      value={huntToken()}
+                      onInput={(e) => setHuntToken(e.currentTarget.value)}
+                      placeholder="Paste the final token"
+                      class="input text-center font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => finish({ token: huntToken() })}
+                      disabled={busy() || !huntToken().trim()}
+                      class="btn-brand px-8 py-3 text-lg w-full"
+                    >
+                      {busy() ? "Checking…" : "Submit token"}
+                    </button>
+                  </div>
+                </Show>
+
+                <Show when={isTinder()}>
+                  <Show
+                    when={tinderCards()}
+                    fallback={<p class="font-semibold">Dealing the deck…</p>}
                   >
-                    {busy() ? "Checking…" : "Submit token"}
-                  </button>
-                </div>
-              </Show>
-
-              <Show when={isTinder()}>
-                <Show
-                  when={tinderCards()}
-                  fallback={<p class="font-semibold">Dealing the deck…</p>}
-                >
-                  <TinderGame
-                    slug={slug()}
-                    attemptToken={attemptToken()!}
-                    cards={tinderCards()!}
-                    disabled={busy()}
-                    initialProgress={restored() as TinderProgress | null}
-                    onProgress={persist}
-                    onFinish={(submission) => finish(submission)}
-                  />
-                </Show>
-              </Show>
-
-              <Show when={isJigsaw()}>
-                <Show
-                  when={jigsawView()}
-                  fallback={<p class="font-semibold">Cutting the pookalam…</p>}
-                >
-                  <JigsawGame
-                    view={jigsawView()!}
-                    startedAt={startedAt() ?? Date.now()}
-                    disabled={busy()}
-                    initialProgress={restored() as JigsawProgress | null}
-                    onProgress={persist}
-                    onFinish={(submission) => finish(submission)}
-                  />
-                </Show>
-              </Show>
-
-              <Show when={isWend()}>
-                <Show when={wendView()} fallback={<p class="font-semibold">Shuffling letters…</p>}>
-                  <WendGame
-                    view={wendView()!}
-                    disabled={busy()}
-                    initialFound={(restored() as { found?: WendFound[] } | null)?.found}
-                    onProgress={(found) => persist({ found })}
-                    onTrace={traceWord}
-                    onFinish={(submission) => finish(submission)}
-                  />
-                </Show>
-              </Show>
-
-              <Show when={isVallam()}>
-                <Show when={vallamView()} fallback={<p class="font-semibold">Launching boats…</p>}>
-                  <VallamGame
-                    view={vallamView()!}
-                    disabled={busy()}
-                    initialMoves={(restored() as { moves?: VallamMove[] } | null)?.moves}
-                    onProgress={(moves) => persist({ moves })}
-                    onFinish={(submission) => finish(submission)}
-                  />
-                </Show>
-              </Show>
-
-              <Show when={isJump()}>
-                {/*
-                  `keyed` matters here: this is the one game with retries, and
-                  the canvas holds a whole simulation in local state. Without it
-                  "Go again" would reuse the component and carry the dead run's
-                  physics into the new attempt.
-                */}
-                <Show
-                  when={jumpView()}
-                  keyed
-                  fallback={<p class="font-semibold">Waking Maveli…</p>}
-                >
-                  {(current) => (
-                    <JumpGame
-                      view={current}
+                    <TinderGame
+                      slug={slug()}
+                      attemptToken={attemptToken()!}
+                      cards={tinderCards()!}
                       disabled={busy()}
+                      initialProgress={restored() as TinderProgress | null}
+                      onProgress={persist}
                       onFinish={(submission) => finish(submission)}
                     />
-                  )}
+                  </Show>
                 </Show>
-              </Show>
 
-              <Show
-                when={
-                  !isHunt() && !isTinder() && !isJigsaw() && !isWend() && !isVallam() && !isJump()
-                }
-              >
-                <p class="text-sm text-muted">
-                  This game's board is not wired up yet — it will render here.
-                </p>
-              </Show>
+                <Show when={isJigsaw()}>
+                  <Show
+                    when={jigsawView()}
+                    fallback={<p class="font-semibold">Cutting the pookalam…</p>}
+                  >
+                    <JigsawGame
+                      view={jigsawView()!}
+                      startedAt={startedAt() ?? Date.now()}
+                      disabled={busy()}
+                      initialProgress={restored() as JigsawProgress | null}
+                      onProgress={persist}
+                      onFinish={(submission) => finish(submission)}
+                    />
+                  </Show>
+                </Show>
+
+                <Show when={isWend()}>
+                  <Show
+                    when={wendView()}
+                    fallback={<p class="font-semibold">Shuffling letters…</p>}
+                  >
+                    <WendGame
+                      view={wendView()!}
+                      disabled={busy()}
+                      initialFound={(restored() as { found?: WendFound[] } | null)?.found}
+                      onProgress={(found) => persist({ found })}
+                      onTrace={traceWord}
+                      onFinish={(submission) => finish(submission)}
+                    />
+                  </Show>
+                </Show>
+
+                <Show when={isVallam()}>
+                  <Show
+                    when={vallamView()}
+                    fallback={<p class="font-semibold">Launching boats…</p>}
+                  >
+                    <VallamGame
+                      view={vallamView()!}
+                      disabled={busy()}
+                      initialMoves={(restored() as { moves?: VallamMove[] } | null)?.moves}
+                      onProgress={(moves) => persist({ moves })}
+                      onFinish={(submission) => finish(submission)}
+                    />
+                  </Show>
+                </Show>
+
+                <Show when={isJump()}>
+                  <Show
+                    when={jumpView()}
+                    keyed
+                    fallback={<p class="font-semibold">Waking Maveli…</p>}
+                  >
+                    {(current) => (
+                      <JumpGame
+                        view={current}
+                        disabled={busy()}
+                        onFinish={(submission) => finish(submission)}
+                      />
+                    )}
+                  </Show>
+                </Show>
+
+                <Show
+                  when={
+                    !isHunt() && !isTinder() && !isJigsaw() && !isWend() && !isVallam() && !isJump()
+                  }
+                >
+                  <p class="text-sm text-muted">
+                    This game's board is not wired up yet — it will render here.
+                  </p>
+                </Show>
+              </div>
             </div>
           </Show>
 
@@ -1235,7 +1241,6 @@ function StartPanel(props: {
           class="relative w-full max-w-[260px] overflow-hidden rounded-xl bg-[var(--paper-3)] sm:max-w-[300px]"
           style={{
             border: "var(--ink-w-bold) solid var(--ink)",
-            "box-shadow": "4px 4px 0 var(--ink)",
           }}
         >
           <img

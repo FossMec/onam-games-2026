@@ -3,7 +3,13 @@ import { z } from "zod";
 import { getDb } from "~/server/db/client";
 import { users } from "~/server/db/schema";
 import { getSupabaseAdmin } from "~/server/supabase/client";
-import { branchValues, batchValues, collegeValues, divValues } from "~/lib/profile";
+import {
+  branchValues,
+  batchValues,
+  collegeValues,
+  divValues,
+  occupationValues,
+} from "~/lib/profile";
 import { requireCurrentUser } from "./service";
 
 const optionalTrimmed = (min: number, max: number, pattern?: RegExp) =>
@@ -33,6 +39,7 @@ const freeText = (max: number) =>
 
 export const onboardingSchema = z
   .object({
+    occupation: z.enum(occupationValues).optional(),
     college: z.enum(collegeValues),
     /** Required when `college = 'other'`. */
     collegeOther: freeText(80),
@@ -53,11 +60,11 @@ export const onboardingSchema = z
           message: "Branch is required for MEC",
         });
       }
-      if (!val.batch) {
+      if (!val.batch && val.occupation === "student") {
         ctx.addIssue({
           code: "custom",
           path: ["batch"],
-          message: "Batch is required for MEC",
+          message: "Batch / Graduation year is required",
         });
       }
       // "Other" branch is only meaningful if they say which one.
@@ -72,7 +79,7 @@ export const onboardingSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["collegeOther"],
-        message: "Tell us where you're from — college, school, or work",
+        message: "Tell us where you're from — college, school, or organization",
       });
     }
   });
@@ -83,6 +90,7 @@ export async function completeOnboarding(input: OnboardingInput): Promise<void> 
   const user = await requireCurrentUser();
   const normalized: OnboardingInput = {
     ...input,
+    occupation: input.occupation || "student",
     instagramHandle: input.instagramHandle?.trim().replace(/^@+/, "") || undefined,
     whatsappNumber: input.whatsappNumber?.replace(/[\s\-()]/g, "") || undefined,
   };
@@ -91,6 +99,7 @@ export async function completeOnboarding(input: OnboardingInput): Promise<void> 
   await getDb()
     .update(users)
     .set({
+      occupation: parsed.occupation ?? "student",
       college: parsed.college,
       // Only stored when the matching enum actually says "other", so a stale
       // free-text value can never shadow a real selection.

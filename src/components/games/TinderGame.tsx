@@ -356,15 +356,17 @@ export function TinderGame(props: TinderGameProps) {
   /* ---------------------------------------------------------------- input */
 
   let pointerId: number | null = null;
+  let startX = 0;
   const onPointerDown = (e: PointerEvent) => {
     if (frozen()) return;
     pointerId = e.pointerId;
+    startX = e.clientX;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     setDragging(true);
   };
   const onPointerMove = (e: PointerEvent) => {
     if (!dragging() || e.pointerId !== pointerId) return;
-    setDragX((x) => x + e.movementX);
+    setDragX(e.clientX - startX);
   };
   const onPointerUp = (e: PointerEvent) => {
     if (e.pointerId !== pointerId) return;
@@ -412,19 +414,19 @@ export function TinderGame(props: TinderGameProps) {
   const penaltyShown = () => Math.max(penaltyMs(), confirmedWrong() * PENALTY_MS);
 
   return (
-    <div class="mx-auto w-full max-w-sm space-y-3 text-left">
+    <div class="mx-auto flex h-full w-full max-w-sm flex-col justify-between space-y-2 text-left">
       {/* ------------------------------------------------------- app chrome */}
       <div
-        class="flex items-center justify-between gap-2 rounded px-3 py-2"
+        class="flex shrink-0 items-center justify-between gap-2 rounded px-3 py-1.5"
         style={{ border: "var(--ink-w) solid var(--ink)", background: "var(--paper-3)" }}
       >
         <span
-          class="text-lg leading-none"
+          class="text-base sm:text-lg leading-none"
           style={{ "font-family": "var(--font-stack-comic)", "letter-spacing": "0.02em" }}
         >
           foss<span style={{ color: "var(--pop-red)" }}>·</span>tinder
         </span>
-        <div class="flex items-center gap-1.5">
+        <div class="flex items-center gap-1.5 text-xs sm:text-sm">
           <span class="badge" style={{ "--pop": "var(--pop-blue)" }}>
             Pass {passNumber()}
           </span>
@@ -440,7 +442,7 @@ export function TinderGame(props: TinderGameProps) {
       </div>
 
       {/* ------------------------------------------------------- the stack */}
-      <div class="relative w-full select-none" style={{ "aspect-ratio": "3 / 4" }}>
+      <div class="relative mx-auto my-auto aspect-[3/4] w-full max-w-[340px] flex-1 max-h-[min(54dvh,400px)] select-none">
         <Show
           when={remaining() > 0}
           fallback={
@@ -482,10 +484,10 @@ export function TinderGame(props: TinderGameProps) {
                     "touch-action": "none",
                     "z-index": 10 - depth(),
                   }}
-                  onPointerDown={isTop() ? onPointerDown : undefined}
-                  onPointerMove={isTop() ? onPointerMove : undefined}
-                  onPointerUp={isTop() ? onPointerUp : undefined}
-                  onPointerCancel={isTop() ? onPointerUp : undefined}
+                  onPointerDown={(e) => isTop() && onPointerDown(e)}
+                  onPointerMove={(e) => isTop() && onPointerMove(e)}
+                  onPointerUp={(e) => isTop() && onPointerUp(e)}
+                  onPointerCancel={(e) => isTop() && onPointerUp(e)}
                 >
                   <CardFace card={card()} id={id} />
 

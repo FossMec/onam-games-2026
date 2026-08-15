@@ -1,4 +1,4 @@
-import { For, createMemo, createSignal, onMount } from "solid-js";
+import { For, Show, createMemo, createSignal, onMount } from "solid-js";
 import { edgesForPiece, pieceOutline, type JigsawTab } from "~/lib/jigsaw-shape";
 
 /**
@@ -342,19 +342,11 @@ export function JigsawGame(props: JigsawGameProps) {
     );
   };
 
-  /** Pieces in draw order, with the dragged group last so it sits on top. */
-  const drawOrder = createMemo(() => {
-    const group = activeGroup();
-    return [...pieces()].sort((a, b) => {
-      const ay = a.groupId === group ? 1 : 0;
-      const by = b.groupId === group ? 1 : 0;
-      return ay - by;
-    });
-  });
+  const pieceIds = createMemo(() => Array.from({ length: count() }, (_, i) => i));
 
   return (
-    <div class="space-y-3">
-      <div class="flex flex-wrap items-center justify-between gap-2">
+    <div class="mx-auto flex h-full w-full flex-col justify-between space-y-2 text-center">
+      <div class="flex shrink-0 flex-wrap items-center justify-between gap-2">
         <span class="badge" style={{ "--pop": "var(--pop-blue)" }}>
           {count() - groupCount() + 1}/{count()} joined
         </span>
@@ -365,7 +357,7 @@ export function JigsawGame(props: JigsawGameProps) {
 
       <div
         ref={(el) => (board = el)}
-        class="relative mx-auto w-full"
+        class="relative mx-auto my-auto w-full max-h-[min(60dvh,460px)]"
         style={{
           "max-width": "min(100%, 34rem)",
           "aspect-ratio": `${viewport().w} / ${viewport().h}`,
@@ -378,36 +370,41 @@ export function JigsawGame(props: JigsawGameProps) {
           overflow: "hidden",
         }}
       >
-        <For each={drawOrder()}>
-          {(piece) => (
-            <div
-              role="button"
-              tabindex="0"
-              aria-label={`Piece ${piece.id + 1}`}
-              onPointerDown={(e) => onPointerDown(e, piece)}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
-              onPointerCancel={onPointerUp}
-              style={{
-                position: "absolute",
-                left: `${((piece.x - viewport().ox) / viewport().w) * 100}%`,
-                top: `${((piece.y - viewport().oy) / viewport().h) * 100}%`,
-                width: `${(1 / viewport().w) * 100}%`,
-                height: `${(1 / viewport().h) * 100}%`,
-                cursor: props.disabled || solved() ? "default" : "grab",
-                "z-index": piece.groupId === activeGroup() ? 10 : 1,
-                "touch-action": "none",
-                // Only once nothing can move again, so a drag is never animated.
-                transition: solved() ? "left 320ms ease, top 320ms ease" : "none",
-              }}
-            >
-              <PieceArt id={piece.id} />
-            </div>
-          )}
+        <For each={pieceIds()}>
+          {(id) => {
+            const piece = () => pieces().find((p) => p.id === id);
+            return (
+              <Show when={piece()}>
+                <div
+                  role="button"
+                  tabindex="0"
+                  aria-label={`Piece ${id + 1}`}
+                  onPointerDown={(e) => onPointerDown(e, piece()!)}
+                  onPointerMove={onPointerMove}
+                  onPointerUp={onPointerUp}
+                  onPointerCancel={onPointerUp}
+                  style={{
+                    position: "absolute",
+                    left: `${((piece()!.x - viewport().ox) / viewport().w) * 100}%`,
+                    top: `${((piece()!.y - viewport().oy) / viewport().h) * 100}%`,
+                    width: `${(1 / viewport().w) * 100}%`,
+                    height: `${(1 / viewport().h) * 100}%`,
+                    cursor: props.disabled || solved() ? "default" : "grab",
+                    "z-index": piece()!.groupId === activeGroup() ? 20 : 1,
+                    "touch-action": "none",
+                    // Only once nothing can move again, so a drag is never animated.
+                    transition: solved() ? "left 320ms ease, top 320ms ease" : "none",
+                  }}
+                >
+                  <PieceArt id={id} />
+                </div>
+              </Show>
+            );
+          }}
         </For>
       </div>
 
-      <p class="comment">
+      <p class="comment shrink-0 text-xs sm:text-sm">
         drag a piece onto its neighbour — when they fit they lock together and move as one.
       </p>
     </div>

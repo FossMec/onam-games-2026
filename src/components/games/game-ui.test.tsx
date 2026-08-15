@@ -211,7 +211,7 @@ describe("win modal", () => {
 describe("brand marks", () => {
   it("renders the real logo when there is one", () => {
     const html = renderToString(() => <ProjectMark id="firefox" name="Firefox" />);
-    expect(html).toContain(BRAND_ICONS.firefox.hex);
+    expect(html).toContain('href="/images/marks/firefox.svg"');
     expect(html).toContain('aria-label="Firefox"');
   });
 

@@ -40,7 +40,10 @@ export default function CodeAPookalam() {
       {/* ------------------------------------------------------------- HERO */}
       <section
         class="relative overflow-hidden rounded-lg px-4 sm:px-6 py-6 sm:py-8 text-center space-y-4"
-        style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--paper-2)" }}
+        style={{
+          border: "var(--ink-w-bold) solid var(--ink)",
+          background: "var(--paper-2)",
+        }}
       >
         <Confetti seed="pookalam-hero" count={8} animate />
         <SpriteScatter
@@ -213,7 +216,9 @@ export default function CodeAPookalam() {
                     <p class="font-black text-xs text-ink flex items-center gap-1.5">
                       <span
                         class="w-2 h-2 rounded-full"
-                        style={{ background: `var(--${POPS[index() % POPS.length]})` }}
+                        style={{
+                          background: `var(--${POPS[index() % POPS.length]})`,
+                        }}
                       />
                       <span>{criterion.name}</span>
                     </p>
@@ -237,24 +242,30 @@ export default function CodeAPookalam() {
       </Section>
 
       {/* ---------------------------------------------------- BOTTOM CTA */}
-      <section class="card pop-yellow text-center space-y-4 p-6 sm:p-8 relative overflow-hidden">
-        <Confetti seed="pookalam-footer" count={8} animate />
-        <div class="relative z-10 space-y-3 max-w-lg mx-auto flex flex-col items-center">
+      <section class="card pop-yellow p-6 sm:p-8 relative overflow-hidden">
+        <Confetti seed="pookalam-footer" count={8} animate opacity={0.5} />
+        <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6 max-w-3xl mx-auto">
+          {/* Deploy Meme on the Left on Desktop */}
           <img
             src="/images/memes/meme-deploy.webp"
             alt="Deploy Flower Carpet Meme"
-            class="w-28 sm:w-36 h-auto object-contain select-none mx-auto"
+            class="w-38 sm:w-40 md:w-44 h-auto object-contain select-none shrink-0 rounded-xl border-2 border-[var(--ink)] block"
           />
-          <h2 class="text-2xl sm:text-3xl font-black">Ready to deploy your flower carpet?</h2>
-          <p class="comment">
-            Submissions are open now through Day 6. Submit your GitHub repository and render
-            snapshot to enter the running!
-          </p>
-          <div class="pt-2 flex justify-center">
-            <a href="/code-a-pookalam/submit" class="btn-brand">
-              <Send size={18} />
-              <span>Submit Your Pookalam Entry</span>
-            </a>
+
+          <div class="space-y-3 text-center md:text-left flex-1">
+            <h2 class="text-2xl sm:text-3xl font-black text-[var(--ink)]">
+              Ready to deploy your flower carpet?
+            </h2>
+            <p class="comment  sm:text-lg font-bold">
+              Submissions are open now through Day 6. Submit your GitHub repository and render
+              snapshot to enter the running!
+            </p>
+            <div class="pt-1 flex justify-center md:justify-start">
+              <a href="/code-a-pookalam/submit" class="btn-brand inline-flex items-center gap-2">
+                <Send size={18} />
+                <span>Submit Your Pookalam Entry</span>
+              </a>
+            </div>
           </div>
         </div>
       </section>

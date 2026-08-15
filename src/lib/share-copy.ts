@@ -140,7 +140,6 @@ export const SHARE_MEMES = [
   "/images/memes/meme-celebrate.webp",
   "/images/memes/meme-deploy.webp",
   "/images/memes/meme-footer.webp",
-  "/images/memes/meme-leaderboard.webp",
 ] as const;
 
 /**

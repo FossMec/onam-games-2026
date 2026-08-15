@@ -37,6 +37,15 @@ export function Footer() {
         maxSize={42}
       />
 
+      {/* Desktop / Large Screen: Floating Comic Meme Sticker in Side Area */}
+      <div class="hidden lg:block absolute right-6 xl:right-16 top-1/2 -translate-y-1/2 w-44 xl:w-52 pointer-events-none select-none z-10">
+        <img
+          src="/images/memes/meme-footer.webp"
+          alt="FOSS Onam Festival Meme"
+          class="w-full h-auto object-contain rounded-xl border-2 border-[var(--ink)] block"
+        />
+      </div>
+
       <div class="container art-over space-y-4 py-8 text-center max-w-2xl mx-auto">
         <div class="flex items-center justify-center gap-3">
           <SpriteIcon name="tux-king" size={34} animate="wobble" interactive />
@@ -86,11 +95,12 @@ export function Footer() {
           </p>
         </div>
 
-        <div class="flex justify-center py-1">
+        {/* Mobile: Centered Meme */}
+        <div class="flex justify-center py-2 lg:hidden">
           <img
             src="/images/memes/meme-footer.webp"
             alt="FOSS Onam Festival Meme"
-            class="w-28 sm:w-36 h-auto object-contain select-none opacity-90 hover:opacity-100 transition-opacity rounded-md"
+            class="max-w-xs sm:max-w-sm w-full h-auto object-contain select-none rounded-xl border-2 border-[var(--ink)] block"
           />
         </div>
 

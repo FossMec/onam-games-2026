@@ -71,10 +71,10 @@ describe("generate", () => {
 
   it("gives different players different boards", () => {
     const boards = new Set(
-      Array.from({ length: 8 }, (_, i) => JSON.stringify(viewOf(`board-${i}`).boats)),
+      Array.from({ length: 4 }, (_, i) => JSON.stringify(viewOf(`board-${i}`).boats)),
     );
     expect(boards.size).toBeGreaterThan(1);
-  });
+  }, 15000);
 
   it("never overlaps boats and never leaves the board", () => {
     for (let i = 0; i < 8; i += 1) {

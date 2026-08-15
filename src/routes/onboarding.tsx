@@ -1,6 +1,6 @@
 import { Title } from "@solidjs/meta";
 import { createAsync, useNavigate } from "@solidjs/router";
-import { Camera, CheckCircle2, User } from "lucide-solid";
+import { Briefcase, Camera, CheckCircle2, ExternalLink, GraduationCap, User } from "lucide-solid";
 import { For, Show, createEffect, createSignal } from "solid-js";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { fileToWebpDataUrl } from "~/lib/avatar";
@@ -12,6 +12,13 @@ import {
   collegeOptionLabel,
   collegeValues,
   divValues,
+  occupationLabel,
+  occupationValues,
+  type Batch,
+  type Branch,
+  type College,
+  type Div,
+  type Occupation,
 } from "~/lib/profile";
 import { getMe, submitOnboarding, uploadAvatarAction } from "~/server/auth/actions";
 
@@ -19,11 +26,12 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const me = createAsync(() => getMe());
 
-  const [college, setCollege] = createSignal("");
+  const [occupation, setOccupation] = createSignal<Occupation>("student");
+  const [college, setCollege] = createSignal<string>("");
   const [collegeOther, setCollegeOther] = createSignal("");
-  const [branch, setBranch] = createSignal("");
+  const [branch, setBranch] = createSignal<string>("");
   const [branchOther, setBranchOther] = createSignal("");
-  const [batch, setBatch] = createSignal("");
+  const [batch, setBatch] = createSignal<string>("");
   const [div, setDiv] = createSignal("none");
   const [instagram, setInstagram] = createSignal("");
   const [whatsapp, setWhatsapp] = createSignal("");
@@ -38,9 +46,8 @@ export default function Onboarding() {
   createEffect(() => {
     const user = me();
     if (user && !loaded()) {
-      if (user.college) {
-        setCollege(user.college);
-      }
+      if (user.occupation) setOccupation((user.occupation as Occupation) || "student");
+      if (user.college) setCollege(user.college);
       if (user.collegeOther) setCollegeOther(user.collegeOther);
       if (user.branch) setBranch(user.branch);
       if (user.branchOther) setBranchOther(user.branchOther);
@@ -58,7 +65,6 @@ export default function Onboarding() {
     try {
       const dataUrl = await fileToWebpDataUrl(file);
       setAvatar(dataUrl);
-      // auto-upload immediately
       setUploading(true);
       setMessage("");
       try {
@@ -74,6 +80,12 @@ export default function Onboarding() {
     }
   };
 
+  const cleanInstagram = () =>
+    instagram()
+      .trim()
+      .replace(/^@+/, "")
+      .replace(/[^a-zA-Z0-9._]/g, "");
+
   const onSubmit = async (e: SubmitEvent) => {
     e.preventDefault();
     if (submitting()) return;
@@ -82,22 +94,14 @@ export default function Onboarding() {
     setMessage("");
     try {
       const result = await submitOnboarding({
-        college: (college() || undefined) as "mec" | "other",
-        branch: (branch() || undefined) as
-          | "cs"
-          | "cu"
-          | "ee"
-          | "eb"
-          | "ec"
-          | "ev"
-          | "me"
-          | "other"
-          | undefined,
+        occupation: occupation(),
+        college: (college() || undefined) as College,
+        branch: (branch() || undefined) as Branch | undefined,
         collegeOther: collegeOther().trim() || undefined,
         branchOther: branchOther().trim() || undefined,
-        batch: (batch() || undefined) as "27" | "28" | "29" | "30" | "<=26" | undefined,
-        div: (div() || undefined) as "none" | "a" | "b" | "c" | undefined,
-        instagramHandle: instagram().trim().replace(/^@+/, "") || undefined,
+        batch: (batch() || undefined) as Batch | undefined,
+        div: (div() || undefined) as Div | undefined,
+        instagramHandle: cleanInstagram() || undefined,
         whatsappNumber: whatsapp().replace(/[\s\-()]/g, "") || undefined,
       });
       if (result.ok) {
@@ -131,13 +135,13 @@ export default function Onboarding() {
           </div>
           <p class="font-semibold">
             {me()?.onboardingCompleted
-              ? "Update your college, batch, branch, or contact info."
-              : "Tell us who you are so the leaderboard knows who to embarrass."}
+              ? "Update your avatar, branch, batch, or social profiles."
+              : "Tell us who you are so the leaderboard knows who to celebrate."}
           </p>
           <p class="comment">
             {me()?.onboardingCompleted
-              ? "Changes reflect immediately across leaderboards and games."
-              : "two required fields. the rest is so we can tag you when you win."}
+              ? "Changes reflect immediately across leaderboards, game cards, and sharing."
+              : "Quick setup so we can tag you when you win."}
           </p>
         </section>
 
@@ -148,11 +152,11 @@ export default function Onboarding() {
           </div>
         </Show>
 
-        <form onSubmit={onSubmit} class="card space-y-4">
+        <form onSubmit={onSubmit} class="card space-y-5">
           {/* Avatar upload */}
           <fieldset class="space-y-3 border-0 p-0">
             <legend class="font-extrabold text-sm">
-              Avatar <span style={{ color: "var(--ink-soft)" }}>(optional)</span>
+              Profile Avatar <span style={{ color: "var(--ink-soft)" }}>(optional)</span>
             </legend>
             <div class="flex items-center gap-5">
               <label
@@ -222,10 +226,51 @@ export default function Onboarding() {
             />
           </fieldset>
 
-          {/* College Selection */}
+          {/* 1. Occupation Selector */}
+          <div>
+            <label class="font-extrabold text-sm block mb-1.5">I am a *</label>
+            <div class="grid grid-cols-3 gap-2">
+              <For each={occupationValues}>
+                {(occ) => (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOccupation(occ);
+                      if (occ !== "student" && !batch()) {
+                        setBatch("na");
+                      }
+                    }}
+                    class={`py-2 px-3 rounded-lg border-2 font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      occupation() === occ
+                        ? "bg-[var(--ink)] text-white border-[var(--ink)] shadow-sm"
+                        : "bg-[var(--paper-2)] text-[var(--ink)] border-[var(--ink-soft)] hover:border-[var(--ink)]"
+                    }`}
+                  >
+                    <Show when={occ === "student"}>
+                      <GraduationCap size={16} />
+                    </Show>
+                    <Show when={occ === "working_professional"}>
+                      <Briefcase size={16} />
+                    </Show>
+                    <Show when={occ === "other"}>
+                      <User size={16} />
+                    </Show>
+                    <span>{occupationLabel(occ)}</span>
+                  </button>
+                )}
+              </For>
+            </div>
+            <Show when={fieldError("occupation")}>
+              <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
+                {fieldError("occupation")}
+              </p>
+            </Show>
+          </div>
+
+          {/* 2. College Selection */}
           <div>
             <label for="college" class="font-extrabold text-sm block mb-1">
-              College *
+              College / Institution *
             </label>
             <select
               id="college"
@@ -234,7 +279,7 @@ export default function Onboarding() {
               class="input font-bold"
             >
               <option value="" disabled>
-                Select your college
+                Select your college / organization
               </option>
               <For each={collegeValues}>
                 {(value) => <option value={value}>{collegeOptionLabel(value)}</option>}
@@ -257,11 +302,13 @@ export default function Onboarding() {
                 id="collegeOther"
                 value={collegeOther()}
                 onInput={(e) => setCollegeOther(e.currentTarget.value)}
-                placeholder="College, school, or 'Working professional'"
+                placeholder="College, company, or school name"
                 maxLength={80}
                 class="input"
               />
-              <p class="comment mt-1">This shows next to your name on the leaderboard.</p>
+              <p class="comment mt-1">
+                This shows next to your name on the leaderboard and share cards.
+              </p>
               <Show when={fieldError("collegeOther")}>
                 <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
                   {fieldError("collegeOther")}
@@ -270,119 +317,166 @@ export default function Onboarding() {
             </div>
           </Show>
 
-          {/* Branch Selection (Required for MEC, Optional for Other) */}
-          <Show when={college() !== ""}>
+          {/* 3. Branch Selection */}
+          <div>
+            <label for="branch" class="font-extrabold text-sm block mb-1">
+              Branch {college() === "mec" ? "*" : "(optional)"}
+            </label>
+            <select
+              id="branch"
+              value={branch()}
+              onChange={(e) => setBranch(e.currentTarget.value)}
+              class="input font-bold"
+            >
+              <option value="">
+                {college() === "mec" ? "Select your branch" : "Select branch (optional)"}
+              </option>
+              <For each={branchValues}>
+                {(value) => <option value={value}>{branchLabel(value)}</option>}
+              </For>
+            </select>
+            <Show when={fieldError("branch")}>
+              <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
+                {fieldError("branch")}
+              </p>
+            </Show>
+          </div>
+
+          {/* Custom Branch text if 'other' branch is picked */}
+          <Show when={branch() === "other"}>
             <div>
-              <label for="branch" class="font-extrabold text-sm block mb-1">
-                Branch {college() === "mec" ? "*" : "(optional)"}
+              <label for="branchOther" class="font-extrabold text-sm block mb-1">
+                Which branch? *
               </label>
-              <select
-                id="branch"
-                value={branch()}
-                onChange={(e) => setBranch(e.currentTarget.value)}
-                class="input font-bold"
-              >
-                <option value="">
-                  {college() === "mec" ? "Select branch" : "Select branch (optional)"}
-                </option>
-                <For each={branchValues}>
-                  {(value) => <option value={value}>{branchLabel(value)}</option>}
-                </For>
-              </select>
-              <Show when={fieldError("branch")}>
+              <input
+                id="branchOther"
+                value={branchOther()}
+                onInput={(e) => setBranchOther(e.currentTarget.value)}
+                placeholder="e.g. Architecture, Biotechnology, MCA"
+                maxLength={60}
+                class="input"
+              />
+              <Show when={fieldError("branchOther")}>
                 <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
-                  {fieldError("branch")}
+                  {fieldError("branchOther")}
                 </p>
               </Show>
             </div>
-
-            {/* Custom Branch text if 'other' branch is picked */}
-            <Show when={branch() === "other"}>
-              <div>
-                <label for="branchOther" class="font-extrabold text-sm block mb-1">
-                  Which branch? *
-                </label>
-                <input
-                  id="branchOther"
-                  value={branchOther()}
-                  onInput={(e) => setBranchOther(e.currentTarget.value)}
-                  placeholder="e.g. Architecture, Biotechnology, MCA"
-                  maxLength={60}
-                  class="input"
-                />
-                <Show when={fieldError("branchOther")}>
-                  <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
-                    {fieldError("branchOther")}
-                  </p>
-                </Show>
-              </div>
-            </Show>
-
-            {/* Batch / Graduation Year (Required for MEC, Optional for Other) */}
-            <div>
-              <label for="batch" class="font-extrabold text-sm block mb-1">
-                Batch / Graduation Year {college() === "mec" ? "*" : "(optional)"}
-              </label>
-              <select
-                id="batch"
-                value={batch()}
-                onChange={(e) => setBatch(e.currentTarget.value)}
-                class="input font-bold"
-              >
-                <option value="">
-                  {college() === "mec" ? "Select batch" : "Select batch / year (optional)"}
-                </option>
-                <For each={batchValues}>
-                  {(value) => <option value={value}>{batchLabel(value)}</option>}
-                </For>
-              </select>
-              <Show when={fieldError("batch")}>
-                <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
-                  {fieldError("batch")}
-                </p>
-              </Show>
-            </div>
-
-            {/* Division (Shown for MEC or if filled) */}
-            <Show when={college() === "mec" || div() !== "none"}>
-              <div>
-                <label for="div" class="font-extrabold text-sm block mb-1">
-                  Division
-                </label>
-                <select
-                  id="div"
-                  value={div()}
-                  onChange={(e) => setDiv(e.currentTarget.value)}
-                  class="input font-bold"
-                >
-                  <For each={divValues}>
-                    {(value) => (
-                      <option value={value}>
-                        {value === "none"
-                          ? "None / Not Applicable"
-                          : `Division ${value.toUpperCase()}`}
-                      </option>
-                    )}
-                  </For>
-                </select>
-              </div>
-            </Show>
           </Show>
 
-          {/* Socials */}
+          {/* 4. Batch / Graduation Year */}
           <div>
+            <label for="batch" class="font-extrabold text-sm block mb-1">
+              Batch / Graduation Year{" "}
+              {occupation() === "student" && college() === "mec" ? "*" : "(optional)"}
+            </label>
+            <select
+              id="batch"
+              value={batch()}
+              onChange={(e) => setBatch(e.currentTarget.value)}
+              class="input font-bold"
+            >
+              <option value="">
+                {occupation() === "student"
+                  ? "Select graduation year / batch"
+                  : "Select batch (or Not Applicable)"}
+              </option>
+              <For each={batchValues}>
+                {(value) => <option value={value}>{batchLabel(value)}</option>}
+              </For>
+            </select>
+            <Show when={fieldError("batch")}>
+              <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
+                {fieldError("batch")}
+              </p>
+            </Show>
+          </div>
+
+          {/* Division (Shown for MEC) */}
+          <Show when={college() === "mec" || div() !== "none"}>
+            <div>
+              <label for="div" class="font-extrabold text-sm block mb-1">
+                Division
+              </label>
+              <select
+                id="div"
+                value={div()}
+                onChange={(e) => setDiv(e.currentTarget.value)}
+                class="input font-bold"
+              >
+                <For each={divValues}>
+                  {(value) => (
+                    <option value={value}>
+                      {value === "none"
+                        ? "None / Not Applicable"
+                        : `Division ${value.toUpperCase()}`}
+                    </option>
+                  )}
+                </For>
+              </select>
+            </div>
+          </Show>
+
+          {/* 5. Instagram with Live Link Preview */}
+          <div class="space-y-1.5">
             <label for="instagram" class="font-extrabold text-sm block mb-1">
               Instagram handle{" "}
-              <span style={{ color: "var(--ink-soft)" }}>(optional, for winner tags)</span>
+              <span style={{ color: "var(--ink-soft)" }}>
+                (optional, for winner tags & share cards)
+              </span>
             </label>
-            <input
-              id="instagram"
-              type="text"
-              value={instagram()}
-              onInput={(e) => setInstagram(e.currentTarget.value)}
-              placeholder="@username"
-              class="input"
-            />
+            <div class="relative flex items-center">
+              <span class="absolute left-3 text-sm font-black text-[var(--ink-soft)]">@</span>
+              <input
+                id="instagram"
+                type="text"
+                value={instagram()}
+                onInput={(e) => setInstagram(e.currentTarget.value)}
+                placeholder="username"
+                class="input pl-8"
+              />
+            </div>
+
+            {/* Live Instagram Link Preview */}
+            <Show when={cleanInstagram()}>
+              <div class="mt-2 flex items-center justify-between rounded-lg p-2.5 bg-[var(--paper-2)] border-2 border-[var(--ink)]">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="p-1.5 rounded-md bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 text-white shrink-0">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="16"
+                      height="16"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      fill="none"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+                    </svg>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="font-black text-xs truncate">@{cleanInstagram()}</p>
+                    <p class="text-[10px] font-semibold text-[var(--ink-soft)] truncate">
+                      instagram.com/{cleanInstagram()}
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href={`https://instagram.com/${cleanInstagram()}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="btn-ghost py-1 px-2 text-xs font-black flex items-center gap-1 shrink-0"
+                  title="Open Instagram profile in new tab"
+                >
+                  <span>Preview</span>
+                  <ExternalLink size={12} />
+                </a>
+              </div>
+            </Show>
+
             <Show when={fieldError("instagramHandle")}>
               <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
                 {fieldError("instagramHandle")}
@@ -390,6 +484,7 @@ export default function Onboarding() {
             </Show>
           </div>
 
+          {/* WhatsApp */}
           <div>
             <label for="whatsapp" class="font-extrabold text-sm block mb-1">
               WhatsApp number <span style={{ color: "var(--ink-soft)" }}>(optional)</span>

@@ -1,9 +1,15 @@
 import { createHmac } from "node:crypto";
 import type { FingerprintSignals } from "~/lib/fingerprint";
 
-function hmac(value: string, salt = ""): string {
+function hmac(value: unknown, salt = ""): string {
   const key = process.env.DEVICE_PEPPER ?? process.env.SESSION_SECRET ?? "dev-pepper";
-  return createHmac("sha256", `${key}${salt}`).update(value).digest("hex");
+  const str =
+    typeof value === "string"
+      ? value
+      : typeof value === "number" || typeof value === "boolean"
+        ? String(value)
+        : JSON.stringify(value ?? "");
+  return createHmac("sha256", `${key}${salt}`).update(str).digest("hex");
 }
 
 export interface DeviceIdentity {
@@ -13,6 +19,14 @@ export interface DeviceIdentity {
   webglHash: string | null;
   fontHash: string | null;
   screenHash: string | null;
+  /** Audio-stack fingerprint. Hardware and OS influenced, survives a new profile. */
+  audioHash: string | null;
+  /**
+   * The WebRTC-leaked LAN address, stored raw rather than hashed because it is
+   * only useful when you can read it — "both accounts came from 192.168.1.7"
+   * is an answer; a hash of it is a yes/no.
+   */
+  localIp: string | null;
   isVm: boolean;
 }
 
@@ -36,10 +50,14 @@ export function computeDeviceIdentity(signals: FingerprintSignals): DeviceIdenti
   return {
     deviceHash: hmac(core),
     hardwareHash: computeHardwareHash(signals),
-    canvasHash: signals.canvas ? hmac(signals.canvas, ":canvas") : null,
-    webglHash: signals.webgl ? hmac(signals.webgl, ":webgl") : null,
-    fontHash: signals.fonts ? hmac(signals.fonts, ":fonts") : null,
-    screenHash: signals.screen ? hmac(signals.screen, ":screen") : null,
+    canvasHash: signals.canvas != null ? hmac(signals.canvas, ":canvas") : null,
+    webglHash: signals.webgl != null ? hmac(signals.webgl, ":webgl") : null,
+    fontHash: signals.fonts != null ? hmac(signals.fonts, ":fonts") : null,
+    screenHash: signals.screen != null ? hmac(signals.screen, ":screen") : null,
+    audioHash: signals.audio != null ? hmac(signals.audio, ":audio") : null,
+    // mDNS-obfuscated candidates are noise, not addresses — a `.local` name is
+    // regenerated per browser and would match nothing.
+    localIp: signals.localIp && !signals.mdnsProtected ? signals.localIp : null,
     isVm: isVmWebgl(signals.webgl),
   };
 }

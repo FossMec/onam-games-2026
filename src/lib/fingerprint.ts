@@ -181,10 +181,25 @@ async function collectWithFingerprintJS(
       visitorId,
       signals: {
         ...base,
-        canvas: val<{ fingerprint: string }>(c, "canvas")?.fingerprint ?? null,
-        webgl: val<string>(c, "webglVendorAndRenderer") ?? null,
-        audio: val<string>(c, "audio") ?? null,
-        fonts: Array.isArray(fontsVal) ? fontsVal.join(",") : (fontsVal ?? null),
+        canvas:
+          val<{ fingerprint: string }>(c, "canvas")?.fingerprint ??
+          (typeof c.canvas?.value === "string" ? c.canvas.value : null),
+        webgl:
+          val<string>(c, "webglVendorAndRenderer") ??
+          (typeof c.webglVendorAndRenderer?.value === "string"
+            ? c.webglVendorAndRenderer.value
+            : null),
+        audio:
+          typeof c.audio?.value === "string"
+            ? c.audio.value
+            : typeof c.audio?.value === "number"
+              ? String(c.audio.value)
+              : (val<string>(c, "audio") ?? null),
+        fonts: Array.isArray(fontsVal)
+          ? fontsVal.join(",")
+          : typeof fontsVal === "string"
+            ? fontsVal
+            : null,
         plugins: Array.isArray(pluginsVal) ? pluginsVal.map((p) => p.name).join(",") : "",
         screen,
         platform: val<string>(c, "platform") ?? base.platform,

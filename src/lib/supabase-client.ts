@@ -10,7 +10,12 @@ export function getBrowserSupabase(): SupabaseClient {
       throw new Error("VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are not set");
     }
     client = createClient(url, key, {
-      auth: { flowType: "pkce" },
+      auth: {
+        flowType: "implicit",
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+      },
     });
   }
   return client;

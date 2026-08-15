@@ -11,6 +11,7 @@ import {
   GraduationCap,
   Lock,
   RefreshCw,
+  Share2,
   Trophy,
 } from "lucide-solid";
 import {
@@ -111,9 +112,6 @@ export default function Leaderboard() {
     return 1;
   };
 
-  // All 7 festival days are always navigable
-  const ALL_DAYS = [1, 2, 3, 4, 5, 6, 7];
-
   // Auto-select the current day's game when loaded
   createEffect(() => {
     const day = currentActiveDay();
@@ -156,7 +154,12 @@ export default function Leaderboard() {
     if (!g || !entry || !user) return null;
     return {
       playerName: user.name,
+      avatarUrl: user.avatarUrl,
       college: collegeLabel(user.college, user.collegeOther),
+      branch: user.branch,
+      branchOther: user.branchOther,
+      batch: user.batch,
+      occupation: user.occupation,
       instagram: user.instagramHandle,
       gameTitle: g.title,
       gameSlug: g.slug,
@@ -228,7 +231,7 @@ export default function Leaderboard() {
 
   return (
     <main
-      class="container space-y-4 py-6 max-w-4xl"
+      class="container relative space-y-4 py-6 max-w-4xl mx-auto"
       style={{
         opacity: pending() ? 0.65 : 1,
         transition: "opacity 140ms ease-out",
@@ -236,181 +239,162 @@ export default function Leaderboard() {
     >
       <Title>Daily Leaderboard — FOSS Onam Games</Title>
 
-      {/* Header Banner */}
-      <div
-        class="relative overflow-hidden rounded-lg px-4 py-5"
-        style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--paper-2)" }}
-      >
-        <Confetti seed="leaderboard-hero" count={8} animate />
-        <div class="art-over flex items-center justify-between gap-4">
-          <div>
+      {/* Desktop Inked Sidebar: Festival Meme (Failure is not an Option<T>) + Share Card Widget on the right margin */}
+      <aside class="hidden 2xl:flex flex-col gap-3 absolute left-[calc(100%+2rem)] top-6 w-68 pointer-events-auto">
+        <div>
+          <img
+            src="/images/memes/failure-is-not-an-option.webp"
+            alt="Leaderboard Festival Meme"
+            class="w-full h-auto object-contain rounded-xl border-2 border-[var(--ink)] block"
+          />
+          <p class="text-xs font-black text-center mt-2 text-[var(--ink)] uppercase tracking-wider">
+            ₹200 Daily Prize · FOSS Onam
+          </p>
+        </div>
+
+        <Show when={shareData()}>
+          <div class="card pop-pink p-3.5 space-y-2 text-center">
+            <Show when={daily()?.myEntry}>
+              <div class="flex items-center justify-between text-xs font-black text-[var(--ink)] pb-1.5 border-b border-[var(--ink)]/20">
+                <span>Rank #{daily()!.myEntry!.rank}</span>
+                <span class="font-mono">{formatMetric(daily()!.myEntry!)}</span>
+              </div>
+            </Show>
+            <p class="text-xs font-extrabold text-[var(--ink)] leading-snug">
+              Can you beat me? Put it on their timeline.
+            </p>
+            <button
+              type="button"
+              class="btn-brand text-xs px-3 py-2 w-full font-bold cursor-pointer inline-flex items-center justify-center gap-1.5"
+              onClick={() => setSharing(true)}
+            >
+              <Share2 size={14} strokeWidth={2.5} />
+              <span>Share my card</span>
+            </button>
+          </div>
+        </Show>
+      </aside>
+
+      {/* UNIFIED Master Header Card: Title, Stepper, Refresh & Tester Toggle in ONE clean card */}
+      <div class="relative overflow-hidden rounded-xl p-3.5 sm:p-5 space-y-3.5 bg-[var(--paper-2)] border-2 border-[var(--ink)]">
+        <Confetti seed="leaderboard-hero" count={4} class="opacity-15 pointer-events-none" />
+
+        {/* Top Row: Title + Refresh */}
+        <div class="relative z-10 flex items-start sm:items-center justify-between gap-2.5">
+          <div class="min-w-0 flex-1 space-y-0.5">
             <div class="flex items-center gap-2">
-              <SpriteIcon name="tux-king" size={30} animate="float" interactive />
-              <h1 class="text-2xl sm:text-3xl font-extrabold m-0">Daily Leaderboard</h1>
+              <SpriteIcon name="tux-king" size={26} animate="float" interactive />
+              <h1 class="text-xl sm:text-2xl md:text-3xl font-extrabold m-0 text-[var(--ink)] leading-tight">
+                Daily Leaderboard
+              </h1>
             </div>
-            <p class="text-xs sm:text-sm font-semibold mt-0.5" style={{ color: "var(--ink-soft)" }}>
+            <p class="text-xs sm:text-sm font-semibold text-[var(--ink-soft)] leading-snug">
               Daily mini-game results & rankings · Top 1 wins ₹200 daily prize
             </p>
           </div>
 
-          <div class="flex items-center gap-3 shrink-0">
-            {/* Desktop right-side meme sticker */}
-            <img
-              src="/images/memes/meme-leaderboard.webp"
-              alt="Leaderboard Festival Meme"
-              class="hidden sm:block w-20 md:w-24 h-auto object-contain select-none opacity-90 hover:opacity-100 transition-opacity rounded-md"
-            />
-
-            <button
-              type="button"
-              onClick={refresh}
-              disabled={cooldownLeft() > 0}
-              class="btn-ghost text-xs px-3 py-1.5 inline-flex items-center gap-1.5 cursor-pointer self-start sm:self-center"
-            >
-              <RefreshCw size={13} strokeWidth={2.5} class={pending() ? "animate-spin" : ""} />
-              <span>
-                {cooldownLeft() > 0 ? `Wait ${Math.ceil(cooldownLeft() / 1000)}s` : "Refresh"}
-              </span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ---------------------------------------------------- Day Selection Bar with Left/Right Arrows */}
-      <div class="card card-plain p-2.5 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[var(--paper-2)]">
-        <div class="flex items-center gap-2">
-          <span class="text-xs font-black uppercase tracking-wider text-[var(--ink-soft)]">
-            Select Day:
-          </span>
-
-          <div class="flex items-center gap-1.5 flex-wrap justify-center">
-            {/* Left Arrow Button */}
-            <button
-              type="button"
-              onClick={prevDay}
-              class="w-7 h-7 rounded grid place-items-center bg-[var(--paper)] border-2 border-[var(--ink)] hover:bg-[var(--pop-yellow)] cursor-pointer transition-all shrink-0 active:scale-95 shadow-xs"
-              aria-label="Previous Day"
-              title="Previous Day"
-            >
-              <ChevronLeft size={16} strokeWidth={3} />
-            </button>
-
-            {/* Day 1 through Day 7 Buttons */}
-            <For each={ALL_DAYS}>
-              {(d) => {
-                const isSel = () => d === selectedDay();
-                return (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      startTransition(() => {
-                        setPage(1);
-                        setSelectedDay(d);
-                      })
-                    }
-                    class={`w-8 h-8 rounded font-black text-xs grid place-items-center transition-all cursor-pointer ${
-                      isSel()
-                        ? "bg-[var(--pop-teal)] text-[var(--ink)] border-2 border-[var(--ink)] scale-105 shadow-xs"
-                        : "bg-[var(--paper)] border border-[var(--ink-soft)]/50 opacity-80 hover:opacity-100 hover:bg-[var(--paper-3)]"
-                    }`}
-                    title={`Day ${d}`}
-                  >
-                    Day {d}
-                  </button>
-                );
-              }}
-            </For>
-
-            {/* Right Arrow Button */}
-            <button
-              type="button"
-              onClick={nextDay}
-              class="w-7 h-7 rounded grid place-items-center bg-[var(--paper)] border-2 border-[var(--ink)] hover:bg-[var(--pop-yellow)] cursor-pointer transition-all shrink-0 active:scale-95 shadow-xs"
-              aria-label="Next Day"
-              title="Next Day"
-            >
-              <ChevronRight size={16} strokeWidth={3} />
-            </button>
-          </div>
-        </div>
-
-        {/* Selected Game Title & Status Badge */}
-        <Show when={selectedGame()}>
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-black truncate max-w-[200px] text-[var(--ink)]">
-              {selectedGame()!.title}
+          <button
+            type="button"
+            onClick={refresh}
+            disabled={cooldownLeft() > 0}
+            class="btn-ghost text-xs px-2.5 sm:px-3 py-1.5 inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+            title="Refresh Leaderboard"
+          >
+            <RefreshCw size={13} strokeWidth={2.5} class={pending() ? "animate-spin" : ""} />
+            <span class="hidden xs:inline">
+              {cooldownLeft() > 0 ? `${Math.ceil(cooldownLeft() / 1000)}s` : "Refresh"}
             </span>
-            <Show when={selectedGame()!.status === "tester" && isTesterOrAdmin()}>
-              <span class="badge text-[10px] py-0.5 px-2 bg-[var(--pop-teal)] text-[var(--ink)] font-black uppercase inline-flex items-center gap-1">
-                <FlaskConical size={11} />
-                Tester Preview
+          </button>
+        </div>
+
+        {/* Controls Row: Compact < Day X > Stepper + Current Game Title + Tester Toggle */}
+        <div class="relative z-10 pt-3 border-t border-[var(--ink-soft)]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Left: Day Stepper + Game Title */}
+          <div class="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={prevDay}
+                class="w-7 h-7 sm:w-8 sm:h-8 rounded-md grid place-items-center bg-[var(--paper)] border-2 border-[var(--ink)] hover:bg-[var(--pop-yellow)] cursor-pointer transition-all shrink-0 active:scale-95"
+                aria-label="Previous Day"
+                title="Previous Day"
+              >
+                <ChevronLeft size={15} strokeWidth={3} />
+              </button>
+
+              <div class="px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-md font-black text-xs sm:text-sm bg-[var(--pop-teal)] text-[var(--ink)] border-2 border-[var(--ink)] select-none flex items-center gap-1">
+                <span>Day {selectedDay()}</span>
+                <span class="text-[10px] opacity-75 font-semibold">/ 7</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={nextDay}
+                class="w-7 h-7 sm:w-8 sm:h-8 rounded-md grid place-items-center bg-[var(--paper)] border-2 border-[var(--ink)] hover:bg-[var(--pop-yellow)] cursor-pointer transition-all shrink-0 active:scale-95"
+                aria-label="Next Day"
+                title="Next Day"
+              >
+                <ChevronRight size={15} strokeWidth={3} />
+              </button>
+            </div>
+
+            <Show when={selectedGame()}>
+              <span class="text-xs sm:text-sm font-black text-[var(--ink)] truncate">
+                {selectedGame()!.title}
               </span>
             </Show>
-            <Show when={selectedGame()!.status !== "tester" || !isTesterOrAdmin()}>
-              <span class="badge text-[10px] py-0.5 px-2 uppercase font-black">
-                {selectedGame()!.status === "closed" ? "Closed / Final" : selectedGame()!.status}
-              </span>
-            </Show>
+          </div>
+
+          {/* Right: Tester Toggle (Only visible if Tester/Admin) */}
+          <Show when={isTesterOrAdmin()}>
+            <div class="inline-flex rounded-md border-2 border-[var(--ink)] p-0.5 bg-[var(--paper)] self-start sm:self-auto shrink-0">
+              <button
+                type="button"
+                onClick={() =>
+                  startTransition(() => {
+                    setPage(1);
+                    setViewMode("main");
+                  })
+                }
+                class={`px-2.5 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
+                  viewMode() === "main"
+                    ? "bg-[var(--pop-yellow)] text-[var(--ink)]"
+                    : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                }`}
+              >
+                Official
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  startTransition(() => {
+                    setPage(1);
+                    setViewMode("tester");
+                  })
+                }
+                class={`px-2.5 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
+                  viewMode() === "tester"
+                    ? "bg-[var(--pop-teal)] text-[var(--ink)]"
+                    : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                }`}
+              >
+                Tester Runs
+              </button>
+            </div>
+          </Show>
+        </div>
+
+        {/* Tester Mode notice */}
+        <Show when={isTesterOrAdmin() && viewMode() === "tester"}>
+          <div class="relative z-10 flex items-center gap-2 text-xs font-bold text-[var(--ink)] bg-[var(--paper-3)] p-2.5 rounded-lg border-2 border-[var(--ink)]">
+            <FlaskConical size={15} class="text-[var(--pop-teal-deep)] shrink-0" />
+            <span>
+              Tester Mode: Showing pre-release / test runs for Day {selectedDay()} (
+              {selectedGame()?.title}).
+            </span>
           </div>
         </Show>
       </div>
-
-      {/* ---------------------------------------------------- Tester vs Main Leaderboard Tabs (Admin / Tester Only) */}
-      <Show when={isTesterOrAdmin()}>
-        <div class="flex items-center gap-2 bg-[var(--paper-2)] p-1.5 rounded-lg border-2 border-[var(--ink)]">
-          <button
-            type="button"
-            onClick={() =>
-              startTransition(() => {
-                setPage(1);
-                setViewMode("main");
-              })
-            }
-            class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 ${
-              viewMode() === "main"
-                ? "bg-[var(--pop-yellow)] text-[var(--ink)] border-2 border-[var(--ink)] shadow-xs"
-                : "bg-transparent text-[var(--ink-soft)] hover:text-[var(--ink)] opacity-70 hover:opacity-100"
-            }`}
-          >
-            <Trophy size={13} strokeWidth={2.5} />
-            <span>Official Public Leaderboard</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              startTransition(() => {
-                setPage(1);
-                setViewMode("tester");
-              })
-            }
-            class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 ${
-              viewMode() === "tester"
-                ? "bg-[var(--pop-teal)] text-[var(--ink)] border-2 border-[var(--ink)] shadow-xs"
-                : "bg-transparent text-[var(--ink-soft)] hover:text-[var(--ink)] opacity-70 hover:opacity-100"
-            }`}
-          >
-            <FlaskConical size={13} strokeWidth={2.5} />
-            <span>Tester Preview Runs</span>
-          </button>
-        </div>
-      </Show>
-
-      {/* ---------------------------------------------------- Tester Notice (When Viewing Tester Runs) */}
-      <Show when={isTesterOrAdmin() && viewMode() === "tester"}>
-        <div class="card p-3 bg-[var(--pop-teal)]/20 border-2 border-[var(--ink)] flex items-center justify-between text-xs font-bold">
-          <div class="flex items-center gap-2">
-            <FlaskConical size={16} class="text-[var(--ink)] shrink-0" />
-            <span>
-              Tester Mode: Showing pre-release / test runs for Day {selectedDay()} (
-              {selectedGame()?.title}). These results are isolated from public players.
-            </span>
-          </div>
-          <span class="badge text-[10px] py-0 px-1.5 bg-[var(--pop-teal)] uppercase font-black">
-            Tester View
-          </span>
-        </div>
-      </Show>
 
       {/* ---------------------------------------------------- Locked Day Teaser for Regular Players */}
       <Show when={isLockedForPlayer()}>
@@ -581,7 +565,8 @@ export default function Leaderboard() {
                           <Show when={entry.streakCount > 0}>
                             <span class="inline-flex items-center gap-1">
                               <Flame size={12} />
-                              {entry.streakCount} day{entry.streakCount === 1 ? "" : "s"} in a row
+                              {entry.streakCount} day
+                              {entry.streakCount === 1 ? "" : "s"} in a row
                             </span>
                           </Show>
                           <Show when={daily()!.metric === "score"}>
@@ -652,27 +637,33 @@ export default function Leaderboard() {
           </div>
         </Show>
 
-        {/*
-          A rank is only worth having if you can show it to somebody. Available
-          from the board as well as the game page, because the bragging usually
-          happens a while after the run.
-        */}
+        {/* On mobile / small screens, show share card at the bottom */}
         <Show when={shareData()}>
-          <div class="card pop-pink flex flex-wrap items-center justify-between gap-3 p-3.5">
-            <p class="comment">can you beat me? put it on their timeline.</p>
-            <button type="button" class="btn-brand" onClick={() => setSharing(true)}>
-              Share my card
-            </button>
+          <div class="2xl:hidden card pop-pink p-3.5 space-y-2">
+            <Show when={daily()?.myEntry}>
+              <div class="flex items-center justify-between text-xs font-black text-[var(--ink)] pb-1 border-b border-[var(--ink)]/20">
+                <span>Your Rank: #{daily()!.myEntry!.rank}</span>
+                <span class="font-mono">{formatMetric(daily()!.myEntry!)}</span>
+              </div>
+            </Show>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <p class="text-xs font-extrabold text-[var(--ink)]">
+                Can you beat me? Put it on their timeline.
+              </p>
+              <button type="button" class="btn-brand text-xs" onClick={() => setSharing(true)}>
+                Share my card
+              </button>
+            </div>
           </div>
         </Show>
       </Show>
 
       {/* Mobile Bottom Meme Sticker */}
-      <div class="sm:hidden flex justify-center py-4">
+      <div class="2xl:hidden flex justify-center py-4">
         <img
-          src="/images/memes/meme-leaderboard.webp"
+          src="/images/memes/failure-is-not-an-option.webp"
           alt="Leaderboard Festival Meme"
-          class="w-28 h-auto object-contain select-none opacity-90 hover:opacity-100 rounded-md"
+          class="max-w-xs sm:max-w-sm w-full h-auto object-contain select-none rounded-xl border-2 border-[var(--ink)] block"
         />
       </div>
 

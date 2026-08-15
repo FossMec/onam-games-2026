@@ -4,6 +4,7 @@ import { logActivity, logSuspicious } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
 import { dailyLeaderboard, devices, gameAttempts, games } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
+import { getRequestMeta } from "~/server/request";
 import { revealDeck } from "./impl/tinder";
 import type { GameAssets, GameDef, GameMetric } from "./registry";
 import { requireGameDef } from "./registry";
@@ -164,7 +165,21 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
     deviceId: input.deviceId,
     ip: input.ip,
     eventType: "game_start",
-    meta: { slug: input.slug, attemptToken: attempt.attemptToken, attemptNumber },
+    meta: {
+      slug: input.slug,
+      gameId: game.id,
+      attemptId: attempt.id,
+      attemptToken: attempt.attemptToken,
+      attemptNumber,
+      seed,
+      startedAt: attempt.startedAt,
+      deviceId: input.deviceId,
+      ip: input.ip,
+      userAgent: input.userAgent,
+      country: input.country,
+      city: input.city,
+      role: input.role,
+    },
   });
 
   return {
@@ -578,12 +593,57 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
     });
   }
 
+  /*
+   * Everything known about this submission, recorded whether or not anything
+   * currently looks wrong with it.
+   *
+   * Detection rules get written after the event, once you can see what the
+   * cheating actually looked like — but they can only ever run over what was
+   * captured while it happened. A row that omits the submitting IP because
+   * nothing suspicious was flagged at the time is a row no later query can
+   * rescue.
+   *
+   * Note `startIp` and `submitIp` are separate on purpose: `attempt.ip` is
+   * where the attempt was *opened*, and the two differing is itself worth
+   * knowing — a run started on wifi and submitted from another network, or a
+   * device that changed hands mid-attempt.
+   */
+  const submitMeta = getRequestMeta();
   await logActivity({
     userId: input.userId,
     deviceId: input.deviceId,
-    ip: attempt.ip ?? undefined,
+    ip: submitMeta.ip || (attempt.ip ?? undefined),
     eventType: "game_submit",
-    meta: { durationMs, score, valid: result.valid, afterDeadline, gameId: game.id },
+    meta: {
+      gameId: game.id,
+      gameSlug: game.slug,
+      attemptId: attempt.id,
+      attemptNumber: attempt.attemptNumber,
+      attemptsUsed,
+      seed: attempt.seed,
+      metric: def.metric,
+      durationMs,
+      rawDurationMs,
+      penaltyMs,
+      score,
+      movesCount: result.movesCount ?? null,
+      valid: result.valid,
+      afterDeadline,
+      isAnomalous,
+      minPlausibleMs: def.minPlausibleMs,
+      startedAt: attempt.startedAt,
+      submittedAt: now,
+      startDeviceId: attempt.deviceId,
+      submitDeviceId: input.deviceId,
+      startIp: attempt.ip,
+      submitIp: submitMeta.ip || null,
+      startUserAgent: attempt.userAgent,
+      submitUserAgent: submitMeta.userAgent || null,
+      startCountry: attempt.country,
+      startCity: attempt.city,
+      submitCountry: submitMeta.country,
+      submitCity: submitMeta.city,
+    },
   });
 
   return {

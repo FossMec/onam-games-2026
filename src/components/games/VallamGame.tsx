@@ -229,13 +229,10 @@ export function VallamGame(props: VallamGameProps) {
   const pct = (n: number) => `${(n / size()) * 100}%`;
 
   return (
-    <div class="space-y-4">
-      <div class="flex flex-wrap items-center justify-between gap-2">
+    <div class="mx-auto flex h-full w-full max-w-sm flex-col justify-between space-y-2 text-center">
+      <div class="flex shrink-0 items-center justify-between gap-2">
         <span class="badge" style={{ "--pop": "var(--pop-blue)" }}>
-          {moves().length} move{moves().length === 1 ? "" : "s"}
-        </span>
-        <span class="badge" style={{ "--pop": "var(--paper-3)" }}>
-          par {props.view.par}
+          {moves().length} moves (par {props.view.par})
         </span>
         <span class="badge" style={{ "--pop": "var(--pop-yellow)" }}>
           {selected() === null ? "tap a boat" : "tap where it should go"}
@@ -243,12 +240,12 @@ export function VallamGame(props: VallamGameProps) {
       </div>
 
       <div
-        class="relative mx-auto w-full max-w-md"
+        class="relative mx-auto my-auto aspect-square w-full max-w-md max-h-[min(55dvh,400px)]"
         style={{
-          "aspect-ratio": "1 / 1",
           background: "var(--paper-2)",
           border: "var(--ink-w-bold) solid var(--ink)",
           "border-right": "var(--ink-w-bold) dashed var(--ink)",
+          "touch-action": "none",
         }}
       >
         {/* Water. Purely decorative grid lines — the tap targets are on top. */}
