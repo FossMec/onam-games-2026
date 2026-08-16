@@ -1414,10 +1414,8 @@ const WISH_POPS = [
 ];
 
 /**
- * Organic Speech Bubble Component:
- * - Circular avatar profile with name badge on hover/click.
- * - Connected speech bubble pill containing clearly legible message text.
- * - Like counter and admin delete button.
+ * Compact inlined speech pill:
+ * - Avatar + prominent message + like button + delete button all in a single tight inlined chip.
  */
 function WishBubble(props: {
   msg: CollabMessageItem;
@@ -1434,14 +1432,19 @@ function WishBubble(props: {
 
   return (
     <div
-      class="flex items-start gap-1.5 select-none relative"
+      class="inline-flex items-center gap-1.5 rounded-full border-2 border-[var(--ink)] shadow-xs select-none relative max-w-full"
+      classList={{
+        "px-2.5 py-1 text-xs sm:text-[13px]": !props.compact,
+        "px-1.5 py-0.5 text-[10px]": props.compact,
+      }}
       style={{
+        background: bg(),
         transform: `rotate(${tilt()})`,
       }}
     >
-      {/* 1. Circular Avatar Icon (Click/Hover reveals author name) */}
+      {/* 1. Avatar (Click/hover reveals author name) */}
       <div
-        class="relative shrink-0 cursor-pointer group"
+        class="relative shrink-0 cursor-pointer"
         onClick={() => setShowAuthor((v) => !v)}
         onMouseEnter={() => setShowAuthor(true)}
         onMouseLeave={() => setShowAuthor(false)}
@@ -1451,10 +1454,10 @@ function WishBubble(props: {
           when={props.msg.userAvatar}
           fallback={
             <div
-              class="rounded-full flex items-center justify-center font-black text-[var(--ink)] border-2 border-[var(--ink)] shadow-xs"
+              class="rounded-full flex items-center justify-center font-black text-[var(--ink)] border border-[var(--ink)] bg-[var(--paper-3)]"
               classList={{
-                "w-7 h-7 text-[11px] bg-[var(--paper-3)]": !props.compact,
-                "w-5 h-5 text-[8.5px] bg-[var(--paper-3)]": props.compact,
+                "w-5 h-5 text-[9px]": !props.compact,
+                "w-4 h-4 text-[7px]": props.compact,
               }}
             >
               {props.msg.userName.charAt(0).toUpperCase()}
@@ -1464,18 +1467,18 @@ function WishBubble(props: {
           <img
             src={props.msg.userAvatar!}
             alt={props.msg.userName}
-            class="rounded-full border-2 border-[var(--ink)] object-cover shadow-xs"
+            class="rounded-full border border-[var(--ink)] object-cover"
             classList={{
-              "w-7 h-7": !props.compact,
-              "w-5 h-5": props.compact,
+              "w-5 h-5": !props.compact,
+              "w-4 h-4": props.compact,
             }}
           />
         </Show>
 
-        {/* Hover / Active Author Name Pill Badge */}
+        {/* Hover / Click Author Name Tooltip */}
         <Show when={showAuthor()}>
           <div
-            class="absolute bottom-full left-0 mb-1 z-30 px-1.5 py-0.5 rounded shadow-sm text-[9px] font-black text-[var(--ink)] whitespace-nowrap pointer-events-none"
+            class="absolute bottom-full left-0 mb-1 z-30 px-1.5 py-0.5 rounded text-[9px] font-black text-[var(--ink)] whitespace-nowrap pointer-events-none shadow-sm"
             style={{
               background: "var(--paper)",
               border: "1.5px solid var(--ink)",
@@ -1486,62 +1489,49 @@ function WishBubble(props: {
         </Show>
       </div>
 
-      {/* 2. Connected Speech Bubble Pill */}
-      <div
-        class="card card-plain flex flex-col justify-between relative text-left"
+      {/* 2. Message Text (Bigger, Inlined, Prominent) */}
+      <span
+        class="font-black text-[var(--ink)] leading-none truncate"
         classList={{
-          "p-2 rounded-xl rounded-tl-xs min-w-[120px] max-w-[160px]": !props.compact,
-          "p-1.5 rounded-lg rounded-tl-xs max-w-[125px]": props.compact,
-        }}
-        style={{
-          border: "1.5px solid var(--ink)",
-          background: bg(),
+          "max-w-[135px] sm:max-w-[170px] text-xs sm:text-[12.5px]": !props.compact,
+          "max-w-[100px] text-[9.5px]": props.compact,
         }}
       >
-        <p
-          class="font-extrabold text-[var(--ink)] m-0 leading-snug break-words"
-          classList={{
-            "text-xs sm:text-[12.5px]": !props.compact,
-            "text-[9px]": props.compact,
-          }}
+        "{props.msg.message}"
+      </span>
+
+      {/* 3. Inlined Heart Like Button */}
+      <button
+        type="button"
+        onClick={() => props.onLike(props.msg.id)}
+        class="inline-flex items-center gap-0.5 font-black cursor-pointer leading-none shrink-0"
+        classList={{
+          "text-[var(--pop-red)]": props.msg.hasLiked,
+          "text-[var(--ink-soft)]": !props.msg.hasLiked,
+          "text-xs": !props.compact,
+          "text-[9px]": props.compact,
+        }}
+        title={props.msg.hasLiked ? "Unlike" : "Like"}
+      >
+        <Heart
+          size={props.compact ? 9 : 11}
+          fill={props.msg.hasLiked ? "var(--pop-red)" : "none"}
+          strokeWidth={2.5}
+        />
+        <span>{props.msg.likesCount}</span>
+      </button>
+
+      {/* 4. Inlined Delete Button for Admins / Author */}
+      <Show when={(props.isAdmin || props.msg.isMine) && props.onDelete}>
+        <button
+          type="button"
+          onClick={() => props.onDelete!(props.msg.id)}
+          class="text-[var(--ink-soft)] hover:text-[var(--pop-red)] transition-colors p-0.5 cursor-pointer leading-none shrink-0"
+          title="Delete wish"
         >
-          "{props.msg.message}"
-        </p>
-
-        {/* Bubble Footer: Like count + Admin / Author Delete button */}
-        <div class="flex items-center justify-between gap-1 mt-1 pt-0.5 border-t border-[var(--ink)]/15">
-          <button
-            type="button"
-            onClick={() => props.onLike(props.msg.id)}
-            class="flex items-center gap-0.5 font-black cursor-pointer leading-none shrink-0"
-            classList={{
-              "text-xs text-[var(--pop-red)]": props.msg.hasLiked && !props.compact,
-              "text-xs text-[var(--ink-soft)]": !props.msg.hasLiked && !props.compact,
-              "text-[9px] text-[var(--pop-red)]": props.msg.hasLiked && props.compact,
-              "text-[9px] text-[var(--ink-soft)]": !props.msg.hasLiked && props.compact,
-            }}
-            title={props.msg.hasLiked ? "Unlike" : "Like"}
-          >
-            <Heart
-              size={props.compact ? 9 : 11}
-              fill={props.msg.hasLiked ? "var(--pop-red)" : "none"}
-              strokeWidth={2.5}
-            />
-            <span>{props.msg.likesCount}</span>
-          </button>
-
-          <Show when={(props.isAdmin || props.msg.isMine) && props.onDelete}>
-            <button
-              type="button"
-              onClick={() => props.onDelete!(props.msg.id)}
-              class="text-[var(--ink-soft)] hover:text-[var(--pop-red)] transition-colors p-0.5 cursor-pointer leading-none shrink-0"
-              title="Delete wish"
-            >
-              <Trash2 size={props.compact ? 9 : 11} />
-            </button>
-          </Show>
-        </div>
-      </div>
+          <Trash2 size={props.compact ? 9 : 11} />
+        </button>
+      </Show>
     </div>
   );
 }

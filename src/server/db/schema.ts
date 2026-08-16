@@ -592,8 +592,8 @@ export const collabMessages = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    unique("collab_messages_user_day_uniq").on(t.dayKey, t.userId),
     index("collab_messages_day_key_idx").on(t.dayKey),
+    index("collab_messages_user_day_idx").on(t.dayKey, t.userId),
   ],
 );
 

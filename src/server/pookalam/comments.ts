@@ -36,7 +36,9 @@ export async function ensureMessageTables(): Promise<void> {
           likes_count INTEGER NOT NULL DEFAULT 0,
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+        ALTER TABLE collab_messages DROP CONSTRAINT IF EXISTS collab_messages_user_day_uniq;
         CREATE INDEX IF NOT EXISTS collab_messages_day_key_idx ON collab_messages(day_key);
+        CREATE INDEX IF NOT EXISTS collab_messages_user_day_idx ON collab_messages(day_key, user_id);
 
         CREATE TABLE IF NOT EXISTS collab_message_likes (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
