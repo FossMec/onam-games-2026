@@ -1,57 +1,86 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import defaultHashesData from "./profanity-hashes.json";
 
 /**
  * Server-side moderation and profanity filter.
  *
- * NOTE: Zero vulgarity or wordlists are hardcoded in the codebase or git history.
- * Rules are dynamically loaded at runtime from a git-ignored file (`config/profanity-dictionary.json`)
- * or an environment variable (`PROFANITY_DICTIONARY_JSON`).
+ * Safe for open-source: Uses precomputed cryptographic SHA-256 hashes committed in git
+ * (`profanity-hashes.json`) so zero vulgarity or plaintext wordlists appear in git history.
+ * Optionally supplements with `config/profanity-dictionary.json` or `PROFANITY_DICTIONARY_JSON`.
  */
 
 interface ProfanityConfig {
-  whitelist: string[];
-  blocked: string[];
+  whitelist: Set<string>;
+  blockedHashes: Set<string>;
+  blockedWords: string[];
 }
 
 let cachedConfig: ProfanityConfig | null = null;
 
+function sha256(str: string): string {
+  return crypto.createHash("sha256").update(str).digest("hex");
+}
+
 function loadConfig(): ProfanityConfig {
   if (cachedConfig) return cachedConfig;
 
-  // 1. Try loading from environment variable (useful in production/serverless)
+  const whitelist = new Set<string>(
+    (defaultHashesData?.whitelist || []).map((w: string) => w.toLowerCase().trim()),
+  );
+  const blockedHashes = new Set<string>(defaultHashesData?.hashes || []);
+  const blockedWords: string[] = [];
+
+  // 1. Try loading from environment variable (optional)
   if (process.env.PROFANITY_DICTIONARY_JSON) {
     try {
       const parsed = JSON.parse(process.env.PROFANITY_DICTIONARY_JSON);
       if (Array.isArray(parsed?.blocked)) {
-        cachedConfig = {
-          whitelist: Array.isArray(parsed.whitelist) ? parsed.whitelist : [],
-          blocked: parsed.blocked,
-        };
-        return cachedConfig;
+        for (const w of parsed.blocked) {
+          if (typeof w === "string") {
+            blockedWords.push(w.toLowerCase().trim());
+            blockedHashes.add(sha256(w.toLowerCase().trim()));
+            blockedHashes.add(sha256(normalizeWord(w)));
+          }
+        }
+      }
+      if (Array.isArray(parsed?.whitelist)) {
+        for (const w of parsed.whitelist) {
+          if (typeof w === "string") whitelist.add(w.toLowerCase().trim());
+        }
       }
     } catch {
       /* ignore env parse error */
     }
   }
 
-  // 2. Try loading from local git-ignored dictionary file
+  // 2. Try loading from local git-ignored dictionary file (optional)
   try {
     const configPath = path.resolve(process.cwd(), "config", "profanity-dictionary.json");
     if (fs.existsSync(configPath)) {
       const content = fs.readFileSync(configPath, "utf-8");
       const parsed = JSON.parse(content);
-      cachedConfig = {
-        whitelist: Array.isArray(parsed?.whitelist) ? parsed.whitelist : [],
-        blocked: Array.isArray(parsed?.blocked) ? parsed.blocked : [],
-      };
-      return cachedConfig;
+      if (Array.isArray(parsed?.blocked)) {
+        for (const w of parsed.blocked) {
+          if (typeof w === "string") {
+            blockedWords.push(w.toLowerCase().trim());
+            blockedHashes.add(sha256(w.toLowerCase().trim()));
+            blockedHashes.add(sha256(normalizeWord(w)));
+          }
+        }
+      }
+      if (Array.isArray(parsed?.whitelist)) {
+        for (const w of parsed.whitelist) {
+          if (typeof w === "string") whitelist.add(w.toLowerCase().trim());
+        }
+      }
     }
   } catch {
-    /* fallback to empty */
+    /* fallback */
   }
 
-  cachedConfig = { whitelist: [], blocked: [] };
+  cachedConfig = { whitelist, blockedHashes, blockedWords };
   return cachedConfig;
 }
 
@@ -96,26 +125,39 @@ function levenshtein(a: string, b: string): number {
 /**
  * Checks if a token matches any blocked word in the active dictionary
  */
-function isProfaneToken(token: string, blockedList: string[], whitelistSet: Set<string>): boolean {
+function isProfaneToken(
+  token: string,
+  blockedHashes: Set<string>,
+  blockedWords: string[],
+  whitelistSet: Set<string>,
+): boolean {
   const lower = token.toLowerCase().trim();
   if (lower.length < 2) return false;
   if (whitelistSet.has(lower)) return false;
 
+  // 1. Direct cryptographic SHA-256 hash match
+  const lowerHash = sha256(lower);
+  if (blockedHashes.has(lowerHash)) return true;
+
+  // 2. Normalized hash match (handles "fuuuuck", "f*u*c*k", etc.)
   const normalized = normalizeWord(lower);
   if (whitelistSet.has(normalized)) return false;
+  const normHash = sha256(normalized);
+  if (blockedHashes.has(normHash)) return true;
 
-  for (const bad of blockedList) {
+  // 3. Match against dynamic words (if loaded via env or config)
+  for (const bad of blockedWords) {
     const normBad = normalizeWord(bad);
 
-    // 1. Direct or normalized equality
+    // Equality
     if (lower === bad || normalized === normBad) return true;
 
-    // 2. Substring match for words >= 4 characters
+    // Substring match for longer words
     if (bad.length >= 4 && (lower.includes(bad) || normalized.includes(normBad))) {
       return true;
     }
 
-    // 3. Safe fuzzy match (edit distance <= 1 for words >= 5 characters)
+    // Fuzzy distance <= 1
     if (bad.length >= 5 && Math.abs(normalized.length - normBad.length) <= 1) {
       if (levenshtein(normalized, normBad) <= 1) {
         return true;
@@ -127,22 +169,21 @@ function isProfaneToken(token: string, blockedList: string[], whitelistSet: Set<
 }
 
 /**
- * Censors profanities in text on the server using the git-ignored dictionary.
+ * Censors profanities in text on the server using the precomputed hash dictionary.
  */
 export function censorMessageServer(text: string): { clean: string; hadProfanity: boolean } {
   if (!text) return { clean: "", hadProfanity: false };
 
-  const { whitelist, blocked } = loadConfig();
-  if (blocked.length === 0) {
+  const { whitelist, blockedHashes, blockedWords } = loadConfig();
+  if (blockedHashes.size === 0 && blockedWords.length === 0) {
     return { clean: text.trim(), hadProfanity: false };
   }
 
-  const whitelistSet = new Set(whitelist.map((w) => w.toLowerCase()));
   let clean = text.trim();
   let hadProfanity = false;
 
-  // 1. Direct substring matching for non-latin scripts (e.g. Malayalam)
-  for (const bad of blocked) {
+  // 1. Direct substring matching for non-latin words (if present in blockedWords)
+  for (const bad of blockedWords) {
     if (bad.charCodeAt(0) > 0x0d00 && bad.charCodeAt(0) < 0x0d7f) {
       if (clean.includes(bad)) {
         hadProfanity = true;
@@ -159,7 +200,7 @@ export function censorMessageServer(text: string): { clean: string; hadProfanity
     const raw = token.trim();
     if (!raw) return token;
 
-    if (isProfaneToken(raw, blocked, whitelistSet)) {
+    if (isProfaneToken(raw, blockedHashes, blockedWords, whitelist)) {
       hadProfanity = true;
       return "*".repeat(token.length);
     }
