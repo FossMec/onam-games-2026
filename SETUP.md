@@ -7,7 +7,11 @@
 3. **Redirect URLs** (Authentication → URL Configuration):
    - `http://localhost:3000/auth/callback`
    - `https://<your-domain>/auth/callback`
-4. **Storage bucket**: create a public bucket named `avatars`.
+4. **Storage buckets**: create two public buckets, `avatars` and `pookalams`.
+   Both are written server-side with the service-role key, so no RLS policies
+   are needed beyond public read. Contest artwork is stored under
+   `pookalams/entries/<uuid>.webp` — a random name, never the user id, because
+   those URLs are handed to every voter during an anonymous round.
 
 ## 2. Environment variables
 

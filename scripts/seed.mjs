@@ -33,7 +33,12 @@ const settings = [
 for (const [key, value, group] of settings) {
   await sql`
     insert into app_settings ("key", value, "group")
-    values (${key}, ${JSON.stringify(value)}::jsonb, ${group})
+    -- sql.json(), NOT JSON.stringify(...)::jsonb. postgres.js already encodes a
+    -- value bound to a jsonb column, so pre-stringifying encodes it twice and
+    -- "19:00" lands in the database as a JSON string containing "19:00" with
+    -- the quotes. Nothing errors; the schedule parsers just fail their regex
+    -- and every game sits at "upcoming" forever.
+    values (${key}, ${sql.json(value)}, ${group})
     on conflict ("key") do update set value = excluded.value, "group" = excluded.group
   `;
 }

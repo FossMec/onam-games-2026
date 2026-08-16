@@ -412,7 +412,14 @@ export function SecurityTab(props: SecurityTabProps) {
                     </td>
                     <td class="p-2.5">{row.ip ?? "—"}</td>
                     <td class="p-2.5 text-[11px] opacity-75 font-sans">
-                      {new Date(row.createdAt).toLocaleTimeString("en-IN", {
+                      {/*
+                        toLocaleString, not toLocaleTimeString: the latter
+                        throws outright on `dateStyle` ("Invalid option"), and a
+                        threat row needs the date as much as the time — an IP
+                        that tripped a rule "at 14:02" is useless without
+                        knowing which day.
+                      */}
+                      {new Date(row.createdAt).toLocaleString("en-IN", {
                         timeZone: "Asia/Kolkata",
                         dateStyle: "short",
                         timeStyle: "short",

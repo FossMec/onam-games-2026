@@ -14,6 +14,7 @@ import { EVENT, POOKALAM } from "~/lib/event-content";
 import { type SpriteName } from "~/lib/sprites";
 import { getMe } from "~/server/auth/actions";
 import { getGames } from "~/server/games/actions";
+import { getPookalamState } from "~/server/pookalam/actions";
 
 /** Each day gets its own pop colour so the week reads as a strip of panels. */
 const DAY_POPS = [
@@ -66,6 +67,56 @@ const GAME_TEASERS: Record<number, { hint: string; icon: SpriteName }> = {
     icon: "pookalam-flower",
   },
 };
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+interface VotingPhase {
+  open: boolean;
+  reason: string;
+  opensAt: string | null;
+  closesAt: string | null;
+}
+
+/**
+ * Status and release instant for the Day 7 arena card.
+ *
+ * Day 7 has no `games` row, so `resolveSchedule` never sees it and the card
+ * used to be pushed onto the list with `status: "upcoming"` and
+ * `releaseAt: null` hardcoded. Those are literals, not a state — nothing ever
+ * recomputed them, so the card read "Locked" for the entire event no matter
+ * what the admin configured. That is the bug this function exists to kill.
+ *
+ * The voting window is the authority, because it is the thing that actually
+ * decides whether a tap on that card can do anything. When it has not been
+ * configured yet, the release falls back to "the day after the last scheduled
+ * game", which keeps a real countdown on screen instead of a dead lock — and
+ * the card still refuses to claim it is live, because it would be lying.
+ */
+function day7Schedule(
+  scheduled: { day: number; releaseAt: string | null }[],
+  voting: VotingPhase | undefined,
+): { status: string; releaseAt: string | null } {
+  const opensAt = voting?.opensAt ?? derivedDay7Release(scheduled);
+
+  if (voting?.open) return { status: "live", releaseAt: opensAt };
+  // Voting has been and gone: the results are the point now, not a countdown.
+  if (voting?.reason === "over") return { status: "closed", releaseAt: opensAt };
+  if (!opensAt) return { status: "upcoming", releaseAt: null };
+
+  /*
+   * Inside the last day before it opens the card stops being a mystery and
+   * starts showing what it is, matching the reveal every other day gets.
+   */
+  const untilOpen = new Date(opensAt).getTime() - Date.now();
+  return { status: untilOpen <= DAY_MS ? "preview" : "upcoming", releaseAt: opensAt };
+}
+
+/** Day 7 sits one day after the last day that does have a release instant. */
+function derivedDay7Release(scheduled: { day: number; releaseAt: string | null }[]): string | null {
+  const anchor = scheduled.filter((game) => game.releaseAt).sort((a, b) => b.day - a.day)[0];
+  if (!anchor?.releaseAt) return null;
+  return new Date(new Date(anchor.releaseAt).getTime() + (7 - anchor.day) * DAY_MS).toISOString();
+}
 
 const statusSticker: Record<string, { label: string; pop: string }> = {
   live: { label: "Live now", pop: "var(--pop-teal)" },
@@ -173,6 +224,12 @@ function ScheduleUnavailable() {
 export default function Home() {
   const games = createAsync(() => getGames());
   const me = createAsync(() => getMe());
+  /*
+   * Day 7 is Code-a-Pookalam, which is not a row in `games` — so its status
+   * cannot come from the schedule resolver like every other day. The arena's
+   * own phase window is the authority on whether it is open.
+   */
+  const pookalam = createAsync(() => getPookalamState());
 
   /*
    * Three states, not two. `createAsync` is `undefined` until the schedule
@@ -242,6 +299,7 @@ export default function Home() {
 
     // Check if Day 7 is in the DB games list, otherwise append Day 7 ELO Voting
     if (!list.some((g) => g.day === 7)) {
+      const arena = day7Schedule(list, pookalam()?.phases.voting);
       list.push({
         id: "day-7-vote",
         slug: "code-a-pookalam-vote",
@@ -252,9 +310,9 @@ export default function Home() {
         difficulty: "community",
         metric: "vote" as never,
         maxAttempts: 1,
-        status: "upcoming",
-        releaseAt: null,
-        statusLabel: "Locked",
+        status: arena.status,
+        releaseAt: arena.releaseAt,
+        statusLabel: statusSticker[arena.status]?.label ?? "Locked",
       } as never);
     }
 

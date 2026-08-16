@@ -3,6 +3,7 @@ import { createAsync } from "@solidjs/router";
 import { CheckCircle, RefreshCw, ShieldAlert, X } from "lucide-solid";
 import { Show, createSignal } from "solid-js";
 import { AdminTabs, type AdminTabId } from "~/components/admin/AdminTabs";
+import { PookalamGallery } from "~/components/admin/PookalamGallery";
 import { PookalamReview } from "~/components/admin/PookalamReview";
 import { AttemptsTab } from "~/components/admin/tabs/AttemptsTab";
 import { GamesTab } from "~/components/admin/tabs/GamesTab";
@@ -130,8 +131,25 @@ export default function Admin() {
         </div>
       </Show>
 
+      {/*
+        Testers get the shortlisting gallery and nothing else.
+
+        They are the people who actually do the day-6 pass over every entry, so
+        bouncing them off this page entirely would mean building a second page
+        somewhere public for one privileged job. They see no metrics, no users,
+        no logs — and no author names, which is the whole point of the gallery.
+      */}
+      <Show when={me()?.role === "tester"}>
+        <div class="space-y-4">
+          <div class="card card-plain p-3 text-xs font-bold" style={{ color: "var(--ink-soft)" }}>
+            Tester access — Code-a-Pookalam shortlisting only.
+          </div>
+          <PookalamGallery />
+        </div>
+      </Show>
+
       {/* Unauthorized State */}
-      <Show when={me() && me()!.role !== "admin"}>
+      <Show when={me() && me()!.role !== "admin" && me()!.role !== "tester"}>
         <div class="card pop-red text-center p-12 space-y-3">
           <ShieldAlert size={48} class="mx-auto text-red-600" />
           <h2 class="text-xl font-black">Access Denied</h2>
@@ -268,7 +286,12 @@ export default function Admin() {
 
               {/* 8. Code-a-Pookalam Review Tab */}
               <Show when={activeTab() === "pookalam"}>
-                <PookalamReview />
+                <div class="space-y-5">
+                  {/* Approve, shortlist, see who made what. */}
+                  <PookalamReview />
+                  {/* The same anonymous gallery the testers judge in. */}
+                  <PookalamGallery />
+                </div>
               </Show>
 
               {/* 9. Activity Logs Tab */}

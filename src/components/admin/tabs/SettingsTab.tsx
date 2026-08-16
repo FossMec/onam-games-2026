@@ -27,7 +27,7 @@ interface SettingsTabProps {
 
 interface SettingMetadata {
   label: string;
-  type: "boolean" | "number" | "time" | "date" | "string" | "secret";
+  type: "boolean" | "number" | "time" | "date" | "datetime" | "string" | "secret";
   explanation: string;
   unit?: string;
   min?: number;
@@ -130,24 +130,89 @@ const SETTINGS_META: Record<string, SettingMetadata> = {
       "URL query parameter name that the final clue uses to submit the secret token (e.g. /games/treasure-hunt?token=...).",
   },
 
-  // Day-7 Pookalam
+  // Day-7 Pookalam — each phase has a window plus a manual force override.
+  "pookalam.submissions_open_at": {
+    label: "Entry Form Opens (IST)",
+    type: "datetime",
+    explanation:
+      "When the Code-a-Pookalam submit button appears. Before this the page shows a countdown and no form at all. Leave blank to rely purely on the force toggle.",
+  },
+  "pookalam.submissions_close_at": {
+    label: "Entry Deadline (IST)",
+    type: "datetime",
+    explanation:
+      "The Day 6 cut-off. Entries and edits stop accepting at this instant. Shown as a live countdown on the submission page.",
+  },
   "pookalam.submissions_open": {
-    label: "Code-a-Pookalam Entry Submissions Open",
+    label: "Force Entry Form Open",
     type: "boolean",
     explanation:
-      "Allows participants to submit new digital pookalam entries or update their existing repository links.",
+      "Override: opens the entry form right now regardless of the dates above, including after the deadline has passed. For rehearsals and for late-night exceptions.",
+  },
+  "pookalam.voting_open_at": {
+    label: "Elo Arena Opens (IST)",
+    type: "datetime",
+    explanation:
+      "When Day 7 head-to-head voting starts. Only shortlisted entries are paired, so shortlist before this instant.",
+  },
+  "pookalam.voting_close_at": {
+    label: "Voting Closes (IST)",
+    type: "datetime",
+    explanation:
+      "When voting stops and the Elo ratings become final. Ratings stop moving; the boards stay readable.",
   },
   "pookalam.voting_open": {
-    label: "Head-to-Head Community Voting Live",
+    label: "Force Voting Open",
     type: "boolean",
+    explanation: "Override: opens the pairwise arena right now regardless of the dates above.",
+  },
+  "pookalam.results_at": {
+    label: "Results Reveal (IST)",
+    type: "datetime",
     explanation:
-      "Opens the Day 7 pairwise voting arena where community votes dynamically move Elo ratings.",
+      "When the winner, the author names and the repository links go public. Admins can always see the standings before this.",
   },
   "pookalam.results_public": {
-    label: "Reveal Final Pookalam Podiums",
+    label: "Force Results Public",
     type: "boolean",
     explanation:
-      "Publishes the final ranked Elo standings and reveals author names on the public contest results page.",
+      "Override: publishes the final ranked standings and reveals author names right now.",
+  },
+  "pookalam.shortlist_size": {
+    label: "Shortlist Size",
+    type: "number",
+    unit: "entries",
+    min: 1,
+    max: 64,
+    explanation:
+      "How many entries the 'shortlist top N' button picks, and the target the review tab counts against. Keeping this around 10 keeps a full voting shift to roughly 20 taps.",
+  },
+  "pookalam.voter_target_pct": {
+    label: "Voter Qualifying Target",
+    type: "number",
+    unit: "%",
+    min: 0,
+    max: 200,
+    explanation:
+      "Votes needed to qualify for the voters' leaderboard, as a percentage of the n·log₂n comparison budget — NOT of every possible pair. At 100%, ten shortlisted entries means about 33 votes and twenty means about 87. Voters can always keep going past the target.",
+  },
+  "pookalam.leaderboard_delay_ms": {
+    label: "Leaderboard Lag",
+    type: "number",
+    unit: "ms",
+    min: 0,
+    max: 3600000,
+    explanation:
+      "How stale the two Day 7 boards are allowed to get before recomputing. The lag is deliberate: a board that updates the instant someone votes tells late voters who to back. 60000 (one minute) is a good default; 0 makes it live and biased.",
+  },
+  "pookalam.aspect_tolerance_pct": {
+    label: "Square Tolerance",
+    type: "number",
+    unit: "%",
+    min: 0,
+    max: 50,
+    explanation:
+      "How far from a perfect 1:1 square an uploaded render may be. Checked in the browser before upload and again on the server. 5% allows a few stray pixels while still refusing a screenshot.",
   },
 };
 
@@ -384,7 +449,24 @@ export function SettingsTab(props: SettingsTabProps) {
                       />
                     </Show>
 
-                    {/* 5. Secret / Text input */}
+                    {/*
+                      5. Datetime input — always IST.
+
+                      `datetime-local` produces exactly the `YYYY-MM-DDTHH:MM`
+                      the server parses, and it has no timezone of its own, so
+                      what is typed is what is stored. That is the point: the
+                      value means IST regardless of where the admin is sitting.
+                    */}
+                    <Show when={meta.type === "datetime"}>
+                      <input
+                        type="datetime-local"
+                        value={typeof currentValue() === "string" ? (currentValue() as string) : ""}
+                        onInput={(e) => handleValueChange(setting.key, e.currentTarget.value)}
+                        class="input w-60 font-mono text-xs font-bold"
+                      />
+                    </Show>
+
+                    {/* 6. Secret / Text input */}
                     <Show when={meta.type === "string" || meta.type === "secret"}>
                       <input
                         type={meta.type === "secret" ? "password" : "text"}

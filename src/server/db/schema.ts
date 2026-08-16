@@ -400,11 +400,11 @@ export const pookalamStatusEnum = pgEnum("pookalam_status", ["pending", "approve
  * contest is judged by head-to-head voting and letting one person field three
  * entries would let them farm the pairing.
  *
- * Artwork is referenced by URL rather than uploaded. Hosting user images would
- * mean object storage, a moderation queue for actual image content, and a bill;
- * a link to a repo plus a link to a render costs nothing and is what a coding
- * contest wants anyway. `status` gates whether an entry enters the pairing at
- * all, so an admin sees every link before a voter does.
+ * Artwork is uploaded to our own bucket rather than linked. A borrowed URL rots
+ * between review and voting, can be swapped for something else after approval,
+ * and leaks the author's identity through the hosting path — which would defeat
+ * the anonymous round entirely. `status` gates whether an entry is *valid*;
+ * `shortlisted` gates whether it enters the day-7 pairing.
  */
 export const pookalamSubmissions = pgTable(
   "pookalam_submissions",
@@ -416,10 +416,23 @@ export const pookalamSubmissions = pgTable(
     title: text("title").notNull(),
     /** Where the code lives. The whole point of the contest. */
     sourceUrl: text("source_url").notNull(),
-    /** A render of the result. Shown to voters; the source URL is not. */
+    /** Public URL of the stored render. Shown to voters; the source URL is not. */
     imageUrl: text("image_url").notNull(),
+    /** Object key inside the bucket, so a replaced image can be cleaned up. */
+    imagePath: text("image_path"),
+    imageWidth: integer("image_width"),
+    imageHeight: integer("image_height"),
     notes: text("notes"),
     status: pookalamStatusEnum("status").notNull().default("pending"),
+    /**
+     * Picked by an admin for the public Elo round.
+     *
+     * Separate from `status` because they answer different questions: `approved`
+     * means the entry is real, on-brief and safe to show, while `shortlisted`
+     * means it is one of the top N the crowd will actually vote between. Every
+     * shortlisted entry is approved; most approved entries are not shortlisted.
+     */
+    shortlisted: boolean("shortlisted").notNull().default(false),
     reviewNote: text("review_note"),
     reviewedBy: uuid("reviewed_by").references(() => users.id, { onDelete: "set null" }),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
@@ -430,6 +443,20 @@ export const pookalamSubmissions = pgTable(
     rating: doublePrecision("rating").notNull().default(1200),
     matches: integer("matches").notNull().default(0),
     wins: integer("wins").notNull().default(0),
+    /**
+     * Admin correction, added to `rating` to produce the score that ranks.
+     *
+     * Deliberately a *separate* column rather than an edit to `rating`. A
+     * public contest that lets a human quietly rewrite a number has no result
+     * worth announcing — keeping the correction beside the Elo means the raw
+     * crowd verdict survives, the intervention is visible, and setting it back
+     * to zero fully undoes it. It exists for the cases the maths cannot see:
+     * a brigade of sockpuppets downvoting one entry, or a friend group farming
+     * one up. `adjustmentNote` is required by the service, not by the column,
+     * so the reason is always recorded next to the number.
+     */
+    adjustment: doublePrecision("adjustment").notNull().default(0),
+    adjustmentNote: text("adjustment_note"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -437,8 +464,69 @@ export const pookalamSubmissions = pgTable(
     unique("pookalam_submissions_user_key").on(t.userId),
     index("pookalam_submissions_status_idx").on(t.status, t.matches, t.id),
     index("pookalam_submissions_rating_idx").on(t.rating),
+    // The pairing query's exact predicate: shortlisted entries, least-seen
+    // first. Small table, but this runs on every single tap during day 7.
+    index("pookalam_submissions_shortlist_idx").on(t.shortlisted, t.status, t.matches),
   ],
 );
+
+export const pookalamVerdictEnum = pgEnum("pookalam_verdict", ["like", "dislike"]);
+
+/**
+ * Tester and admin feedback on an entry, before the public round.
+ *
+ * This is the shortlisting instrument, not a score: the admin picks the top N
+ * by hand, and these give them something to pick *on* besides their own taste.
+ * A verdict without a reason is nearly useless for that, which is why the
+ * comment sits on the same row rather than in a separate table — one row per
+ * (reviewer, entry), rewritten when they change their mind.
+ *
+ * Kept strictly apart from `pookalam_votes`. These are named opinions from a
+ * handful of trusted people used to *choose* the field; those are anonymous
+ * head-to-heads from the crowd used to *rank* it. Merging them would let a
+ * tester's like leak into an Elo rating.
+ */
+export const pookalamReviews = pgTable(
+  "pookalam_reviews",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    submissionId: uuid("submission_id")
+      .notNull()
+      .references(() => pookalamSubmissions.id, { onDelete: "cascade" }),
+    reviewerId: uuid("reviewer_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    verdict: pookalamVerdictEnum("verdict").notNull(),
+    comment: text("comment"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("pookalam_reviews_submission_reviewer_key").on(t.submissionId, t.reviewerId),
+    index("pookalam_reviews_submission_idx").on(t.submissionId),
+  ],
+);
+
+/**
+ * Deliberately stale copies of the two day-7 boards.
+ *
+ * Both leaderboards are recomputed on read and cached here for a configurable
+ * delay. The lag is a feature, not an optimisation: a board that updates the
+ * instant you vote turns the round into a bandwagon, where late voters see
+ * which pookalam is winning and vote for it. A minute of staleness breaks that
+ * feedback loop while still feeling live.
+ *
+ * It happens to be the cheap option too — the voter board is an aggregate over
+ * every vote ever cast, and day 7 is the one day everybody is refreshing it.
+ * A table rather than process memory because serverless instances do not share
+ * one, so an in-process cache would show a different lag per instance.
+ */
+export const pookalamStandings = pgTable("pookalam_standings", {
+  /** `entries` or `voters`. */
+  key: text("key").primaryKey(),
+  payload: jsonb("payload").notNull(),
+  computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 /**
  * One row per judged pair.
@@ -477,3 +565,4 @@ export type Device = typeof devices.$inferSelect;
 export type Game = typeof games.$inferSelect;
 export type GameAttempt = typeof gameAttempts.$inferSelect;
 export type PookalamSubmission = typeof pookalamSubmissions.$inferSelect;
+export type PookalamReview = typeof pookalamReviews.$inferSelect;

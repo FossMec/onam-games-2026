@@ -26,6 +26,7 @@ import {
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { ShareCardModal } from "~/components/games/ShareCard";
+import { PookalamBoards } from "~/components/pookalam/PookalamBoards";
 import { collegeLabel } from "~/lib/profile";
 import type { ShareCardData } from "~/lib/share-card";
 import { getMe } from "~/server/auth/actions";
@@ -119,6 +120,15 @@ export default function Leaderboard() {
   });
 
   const selectedGame = () => games()?.find((g) => g.day === selectedDay()) ?? null;
+
+  /**
+   * Day 7 is Code-a-Pookalam, which has no `games` row and no timed run, so
+   * none of the daily chrome below applies to it — no duration column, no
+   * tester split, no "be the first to finish". It gets the two Elo boards
+   * instead, in the same day slot, because it is still just a day of the
+   * festival and a second leaderboard URL would only be a thing to go find.
+   */
+  const isDay7 = () => selectedDay() === 7 && !selectedGame();
 
   // Auto-set tab to tester if currently selected game is in tester preview
   createEffect(() => {
@@ -396,265 +406,276 @@ export default function Leaderboard() {
         </Show>
       </div>
 
-      {/* ---------------------------------------------------- Locked Day Teaser for Regular Players */}
-      <Show when={isLockedForPlayer()}>
-        <div class="card card-plain p-8 text-center space-y-3 bg-[var(--paper-2)] border-2 border-[var(--ink)]">
-          <Lock size={36} class="mx-auto opacity-70" />
-          <h2 class="font-black text-xl">Day {selectedDay()} Challenge Unlocks Soon</h2>
-          <p class="font-semibold text-sm max-w-md mx-auto" style={{ color: "var(--ink-soft)" }}>
-            {selectedGame()?.hint
-              ? `Teaser: "${selectedGame()!.hint}"`
-              : "This daily challenge has not unlocked yet. Check back when the countdown hits zero!"}
-          </p>
-          <a href="/" class="btn-brand inline-block text-xs px-4 py-2 font-bold">
-            Back to Festival Schedule
-          </a>
-        </div>
+      {/* ------------------------------------------- Day 7: the pookalam arena */}
+      <Show when={isDay7()}>
+        <PookalamBoards />
       </Show>
 
-      {/* ---------------------------------------------------- Top #1 Winner Callout (when day is closed) */}
-      <Show when={!isLockedForPlayer() && topDailyWinner() && selectedGame()?.status === "closed"}>
-        {(() => {
-          const top = topDailyWinner()!;
-          return (
-            <div class="relative overflow-hidden card card-plain p-4 bg-[var(--pop-yellow)] flex items-center justify-between gap-4">
-              <Confetti seed="winner-callout" count={6} animate />
-              <div class="art-over flex items-center gap-3 min-w-0">
-                <Show
-                  when={top.avatarUrl}
-                  fallback={
-                    <SpriteIcon name="tux-king" size={36} animate="wobble" class="shrink-0" />
-                  }
-                >
-                  <img
-                    src={top.avatarUrl!}
-                    alt={top.name}
-                    class="w-10 h-10 rounded-full object-cover shrink-0 select-none block"
-                    style={{ border: "2px solid var(--ink)" }}
-                  />
-                </Show>
-                <div class="min-w-0">
-                  <div class="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase px-2 py-0.5 rounded bg-[var(--paper-2)] border border-[var(--ink)]">
-                    <Trophy size={12} strokeWidth={3} />
-                    <span>Day Winner · ₹200 Cash Prize</span>
+      <Show when={!isDay7()}>
+        {/* ---------------------------------------------------- Locked Day Teaser for Regular Players */}
+        <Show when={isLockedForPlayer()}>
+          <div class="card card-plain p-8 text-center space-y-3 bg-[var(--paper-2)] border-2 border-[var(--ink)]">
+            <Lock size={36} class="mx-auto opacity-70" />
+            <h2 class="font-black text-xl">Day {selectedDay()} Challenge Unlocks Soon</h2>
+            <p class="font-semibold text-sm max-w-md mx-auto" style={{ color: "var(--ink-soft)" }}>
+              {selectedGame()?.hint
+                ? `Teaser: "${selectedGame()!.hint}"`
+                : "This daily challenge has not unlocked yet. Check back when the countdown hits zero!"}
+            </p>
+            <a href="/" class="btn-brand inline-block text-xs px-4 py-2 font-bold">
+              Back to Festival Schedule
+            </a>
+          </div>
+        </Show>
+
+        {/* ---------------------------------------------------- Top #1 Winner Callout (when day is closed) */}
+        <Show
+          when={!isLockedForPlayer() && topDailyWinner() && selectedGame()?.status === "closed"}
+        >
+          {(() => {
+            const top = topDailyWinner()!;
+            return (
+              <div class="relative overflow-hidden card card-plain p-4 bg-[var(--pop-yellow)] flex items-center justify-between gap-4">
+                <Confetti seed="winner-callout" count={6} animate />
+                <div class="art-over flex items-center gap-3 min-w-0">
+                  <Show
+                    when={top.avatarUrl}
+                    fallback={
+                      <SpriteIcon name="tux-king" size={36} animate="wobble" class="shrink-0" />
+                    }
+                  >
+                    <img
+                      src={top.avatarUrl!}
+                      alt={top.name}
+                      class="w-10 h-10 rounded-full object-cover shrink-0 select-none block"
+                      style={{ border: "2px solid var(--ink)" }}
+                    />
+                  </Show>
+                  <div class="min-w-0">
+                    <div class="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase px-2 py-0.5 rounded bg-[var(--paper-2)] border border-[var(--ink)]">
+                      <Trophy size={12} strokeWidth={3} />
+                      <span>Day Winner · ₹200 Cash Prize</span>
+                    </div>
+                    <p class="font-black text-base sm:text-lg mt-1 truncate">{top.name}</p>
                   </div>
-                  <p class="font-black text-base sm:text-lg mt-1 truncate">{top.name}</p>
+                </div>
+                <div class="art-over text-right font-mono font-black text-sm sm:text-base shrink-0">
+                  <p>{formatMetric(top)}</p>
                 </div>
               </div>
-              <div class="art-over text-right font-mono font-black text-sm sm:text-base shrink-0">
-                <p>{formatMetric(top)}</p>
-              </div>
-            </div>
-          );
-        })()}
-      </Show>
+            );
+          })()}
+        </Show>
 
-      {/* ---------------------------------------------------- Empty State */}
-      <Show when={!isLockedForPlayer() && isEmpty()}>
-        <div class="card card-plain pop-yellow text-center p-8 space-y-2">
-          <SpriteIcon name="octocat-garland" size={44} animate="wobble" class="mx-auto" />
-          <p class="font-black text-lg">No submissions yet for Day {selectedDay()}.</p>
-          <p class="comment text-xs">be the first to finish and claim the #1 spot!</p>
-        </div>
-      </Show>
-
-      {/* ---------------------------------------------------- DAILY LEADERBOARD TABLE */}
-      <Show when={!isLockedForPlayer() && daily() && daily()!.entries.length > 0}>
-        <div class="card card-plain p-0 overflow-hidden">
-          <div
-            class="bg-[var(--paper-2)] px-4 py-2.5 border-b-2 border-[var(--ink)] flex items-center justify-between text-xs font-extrabold uppercase tracking-wider"
-            style={{ color: "var(--ink-soft)" }}
-          >
-            <span>Rank & Player</span>
-            <span class="text-right">{daily()!.metricLabel}</span>
+        {/* ---------------------------------------------------- Empty State */}
+        <Show when={!isLockedForPlayer() && isEmpty()}>
+          <div class="card card-plain pop-yellow text-center p-8 space-y-2">
+            <SpriteIcon name="octocat-garland" size={44} animate="wobble" class="mx-auto" />
+            <p class="font-black text-lg">No submissions yet for Day {selectedDay()}.</p>
+            <p class="comment text-xs">be the first to finish and claim the #1 spot!</p>
           </div>
+        </Show>
 
-          <div class="divide-y divide-[var(--ink-soft)]/20">
-            <For each={daily()!.entries}>
-              {(entry) => {
-                const isExpanded = () => expandedId() === `daily-${entry.userId}`;
-                return (
-                  <div
-                    class={`transition-colors cursor-pointer ${
-                      entry.isMe ? "bg-[var(--pop-yellow)]/60" : "hover:bg-[var(--paper-2)]"
-                    }`}
-                    onClick={() => toggleExpand(`daily-${entry.userId}`)}
-                  >
-                    {/* Main Row: Standing, Avatar, Name, Score */}
-                    <div class="px-4 py-3 flex items-center justify-between gap-3">
-                      <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                        <RankChip rank={entry.rank} />
-                        <Show
-                          when={entry.avatarUrl}
-                          fallback={
-                            <div
-                              class="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden grid place-items-center shrink-0 text-[10px] sm:text-xs font-black select-none"
-                              style={{
-                                border: "1.5px solid var(--ink)",
-                                background: entry.isMe ? "var(--pop-yellow)" : "var(--paper-3)",
-                                color: "var(--ink)",
-                              }}
-                            >
-                              {entry.name.slice(0, 1).toUpperCase()}
-                            </div>
-                          }
-                        >
-                          <img
-                            src={entry.avatarUrl!}
-                            alt={entry.name}
-                            class="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover shrink-0 select-none block"
-                            style={{ border: "1.5px solid var(--ink)" }}
-                            loading="lazy"
-                          />
-                        </Show>
-                        <div class="min-w-0">
-                          <p class="font-extrabold text-sm truncate flex items-center gap-1.5">
-                            <span>{entry.name}</span>
-                            {entry.isMe && <span class="comment text-[11px]">you</span>}
-                            {entry.isTester && (
-                              <span class="badge text-[9px] py-0 px-1 bg-[var(--pop-teal)] uppercase">
-                                Tester
-                              </span>
-                            )}
-                            {/*
+        {/* ---------------------------------------------------- DAILY LEADERBOARD TABLE */}
+        <Show when={!isLockedForPlayer() && daily() && daily()!.entries.length > 0}>
+          <div class="card card-plain p-0 overflow-hidden">
+            <div
+              class="bg-[var(--paper-2)] px-4 py-2.5 border-b-2 border-[var(--ink)] flex items-center justify-between text-xs font-extrabold uppercase tracking-wider"
+              style={{ color: "var(--ink-soft)" }}
+            >
+              <span>Rank & Player</span>
+              <span class="text-right">{daily()!.metricLabel}</span>
+            </div>
+
+            <div class="divide-y divide-[var(--ink-soft)]/20">
+              <For each={daily()!.entries}>
+                {(entry) => {
+                  const isExpanded = () => expandedId() === `daily-${entry.userId}`;
+                  return (
+                    <div
+                      class={`transition-colors cursor-pointer ${
+                        entry.isMe ? "bg-[var(--pop-yellow)]/60" : "hover:bg-[var(--paper-2)]"
+                      }`}
+                      onClick={() => toggleExpand(`daily-${entry.userId}`)}
+                    >
+                      {/* Main Row: Standing, Avatar, Name, Score */}
+                      <div class="px-4 py-3 flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                          <RankChip rank={entry.rank} />
+                          <Show
+                            when={entry.avatarUrl}
+                            fallback={
+                              <div
+                                class="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden grid place-items-center shrink-0 text-[10px] sm:text-xs font-black select-none"
+                                style={{
+                                  border: "1.5px solid var(--ink)",
+                                  background: entry.isMe ? "var(--pop-yellow)" : "var(--paper-3)",
+                                  color: "var(--ink)",
+                                }}
+                              >
+                                {entry.name.slice(0, 1).toUpperCase()}
+                              </div>
+                            }
+                          >
+                            <img
+                              src={entry.avatarUrl!}
+                              alt={entry.name}
+                              class="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover shrink-0 select-none block"
+                              style={{ border: "1.5px solid var(--ink)" }}
+                              loading="lazy"
+                            />
+                          </Show>
+                          <div class="min-w-0">
+                            <p class="font-extrabold text-sm truncate flex items-center gap-1.5">
+                              <span>{entry.name}</span>
+                              {entry.isMe && <span class="comment text-[11px]">you</span>}
+                              {entry.isTester && (
+                                <span class="badge text-[9px] py-0 px-1 bg-[var(--pop-teal)] uppercase">
+                                  Tester
+                                </span>
+                              )}
+                              {/*
                               The streak rides along on the row the board is
                               already fetching — `users.streak_count` is part of
                               the same join, so this costs nothing. Shown from
                               two days up: a "streak" of one is just today.
                             */}
-                            {entry.streakCount > 1 && (
-                              <span
-                                class="badge text-[9px] py-0 px-1 tabular-nums"
-                                style={{ "--pop": "var(--pop-red)" }}
-                                title={`${entry.streakCount}-day streak`}
-                              >
-                                <Flame size={10} strokeWidth={3} />
-                                {entry.streakCount}
-                              </span>
-                            )}
-                          </p>
+                              {entry.streakCount > 1 && (
+                                <span
+                                  class="badge text-[9px] py-0 px-1 tabular-nums"
+                                  style={{ "--pop": "var(--pop-red)" }}
+                                  title={`${entry.streakCount}-day streak`}
+                                >
+                                  <Flame size={10} strokeWidth={3} />
+                                  {entry.streakCount}
+                                </span>
+                              )}
+                            </p>
+                          </div>
                         </div>
-                      </div>
 
-                      <div class="flex items-center gap-3 shrink-0 text-right">
-                        <div class="font-mono tabular-nums text-sm font-extrabold">
-                          <span>{formatMetric(entry)}</span>
-                        </div>
-                        <span class="text-[var(--ink-soft)] select-none">
-                          <Show
-                            when={isExpanded()}
-                            fallback={<ChevronDown size={15} strokeWidth={2.5} />}
-                          >
-                            <ChevronUp size={15} strokeWidth={2.5} />
-                          </Show>
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Expandable Details Drawer */}
-                    <Show when={isExpanded()}>
-                      <div class="px-4 py-3 text-xs border-t border-[var(--ink-soft)]/15 bg-[var(--paper-3)]/70 flex flex-wrap items-center justify-between gap-3">
-                        <div class="flex items-center gap-1.5">
-                          <GraduationCap size={14} class="shrink-0 opacity-70" />
-                          <span class="font-semibold">
-                            {entry.college ?? "Independent"}
-                            {entry.branch ? ` · ${entry.branch}` : ""}
+                        <div class="flex items-center gap-3 shrink-0 text-right">
+                          <div class="font-mono tabular-nums text-sm font-extrabold">
+                            <span>{formatMetric(entry)}</span>
+                          </div>
+                          <span class="text-[var(--ink-soft)] select-none">
+                            <Show
+                              when={isExpanded()}
+                              fallback={<ChevronDown size={15} strokeWidth={2.5} />}
+                            >
+                              <ChevronUp size={15} strokeWidth={2.5} />
+                            </Show>
                           </span>
                         </div>
-                        <div class="flex items-center gap-3 font-mono text-[11px] opacity-85">
-                          <Show when={entry.streakCount > 0}>
-                            <span class="inline-flex items-center gap-1">
-                              <Flame size={12} />
-                              {entry.streakCount} day
-                              {entry.streakCount === 1 ? "" : "s"} in a row
+                      </div>
+
+                      {/* Expandable Details Drawer */}
+                      <Show when={isExpanded()}>
+                        <div class="px-4 py-3 text-xs border-t border-[var(--ink-soft)]/15 bg-[var(--paper-3)]/70 flex flex-wrap items-center justify-between gap-3">
+                          <div class="flex items-center gap-1.5">
+                            <GraduationCap size={14} class="shrink-0 opacity-70" />
+                            <span class="font-semibold">
+                              {entry.college ?? "Independent"}
+                              {entry.branch ? ` · ${entry.branch}` : ""}
                             </span>
-                          </Show>
-                          <Show when={daily()!.metric === "score"}>
-                            <span>Runs: {entry.attemptsUsed}</span>
-                          </Show>
-                          <span class="inline-flex items-center gap-1">
-                            <Clock size={12} />
-                            {formatClock(entry.submittedAt)}
-                          </span>
+                          </div>
+                          <div class="flex items-center gap-3 font-mono text-[11px] opacity-85">
+                            <Show when={entry.streakCount > 0}>
+                              <span class="inline-flex items-center gap-1">
+                                <Flame size={12} />
+                                {entry.streakCount} day
+                                {entry.streakCount === 1 ? "" : "s"} in a row
+                              </span>
+                            </Show>
+                            <Show when={daily()!.metric === "score"}>
+                              <span>Runs: {entry.attemptsUsed}</span>
+                            </Show>
+                            <span class="inline-flex items-center gap-1">
+                              <Clock size={12} />
+                              {formatClock(entry.submittedAt)}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    </Show>
-                  </div>
-                );
-              }}
-            </For>
-          </div>
-        </div>
-
-        {/* ---------------------------------------------------- Pagination Controls */}
-        <Show when={daily() && daily()!.totalPages > 1}>
-          <div class="card card-plain p-3 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[var(--paper-2)]">
-            <span class="text-xs font-bold text-[var(--ink-soft)]">
-              Showing {(daily()!.page - 1) * daily()!.pageSize + 1}–
-              {Math.min(daily()!.page * daily()!.pageSize, daily()!.fieldSize)} of{" "}
-              {daily()!.fieldSize} players
-            </span>
-
-            <div class="flex items-center gap-1.5">
-              <button
-                type="button"
-                class="btn-ghost text-xs px-3 py-1.5 cursor-pointer"
-                disabled={daily()!.page <= 1}
-                onClick={() => {
-                  void startTransition(() => setPage((p) => Math.max(1, p - 1)));
+                      </Show>
+                    </div>
+                  );
                 }}
-              >
-                Previous
-              </button>
+              </For>
+            </div>
+          </div>
 
-              <span class="text-xs font-black px-2.5 py-1 bg-[var(--paper)] rounded border border-[var(--ink)]">
-                Page {daily()!.page} of {daily()!.totalPages}
+          {/* ---------------------------------------------------- Pagination Controls */}
+          <Show when={daily() && daily()!.totalPages > 1}>
+            <div class="card card-plain p-3 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[var(--paper-2)]">
+              <span class="text-xs font-bold text-[var(--ink-soft)]">
+                Showing {(daily()!.page - 1) * daily()!.pageSize + 1}–
+                {Math.min(daily()!.page * daily()!.pageSize, daily()!.fieldSize)} of{" "}
+                {daily()!.fieldSize} players
               </span>
 
-              <button
-                type="button"
-                class="btn-ghost text-xs px-3 py-1.5 cursor-pointer"
-                disabled={daily()!.page >= daily()!.totalPages}
-                onClick={() => {
-                  void startTransition(() => setPage((p) => Math.min(daily()!.totalPages, p + 1)));
-                }}
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        </Show>
+              <div class="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  class="btn-ghost text-xs px-3 py-1.5 cursor-pointer"
+                  disabled={daily()!.page <= 1}
+                  onClick={() => {
+                    void startTransition(() => setPage((p) => Math.max(1, p - 1)));
+                  }}
+                >
+                  Previous
+                </button>
 
-        <Show when={daily()!.myEntry && !daily()!.entries.some((e) => e.isMe)}>
-          <div class="card pop-yellow p-3.5 flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-              <SpriteIcon name="foss-mec-badge" size={24} />
-              <p class="font-extrabold text-sm">
-                Your Rank: #{daily()!.myEntry!.rank} of {daily()!.fieldSize}
-              </p>
-            </div>
-            <p class="font-mono font-black text-sm">{formatMetric(daily()!.myEntry!)}</p>
-          </div>
-        </Show>
+                <span class="text-xs font-black px-2.5 py-1 bg-[var(--paper)] rounded border border-[var(--ink)]">
+                  Page {daily()!.page} of {daily()!.totalPages}
+                </span>
 
-        {/* On mobile / small screens, show share card at the bottom */}
-        <Show when={shareData()}>
-          <div class="2xl:hidden card pop-pink p-3.5 space-y-2">
-            <Show when={daily()?.myEntry}>
-              <div class="flex items-center justify-between text-xs font-black text-[var(--ink)] pb-1 border-b border-[var(--ink)]/20">
-                <span>Your Rank: #{daily()!.myEntry!.rank}</span>
-                <span class="font-mono">{formatMetric(daily()!.myEntry!)}</span>
+                <button
+                  type="button"
+                  class="btn-ghost text-xs px-3 py-1.5 cursor-pointer"
+                  disabled={daily()!.page >= daily()!.totalPages}
+                  onClick={() => {
+                    void startTransition(() =>
+                      setPage((p) => Math.min(daily()!.totalPages, p + 1)),
+                    );
+                  }}
+                >
+                  Next
+                </button>
               </div>
-            </Show>
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <p class="text-xs font-extrabold text-[var(--ink)]">
-                Can you beat me? Put it on their timeline.
-              </p>
-              <button type="button" class="btn-brand text-xs" onClick={() => setSharing(true)}>
-                Share my card
-              </button>
             </div>
-          </div>
+          </Show>
+
+          <Show when={daily()!.myEntry && !daily()!.entries.some((e) => e.isMe)}>
+            <div class="card pop-yellow p-3.5 flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <SpriteIcon name="foss-mec-badge" size={24} />
+                <p class="font-extrabold text-sm">
+                  Your Rank: #{daily()!.myEntry!.rank} of {daily()!.fieldSize}
+                </p>
+              </div>
+              <p class="font-mono font-black text-sm">{formatMetric(daily()!.myEntry!)}</p>
+            </div>
+          </Show>
+
+          {/* On mobile / small screens, show share card at the bottom */}
+          <Show when={shareData()}>
+            <div class="2xl:hidden card pop-pink p-3.5 space-y-2">
+              <Show when={daily()?.myEntry}>
+                <div class="flex items-center justify-between text-xs font-black text-[var(--ink)] pb-1 border-b border-[var(--ink)]/20">
+                  <span>Your Rank: #{daily()!.myEntry!.rank}</span>
+                  <span class="font-mono">{formatMetric(daily()!.myEntry!)}</span>
+                </div>
+              </Show>
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="text-xs font-extrabold text-[var(--ink)]">
+                  Can you beat me? Put it on their timeline.
+                </p>
+                <button type="button" class="btn-brand text-xs" onClick={() => setSharing(true)}>
+                  Share my card
+                </button>
+              </div>
+            </div>
+          </Show>
         </Show>
       </Show>
 

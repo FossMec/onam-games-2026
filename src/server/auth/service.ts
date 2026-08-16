@@ -308,6 +308,17 @@ export async function requireAdmin(): Promise<PublicUser> {
 }
 
 /**
+ * Testers and admins. Used by the pookalam shortlisting gallery, which shows
+ * every entry before the public round — trusted eyes only, but not admin-only,
+ * since the point is to get more than one person's opinion.
+ */
+export async function requireReviewer(): Promise<PublicUser> {
+  const user = await requireCurrentUser();
+  if (user.role !== "tester" && user.role !== "admin") throw new HttpError(403, "Forbidden");
+  return user;
+}
+
+/**
  * Refresh the stored Supabase access token.
  *
  * Callers gate this on `isRefreshDue` with the expiry they already hold, so

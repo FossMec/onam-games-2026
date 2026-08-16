@@ -148,7 +148,9 @@ export const POOKALAM = {
   votingOn: "Day 7 (All-day Community ELO Arena)",
 
   rules: [
-    "Submit your runnable source code (GitHub repo, Mon.school link, CodePen, or gist) AND a rendered picture.",
+    "Submit a link to your runnable source (GitHub repo, Gist, GitLab, Codeberg, CodePen or similar) AND upload the rendered image.",
+    "The render must be square (1:1). We check the shape in your browser before it uploads, so a widescreen screenshot will be refused on the spot.",
+    "No name, handle, watermark, signature or logo anywhere in the image. Day 7 voting is anonymous — anything identifying you gets the entry pulled.",
     "AI assistance is fully allowed! Use LLMs, shader generators, or creative coding prompts — as long as you submit clean, runnable code that produces the render.",
     "Any language or medium goes: HTML5 Canvas, SVG, CSS, Python (Turtle / Pygame / Matplotlib), Graphviz, GLSL Shaders, p5.js, Processing, or ASCII art.",
     "The design must read as a pookalam: radial, layered, and geometrically balanced.",
@@ -179,7 +181,7 @@ export const POOKALAM = {
   ],
 
   votingBlurb:
-    "After submissions close on Day 6, our jury shortlists the top standout pookalams. On Day 7, these entries face off in an all-day live pairwise Elo matchmaker arena where the entire community votes!",
+    "After submissions close on Day 6, our jury shortlists the top standout pookalams. On Day 7, these entries face off in an all-day live pairwise Elo matchmaker arena where the entire community votes! You never see a name — just two pookalams and one question. Pick enough pairs and you land on the voters' leaderboard, ranked on how well you called it rather than how fast you tapped.",
 
   aside: "someone will submit a fractal. someone always submits a fractal.",
 } as const;

@@ -20,11 +20,41 @@ import { appSettings } from "~/server/db/schema";
  * Outside a request (scripts, tests) there is nothing to hang it on, so it
  * falls back to a plain query.
  */
+/**
+ * Undoes a double-encoded jsonb value.
+ *
+ * A value written as `JSON.stringify(x)` into a jsonb column gets encoded a
+ * second time by the driver, so `"19:00"` lands in the database as a JSON
+ * string whose *contents* are `"19:00"` — quotes and all. `scripts/seed.mjs`
+ * did exactly that for every key it wrote.
+ *
+ * The failure mode is what makes this worth a defence rather than just a fix:
+ * nothing throws. `parseTimeSetting` simply fails its regex, returns null,
+ * `computeRelease` returns null, and every game on every day sits at
+ * `upcoming` forever with no error anywhere. A schedule that silently refuses
+ * to start is the worst possible bug for a one-week event.
+ *
+ * Unwrapping here fixes every reader at once — schedule, pookalam windows and
+ * anything added later — instead of hardening one parser at a time. A value
+ * that legitimately begins and ends with a quote character is not something
+ * any setting has, so this cannot corrupt a good row.
+ */
+function unwrapDoubleEncoded(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  if (trimmed.length < 2 || !trimmed.startsWith('"') || !trimmed.endsWith('"')) return value;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+}
+
 async function loadSettings(): Promise<Map<string, unknown>> {
   const rows = await getDb()
     .select({ key: appSettings.key, value: appSettings.value })
     .from(appSettings);
-  return new Map(rows.map((row) => [row.key, row.value]));
+  return new Map(rows.map((row) => [row.key, unwrapDoubleEncoded(row.value)]));
 }
 
 export function snapshotSettings(): Promise<Map<string, unknown>> {

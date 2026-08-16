@@ -97,23 +97,95 @@ export const settingsRegistry: SettingDef[] = [
       "Query parameter the final clue uses to hand over the token, e.g. /games/treasure-hunt?token=…",
     defaultValue: "token",
   },
+  /*
+   * Code-a-Pookalam runs on a clock. Each phase has a window (IST wall clock,
+   * `YYYY-MM-DDTHH:MM`) and a boolean *force* override. With a window set, the
+   * phase opens and closes on its own; the boolean forces it open regardless,
+   * which is the rehearsal switch and the 11pm-something-broke switch. Neither
+   * set means closed, so a half-configured deploy shows nothing.
+   */
+  {
+    key: "pookalam.submissions_open_at",
+    group: "pookalam",
+    description: "IST datetime the entry form opens (YYYY-MM-DDTHH:MM). Blank = never on its own",
+    defaultValue: "",
+  },
+  {
+    key: "pookalam.submissions_close_at",
+    group: "pookalam",
+    description: "IST datetime entries close — the Day 6 deadline (YYYY-MM-DDTHH:MM)",
+    defaultValue: "",
+  },
   {
     key: "pookalam.submissions_open",
     group: "pookalam",
-    description: "Code-a-Pookalam entry form accepts new and edited submissions",
+    description: "Force the entry form open right now, ignoring the dates above",
     defaultValue: false,
+  },
+  {
+    key: "pookalam.voting_open_at",
+    group: "pookalam",
+    description: "IST datetime the Day 7 public Elo arena opens (YYYY-MM-DDTHH:MM)",
+    defaultValue: "",
+  },
+  {
+    key: "pookalam.voting_close_at",
+    group: "pookalam",
+    description: "IST datetime voting closes and the result is final (YYYY-MM-DDTHH:MM)",
+    defaultValue: "",
   },
   {
     key: "pookalam.voting_open",
     group: "pookalam",
-    description: "Day 7: head-to-head voting is live and votes move Elo ratings",
+    description: "Force voting open right now, ignoring the dates above",
     defaultValue: false,
+  },
+  {
+    key: "pookalam.results_at",
+    group: "pookalam",
+    description: "IST datetime the winner and the authors are revealed (YYYY-MM-DDTHH:MM)",
+    defaultValue: "",
   },
   {
     key: "pookalam.results_public",
     group: "pookalam",
-    description: "Reveal the ranked standings and the authors behind them",
+    description: "Force the ranked standings and author names public right now",
     defaultValue: false,
+  },
+  {
+    key: "pookalam.shortlist_size",
+    group: "pookalam",
+    /**
+     * Advisory: the admin shortlists by hand and the UI counts against this.
+     * Nothing refuses a shortlist of eleven — it is a target, not a cap.
+     */
+    description: "How many entries to shortlist for the public Elo round (target, not a cap)",
+    defaultValue: 10,
+  },
+  {
+    key: "pookalam.voter_target_pct",
+    group: "pookalam",
+    /**
+     * A percentage of the n·log₂n sorting budget, NOT of the total pair count.
+     * See `voteTarget` — a percentage of every pair grows quadratically and
+     * becomes unreachable exactly when the shortlist gets big.
+     */
+    description:
+      "Votes needed to qualify for the voters' board, as a % of the n·log₂n comparison budget (10 entries ≈ 33 votes at 100%)",
+    defaultValue: 60,
+  },
+  {
+    key: "pookalam.leaderboard_delay_ms",
+    group: "pookalam",
+    description:
+      "How stale the Day 7 boards are allowed to be. The lag is deliberate — a live board makes late voters follow the leader",
+    defaultValue: 60000,
+  },
+  {
+    key: "pookalam.aspect_tolerance_pct",
+    group: "pookalam",
+    description: "How far from a 1:1 square an uploaded pookalam may be, in percent",
+    defaultValue: 5,
   },
 ];
 
