@@ -1,4 +1,4 @@
-import { asc, eq, lt, sql } from "drizzle-orm";
+import { asc, desc, eq, lt, sql } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
 import { collabPookalam } from "~/server/db/schema";
 import { getSettings } from "~/server/settings/service";
@@ -13,24 +13,8 @@ import {
 import { IST_OFFSET_MS } from "./window";
 
 /**
- * The shared pookalam: one 50x50 grid a day, stacked across the week.
- *
- * Everything here is deliberately small. A day is 1250 bytes, so the read is
- * "send me the whole week" rather than any kind of delta sync, and a placement
- * is one UPDATE that both checks and writes a single nibble.
- *
- * WHAT THE SERVER ACTUALLY ENFORCES
- *
- *   - the cell is on the grid, and the flower is in the catalogue
- *   - the cell is empty *today* — you cannot paint over someone
- *   - the feature is open
- *
- * and nothing else. How many flowers one person has left is a browser-side
- * count, by explicit decision: see `collab.daily_flowers`.
- *
- * The occupancy check is per day, which is what makes the stack work. Yesterday
- * being full does not stop you today; it just means today's flowers land on top
- * of yesterday's, which is how a pookalam grows at home.
+ * The shared pookalam: one continuous communal canvas that lives and grows
+ * throughout the festival.
  */
 
 /** How many days back the page draws underneath today. */
@@ -55,10 +39,6 @@ export interface CollabState {
 
 /**
  * Today's date in IST as `YYYY-MM-DD`.
- *
- * The canvas rolls at IST midnight rather than at the game release time. A
- * player's "today" is the calendar day they are living in, and tying the shared
- * drawing to the games schedule would have it turn over at 7pm mid-session.
  */
 export function istDayKey(now: Date = new Date()): string {
   return new Date(now.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
@@ -74,18 +54,31 @@ async function getConfig(): Promise<{ open: boolean; dailyFlowers: number }> {
 }
 
 /**
- * Today's row, created empty on first sight.
- *
- * `onConflictDoNothing` rather than a read-then-insert: the first request of
- * the day is very likely to arrive alongside several others, and two of them
- * racing to create the row should not turn into an error on somebody's screen.
+ * Ensures today's canvas row exists, carrying over existing flowers from previous days
+ * so the pookalam lives forever and continuously evolves.
  */
 async function ensureToday(dayKey: string) {
   const db = getDb();
-  await db
-    .insert(collabPookalam)
-    .values({ dayKey, cells: emptyGrid(), placed: 0 })
-    .onConflictDoNothing();
+  const existing = await db
+    .select()
+    .from(collabPookalam)
+    .where(eq(collabPookalam.dayKey, dayKey))
+    .limit(1);
+  if (existing.length > 0) return existing[0];
+
+  // Carry forward existing flowers from previous day
+  const [latest] = await db
+    .select()
+    .from(collabPookalam)
+    .where(lt(collabPookalam.dayKey, dayKey))
+    .orderBy(desc(collabPookalam.dayKey))
+    .limit(1);
+
+  const cells = latest?.cells ? new Uint8Array(latest.cells) : emptyGrid();
+  const placed = latest?.placed ?? 0;
+
+  await db.insert(collabPookalam).values({ dayKey, cells, placed }).onConflictDoNothing();
+
   const [row] = await db
     .select()
     .from(collabPookalam)

@@ -754,10 +754,6 @@ export default function Home() {
                 Celebrate with FOSS MEC by creating a communal flower carpet — contribute petals,
                 build around each other, and create art together.
               </p>
-              <p class="comment text-[11px] sm:text-xs m-0">
-                Flowers reset daily at midnight — collaborate throughout the festival to create art
-                together.
-              </p>
             </div>
             <CollabPookalam />
           </div>

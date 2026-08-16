@@ -965,7 +965,8 @@ const HOW_TO: string[] = [
   "Tap a square to place it, or press and drag to lay a smooth line of petals at once.",
   "Build around each other and layer flowers across the canvas to create art together.",
   "Each flower species can occupy up to 20% of the pookalam to ensure a colorful, diverse carpet.",
-  "Your flower limit resets daily at midnight — come back every day of the festival to add more!",
+  "Use the Eraser tool anytime if you want to clear a spot or adjust a section.",
+  "The communal canvas lives forever — come back each day as your daily allowance replenishes!",
 ];
 
 function StrokeDemo() {
