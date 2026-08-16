@@ -1,14 +1,28 @@
-import { CheckCircle2, Clock, HelpCircle, RefreshCw, X, ZoomIn, ZoomOut } from "lucide-solid";
+import {
+  CheckCircle2,
+  Clock,
+  Heart,
+  HelpCircle,
+  MessageSquare,
+  RefreshCw,
+  Send,
+  Sparkles,
+  X,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-solid";
 import { For, Show, batch, createEffect, createSignal, onCleanup, onMount } from "solid-js";
+import { MAX_MESSAGE_CHARS } from "~/lib/pookalam-censor";
 import { EMPTY_BRUSH, FLOWERS, type Flower, drawFlower, flowerById } from "~/lib/pookalam-flowers";
 import { CELL_COUNT, fromBase64, readCell, writeCell } from "~/lib/pookalam-grid";
 import { PADDING_SCALE, SLOTS, slotAt } from "~/lib/pookalam-layout";
+import type { CollabMessageItem } from "~/server/pookalam/comments";
 
 /**
  * The pookalam the whole room draws together.
  *
  * A 50x50 grid with 4-hour rolling window allowances (3 drops of 10 flowers = 30/day),
- * 20% species cap, and continuous layered collaboration.
+ * 20% species cap, continuous layered collaboration, and live community wishes.
  */
 
 const MAX_CANVAS_PX_DESKTOP = 540;
@@ -58,6 +72,61 @@ export function CollabPookalam() {
   const [loaded, setLoaded] = createSignal(false);
   const [drawing, setDrawing] = createSignal(false);
   const [showHowTo, setShowHowTo] = createSignal(false);
+
+  // Wishes state (pool of up to 30 loaded once, smoothly rotated locally on client)
+  const [messagePool, setMessagePool] = createSignal<CollabMessageItem[]>([]);
+  const [displayedMessages, setDisplayedMessages] = createSignal<CollabMessageItem[]>([]);
+  const [myMessage, setMyMessage] = createSignal<CollabMessageItem | null>(null);
+  const [wishInput, setWishInput] = createSignal("");
+  const [wishPosting, setWishPosting] = createSignal(false);
+  const [wishNote, setWishNote] = createSignal("");
+
+  const sampleMessages = (pool: CollabMessageItem[], myMsg: CollabMessageItem | null) => {
+    if (pool.length === 0) return [];
+    if (pool.length <= 6) return pool;
+
+    const nowMs = Date.now();
+    const weighted = pool.map((row) => {
+      const ageMs = Math.max(0, nowMs - new Date(row.createdAt).getTime());
+      const hoursOld = ageMs / (1000 * 60 * 60);
+      const timeWeight = Math.exp(-hoursOld / 6) + 0.35;
+      const likesWeight = 1 + row.likesCount * 0.85;
+      const weight = timeWeight * likesWeight;
+      return { row, weight };
+    });
+
+    const SAMPLE_SIZE = Math.min(6, pool.length);
+    const selected: CollabMessageItem[] = [];
+    const candidates = [...weighted];
+
+    // Always include current user's message if present
+    if (myMsg) {
+      selected.push(myMsg);
+      const myIdx = candidates.findIndex((c) => c.row.id === myMsg.id);
+      if (myIdx >= 0) candidates.splice(myIdx, 1);
+    }
+
+    while (selected.length < SAMPLE_SIZE && candidates.length > 0) {
+      const totalWeight = candidates.reduce((sum, item) => sum + item.weight, 0);
+      let rand = Math.random() * totalWeight;
+      let chosenIdx = 0;
+      for (let i = 0; i < candidates.length; i++) {
+        rand -= candidates[i].weight;
+        if (rand <= 0) {
+          chosenIdx = i;
+          break;
+        }
+      }
+      selected.push(candidates[chosenIdx].row);
+      candidates.splice(chosenIdx, 1);
+    }
+
+    return selected;
+  };
+
+  const refreshDisplayed = () => {
+    setDisplayedMessages(sampleMessages(messagePool(), myMessage()));
+  };
 
   // Read clean timestamps within last 24h
   const readStoredTimestamps = (): number[] => {
@@ -132,6 +201,7 @@ export function CollabPookalam() {
     `Your daily flower quota is delivered in rolling 4-hour drops of ${windowLimit()} flowers each so collaboration stays active all day.`,
     "Each flower species can occupy up to 20% of the pookalam to ensure a colorful, diverse carpet.",
     "Drawing on top of existing flowers unlocks once the canvas is 80% filled (less than 20% empty).",
+    "Once you finish placing flowers in a window, you unlock the ability to post your daily Onam wish!",
     "Use the Eraser tool anytime if you want to clear a spot or adjust a section.",
     "The communal canvas lives forever — come back throughout the festival to create art together!",
   ];
@@ -161,6 +231,20 @@ export function CollabPookalam() {
     setZoom(next ?? 1);
   };
 
+  const loadMessages = async () => {
+    try {
+      const res = await fetch("/api/pookalam/messages");
+      const data = await res.json();
+      if (data && Array.isArray(data.messages)) {
+        setMessagePool(data.messages);
+        setMyMessage(data.myMessage || null);
+        setDisplayedMessages(sampleMessages(data.messages, data.myMessage || null));
+      }
+    } catch {
+      /* ignore message load error */
+    }
+  };
+
   const load = async () => {
     setBusy(true);
     try {
@@ -182,11 +266,74 @@ export function CollabPookalam() {
         const next = FLOWERS.find((f) => !isFlowerCapped(f.id));
         if (next) setPicked(next);
       }
+
+      void loadMessages();
     } catch {
       setNote("Could not reach the pookalam. Try refresh.");
     } finally {
       setBusy(false);
       setLoaded(true);
+    }
+  };
+
+  const toggleLike = async (messageId: string) => {
+    const updateMsg = (m: CollabMessageItem) => {
+      if (m.id !== messageId) return m;
+      const nextLiked = !m.hasLiked;
+      return {
+        ...m,
+        hasLiked: nextLiked,
+        likesCount: nextLiked ? m.likesCount + 1 : Math.max(0, m.likesCount - 1),
+      };
+    };
+    setMessagePool((prev) => prev.map(updateMsg));
+    setDisplayedMessages((prev) => prev.map(updateMsg));
+    if (myMessage()?.id === messageId) {
+      setMyMessage((prev) => (prev ? updateMsg(prev) : null));
+    }
+
+    try {
+      await fetch("/api/pookalam/like", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId }),
+      });
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const submitWish = async () => {
+    const text = wishInput().trim();
+    if (!text || wishPosting()) return;
+    setWishPosting(true);
+    setWishNote("");
+    try {
+      const res = await fetch("/api/pookalam/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      });
+      const result = await res.json();
+      if (result.ok && result.message) {
+        setMyMessage(result.message);
+        setMessagePool((prev) => [
+          result.message,
+          ...prev.filter((m) => m.id !== result.message.id),
+        ]);
+        setDisplayedMessages((prev) => [
+          result.message,
+          ...prev.filter((m) => m.id !== result.message.id),
+        ]);
+        setWishInput("");
+        setWishNote("✨ Your Onam wish is now live beside the pookalam!");
+      } else {
+        setWishNote(result.reason || "Could not post your wish.");
+      }
+    } catch {
+      setWishNote("Network error. Please try again.");
+    } finally {
+      setWishPosting(false);
     }
   };
 
@@ -217,10 +364,14 @@ export function CollabPookalam() {
       setTimestamps(readStoredTimestamps());
     }, 5000);
 
+    // Local client-side smooth rotation of displayed wishes every 15s (no server polling!)
+    const rotateTimer = setInterval(refreshDisplayed, 15000);
+
     onCleanup(() => {
       observer.disconnect();
       window.removeEventListener("resize", measure);
       clearInterval(timer);
+      clearInterval(rotateTimer);
       void flush();
     });
   });
@@ -549,10 +700,20 @@ export function CollabPookalam() {
     }
   };
 
+  // Split messages for left and right flanks on desktop
+  const leftMessages = () =>
+    displayedMessages()
+      .filter((_, i) => i % 2 === 0)
+      .slice(0, 3);
+  const rightMessages = () =>
+    displayedMessages()
+      .filter((_, i) => i % 2 === 1)
+      .slice(0, 3);
+
   return (
     <div
       ref={(el) => (rootRef = el)}
-      class="w-full flex flex-col items-center justify-center space-y-1.5"
+      class="w-full flex flex-col items-center justify-center space-y-2"
     >
       {/* ---------------- Mobile Only Top Utility Bar (Single Compact Line) ---------------- */}
       <div class="lg:hidden w-full flex items-center justify-between gap-1 px-1">
@@ -637,120 +798,128 @@ export function CollabPookalam() {
       </div>
 
       {/* ---------------- Main Drawing Arena: 3-Column Best-Effort Layout ---------------- */}
-      <div class="flex items-center justify-center  lg:gap-4 w-full max-w-full">
-        {/* Left Flank: Desktop Vertical Poov Brushes */}
-        <Show when={canPlace()}>
-          <div
-            class="hidden lg:flex flex-col card card-plain p-1.5 space-y-1 shrink-0 w-44 self-center transition-opacity"
-            style={{
-              border: "var(--ink-w) solid var(--ink)",
-              background: "var(--paper)",
-            }}
-          >
-            <div class="flex items-center justify-between px-0.5">
-              <p class="font-black text-[10px] uppercase tracking-wider m-0 text-[var(--ink)]">
-                Pick Poov
-              </p>
-              <Show when={left() <= 0}>
-                <span class="text-[8.5px] font-black px-1 rounded bg-[var(--paper-3)] text-[var(--ink-soft)]">
-                  {isWindowCapped() ? "Window limit" : "Daily limit"}
-                </span>
-              </Show>
-            </div>
-
+      <div class="flex items-start justify-center gap-3 lg:gap-4 w-full max-w-full">
+        {/* Left Flank: Desktop Vertical Poov Brushes + Floating Wishes */}
+        <div class="hidden lg:flex flex-col space-y-2 shrink-0 w-44 self-start">
+          <Show when={canPlace()}>
             <div
-              class="flex flex-col gap-0.5 w-full transition-all"
-              classList={{ "opacity-40 grayscale pointer-events-none": left() <= 0 }}
-            >
-              <For each={FLOWERS}>
-                {(flower) => {
-                  const capped = () => isFlowerCapped(flower.id);
-                  return (
-                    <button
-                      type="button"
-                      disabled={capped()}
-                      title={
-                        capped()
-                          ? `${flower.name} (Max 20% reached)`
-                          : `${flower.name} (${flower.english})`
-                      }
-                      onClick={() => setPicked(flower)}
-                      class="flex items-center justify-between gap-1.5 px-2 py-1 rounded transition-all text-left w-full"
-                      classList={{
-                        "opacity-35 grayscale cursor-not-allowed": capped(),
-                        "cursor-pointer": !capped(),
-                      }}
-                      style={{
-                        border: "1.5px solid var(--ink)",
-                        background:
-                          picked().id === flower.id && !capped()
-                            ? "var(--pop-yellow)"
-                            : "var(--paper-2)",
-                        transform:
-                          picked().id === flower.id && !capped() ? "translateX(2px)" : undefined,
-                      }}
-                    >
-                      <div class="flex items-center gap-1.5 min-w-0">
-                        <div class="w-5 h-5 shrink-0 flex items-center justify-center">
-                          <FlowerSwatch flower={flower} size={20} />
-                        </div>
-                        <span class="text-[9px] font-black uppercase tracking-tight text-[var(--ink)] leading-tight whitespace-nowrap truncate">
-                          {flower.name}
-                        </span>
-                      </div>
-                      <Show when={capped()}>
-                        <span class="text-[7px] font-black px-1 py-0.2 rounded bg-[var(--paper-3)] text-[var(--pop-red)] shrink-0">
-                          20%
-                        </span>
-                      </Show>
-                    </button>
-                  );
-                }}
-              </For>
-            </div>
-
-            {/* Eraser Tool */}
-            <button
-              type="button"
-              title="Eraser (Remove flower / clear square)"
-              onClick={() => setPicked(EMPTY_BRUSH)}
-              class="flex items-center gap-2 px-2 py-1 rounded transition-all cursor-pointer text-left w-full mt-0.5"
+              class="flex flex-col card card-plain p-1.5 space-y-1 w-full transition-opacity"
               style={{
-                border: "1.5px dashed var(--ink)",
-                background: picked().id === EMPTY_BRUSH.id ? "var(--pop-yellow)" : "var(--paper-2)",
-                transform: picked().id === EMPTY_BRUSH.id ? "translateX(2px)" : undefined,
+                border: "var(--ink-w) solid var(--ink)",
+                background: "var(--paper)",
               }}
             >
-              <div class="w-5 h-5 shrink-0 flex items-center justify-center rounded bg-[#2B2733] border border-[var(--ink)] text-[var(--pop-red)] font-black text-xs">
-                ✕
-              </div>
-              <span class="text-[9px] font-black uppercase tracking-tight text-[var(--ink)] leading-tight whitespace-nowrap">
-                Eraser (Empty)
-              </span>
-            </button>
-
-            <Show when={left() <= 0}>
-              <div class="text-[9px] font-bold text-center text-[var(--ink-soft)] pt-1 m-0 border-t border-[var(--ink)]/15 space-y-0.5">
-                <Show
-                  when={isWindowCapped()}
-                  fallback={
-                    <p class="m-0">Daily max ({dailyLimit()}) reached — resets at midnight!</p>
-                  }
-                >
-                  <p class="m-0 flex items-center justify-center gap-1 text-[var(--pop-teal)] font-black">
-                    <Clock size={10} strokeWidth={2.5} />
-                    <span>
-                      Next +{windowLimit()} drop in {nextDropIn() ?? "soon"}
-                    </span>
-                  </p>
+              <div class="flex items-center justify-between px-0.5">
+                <p class="font-black text-[10px] uppercase tracking-wider m-0 text-[var(--ink)]">
+                  Pick Poov
+                </p>
+                <Show when={left() <= 0}>
+                  <span class="text-[8.5px] font-black px-1 rounded bg-[var(--paper-3)] text-[var(--ink-soft)]">
+                    {isWindowCapped() ? "Window limit" : "Daily limit"}
+                  </span>
                 </Show>
               </div>
-            </Show>
-          </div>
-        </Show>
 
-        {/* Center: Large Centered Canvas */}
-        <div class="flex flex-col items-center justify-center shrink-0 max-w-full">
+              <div
+                class="flex flex-col gap-0.5 w-full transition-all"
+                classList={{ "opacity-40 grayscale pointer-events-none": left() <= 0 }}
+              >
+                <For each={FLOWERS}>
+                  {(flower) => {
+                    const capped = () => isFlowerCapped(flower.id);
+                    return (
+                      <button
+                        type="button"
+                        disabled={capped()}
+                        title={
+                          capped()
+                            ? `${flower.name} (Max 20% reached)`
+                            : `${flower.name} (${flower.english})`
+                        }
+                        onClick={() => setPicked(flower)}
+                        class="flex items-center justify-between gap-1.5 px-2 py-1 rounded transition-all text-left w-full"
+                        classList={{
+                          "opacity-35 grayscale cursor-not-allowed": capped(),
+                          "cursor-pointer": !capped(),
+                        }}
+                        style={{
+                          border: "1.5px solid var(--ink)",
+                          background:
+                            picked().id === flower.id && !capped()
+                              ? "var(--pop-yellow)"
+                              : "var(--paper-2)",
+                          transform:
+                            picked().id === flower.id && !capped() ? "translateX(2px)" : undefined,
+                        }}
+                      >
+                        <div class="flex items-center gap-1.5 min-w-0">
+                          <div class="w-5 h-5 shrink-0 flex items-center justify-center">
+                            <FlowerSwatch flower={flower} size={20} />
+                          </div>
+                          <span class="text-[9px] font-black uppercase tracking-tight text-[var(--ink)] leading-tight whitespace-nowrap truncate">
+                            {flower.name}
+                          </span>
+                        </div>
+                        <Show when={capped()}>
+                          <span class="text-[7px] font-black px-1 py-0.2 rounded bg-[var(--paper-3)] text-[var(--pop-red)] shrink-0">
+                            20%
+                          </span>
+                        </Show>
+                      </button>
+                    );
+                  }}
+                </For>
+              </div>
+
+              {/* Eraser Tool */}
+              <button
+                type="button"
+                title="Eraser (Remove flower / clear square)"
+                onClick={() => setPicked(EMPTY_BRUSH)}
+                class="flex items-center gap-2 px-2 py-1 rounded transition-all cursor-pointer text-left w-full mt-0.5"
+                style={{
+                  border: "1.5px dashed var(--ink)",
+                  background:
+                    picked().id === EMPTY_BRUSH.id ? "var(--pop-yellow)" : "var(--paper-2)",
+                  transform: picked().id === EMPTY_BRUSH.id ? "translateX(2px)" : undefined,
+                }}
+              >
+                <div class="w-5 h-5 shrink-0 flex items-center justify-center rounded bg-[#2B2733] border border-[var(--ink)] text-[var(--pop-red)] font-black text-xs">
+                  ✕
+                </div>
+                <span class="text-[9px] font-black uppercase tracking-tight text-[var(--ink)] leading-tight whitespace-nowrap">
+                  Eraser (Empty)
+                </span>
+              </button>
+
+              <Show when={left() <= 0}>
+                <div class="text-[9px] font-bold text-center text-[var(--ink-soft)] pt-1 m-0 border-t border-[var(--ink)]/15 space-y-0.5">
+                  <Show
+                    when={isWindowCapped()}
+                    fallback={
+                      <p class="m-0">Daily max ({dailyLimit()}) reached — resets at midnight!</p>
+                    }
+                  >
+                    <p class="m-0 flex items-center justify-center gap-1 text-[var(--pop-teal)] font-black">
+                      <Clock size={10} strokeWidth={2.5} />
+                      <span>
+                        Next +{windowLimit()} drop in {nextDropIn() ?? "soon"}
+                      </span>
+                    </p>
+                  </Show>
+                </div>
+              </Show>
+            </div>
+          </Show>
+
+          {/* Left Flank Wishes Stream */}
+          <div class="space-y-1.5 w-full">
+            <For each={leftMessages()}>{(msg) => <WishBubble msg={msg} onLike={toggleLike} />}</For>
+          </div>
+        </div>
+
+        {/* Center: Large Centered Canvas & Community Wish Box */}
+        <div class="flex flex-col items-center justify-center shrink-0 max-w-full space-y-2">
           {/* Center Canvas Viewport (Fixed dimensions, never overflows surrounding layout) */}
           <div
             ref={(el) => (shell = el)}
@@ -810,14 +979,83 @@ export function CollabPookalam() {
               {note()}
             </p>
           </Show>
+
+          {/* ---------------- User Wish Composer / Status (Visible when window limit reached) ---------------- */}
+          <Show when={canPlace() && left() <= 0}>
+            <div
+              class="card card-plain p-2.5 rounded w-full max-w-[480px] space-y-1.5 transition-all text-left"
+              style={{
+                border: "var(--ink-w) solid var(--ink)",
+                background: "var(--paper)",
+              }}
+            >
+              <Show
+                when={!myMessage()}
+                fallback={
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-1.5 text-xs font-black text-[var(--ink)]">
+                      <Sparkles size={13} class="text-[var(--pop-yellow)]" />
+                      <span>Your Onam Wish today:</span>
+                      <span class="italic font-semibold truncate max-w-[240px]">
+                        "{myMessage()!.message}"
+                      </span>
+                    </div>
+                    <span class="text-[10px] font-black text-[var(--pop-red)] shrink-0 flex items-center gap-1">
+                      <Heart size={11} fill="var(--pop-red)" strokeWidth={2.5} />
+                      {myMessage()!.likesCount} likes
+                    </span>
+                  </div>
+                }
+              >
+                <div class="space-y-1.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[10.5px] font-black uppercase tracking-wider text-[var(--ink)] flex items-center gap-1">
+                      <MessageSquare size={12} class="text-[var(--pop-teal)]" />
+                      <span>Leave an Onam Wish (1 per day)</span>
+                    </span>
+                    <span class="text-[9px] font-black text-[var(--ink-soft)]">
+                      {MAX_MESSAGE_CHARS - wishInput().length} chars left
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      maxLength={MAX_MESSAGE_CHARS}
+                      placeholder="Happy Onam from MEC! 🌸"
+                      value={wishInput()}
+                      onInput={(e) => setWishInput(e.currentTarget.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void submitWish();
+                      }}
+                      class="flex-1 text-xs px-2.5 py-1.5 rounded border border-[var(--ink)] bg-[var(--paper-2)] text-[var(--ink)] placeholder:text-[var(--ink-soft)]/60 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      disabled={wishPosting() || wishInput().trim().length < 2}
+                      onClick={submitWish}
+                      class="btn-brand text-[11px] px-3 py-1.5 font-black inline-flex items-center gap-1 cursor-pointer shrink-0"
+                    >
+                      <Send size={11} />
+                      <span>{wishPosting() ? "Posting..." : "Share"}</span>
+                    </button>
+                  </div>
+                  <Show when={wishNote()}>
+                    <p class="text-[9.5px] font-bold text-[var(--pop-red)] m-0 leading-tight">
+                      {wishNote()}
+                    </p>
+                  </Show>
+                </div>
+              </Show>
+            </div>
+          </Show>
         </div>
 
-        {/* Right Flank: Desktop Action & Status Controls */}
-        <div class="hidden lg:flex flex-col space-y-1.5 shrink-0 w-40 self-center">
+        {/* Right Flank: Desktop Action & Status Controls + Floating Wishes */}
+        <div class="hidden lg:flex flex-col space-y-2 shrink-0 w-40 self-start">
           {/* Status Card */}
           <Show when={canPlace()}>
             <div
-              class="card card-plain p-2 space-y-0.5 text-center"
+              class="card card-plain p-2 space-y-0.5 text-center w-full"
               style={{
                 border: "var(--ink-w) solid var(--ink)",
                 background: "var(--paper)",
@@ -855,7 +1093,7 @@ export function CollabPookalam() {
 
           {/* Action Tools Card */}
           <div
-            class="card card-plain p-1.5 space-y-1"
+            class="card card-plain p-1.5 space-y-1 w-full"
             style={{
               border: "var(--ink-w) solid var(--ink)",
               background: "var(--paper)",
@@ -913,8 +1151,37 @@ export function CollabPookalam() {
               <span>Refresh</span>
             </button>
           </div>
+
+          {/* Right Flank Wishes Stream */}
+          <div class="space-y-1.5 w-full">
+            <For each={rightMessages()}>
+              {(msg) => <WishBubble msg={msg} onLike={toggleLike} />}
+            </For>
+          </div>
         </div>
       </div>
+
+      {/* Mobile Live Wishes Ticker Stream */}
+      <Show when={displayedMessages().length > 0}>
+        <div class="lg:hidden w-full max-w-md mx-auto space-y-1 px-1">
+          <div class="flex items-center justify-between text-[10px] font-black text-[var(--ink)] px-1">
+            <span class="flex items-center gap-1 uppercase tracking-wider">
+              <Sparkles size={11} class="text-[var(--pop-yellow)]" />
+              <span>Community Wishes</span>
+            </span>
+            <span class="text-[9px] text-[var(--ink-soft)]">Tap ♥ to like</span>
+          </div>
+          <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none snap-x">
+            <For each={displayedMessages()}>
+              {(msg) => (
+                <div class="min-w-[190px] max-w-[230px] shrink-0 snap-start">
+                  <WishBubble msg={msg} onLike={toggleLike} />
+                </div>
+              )}
+            </For>
+          </div>
+        </div>
+      </Show>
 
       {/* Mobile Poov Palette (< 1024px) - Clean 2-row layout */}
       <Show when={canPlace()}>
@@ -1104,6 +1371,61 @@ export function CollabPookalam() {
           </div>
         </div>
       </Show>
+    </div>
+  );
+}
+
+/** Individual Floating Wish Card */
+function WishBubble(props: { msg: CollabMessageItem; onLike: (id: string) => void }) {
+  return (
+    <div
+      class="card card-plain p-2 rounded-lg text-left space-y-1 shadow-sm transition-transform hover:scale-[1.02]"
+      style={{
+        border: "1.5px solid var(--ink)",
+        background: props.msg.isMine ? "var(--pop-yellow)" : "var(--paper)",
+      }}
+    >
+      <div class="flex items-center justify-between gap-1.5">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <Show
+            when={props.msg.userAvatar}
+            fallback={
+              <div class="w-4 h-4 rounded-full bg-[var(--paper-3)] border border-[var(--ink)] text-[8px] font-black flex items-center justify-center text-[var(--ink)] shrink-0">
+                {props.msg.userName.charAt(0).toUpperCase()}
+              </div>
+            }
+          >
+            <img
+              src={props.msg.userAvatar!}
+              alt=""
+              class="w-4 h-4 rounded-full border border-[var(--ink)] object-cover shrink-0"
+            />
+          </Show>
+          <span class="text-[9.5px] font-black text-[var(--ink)] truncate leading-none">
+            {props.msg.userName}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => props.onLike(props.msg.id)}
+          class="flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-black cursor-pointer transition-colors"
+          classList={{
+            "text-[var(--pop-red)]": props.msg.hasLiked,
+            "text-[var(--ink-soft)] hover:text-[var(--pop-red)]": !props.msg.hasLiked,
+          }}
+          title={props.msg.hasLiked ? "Unlike wish" : "Like wish"}
+        >
+          <Heart
+            size={10}
+            fill={props.msg.hasLiked ? "var(--pop-red)" : "none"}
+            strokeWidth={2.5}
+          />
+          <span>{props.msg.likesCount}</span>
+        </button>
+      </div>
+      <p class="text-[10px] font-semibold text-[var(--ink)] m-0 leading-tight line-clamp-3">
+        "{props.msg.message}"
+      </p>
     </div>
   );
 }

@@ -574,6 +574,48 @@ export const collabPookalam = pgTable("collab_pookalam", {
 });
 
 /**
+ * Daily communal wishes / comments on the shared pookalam.
+ * One message per user per calendar day.
+ */
+export const collabMessages = pgTable(
+  "collab_messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    dayKey: text("day_key").notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    userName: text("user_name").notNull(),
+    userAvatar: text("user_avatar"),
+    message: text("message").notNull(),
+    likesCount: integer("likes_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("collab_messages_user_day_uniq").on(t.dayKey, t.userId),
+    index("collab_messages_day_key_idx").on(t.dayKey),
+  ],
+);
+
+/**
+ * Message likes tracking (one like per user per message).
+ */
+export const collabMessageLikes = pgTable(
+  "collab_message_likes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    messageId: uuid("message_id")
+      .notNull()
+      .references(() => collabMessages.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("collab_message_likes_user_msg_uniq").on(t.messageId, t.userId)],
+);
+
+/**
  * One row per judged pair.
  *
  * `pairKey` is the two submission ids sorted and joined, which makes "this
