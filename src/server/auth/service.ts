@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import type { FingerprintSignals } from "~/lib/fingerprint";
 import { bindDeviceToUser } from "~/server/anti-cheat/device";
 import { logActivity, logSuspicious } from "~/server/anti-cheat/log";
@@ -101,7 +101,11 @@ export async function completeOAuthSignIn(
     null;
 
   const db = getDb();
-  const [existing] = await db.select().from(users).where(eq(users.supabaseUid, sbUser.id)).limit(1);
+  const [existing] = await db
+    .select()
+    .from(users)
+    .where(or(eq(users.supabaseUid, sbUser.id), eq(users.email, email)))
+    .limit(1);
 
   let userId: string;
   if (existing) {
@@ -109,8 +113,9 @@ export async function completeOAuthSignIn(
     await db
       .update(users)
       .set({
+        supabaseUid: sbUser.id,
         email,
-        name,
+        name: existing.name || name,
         avatarUrl: existing.avatarUrl ?? googleAvatar,
         lastLoginAt: new Date(),
       })

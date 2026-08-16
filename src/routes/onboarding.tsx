@@ -35,7 +35,7 @@ export default function Onboarding() {
   const me = createAsync(() => getMe());
 
   const [occupation, setOccupation] = createSignal<Occupation>("student");
-  const [college, setCollege] = createSignal<string>("");
+  const [college, setCollege] = createSignal<string>("mec");
   const [collegeOther, setCollegeOther] = createSignal("");
   const [branch, setBranch] = createSignal<string>("");
   const [branchOther, setBranchOther] = createSignal("");
@@ -55,7 +55,11 @@ export default function Onboarding() {
     const user = me();
     if (user && !loaded()) {
       if (user.occupation) setOccupation((user.occupation as Occupation) || "student");
-      if (user.college) setCollege(user.college);
+      if (user.college) {
+        setCollege(user.college);
+      } else if (!user.college && (user.occupation === "student" || !user.occupation)) {
+        setCollege("mec");
+      }
       if (user.collegeOther) setCollegeOther(user.collegeOther);
       if (user.branch) setBranch(user.branch);
       if (user.branchOther) setBranchOther(user.branchOther);
