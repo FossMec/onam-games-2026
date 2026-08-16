@@ -828,7 +828,7 @@ export function CollabPookalam() {
       {/* ---------------- Main Drawing Arena: Centered Canvas with Flank Toolbars & Outer Floating Wishes ---------------- */}
       <div class="flex items-center justify-center gap-2.5 lg:gap-3.5 w-full max-w-full relative">
         {/* Far Left Margin: Outer Floating Tilted Speech Bubbles (Desktop Only) */}
-        <div class="hidden xl:flex flex-col gap-3.5 shrink-0 w-44 self-center pointer-events-auto">
+        <div class="hidden xl:flex flex-col items-end gap-3.5 shrink-0 w-36 self-center pointer-events-auto z-20 pr-1">
           <For each={leftOuterMessages()}>
             {(msg, idx) => (
               <WishBubble
@@ -1197,7 +1197,7 @@ export function CollabPookalam() {
         </div>
 
         {/* Far Right Margin: Outer Floating Tilted Speech Bubbles (Desktop Only) */}
-        <div class="hidden xl:flex flex-col gap-3.5 shrink-0 w-44 self-center pointer-events-auto">
+        <div class="hidden xl:flex flex-col items-start gap-3.5 shrink-0 w-36 self-center pointer-events-auto z-20 pl-1">
           <For each={rightOuterMessages()}>
             {(msg, idx) => (
               <WishBubble
@@ -1434,7 +1434,7 @@ function WishBubble(props: {
 
   return (
     <div
-      class="inline-flex items-center gap-1 select-none relative max-w-full"
+      class="inline-flex items-center gap-1 select-none relative max-w-full z-10"
       style={{
         transform: `rotate(${tilt()})`,
       }}
@@ -1453,7 +1453,7 @@ function WishBubble(props: {
             <div
               class="rounded-full flex items-center justify-center font-black text-[var(--ink)] border-2 border-[var(--ink)] bg-[var(--paper)] shadow-xs"
               classList={{
-                "w-7 h-7 text-[10px]": !props.compact,
+                "w-6 h-6 text-[9px]": !props.compact,
                 "w-5 h-5 text-[8px]": props.compact,
               }}
             >
@@ -1466,7 +1466,7 @@ function WishBubble(props: {
             alt={props.msg.userName}
             class="rounded-full border-2 border-[var(--ink)] object-cover shadow-xs bg-[var(--paper)]"
             classList={{
-              "w-7 h-7": !props.compact,
+              "w-6 h-6": !props.compact,
               "w-5 h-5": props.compact,
             }}
           />
@@ -1475,7 +1475,7 @@ function WishBubble(props: {
         {/* Hover / Click Author Name Tooltip */}
         <Show when={showAuthor()}>
           <div
-            class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-30 px-1.5 py-0.5 rounded text-[9px] font-black text-[var(--ink)] whitespace-nowrap pointer-events-none shadow-sm"
+            class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-40 px-1.5 py-0.5 rounded text-[9px] font-black text-[var(--ink)] whitespace-nowrap pointer-events-none shadow-sm"
             style={{
               background: "var(--paper)",
               border: "1.5px solid var(--ink)",
@@ -1488,9 +1488,9 @@ function WishBubble(props: {
 
       {/* 2. Message Speech Bubble (Distinct bubble with speech tail pointing to the avatar) */}
       <div
-        class="relative inline-flex items-center gap-1.5 rounded-2xl rounded-tl-xs border-2 border-[var(--ink)] shadow-xs"
+        class="relative inline-flex items-center gap-1.5 rounded-2xl rounded-tl-xs border-2 border-[var(--ink)] shadow-xs min-w-0"
         classList={{
-          "px-2.5 py-1 text-xs sm:text-[13px]": !props.compact,
+          "px-2 py-0.5 text-xs sm:text-[12px]": !props.compact,
           "px-1.5 py-0.5 text-[10px]": props.compact,
         }}
         style={{
@@ -1501,8 +1501,8 @@ function WishBubble(props: {
         <span
           class="font-black text-[var(--ink)] leading-tight truncate"
           classList={{
-            "max-w-[130px] sm:max-w-[160px] text-xs sm:text-[12.5px]": !props.compact,
-            "max-w-[95px] text-[9.5px]": props.compact,
+            "max-w-[85px] sm:max-w-[105px] text-xs": !props.compact,
+            "max-w-[80px] text-[9.5px]": props.compact,
           }}
         >
           "{props.msg.message}"
@@ -1522,7 +1522,7 @@ function WishBubble(props: {
           title={props.msg.hasLiked ? "Unlike" : "Like"}
         >
           <Heart
-            size={props.compact ? 9 : 11}
+            size={props.compact ? 9 : 10.5}
             fill={props.msg.hasLiked ? "var(--pop-red)" : "none"}
             strokeWidth={2.5}
           />
@@ -1537,7 +1537,7 @@ function WishBubble(props: {
             class="text-[var(--ink-soft)] hover:text-[var(--pop-red)] transition-colors p-0.5 cursor-pointer leading-none shrink-0"
             title="Delete wish"
           >
-            <Trash2 size={props.compact ? 9 : 11} />
+            <Trash2 size={props.compact ? 9 : 10.5} />
           </button>
         </Show>
       </div>
