@@ -1197,6 +1197,82 @@ export default function Home() {
         <MaveliLetter />
       </Section>
 
+      {/* ---------------------------------------------------- About FOSS ONAM & Purpose */}
+      <Section title={EVENT.about.title} id="about" confettiSeed="about-sec" confettiCount={5}>
+        <div class="space-y-4">
+          {/* Main Overview Banner */}
+          <div class="card card-plain p-4 sm:p-5 flex flex-col sm:flex-row items-center gap-4 bg-[var(--paper-2)]">
+            <SpriteIcon
+              name="foss-mec-badge"
+              size={56}
+              animate="wobble"
+              interactive
+              class="shrink-0"
+            />
+            <div class="space-y-1 text-center sm:text-left">
+              <h3
+                class="text-lg sm:text-xl font-black text-[var(--ink)] m-0"
+                style={{ "font-family": "var(--font-stack-display)" }}
+              >
+                {EVENT.about.headline}
+              </h3>
+              <p class="text-xs sm:text-sm font-semibold text-[var(--ink-soft)] leading-relaxed m-0">
+                {EVENT.about.description}
+              </p>
+            </div>
+          </div>
+
+          {/* 4 Feature Panels Grid */}
+          <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <For each={EVENT.about.features}>
+              {(feat) => (
+                <div class={`card ${feat.pop} flex flex-col justify-between gap-2 p-3.5`}>
+                  <div class="flex items-center gap-2.5">
+                    <SpriteIcon
+                      name={feat.icon}
+                      size={32}
+                      animate="float"
+                      interactive
+                      class="shrink-0"
+                    />
+                    <h4
+                      class="text-sm font-black text-[var(--ink)] m-0 leading-tight"
+                      style={{ "font-family": "var(--font-stack-display)" }}
+                    >
+                      {feat.title}
+                    </h4>
+                  </div>
+                  <p class="text-xs font-semibold text-[var(--ink-soft)] leading-snug m-0">
+                    {feat.body}
+                  </p>
+                </div>
+              )}
+            </For>
+          </div>
+
+          {/* Authentication & Privacy Note */}
+          <div
+            class="card card-plain p-3.5 sm:p-4 rounded-lg flex items-start gap-3"
+            style={{
+              background: "var(--paper)",
+              border: "var(--ink-w) solid var(--ink)",
+            }}
+          >
+            <div class="w-8 h-8 rounded-full bg-[var(--pop-teal)] border-2 border-[var(--ink)] grid place-items-center text-xs font-black shrink-0 mt-0.5">
+              ✓
+            </div>
+            <div class="space-y-0.5">
+              <p class="font-extrabold text-xs sm:text-sm text-[var(--ink)] m-0">
+                {EVENT.about.auth.title}
+              </p>
+              <p class="text-xs font-medium text-[var(--ink-soft)] leading-relaxed m-0">
+                {EVENT.about.auth.body}
+              </p>
+            </div>
+          </div>
+        </div>
+      </Section>
+
       {/* ---------------------------------------------------- how it works (8 items) */}
       <Section title="How it works" id="how-it-works" confettiSeed="how-sec" confettiCount={5}>
         {/* Swipeable row on a phone, grid from `sm` - see `.swipe-rail`. */}

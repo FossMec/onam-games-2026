@@ -28,7 +28,10 @@ export async function GET({ request }: APIEvent) {
   }
 
   try {
-    await finishGoogleAuth(url, url.origin);
+    const proto = request.headers.get("x-forwarded-proto") ?? "https";
+    const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? url.host;
+    const origin = `${proto}://${host}`;
+    await finishGoogleAuth(url, origin);
     return bounce("/auth/callback?direct=1");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Sign-in failed. Please try again.";

@@ -11,7 +11,12 @@ function backToSignIn(message: string): Response {
 }
 
 export async function GET({ request }: APIEvent) {
-  const origin = new URL(request.url).origin;
+  const proto = request.headers.get("x-forwarded-proto") ?? "https";
+  const host =
+    request.headers.get("x-forwarded-host") ??
+    request.headers.get("host") ??
+    new URL(request.url).host;
+  const origin = `${proto}://${host}`;
   // Not configured is not an error worth showing anyone: the sign-in page only
   // routes here when the server said it was on, so this is a deploy that lost
   // its credentials mid-flight. Send them back to the working button.

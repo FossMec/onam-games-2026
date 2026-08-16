@@ -10,8 +10,10 @@
  * confirmed before this goes public.
  */
 
+import type { SpriteName } from "./sprites";
+
 export const EVENT = {
-  name: "FOSS Onam Games",
+  name: "FOSS ONAM",
 
   /**
    * The hero's numbers, as chips rather than a sentence.
@@ -28,7 +30,7 @@ export const EVENT = {
     { value: "7", label: "days" },
     { value: "6", label: "mini-games" },
     { value: "1", label: "pookalam" },
-    { value: "~₹5K", label: "prize pool" },
+    { value: "₹5K+", label: "prize pool" },
   ],
 
   /**
@@ -44,6 +46,43 @@ export const EVENT = {
   // TODO: confirm before launch.
   dates: "TODO - event dates",
   registerNote: "Sign in with Google. Takes about eleven seconds.",
+
+  about: {
+    title: "About FOSS ONAM",
+    headline: "Seven days of games, code, and celebration",
+    description:
+      "FOSS ONAM is the inaugural open-source festival created by FOSS MEC (Model Engineering College), expanding our annual Code-a-Pookalam competition into a full week of celebrations. We bring together students, developers, and puzzle enthusiasts for 6 daily mini-games, algorithmic pookalam design, and collaborative community art — celebrating Onam through code.",
+    features: [
+      {
+        title: "6 Daily Puzzle Challenges",
+        icon: "maveli-laptop" as SpriteName,
+        pop: "pop-yellow",
+        body: "A fresh mini-game unlocks each day. Complete the challenge to win daily ₹200 cash bounties.",
+      },
+      {
+        title: "Code-a-Pookalam Contest",
+        icon: "pookalam-flower" as SpriteName,
+        pop: "pop-teal",
+        body: "Design a flower carpet purely with code (Canvas, SVG, or CSS). Compete for ₹3,000 podium prizes judged by peer ELO voting.",
+      },
+      {
+        title: "Live Community Pookalam",
+        icon: "sadya-leaf" as SpriteName,
+        pop: "pop-pink",
+        body: "Pick authentic flower petals and post wishes on the real-time collaborative canvas.",
+      },
+      {
+        title: "100% Free & Open Source",
+        icon: "foss-mec-badge" as SpriteName,
+        pop: "pop-purple",
+        body: "Free entry for everyone with ₹5,000+ total prize pool. Built by FOSS MEC and fully open source under GPLv3.",
+      },
+    ],
+    auth: {
+      title: "Why Sign in with Google?",
+      body: "Google Sign-In is used solely for secure account authentication: saving your puzzle solve times, tracking daily prize eligibility, and verifying contest submissions. We do not request or access any private files, contacts, or sensitive data.",
+    },
+  },
 
   howItWorks: [
     {

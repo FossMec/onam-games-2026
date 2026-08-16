@@ -16,10 +16,10 @@ export default function App() {
     <Router
       root={(props) => (
         <MetaProvider>
-          <Title>FOSS ONAM - FOSS Onam Games by FOSS MEC</Title>
+          <Title>FOSS ONAM</Title>
           <Meta
             name="description"
-            content="Seven days of games. One week of Onam. A open-source celebration with daily browser challenges, Code-a-Pookalam, and live leaderboards by FOSS MEC."
+            content="FOSS ONAM: Seven days, 6 daily puzzle games with rewards, Code-a-Pookalam, and a community flower carpet. Free registration with ₹5K+ in prize pools by FOSS MEC."
           />
           <Meta name="author" content="Dijith Dinesh" />
           <Meta name="creator" content="Dijith Dinesh" />
@@ -31,10 +31,10 @@ export default function App() {
             name="google-site-verification"
             content="hmMLL8KnfSg_CX5_cjL7qq_fqiclk-QLJsPh2xqA_MM"
           />
-          <Meta property="og:title" content="FOSS ONAM - FOSS Onam Games by FOSS MEC" />
+          <Meta property="og:title" content="FOSS ONAM" />
           <Meta
             property="og:description"
-            content="Seven days of games. One week of Onam. A open-source online festival with daily browser challenges, fair-play leaderboards, and Code-a-Pookalam by FOSS MEC."
+            content="FOSS ONAM: Seven days, 6 daily puzzle games with rewards, Code-a-Pookalam, and a community flower carpet. Free registration with ₹5K+ in prize pools by FOSS MEC."
           />
           <Meta property="og:image" content="https://foss-onam.onrender.com/images/og-image.webp" />
           <Meta property="og:image:type" content="image/webp" />
@@ -43,10 +43,10 @@ export default function App() {
           <Meta name="twitter:card" content="summary_large_image" />
           <Meta name="twitter:site" content="@fossmec" />
           <Meta name="twitter:creator" content="@fossmec" />
-          <Meta name="twitter:title" content="FOSS ONAM - FOSS Onam Games by FOSS MEC" />
+          <Meta name="twitter:title" content="FOSS ONAM" />
           <Meta
             name="twitter:description"
-            content="Seven days of games. One week of Onam. A open-source festival with daily browser challenges, leaderboards, and prizes by FOSS MEC."
+            content="FOSS ONAM: Seven days, 6 daily puzzle games with rewards, Code-a-Pookalam, and a community flower carpet. Free registration with ₹5K+ in prize pools by FOSS MEC."
           />
           <Meta
             name="twitter:image"

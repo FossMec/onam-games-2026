@@ -125,13 +125,14 @@ async function pkce(): Promise<{ verifier: string; challenge: string }> {
   return { verifier, challenge: base64url(new Uint8Array(digest)) };
 }
 
-/**
- * The exact string registered in the Google console. Google compares it
- * byte-for-byte at both the authorize and the token step, and a mismatch is a
- * `redirect_uri_mismatch` rather than anything self-explanatory.
- */
 export function redirectUri(origin: string): string {
-  return `${(process.env.AUTH_ORIGIN || origin).replace(/\/$/, "")}/api/auth/google/callback`;
+  let base = (process.env.AUTH_ORIGIN || origin).trim();
+  // Reverse proxies like Render/Cloudflare forward requests over HTTP internally.
+  // Force https:// for all non-local hosts so Google OAuth receives the matching https redirect URI.
+  if (!base.includes("localhost") && !base.includes("127.0.0.1")) {
+    base = base.replace(/^http:\/\//i, "https://");
+  }
+  return `${base.replace(/\/$/, "")}/api/auth/google/callback`;
 }
 
 /** Where to send the browser, having stashed the CSRF and PKCE material. */
