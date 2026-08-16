@@ -1,9 +1,11 @@
 import { X } from "lucide-solid";
 import { For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import { Portal } from "solid-js/web";
 
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { ROAD_STOPS, readRoadNotes, readRoadProgress, readRoadRatings } from "~/lib/pookalam-road";
+import { type SendOff, buildSendOff } from "~/lib/road-sendoff";
 
 /**
  * The week, handed back to whoever just submitted.
@@ -67,127 +69,187 @@ export function RoadRecap(props: { name?: string; onClose: () => void }) {
   });
 
   return (
-    <div
-      class="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4"
-      style={{ background: "rgb(34 32 43 / 0.78)" }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Your pookalam road"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) props.onClose();
-      }}
-    >
-      <div class="card pop-yellow relative my-auto w-full max-w-2xl space-y-4 overflow-hidden">
-        <Confetti seed="road-recap" count={14} animate opacity={0.4} />
+    // Portalled so no transformed or clipped ancestor can capture a fixed
+    // overlay - the same trap the showcase dialog fell into.
+    <Portal>
+      <div
+        class="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4"
+        style={{ background: "rgb(34 32 43 / 0.78)" }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Your pookalam road"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) props.onClose();
+        }}
+      >
+        <div class="card pop-yellow relative my-auto w-full max-w-2xl space-y-4 overflow-hidden">
+          <Confetti seed="road-recap" count={14} animate opacity={0.4} />
 
-        <button
-          type="button"
-          class="absolute right-3 top-3 z-20 grid h-8 w-8 cursor-pointer place-items-center rounded-full"
-          style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
-          onClick={props.onClose}
-          aria-label="Close"
-        >
-          <X size={16} strokeWidth={3} />
-        </button>
-
-        <div class="art-over space-y-4">
-          {/* the headline */}
-          <div class="space-y-1 pr-10">
-            <span class="sticker text-[10px]" style={{ "--pop": "var(--pop-teal)" }}>
-              entry received
-            </span>
-            <h2 class="m-0 font-display text-xl font-black sm:text-2xl">
-              {props.name ? `${props.name}, here's your week` : "Here's your week"}
-            </h2>
-            <p class="m-0 text-sm font-semibold">
-              You didn't just submit a picture. This is what you did to get here.
-            </p>
-          </div>
-
-          {/* the numbers */}
-          <div class="grid grid-cols-3 gap-2">
-            <Stat value={`${doneStops().length}/${ROAD_STOPS.length}`} label="stops walked" />
-            <Stat value={String(written())} label="notes to self" />
-            <Stat
-              value={hardest() ? RATING_WORDS[hardest()!.score - 1] : "—"}
-              label="hardest bit"
-            />
-          </div>
-
-          {/* the road, small */}
-          <div class="flex flex-wrap gap-1.5">
-            <For each={ROAD_STOPS}>
-              {(stop, i) => (
-                <span
-                  class="grid h-8 w-8 place-items-center rounded-full font-display text-xs font-black"
-                  title={stop.title}
-                  style={{
-                    border: "var(--ink-w) solid var(--ink)",
-                    background: isDone(stop.id) ? `var(--${stop.pop})` : "var(--paper-3)",
-                    opacity: isDone(stop.id) ? 1 : 0.5,
-                  }}
-                >
-                  {i() + 1}
-                </span>
-              )}
-            </For>
-          </div>
-
-          {/* what they wrote */}
-          <Show when={written() > 0}>
-            <div class="space-y-2">
-              <h3 class="rule m-0">In your own words</h3>
-              <div class="grid gap-2 sm:grid-cols-2">
-                <For each={ROAD_STOPS.filter((s) => (notes()[s.id] ?? "").trim())}>
-                  {(stop, i) => (
-                    <div
-                      class="space-y-1 p-2.5"
-                      style={{
-                        background: "var(--pop-yellow)",
-                        border: "var(--ink-w) solid var(--ink)",
-                        "border-radius": "0.25rem",
-                        transform: i() % 2 === 0 ? "rotate(-1deg)" : "rotate(1deg)",
-                      }}
-                    >
-                      <p class="m-0 text-[10px] font-black uppercase tracking-wide">{stop.title}</p>
-                      <p
-                        class="m-0 leading-snug"
-                        style={{ "font-family": "var(--font-stack-hand)", "font-size": "1rem" }}
-                      >
-                        {notes()[stop.id]}
-                      </p>
-                    </div>
-                  )}
-                </For>
-              </div>
-            </div>
-          </Show>
-
-          {/* the point of the whole thing */}
-          <div
-            class="flex items-start gap-3 rounded p-3"
+          <button
+            type="button"
+            class="absolute right-3 top-3 z-20 grid h-8 w-8 cursor-pointer place-items-center rounded-full"
             style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
+            onClick={props.onClose}
+            aria-label="Close"
           >
-            <SpriteIcon name="maveli-laptop" size={30} animate="float" class="mt-0.5 shrink-0" />
-            <p class="m-0 text-sm font-semibold leading-relaxed">
-              {props.name ? `${props.name}, a ` : "A "}
-              week ago this was a poster about a competition. You turned it into code that runs, a
-              repository with your name on it, and an entry a stranger will judge on Day 7. Whatever
-              you build next, this is where it started.
-            </p>
-          </div>
+            <X size={16} strokeWidth={3} />
+          </button>
 
-          <div class="flex flex-wrap gap-2">
-            <button type="button" class="btn-brand" onClick={props.onClose}>
-              Nice
-            </button>
-            <a href="/code-a-pookalam#road" class="btn-ghost">
-              Back to the road
-            </a>
+          <div class="art-over space-y-4">
+            {/* the headline */}
+            <div class="space-y-1 pr-10">
+              <span class="sticker text-[10px]" style={{ "--pop": "var(--pop-teal)" }}>
+                entry received
+              </span>
+              <h2 class="m-0 font-display text-xl font-black sm:text-2xl">
+                {props.name ? `${props.name}, here's your week` : "Here's your week"}
+              </h2>
+              <p class="m-0 text-sm font-semibold">
+                You didn't just submit a picture. This is what you did to get here.
+              </p>
+            </div>
+
+            {/* the numbers */}
+            <div class="grid grid-cols-3 gap-2">
+              <Stat value={`${doneStops().length}/${ROAD_STOPS.length}`} label="stops walked" />
+              <Stat value={String(written())} label="notes to self" />
+              <Stat
+                value={hardest() ? RATING_WORDS[hardest()!.score - 1] : "—"}
+                label="hardest bit"
+              />
+            </div>
+
+            {/* the road, small */}
+            <div class="flex flex-wrap gap-1.5">
+              <For each={ROAD_STOPS}>
+                {(stop, i) => (
+                  <span
+                    class="grid h-8 w-8 place-items-center rounded-full font-display text-xs font-black"
+                    title={stop.title}
+                    style={{
+                      border: "var(--ink-w) solid var(--ink)",
+                      background: isDone(stop.id) ? `var(--${stop.pop})` : "var(--paper-3)",
+                      opacity: isDone(stop.id) ? 1 : 0.5,
+                    }}
+                  >
+                    {i() + 1}
+                  </span>
+                )}
+              </For>
+            </div>
+
+            {/* what they wrote */}
+            <Show when={written() > 0}>
+              <div class="space-y-2">
+                <h3 class="rule m-0">In your own words</h3>
+                <div class="grid gap-2 sm:grid-cols-2">
+                  <For each={ROAD_STOPS.filter((s) => (notes()[s.id] ?? "").trim())}>
+                    {(stop, i) => (
+                      <div
+                        class="space-y-1 p-2.5"
+                        style={{
+                          background: "var(--pop-yellow)",
+                          border: "var(--ink-w) solid var(--ink)",
+                          "border-radius": "0.25rem",
+                          transform: i() % 2 === 0 ? "rotate(-1deg)" : "rotate(1deg)",
+                        }}
+                      >
+                        <p class="m-0 text-[10px] font-black uppercase tracking-wide">
+                          {stop.title}
+                        </p>
+                        <p
+                          class="m-0 leading-snug"
+                          style={{ "font-family": "var(--font-stack-hand)", "font-size": "1rem" }}
+                        >
+                          {notes()[stop.id]}
+                        </p>
+                      </div>
+                    )}
+                  </For>
+                </div>
+              </div>
+            </Show>
+
+            {/* the point of the whole thing */}
+            <div
+              class="flex items-start gap-3 rounded p-3"
+              style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
+            >
+              <SpriteIcon name="maveli-laptop" size={30} animate="float" class="mt-0.5 shrink-0" />
+              <p class="m-0 text-sm font-semibold leading-relaxed">
+                {props.name ? `${props.name}, a ` : "A "}
+                week ago this was a poster about a competition. You turned it into code that runs, a
+                repository with your name on it, and an entry a stranger will judge on Day 7.
+                Whatever you build next, this is where it started.
+              </p>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <button type="button" class="btn-brand" onClick={props.onClose}>
+                Nice
+              </button>
+              <a href="/code-a-pookalam#road" class="btn-ghost">
+                Back to the road
+              </a>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </Portal>
+  );
+}
+
+/**
+ * The send-off on the submit page for somebody who walked the road.
+ *
+ * Warm on purpose, short on purpose, and different for every person - the words
+ * are chosen from their own trail in `buildSendOff`, which is where the tone
+ * rules and the reasoning live. Three earlier drafts got this wrong in
+ * different directions: a signed letter in a costume voice, a version trimmed
+ * so hard it read like a receipt, and one that said the same thing to everyone.
+ */
+export function RoadSendOff(props: { name?: string }) {
+  const [sendOff, setSendOff] = createSignal<SendOff | null>(null);
+
+  // Built on mount, from this browser's trail. Nothing to show for somebody who
+  // did not walk the road, and nothing to build on the server either.
+  onMount(() => {
+    const done = readRoadProgress();
+    if (done.length < MIN_STOPS) return;
+
+    const titles: Record<string, string> = {};
+    for (const stop of ROAD_STOPS) titles[stop.id] = stop.title;
+
+    setSendOff(
+      buildSendOff({
+        name: props.name,
+        done,
+        notes: readRoadNotes(),
+        ratings: readRoadRatings(),
+        titles,
+        total: ROAD_STOPS.length,
+      }),
+    );
+  });
+
+  return (
+    <Show when={sendOff()}>
+      {(note) => (
+        <div class="card pop-teal flex items-start gap-3">
+          <SpriteIcon name="burst-heart" size={32} animate="pulse" interactive class="shrink-0" />
+
+          {/* The handwriting stack, because this is the one block on the page
+              that is a person talking rather than the site instructing. */}
+          <div
+            class="min-w-0 space-y-1.5"
+            style={{ "font-family": "var(--font-stack-letter)", "font-size": "1.1rem" }}
+          >
+            <p class="m-0 text-xl font-bold leading-snug sm:text-2xl">{note().title}</p>
+            <For each={note().lines}>{(line) => <p class="m-0 leading-relaxed">{line}</p>}</For>
+          </div>
+        </div>
+      )}
+    </Show>
   );
 }
 

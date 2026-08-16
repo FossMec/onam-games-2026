@@ -9,13 +9,14 @@ import {
   Sparkles,
 } from "lucide-solid";
 import { createAsync } from "@solidjs/router";
-import { For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import { For, type JSX, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 
 import { Burst, Halftone } from "~/components/art/Burst";
 import { Countdown } from "~/components/Countdown";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { PookalamSandbox } from "~/components/pookalam/PookalamSandbox";
+import { PookalamShowcase } from "~/components/pookalam/PookalamShowcase";
 import { PookalamTutorials } from "~/components/pookalam/PookalamTutorials";
 import { PreviousPookalamCarousel } from "~/components/pookalam/PreviousPookalamCarousel";
 import { POOKALAM } from "~/lib/event-content";
@@ -91,6 +92,15 @@ const sideOf = (index: number): Side => (index % 2 === 0 ? "left" : "right");
 /** Where the curve stops and the milestone sits, as a share of the leg's height. */
 const END_Y = 78;
 
+/**
+ * The curve's midpoint height, for anything planted on the road.
+ *
+ * `M f 0 C f 40, t 52, t 78` at t = 0.5 gives y = (3·40 + 3·52 + 78) / 8, and x
+ * exactly halfway between the sides. Derived rather than eyeballed so it stays
+ * right if the control points move.
+ */
+const DETOUR_Y = (3 * 40 + 3 * 52 + END_Y) / 8;
+
 /** Backtick spans become inline code, the way they read in the source copy. */
 function Inline(props: { text: string }) {
   const parts = () => props.text.split(/`([^`]+)`/g);
@@ -127,6 +137,8 @@ function RoadLeg(props: {
   walked: boolean;
   label?: number;
   done?: boolean;
+  /** A signpost planted on the tarmac, halfway along. */
+  detour?: JSX.Element;
 }) {
   const path = (x: Record<Side, number>) =>
     `M ${x[props.from]} 0 C ${x[props.from]} 40, ${x[props.to]} 52, ${x[props.to]} ${END_Y}`;
@@ -177,6 +189,19 @@ function RoadLeg(props: {
       <div class="absolute inset-0 hidden sm:block">
         <Curve x={X_DESKTOP} />
       </div>
+
+      {/* Planted on the tarmac, not floating near it. At the curve's midpoint
+          (t = 0.5) the x lands exactly halfway between the two sides - so
+          horizontally centred is correct - and the y works out at 44% of the
+          box for these control points, not 50%. */}
+      <Show when={props.detour}>
+        <div
+          class="absolute inset-x-0 flex justify-center"
+          style={{ top: `${DETOUR_Y}%`, transform: "translateY(-50%)" }}
+        >
+          {props.detour}
+        </div>
+      </Show>
 
       <Show when={props.label !== undefined}>
         <div
@@ -870,11 +895,14 @@ function StopCard(props: {
       id={props.stop.id}
       class={`scroll-mt-28 ${props.side === "left" ? "sm:mr-auto" : "sm:ml-auto"} w-full sm:w-[92%]`}
     >
-      {/* `overflow-hidden` is load-bearing on a phone: the sticker and the
-          pop-label are both rotated, and their corners would otherwise push the
-          whole page sideways at 360px. */}
+      {/* Clipping is load-bearing on a phone: the sticker and the pop-label are
+          both rotated, and their corners would otherwise push the whole page
+          sideways at 360px. It has to be `overflow-clip` rather than `hidden` -
+          `hidden` makes this card a scroll container, and a scroll container
+          silently disables `position: sticky` for everything inside it, which
+          is what stranded the sandbox canvas above the fold. */}
       <div
-        class={`card ${props.stop.pop} relative space-y-4 overflow-hidden ${props.done ? "opacity-90" : ""}`}
+        class={`card ${props.stop.pop} relative space-y-4 overflow-clip ${props.done ? "opacity-90" : ""}`}
       >
         <Halftone opacity={0.09} />
 
@@ -1250,6 +1278,15 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
               walked={walked(index())}
               label={index() + 1}
               done={isDone(stop.id)}
+              // A detour, not a stop: after four rings of ellipses the obvious
+              // question is "is this as far as it goes", and it is better
+              // answered on the way to git than left hanging until somebody
+              // sees a winning entry on Day 7.
+              detour={
+                ROAD_STOPS[index() - 1]?.id === "rings-and-colour" ? (
+                  <PookalamShowcase />
+                ) : undefined
+              }
             />
             <StopCard
               stop={stop}

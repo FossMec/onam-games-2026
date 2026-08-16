@@ -243,33 +243,39 @@ ctx.fill();`,
     hookNamed: "One petal becomes twelve, {name}. This is the whole trick.",
     steps: [
       "One loop, twelve turns, one petal each turn. That is the ring on the right.",
-      "Change `petals` to 6. Run. Then 24. Run. Then 60.",
+      "Those are leaves, not dots - `ellipse` takes a length and a width.",
+      "Change `petals` to 6. Run. Then 24. Then 60.",
       "Change `radius` to 60, then 160. Watch the ring breathe.",
-      "Congratulations, you now know the only maths on this road.",
     ],
     form: "checklist",
     visual: "petal-dial",
     code: {
-      label: "twelve petals in a ring - change a number, run it",
+      label: "twelve leaves in a ring - change a number, run it",
       sandbox: true,
       snippet: `const petals = 12;
-const radius = 120;
-const cx = W / 2, cy = H / 2;
+const radius = 110;
 
 for (let i = 0; i < petals; i++) {
-  const angle = (i * 2 * Math.PI) / petals;
-  const x = cx + radius * Math.cos(angle);
-  const y = cy + radius * Math.sin(angle);
+  ctx.save();
+  ctx.translate(W / 2, H / 2);              // work from the centre
+  ctx.rotate((i * 2 * Math.PI) / petals);   // turn a bit, every time
 
   ctx.beginPath();
-  ctx.arc(x, y, 22, 0, Math.PI * 2);
-  ctx.fillStyle = i % 2 === 0 ? "#F47C48" : "#F5C443";
+  ctx.ellipse(radius, 0, 36, 14, 0, 0, Math.PI * 2);  // a leaf: long, thin
+
+  if (i % 2 === 0) {
+    ctx.fillStyle = "#E76F51";
+  } else {
+    ctx.fillStyle = "#F5C443";
+  }
   ctx.fill();
+
+  ctx.restore();
 }`,
     },
     more: [
       "cos and sin are the two from the class everyone thought was pointless. Walk around a circle in equal steps and they hand you the x and y of each step. That is all the maths on this entire road - there is none after this stop.",
-      "`i % 2 === 0` alternating the colour is a free pattern for one line of code. Most of what looks clever in a pookalam is a small trick like that, repeated.",
+      "`translate` moves the pen to the centre, `rotate` turns the whole canvas a little, and the leaf is always drawn in the same place - the canvas does the arranging. `save` and `restore` put things back so the next petal starts clean.",
     ],
     links: [
       {
@@ -288,7 +294,7 @@ for (let i = 0; i < petals; i++) {
     praise:
       "You wrote a loop with maths inside it. That is real programming - the same repeat-a-thing idea behind games, animations and most of what you will build later.",
     levelUp:
-      "Swap the loop for a polar function `r = a·cos(kθ)`, or `ctx.rotate` a bezier petal. Same idea, far better curves.",
+      "Swap the ellipse for a bezier petal (`moveTo` + two `bezierCurveTo`) and you get a real chethi petal instead of a leaf. Same loop, far better shape.",
     pop: "pop-purple",
     sprite: "git-nodes",
     minutes: "20 min",
@@ -300,39 +306,60 @@ for (let i = 0; i < petals; i++) {
     hook: "Your ring becomes a pookalam. This is the fun day.",
     hookNamed: "Your ring becomes a pookalam, {name}. This is the fun day.",
     steps: [
-      "Yesterday's loop, wrapped in a loop that changes the radius. Four rings.",
-      "Swap a colour in the `colours` list for one of your own. Run.",
-      "Change `6 + ring * 6` to `4 + ring * 10` and see it get denser.",
-      "Turn the dots into petals: swap `arc` for `ellipse`. It is one line.",
+      "Same ring as yesterday, four times over. Each line of `rings` is one ring.",
+      "A line is: how many petals, how far out, how long, how wide.",
+      "Hit Run twice. `Math.random()` picks the colours, so every run is new.",
+      "Add a line of your own. Delete one. Change the colours. Run after each.",
     ],
     form: "checklist",
     visual: "palette",
     code: {
-      label: "rings inside rings - this is already a pookalam",
+      label: "four rings, random colours - hit Run twice",
       sandbox: true,
-      snippet: `const colours = ["#F47C48", "#F5C443", "#5FBFA8", "#9C82D4"];
-const cx = W / 2, cy = H / 2;
+      snippet: `ctx.fillStyle = "#1A0826";            // the dark ground
+ctx.fillRect(0, 0, W, H);
 
-for (let ring = 0; ring < 4; ring++) {
-  const radius = 42 + ring * 40;
-  const petals = 6 + ring * 6;
+const colours = ["#E63946", "#F4A261", "#2A9D8F", "#F5C443", "#9C82D4"];
+
+// one line per ring: petals, distance out, petal length, petal width
+const rings = [
+  [24, 150, 38, 13],
+  [16, 108, 34, 17],
+  [24, 74, 26, 9],
+  [12, 40, 26, 15],
+];
+
+for (let r = 0; r < rings.length; r++) {
+  const petals = rings[r][0];
+  const radius = rings[r][1];
+  const long = rings[r][2];
+  const wide = rings[r][3];
+
+  // one random colour for the whole ring - this is why every run differs
+  const colour = colours[Math.floor(Math.random() * colours.length)];
 
   for (let i = 0; i < petals; i++) {
-    // half-step offset so petals sit in the gaps of the ring inside
-    const angle = ((i + (ring % 2) * 0.5) * 2 * Math.PI) / petals;
-    const x = cx + radius * Math.cos(angle);
-    const y = cy + radius * Math.sin(angle);
-
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.rotate((i * 2 * Math.PI) / petals + r);   // + r nudges each ring round
     ctx.beginPath();
-    ctx.arc(x, y, 14, 0, Math.PI * 2);
-    ctx.fillStyle = colours[ring];
+    ctx.ellipse(radius, 0, long, wide, 0, 0, Math.PI * 2);
+    ctx.fillStyle = colour;
     ctx.fill();
+    ctx.restore();
   }
-}`,
+}
+
+// the lamp in the middle
+ctx.beginPath();
+ctx.arc(W / 2, H / 2, 20, 0, Math.PI * 2);
+ctx.fillStyle = "#FFFFFF";
+ctx.fill();`,
     },
     more: [
-      "Colour is where most entries are won and lost, and it is the one part worth stealing rather than inventing. Four colours pulled off a real photo beat four you picked by feel, every time.",
-      "Swap `arc` for `ellipse` and the dots become petals. Four to six rings is plenty - more rings is not the same as better.",
+      "`Math.random()` is doing the same job as the Randomize button in the studio at the top of this page - your twenty lines and that whole panel are the same idea, and yours took an evening. Keeping the palette fixed and randomising only which ring gets which colour is why it still looks deliberate rather than like a paint accident.",
+      "Everything that makes a pookalam is in that table: ring count, spacing, petal shape and colour. Adding a ring is one line, and that is the point - the code stays small while the picture gets complicated.",
+      "Colour is where most entries are won and lost, and it is worth stealing rather than inventing: pull four colours off a photo of a real pookalam. Six rings is plenty - more rings is not the same as better.",
     ],
     links: [
       {
@@ -343,11 +370,11 @@ for (let ring = 0; ring < 4; ring++) {
       {
         label: "MDN · ellipse()",
         href: "https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/ellipse",
-        note: "dots become petals",
+        note: "the leaf shape, explained",
       },
     ],
     aiPrompt:
-      "Here is my code that draws rings of dots: [paste yours]. Give me 5 small changes that would make it look more like a real Onam pookalam - petal shapes instead of dots, better colours, a border, something in the centre. Keep each change under 10 lines and explain it in plain words.",
+      "Here is my code that draws rings of petals: [paste yours]. Give me 5 small changes that would make it look more like a real Onam pookalam - petal shapes instead of dots, better colours, a border, something in the centre. Keep each change under 10 lines and explain it in plain words.",
     praise:
       "There is a pookalam on your screen and your code made it. Send it to someone. Seriously, right now.",
     levelUp:

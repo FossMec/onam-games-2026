@@ -6,7 +6,7 @@ import { Bubble } from "~/components/art/Burst";
 import { Countdown } from "~/components/Countdown";
 import { POOKALAM } from "~/lib/event-content";
 import { ImageRejected, preparePookalamImage } from "~/lib/pookalam-image";
-import { RoadRecap, shouldShowRecap } from "~/components/pookalam/RoadRecap";
+import { RoadRecap, RoadSendOff, shouldShowRecap } from "~/components/pookalam/RoadRecap";
 import { getMe } from "~/server/auth/actions";
 import { getPookalamState, submitPookalam } from "~/server/pookalam/actions";
 
@@ -243,6 +243,10 @@ export default function SubmitPookalam() {
                 <Countdown target={closesAt()!} doneLabel="Submissions are closed" />
               </div>
             </Show>
+
+            {/* For people who walked the road: a word before the form, in the
+                voice the rest of the site uses for Maveli. */}
+            <RoadSendOff name={firstName()} />
 
             <section class="card pop-blue space-y-2">
               <div class="flex items-center gap-2">

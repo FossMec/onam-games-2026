@@ -1,6 +1,8 @@
 import { Play, RotateCcw, TriangleAlert } from "lucide-solid";
 import { For, type JSX, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 
+import { sandboxDocument } from "~/lib/pookalam-sandbox-doc";
+
 /**
  * A tiny canvas playground that runs the stop's snippet.
  *
@@ -22,41 +24,6 @@ import { For, type JSX, Show, createMemo, createSignal, onCleanup, onMount } fro
  * or craft - which the note under the canvas says out loud rather than leaving
  * somebody to discover it on judging day.
  */
-
-const SIZE = 360;
-
-/**
- * The page that runs inside the iframe. `ctx`, `W` and `H` are handed in.
- *
- * The snippet goes in as a JSON string literal with `<` escaped as well:
- * `JSON.stringify` alone passes `</script>` straight through, and typed text
- * that closes the tag becomes markup. The iframe is sandboxed so that would
- * wreck nothing outside it, but a playground that can be confused by its own
- * input is not one to leave standing.
- */
-function sandboxDocument(code: string): string {
-  const literal = JSON.stringify(code).replace(/</g, "\\u003c");
-
-  return `<!doctype html>
-<html>
-  <body style="margin:0;background:#181511">
-    <canvas id="pookalam" width="${SIZE}" height="${SIZE}" style="display:block;width:100%;height:auto"></canvas>
-    <script>
-      const c = document.getElementById("pookalam");
-      const ctx = c.getContext("2d");
-      const W = ${SIZE}, H = ${SIZE};
-      try {
-        eval(${literal});
-      } catch (e) {
-        parent.postMessage(
-          { pookalamSandboxError: String((e && e.message) || e).slice(0, 300) },
-          "*",
-        );
-      }
-    </script>
-  </body>
-</html>`;
-}
 
 /**
  * Colouring, from one regex.
@@ -97,20 +64,38 @@ function highlight(code: string): Piece[] {
  */
 export function PookalamSandbox(props: { snippet: string; intro?: JSX.Element }) {
   const [code, setCode] = createSignal(props.snippet);
-  const [doc, setDoc] = createSignal(sandboxDocument(props.snippet));
+  const [doc, setDoc] = createSignal(sandboxDocument(props.snippet, 0));
+  let runs = 0;
   const [error, setError] = createSignal<string | null>(null);
+  const [ran, setRan] = createSignal(false);
 
   const pieces = createMemo(() => highlight(code()));
 
+  let resultRef: HTMLDivElement | undefined;
+  let flash: ReturnType<typeof setTimeout> | undefined;
+
   const run = () => {
     setError(null);
-    setDoc(sandboxDocument(code()));
+    setDoc(sandboxDocument(code(), ++runs));
+
+    // Pressing a button that appears to do nothing is how people conclude the
+    // page is broken. On a wide screen the canvas is pinned beside the editor
+    // and simply repaints; on a phone it is above a long snippet and off
+    // screen, so the result comes to them.
+    setRan(true);
+    if (flash) clearTimeout(flash);
+    flash = setTimeout(() => setRan(false), 1400);
+
+    if (typeof window !== "undefined" && window.innerWidth < 640) {
+      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+      resultRef?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+    }
   };
 
   const reset = () => {
     setCode(props.snippet);
     setError(null);
-    setDoc(sandboxDocument(props.snippet));
+    setDoc(sandboxDocument(props.snippet, ++runs));
   };
 
   onMount(() => {
@@ -126,12 +111,17 @@ export function PookalamSandbox(props: { snippet: string; intro?: JSX.Element })
       }
     };
     window.addEventListener("message", onMessage);
-    onCleanup(() => window.removeEventListener("message", onMessage));
+    onCleanup(() => {
+      window.removeEventListener("message", onMessage);
+      if (flash) clearTimeout(flash);
+    });
   });
 
   return (
     <div class="space-y-2">
-      <div class="grid items-start gap-3 sm:grid-cols-[1.4fr_1fr]">
+      {/* No `items-start` here on purpose: the columns have to stretch to the
+          row height, or the sticky canvas has nothing to travel inside. */}
+      <div class="grid gap-3 sm:grid-cols-[1.4fr_1fr]">
         {/* the steps and the editor: a highlighted copy underneath, a
             see-through textarea on top. Both use identical type and wrapping so
             the caret lands where the glyphs are. */}
@@ -172,13 +162,25 @@ export function PookalamSandbox(props: { snippet: string; intro?: JSX.Element })
               <RotateCcw size={13} />
               <span>Reset</span>
             </button>
-            <span class="text-xs font-bold text-muted">change any number, then run</span>
+            <Show
+              when={ran()}
+              fallback={
+                <span class="text-xs font-bold text-muted">change any number, then run</span>
+              }
+            >
+              <span class="anim-pop badge text-[10px]" style={{ "--pop": "var(--pop-teal)" }}>
+                ran it - look right
+              </span>
+            </Show>
           </div>
         </div>
 
-        {/* the result, pinned to the top of the column so it fills the space
-            beside the steps and stays in view while you scroll the editor */}
-        <div class="space-y-2 sm:sticky sm:top-24">
+        {/* the result, pinned so it stays on screen while you scroll a long
+            snippet - pressing Run has to visibly do something */}
+        <div
+          ref={(el) => (resultRef = el)}
+          class="order-first space-y-2 self-start sm:order-none sm:sticky sm:top-24"
+        >
           <iframe
             title="Your pookalam code, running"
             // `allow-scripts` and nothing else. Without `allow-same-origin` the
@@ -188,7 +190,7 @@ export function PookalamSandbox(props: { snippet: string; intro?: JSX.Element })
             referrerpolicy="no-referrer"
             loading="lazy"
             srcdoc={doc()}
-            class="inked mx-auto block w-full max-w-[20rem] rounded"
+            class="inked mx-auto block w-full max-w-[13rem] rounded sm:max-w-[20rem]"
             style={{ "aspect-ratio": "1 / 1", background: "#181511", border: "none" }}
           />
           <p class="comment m-0 text-center text-sm sm:text-left">your code, running. right now.</p>

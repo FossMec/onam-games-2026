@@ -87,7 +87,19 @@ export function Footer() {
 
         <div class="space-y-1">
           <p class="text-sm sm:text-base font-extrabold leading-relaxed text-[var(--ink)]">
-            Seven days of games. One week of Onam. Designed at fossmec by Dijith Dinesh
+            Seven days of games. One week of Onam.{" "}
+            {/* The credit in the marker hand, a size up: it is a signature on
+                the work rather than another line of footer copy. */}
+            <span
+              class="whitespace-nowrap"
+              style={{
+                "font-family": "var(--font-stack-hand)",
+                "font-size": "1.35em",
+                "font-weight": "700",
+              }}
+            >
+              Designed at fossmec by Dijith
+            </span>
           </p>
           <p class="text-xs sm:text-sm font-bold">
             <a
