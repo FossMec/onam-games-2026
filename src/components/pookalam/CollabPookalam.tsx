@@ -50,7 +50,7 @@ export function CollabPookalam() {
 
   const [today, setToday] = createSignal<Uint8Array | null>(null);
   const [history, setHistory] = createSignal<DayLayer[]>([]);
-  const [dayKey, setDayKey] = createSignal("");
+  const [_dayKey, setDayKey] = createSignal("");
   const [placed, setPlaced] = createSignal(0);
   const [open, setOpen] = createSignal(true);
   const [canPlace, setCanPlace] = createSignal(false);

@@ -15,7 +15,7 @@ export default createMiddleware([
     event.res.headers.set("X-Content-Type-Options", "nosniff");
     event.res.headers.set("X-Frame-Options", "DENY");
     event.res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-    event.res.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    event.res.headers.set("Permissions-Policy", "microphone=(), geolocation=()");
 
     const path = new URL(event.req.url).pathname;
     const isSensitive =

@@ -245,6 +245,7 @@ export function buildCaption(input: CaptionInput): string {
     `Day ${input.day} · ${input.gameTitle} - ${input.figure} (${standing}).`,
     brag(input.tier, input.seed),
     `${taunt(input.tier, input.seed)} ${input.origin}`,
+    "Don't forget to tag @foss_mec on Instagram!",
   ].join("\n");
 }
 

@@ -1,5 +1,5 @@
 import { Title } from "@solidjs/meta";
-import { createAsync } from "@solidjs/router";
+import { createAsync, useSearchParams } from "@solidjs/router";
 import {
   ChevronDown,
   ChevronLeft,
@@ -76,8 +76,19 @@ const rankPop = (rank: number): string =>
 export default function Leaderboard() {
   const me = createAsync(() => getMe());
   const games = createAsync(() => getGames());
-  const [selectedDay, setSelectedDay] = createSignal<number>(1);
-  const [viewMode, setViewMode] = createSignal<"main" | "tester">("main");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const parseQueryDay = () => {
+    const raw = Array.isArray(searchParams.day) ? searchParams.day[0] : searchParams.day;
+    if (!raw) return null;
+    const num = parseInt(raw, 10);
+    return num >= 1 && num <= 7 ? num : null;
+  };
+
+  const [selectedDay, setSelectedDay] = createSignal<number>(parseQueryDay() ?? 1);
+  const [viewMode, setViewMode] = createSignal<"main" | "tester">(
+    searchParams.view === "tester" ? "tester" : "main",
+  );
   const [expandedId, setExpandedId] = createSignal<string | null>(null);
   const [version, setVersion] = createSignal(0);
   const [lastRefresh, setLastRefresh] = createSignal(Date.now());
@@ -113,10 +124,28 @@ export default function Leaderboard() {
     return 1;
   };
 
-  // Auto-select the current day's game when loaded
+  // Auto-select the current day's game only if no explicit day was specified in query param
   createEffect(() => {
-    const day = currentActiveDay();
-    setSelectedDay(day);
+    if (!parseQueryDay()) {
+      const day = currentActiveDay();
+      setSelectedDay(day);
+      setSearchParams(
+        { day, ...(viewMode() === "tester" ? { view: "tester" } : {}) },
+        { replace: true },
+      );
+    }
+  });
+
+  // Sync state if URL searchParams change via browser navigation (Back/Forward)
+  createEffect(() => {
+    const qDay = parseQueryDay();
+    if (qDay && qDay !== selectedDay()) {
+      setSelectedDay(qDay);
+    }
+    const qView = searchParams.view === "tester" ? "tester" : "main";
+    if (qView !== viewMode()) {
+      setViewMode(qView);
+    }
   });
 
   const selectedGame = () => games()?.find((g) => g.day === selectedDay()) ?? null;
@@ -130,11 +159,12 @@ export default function Leaderboard() {
    */
   const isDay7 = () => selectedDay() === 7 && !selectedGame();
 
-  // Auto-set tab to tester if currently selected game is in tester preview
+  // Auto-set tab to tester if currently selected game is in tester preview and no query override
   createEffect(() => {
     const g = selectedGame();
-    if (g && g.status === "tester" && isTesterOrAdmin()) {
+    if (g && g.status === "tester" && isTesterOrAdmin() && !searchParams.view) {
       setViewMode("tester");
+      setSearchParams({ day: selectedDay(), view: "tester" }, { replace: true });
     }
   });
 
@@ -214,14 +244,24 @@ export default function Leaderboard() {
   const prevDay = () => {
     void startTransition(() => {
       setPage(1);
-      setSelectedDay((d) => (d > 1 ? d - 1 : 7));
+      const next = selectedDay() > 1 ? selectedDay() - 1 : 7;
+      setSelectedDay(next);
+      setSearchParams(
+        { day: next, ...(viewMode() === "tester" ? { view: "tester" } : {}) },
+        { replace: true },
+      );
     });
   };
 
   const nextDay = () => {
     void startTransition(() => {
       setPage(1);
-      setSelectedDay((d) => (d < 7 ? d + 1 : 1));
+      const next = selectedDay() < 7 ? selectedDay() + 1 : 1;
+      setSelectedDay(next);
+      setSearchParams(
+        { day: next, ...(viewMode() === "tester" ? { view: "tester" } : {}) },
+        { replace: true },
+      );
     });
   };
 
@@ -364,6 +404,7 @@ export default function Leaderboard() {
                   startTransition(() => {
                     setPage(1);
                     setViewMode("main");
+                    setSearchParams({ day: selectedDay() }, { replace: true });
                   })
                 }
                 class={`px-2.5 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
@@ -380,6 +421,7 @@ export default function Leaderboard() {
                   startTransition(() => {
                     setPage(1);
                     setViewMode("tester");
+                    setSearchParams({ day: selectedDay(), view: "tester" }, { replace: true });
                   })
                 }
                 class={`px-2.5 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${

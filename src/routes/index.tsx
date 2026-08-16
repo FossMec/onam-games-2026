@@ -1,5 +1,5 @@
 import { Title } from "@solidjs/meta";
-import { createAsync } from "@solidjs/router";
+import { createAsync, useSearchParams } from "@solidjs/router";
 import { BookOpen, ChevronLeft, ChevronRight, Clock, HelpCircle, Lock, Zap } from "lucide-solid";
 import { For, Show, createEffect, createSignal } from "solid-js";
 
@@ -245,10 +245,33 @@ export default function Home() {
   const scheduleLoading = () => games() === undefined;
   const scheduleMissing = () => games()?.length === 0;
 
-  const [selectedDay, setSelectedDay] = createSignal<number>(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const parseQueryDay = () => {
+    const rawDay = Array.isArray(searchParams.day) ? searchParams.day[0] : searchParams.day;
+    if (rawDay) {
+      const n = parseInt(rawDay, 10);
+      if (n >= 1 && n <= 7) return n;
+    }
+    const rawGame = Array.isArray(searchParams.game) ? searchParams.game[0] : searchParams.game;
+    if (rawGame) {
+      const n = parseInt(rawGame, 10);
+      if (n >= 1 && n <= 7) return n;
+      const list = games();
+      if (list) {
+        const found = list.find((g) => g.slug === rawGame);
+        if (found) return found.day;
+      }
+    }
+    return null;
+  };
+
+  const [selectedDay, setSelectedDay] = createSignal<number>(parseQueryDay() ?? 1);
 
   const selectDay = (day: number) => {
     setSelectedDay(day);
+    const g = games()?.find((item) => item.day === day);
+    setSearchParams({ day, ...(g?.slug ? { game: g.slug } : {}) }, { replace: true });
     if (typeof window !== "undefined") {
       const el =
         document.getElementById("arena-hero-card") ?? document.getElementById("games-arena");
@@ -284,10 +307,15 @@ export default function Home() {
     games()?.find((g) => g.day === currentActiveDay()) ??
     games()?.find((g) => g.status === "live" || g.status === "tester");
 
-  // Auto-focus on currently active / current day's game
+  // Auto-focus on active day or URL parameter
   createEffect(() => {
-    const day = currentActiveDay();
-    setSelectedDay(day);
+    const q = parseQueryDay();
+    if (q) {
+      setSelectedDay(q);
+    } else {
+      const day = currentActiveDay();
+      setSelectedDay(day);
+    }
   });
 
   // Assemble full 7-day schedule

@@ -53,6 +53,9 @@ export default function App() {
             content="https://foss-onam.onrender.com/images/og-image.webp"
           />
           <Link rel="canonical" href="https://foss-onam.onrender.com/" />
+          <Link rel="icon" type="image/svg+xml" href="/logo.svg" />
+          <Link rel="icon" type="image/png" sizes="512x512" href="/favicon.png" />
+          <Link rel="apple-touch-icon" href="/favicon.png" />
           <Link rel="manifest" href="/site.webmanifest" />
 
           {/* Privacy-Friendly Web Analytics (Umami / Cloudflare / Vercel) */}
