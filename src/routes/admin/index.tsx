@@ -80,7 +80,7 @@ export default function Admin() {
 
   return (
     <main class="container space-y-5 py-6 max-w-6xl">
-      <Title>Admin Control Center — FOSS Onam Games</Title>
+      <Title>Admin Control Center - FOSS Onam Games</Title>
 
       {/* Header Banner */}
       <div
@@ -137,12 +137,12 @@ export default function Admin() {
         They are the people who actually do the day-6 pass over every entry, so
         bouncing them off this page entirely would mean building a second page
         somewhere public for one privileged job. They see no metrics, no users,
-        no logs — and no author names, which is the whole point of the gallery.
+        no logs - and no author names, which is the whole point of the gallery.
       */}
       <Show when={me()?.role === "tester"}>
         <div class="space-y-4">
           <div class="card card-plain p-3 text-xs font-bold" style={{ color: "var(--ink-soft)" }}>
-            Tester access — Code-a-Pookalam shortlisting only.
+            Tester access - Code-a-Pookalam shortlisting only.
           </div>
           <PookalamGallery />
         </div>
@@ -286,12 +286,48 @@ export default function Admin() {
 
               {/* 8. Code-a-Pookalam Review Tab */}
               <Show when={activeTab() === "pookalam"}>
-                <div class="space-y-5">
-                  {/* Approve, shortlist, see who made what. */}
-                  <PookalamReview />
-                  {/* The same anonymous gallery the testers judge in. */}
-                  <PookalamGallery />
-                </div>
+                {(() => {
+                  const [pookalamSub, setPookalamSub] = createSignal<"review" | "gallery">(
+                    "review",
+                  );
+                  return (
+                    <div class="space-y-5">
+                      <div class="inline-flex rounded-md border-2 border-[var(--ink)] p-0.5 bg-[var(--paper)]">
+                        <button
+                          type="button"
+                          onClick={() => setPookalamSub("review")}
+                          class={`px-3 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
+                            pookalamSub() === "review"
+                              ? "bg-[var(--pop-yellow)] text-[var(--ink)]"
+                              : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                          }`}
+                        >
+                          Review queue
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPookalamSub("gallery")}
+                          class={`px-3 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
+                            pookalamSub() === "gallery"
+                              ? "bg-[var(--pop-teal)] text-[var(--ink)]"
+                              : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                          }`}
+                        >
+                          Shortlisting gallery
+                        </button>
+                      </div>
+
+                      <Show when={pookalamSub() === "review"}>
+                        {/* Approve, shortlist, see who made what. */}
+                        <PookalamReview />
+                      </Show>
+                      <Show when={pookalamSub() === "gallery"}>
+                        {/* The same anonymous gallery the testers judge in. */}
+                        <PookalamGallery />
+                      </Show>
+                    </div>
+                  );
+                })()}
               </Show>
 
               {/* 9. Activity Logs Tab */}

@@ -147,7 +147,7 @@ export async function completeOAuthSignIn(
    * more than one.
    *
    * Signing in anywhere revokes everywhere else, so an account cannot be played
-   * from two places at once — the shared-login case that device binding alone
+   * from two places at once - the shared-login case that device binding alone
    * does not cover, because a borrowed account on a second phone is a second
    * *device*, not a second user.
    *
@@ -206,7 +206,7 @@ export async function completeOAuthSignIn(
    * happens to read today.
    *
    * `devices.fingerprint_json` only ever holds the *latest* fingerprint for a
-   * device — each sign-in overwrites it. Keeping a copy per login turns that
+   * device - each sign-in overwrites it. Keeping a copy per login turns that
    * into a history, which is where the interesting shapes live: a hardware
    * signature that changes under one account, a canvas hash that appears under
    * two, a visitor id that migrates between accounts. None of that is
@@ -254,7 +254,7 @@ async function getCurrentUserUncached(): Promise<PublicUser | null> {
     // `expiresAt` rides along on the row we are already fetching. Without it,
     // every request from a signed-in visitor paid for a second select on
     // `auth_sessions` purely to discover that the token was nowhere near
-    // expiry — which is the answer 99 times out of 100.
+    // expiry - which is the answer 99 times out of 100.
     .select({ ...USER_SELECT, sessionExpiresAt: authSessions.expiresAt })
     .from(authSessions)
     .innerJoin(users, eq(users.id, authSessions.userId))
@@ -309,7 +309,7 @@ export async function requireAdmin(): Promise<PublicUser> {
 
 /**
  * Testers and admins. Used by the pookalam shortlisting gallery, which shows
- * every entry before the public round — trusted eyes only, but not admin-only,
+ * every entry before the public round - trusted eyes only, but not admin-only,
  * since the point is to get more than one person's opinion.
  */
 export async function requireReviewer(): Promise<PublicUser> {
@@ -324,7 +324,7 @@ export async function requireReviewer(): Promise<PublicUser> {
  * Callers gate this on `isRefreshDue` with the expiry they already hold, so
  * reaching here means a refresh is expected. The row is re-read anyway because
  * this runs detached from the request that triggered it, and it needs the
- * refresh token — and the expiry is re-checked in case a concurrent request
+ * refresh token - and the expiry is re-checked in case a concurrent request
  * got there first.
  */
 async function refreshSessionIfNeeded(sessionId: string): Promise<void> {

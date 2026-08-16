@@ -6,7 +6,7 @@
  * between "comic panel" and "div".
  *
  * PERF: SVG filters force off-GPU rasterisation and are genuinely expensive on
- * low-end Android — exactly the phones this event runs on. So this is strictly
+ * low-end Android - exactly the phones this event runs on. So this is strictly
  * opt-in via `.inked-rough`, and must never go on scrolling lists, tables, or
  * anything on a game board. Decorative chrome only.
  *

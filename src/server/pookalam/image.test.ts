@@ -75,7 +75,7 @@ describe("readImageSize", () => {
     expect(readImageSize(png(1024, 1024))).toEqual({ width: 1024, height: 1024 });
   });
 
-  it("reads lossy WebP — what the browser canvas actually produces", () => {
+  it("reads lossy WebP - what the browser canvas actually produces", () => {
     expect(readImageSize(webpLossy(1024, 1024))).toEqual({ width: 1024, height: 1024 });
   });
 

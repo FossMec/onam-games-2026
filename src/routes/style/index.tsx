@@ -9,7 +9,7 @@ import { ALL_SPRITE_NAMES, SPRITE_REGISTRY } from "~/lib/sprites";
 import { SHOUT_COLOR, type ShoutMood } from "~/lib/shouts";
 
 /**
- * Live style guide. This is the review surface — open it on a phone, not a
+ * Live style guide. This is the review surface - open it on a phone, not a
  * laptop, because that is what 500 students will be holding.
  *
  * Everything here is static markup on purpose: no data, no auth, no server
@@ -55,7 +55,7 @@ export default function StyleGuide() {
 
   return (
     <main class="container space-y-12 py-8">
-      <Title>Style guide — FOSS Onam Games</Title>
+      <Title>Style guide - FOSS Onam Games</Title>
 
       <section
         class="relative overflow-hidden rounded-lg p-6 text-center"
@@ -157,7 +157,7 @@ export default function StyleGuide() {
             BUNGEE
           </p>
           <p class="text-xs" style={{ color: "var(--ink-soft)" }}>
-            Wordmark only — layered Shade behind Regular for poster chrome.
+            Wordmark only - layered Shade behind Regular for poster chrome.
           </p>
           <hr style={{ border: 0, "border-top": "2px dashed var(--ink)", opacity: 0.3 }} />
           <h1>Baloo Chettan 2</h1>

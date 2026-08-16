@@ -6,7 +6,7 @@ import type { games } from "~/server/db/schema";
  * The status machine, exercised without a database.
  *
  * `resolveSchedule` only touches the DB to read the schedule settings, and it
- * takes them as an argument — so passing them here keeps these tests pure and
+ * takes them as an argument - so passing them here keeps these tests pure and
  * lets each case pin an exact release instant instead of depending on when the
  * suite runs.
  */
@@ -53,7 +53,7 @@ describe("resolveSchedule", () => {
   });
 
   it("keeps tester early access ahead of the preview", async () => {
-    // Inside both windows, a tester must still get the playable status — a
+    // Inside both windows, a tester must still get the playable status - a
     // preview would take away access they already had.
     expect(await statusOf(gameAt(6), "tester")).toBe("tester");
     expect(await statusOf(gameAt(6), "player")).toBe("preview");

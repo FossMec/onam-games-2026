@@ -12,7 +12,7 @@ import { getPookalamState, submitPookalam } from "~/server/pookalam/actions";
  * The Code-a-Pookalam entry form.
  *
  * The form does not exist until the window opens. Before that the page is a
- * countdown, and there is deliberately no disabled-but-present submit button —
+ * countdown, and there is deliberately no disabled-but-present submit button -
  * a greyed-out control invites people to keep poking it and then to email
  * asking why it does not work.
  *
@@ -43,7 +43,7 @@ const STATUS_LABEL: Record<string, string> = {
  */
 const IMAGE_RULES = [
   "No name, handle, watermark, signature or logo anywhere in the image. Day 7 voting is anonymous, and anything that identifies you gets the entry pulled.",
-  "Square, 1:1. We check before uploading — a 16:9 screenshot will be refused.",
+  "Square, 1:1. We check before uploading - a 16:9 screenshot will be refused.",
   "At least 320×320. We downscale to 1024×1024 and re-encode, which also strips the EXIF data off a photo.",
   "The render must be the output of your code. Not a photo of a real pookalam, not a raw image generation.",
 ];
@@ -135,7 +135,7 @@ export default function SubmitPookalam() {
 
   return (
     <main class="container space-y-8 py-6">
-      <Title>Submit — {POOKALAM.title}</Title>
+      <Title>Submit - {POOKALAM.title}</Title>
 
       <a
         href="/code-a-pookalam"
@@ -251,7 +251,7 @@ export default function SubmitPookalam() {
                   placeholder="Recursive Thumba"
                 />
                 <span class="comment">
-                  voters see this. keep your name out of it — it is shown next to the image during
+                  voters see this. keep your name out of it - it is shown next to the image during
                   anonymous voting.
                 </span>
               </label>
@@ -334,7 +334,7 @@ export default function SubmitPookalam() {
 
               <p class="comment">
                 editing an entry sends it back for review and takes it off the shortlist. that is on
-                purpose — approving a design and then having the image change would make review
+                purpose - approving a design and then having the image change would make review
                 pointless.
               </p>
 
@@ -380,7 +380,7 @@ function ClosedNotice(props: { reason: string; opensAt: Date | null; hasEntry: b
               fallback="Submissions aren't open yet. Dates go up here as soon as they're set."
             >
               Submissions have closed.{" "}
-              <Show when={props.hasEntry} fallback="Voting is next — come back for Day 7.">
+              <Show when={props.hasEntry} fallback="Voting is next - come back for Day 7.">
                 Yours is in. Watch for the shortlist.
               </Show>
             </Show>
@@ -393,9 +393,9 @@ function ClosedNotice(props: { reason: string; opensAt: Date | null; hasEntry: b
           <Lock size={18} />
           <p class="font-extrabold m-0">The entry form opens in</p>
         </div>
-        <Countdown target={props.opensAt!} doneLabel="Submissions are open — refresh!" />
+        <Countdown target={props.opensAt!} doneLabel="Submissions are open - refresh!" />
         <p class="comment">
-          start coding now. you'll want the time — {POOKALAM.submitBy.toLowerCase()} is the
+          start coding now. you'll want the time - {POOKALAM.submitBy.toLowerCase()} is the
           deadline.
         </p>
       </div>

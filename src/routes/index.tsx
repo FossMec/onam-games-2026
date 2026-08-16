@@ -5,6 +5,7 @@ import { For, Show, createEffect, createSignal } from "solid-js";
 
 import { Countdown } from "~/components/Countdown";
 import { MaveliLetter } from "~/components/MaveliLetter";
+import { CollabPookalam } from "~/components/pookalam/CollabPookalam";
 import { Bubble, Burst, Halftone } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
@@ -85,14 +86,14 @@ interface VotingPhase {
  *
  * Day 7 has no `games` row, so `resolveSchedule` never sees it and the card
  * used to be pushed onto the list with `status: "upcoming"` and
- * `releaseAt: null` hardcoded. Those are literals, not a state — nothing ever
+ * `releaseAt: null` hardcoded. Those are literals, not a state - nothing ever
  * recomputed them, so the card read "Locked" for the entire event no matter
  * what the admin configured. That is the bug this function exists to kill.
  *
  * The voting window is the authority, because it is the thing that actually
  * decides whether a tap on that card can do anything. When it has not been
  * configured yet, the release falls back to "the day after the last scheduled
- * game", which keeps a real countdown on screen instead of a dead lock — and
+ * game", which keeps a real countdown on screen instead of a dead lock - and
  * the card still refuses to claim it is live, because it would be lying.
  */
 function day7Schedule(
@@ -135,7 +136,7 @@ const statusSticker: Record<string, { label: string; pop: string }> = {
  * The blurbs are three or four lines of prose each, which on a wide screen is
  * a comfortable read and on a 390px one is most of the viewport before the
  * reader reaches anything they can press. Clamping without an escape hatch
- * would just hide the copy, so the clamp comes with a control — and both
+ * would just hide the copy, so the clamp comes with a control - and both
  * disappear above `sm`, where there was never a problem.
  */
 function ReadMore(props: { text: string; class?: string; lines?: 3 | 4 }) {
@@ -191,8 +192,8 @@ function Section(props: {
 /**
  * What the arena shows when the schedule cannot be read.
  *
- * The rest of the page — what the festival is, how it works, the prizes, the
- * Pookalam contest, the comics — is static and still perfectly true, so this
+ * The rest of the page - what the festival is, how it works, the prizes, the
+ * Pookalam contest, the comics - is static and still perfectly true, so this
  * stays a hole in one section rather than an error page. It says which part is
  * missing, offers the one thing that might fix it, and points at the parts of
  * the site that do not need the schedule.
@@ -206,7 +207,7 @@ function ScheduleUnavailable() {
       <h3 class="text-xl sm:text-2xl font-extrabold">The schedule is taking a break</h3>
       <p class="font-semibold leading-relaxed">
         We could not reach the games server just now, so the seven-day lineup is missing from this
-        page. Nothing is cancelled — everything else here is still on.
+        page. Nothing is cancelled - everything else here is still on.
       </p>
       <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
         <button type="button" class="btn-brand cursor-pointer" onClick={() => location.reload()}>
@@ -228,7 +229,7 @@ export default function Home() {
   const games = createAsync(() => getGames());
   const me = createAsync(() => getMe());
   /*
-   * Day 7 is Code-a-Pookalam, which is not a row in `games` — so its status
+   * Day 7 is Code-a-Pookalam, which is not a row in `games` - so its status
    * cannot come from the schedule resolver like every other day. The arena's
    * own phase window is the authority on whether it is open.
    */
@@ -237,7 +238,7 @@ export default function Home() {
   /*
    * Three states, not two. `createAsync` is `undefined` until the schedule
    * resolves, and `getGames` degrades to an empty list when the database is
-   * unreachable — so "still loading" and "could not load" are different
+   * unreachable - so "still loading" and "could not load" are different
    * pictures, and neither of them is allowed to take the rest of the page
    * (which is all static copy) down with it.
    */
@@ -328,8 +329,8 @@ export default function Home() {
   };
 
   /*
-   * Null when the schedule has not arrived. The old fallback — "six days from
-   * whenever you loaded the page" — was a countdown to a date nobody had set,
+   * Null when the schedule has not arrived. The old fallback - "six days from
+   * whenever you loaded the page" - was a countdown to a date nobody had set,
    * and it differed between the server render and the browser. Better to admit
    * the deadline is unknown than to invent one that ticks wrong.
    */
@@ -395,7 +396,7 @@ export default function Home() {
               Do NOT try to swap sizes with `hidden` / `sm:inline-flex` here.
               SpriteIcon's own wrapper already sets `inline-flex`, and which of
               the two display utilities wins depends on their order in the
-              generated stylesheet rather than in this attribute — so both
+              generated stylesheet rather than in this attribute - so both
               copies render, four sprites crowd the row, and the wordmark gets
               squeezed until it wraps.
             */}
@@ -426,7 +427,7 @@ export default function Home() {
             screen of grey before anyone reached a button. Numerals are read at
             a glance; the sentence was not being read at all.
           */}
-          {/* All four on one row at every width — two rows of two ate a third
+          {/* All four on one row at every width - two rows of two ate a third
               of a phone screen for four short words. */}
           <ul class="grid grid-cols-4 gap-1.5 sm:gap-3 list-none p-0 m-0 max-w-lg mx-auto">
             <For each={EVENT.stats}>
@@ -499,7 +500,7 @@ export default function Home() {
             */}
             {/*
               Desktop only. These exist to fill the space either side of the
-              meme, and a phone has no such space — stacked under it they were
+              meme, and a phone has no such space - stacked under it they were
               just two more lines of text repeating the buttons a few pixels
               further down. Same two pops as those buttons, so the pair reads
               as labels for them rather than a third colour scheme.
@@ -548,7 +549,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* signed-in bar removed — streak/best now lives in Nav dropdown */}
+      {/* signed-in bar removed - streak/best now lives in Nav dropdown */}
 
       {/* -------------------------------------------------------- code-a-pookalam */}
       <Section title="Code-a-Pookalam" id="pookalam" confettiSeed="pookalam-sec" confettiCount={5}>
@@ -655,6 +656,114 @@ export default function Home() {
         </div>
       </Section>
 
+      {/* ------------------------------------------------- collaborative pookalam */}
+      <Section
+        title="The shared pookalam"
+        id="shared-pookalam"
+        confettiSeed="collab-sec"
+        confettiCount={4}
+      >
+        {/*
+          Same treatment as the Code-a-Pookalam card above it — a flat pop
+          fill, thick ink, halftone, confetti. Blue rather than pink so the two
+          pookalam sections read as siblings without reading as duplicates.
+        */}
+        <div
+          class="relative overflow-hidden rounded-lg p-3 sm:p-5"
+          style={{
+            border: "var(--ink-w-bold) solid var(--ink)",
+            background: "var(--pop-blue)",
+          }}
+        >
+          {/*
+            Halftone only, no confetti.
+
+            Every other card here gets both, but this one is mostly a canvas
+            somebody is trying to aim at. Scattered shapes drifting around the
+            edge of a drawing surface read as marks on the drawing.
+          */}
+          <Halftone opacity={0.12} />
+
+          {/*
+            The gutters either side of the canvas are the only place decoration
+            can go without landing on somebody's drawing, so the confetti and
+            the sprites live there and nowhere else. Hidden below `lg`, where
+            there are no gutters to fill.
+          */}
+          <div
+            class="pointer-events-none absolute inset-y-0 left-0 hidden w-28 overflow-hidden lg:block"
+            aria-hidden="true"
+          >
+            <Confetti seed="collab-left" count={7} opacity={0.55} animate />
+            <SpriteIcon
+              name="nilavilakku"
+              size={40}
+              animate="float"
+              class="absolute left-5 top-[18%]"
+            />
+            <SpriteIcon
+              name="sadya-leaf"
+              size={38}
+              animate="float"
+              delay={1.4}
+              class="absolute left-8 bottom-[22%]"
+            />
+          </div>
+          <div
+            class="pointer-events-none absolute inset-y-0 right-0 hidden w-28 overflow-hidden lg:block"
+            aria-hidden="true"
+          >
+            <Confetti seed="collab-right" count={7} opacity={0.55} animate />
+            <SpriteIcon
+              name="muthukuda"
+              size={42}
+              animate="float"
+              delay={0.7}
+              class="absolute right-5 top-[26%]"
+            />
+            <SpriteIcon
+              name="pookalam-flower"
+              size={38}
+              animate="float"
+              delay={2.1}
+              class="absolute right-8 bottom-[18%]"
+            />
+          </div>
+
+          <div class="art-over space-y-3">
+            {/*
+              The pitch, not a description.
+
+              "One grid, everyone's flowers" was accurate and completely inert —
+              it told you the mechanic and gave you no reason to care. What
+              makes this worth a tap is that it is the one thing on the site
+              nobody owns: your flowers sit next to a stranger's forever, and
+              the picture is only good if enough people show up. That is worth
+              saying out loud, in the voice the rest of the site uses.
+            */}
+            <div class="text-center space-y-1.5 pb-1">
+              <p
+                class="m-0 font-black leading-[0.95] text-[1.6rem] sm:text-4xl"
+                style={{ "font-family": "var(--font-stack-display)" }}
+              >
+                Everyone gets a handful.
+                <br />
+                <span style={{ color: "var(--paper)" }}>Nobody gets the whole thing.</span>
+              </p>
+              <p class="m-0 mx-auto max-w-xl font-bold text-sm sm:text-base">
+                2,500 squares. You get few. You are not finishing this — nobody is. Lay a few and
+                let the next person work around them, because painting over anyone is the one thing
+                you can't do.
+              </p>
+              <p class="comment text-xs sm:text-sm">
+                at midnight it's buried under tomorrow's. plan accordingly, or don't.
+              </p>
+            </div>
+            <CollabPookalam />
+          </div>
+        </div>
+      </Section>
+
       {/* ------------------------------------------------------- daily games arena */}
       <Section
         title="Daily Games Arena"
@@ -675,8 +784,8 @@ export default function Home() {
             const current = activeGame()!;
             const locked = current.status === "upcoming";
             /*
-             * The reveal window. Not locked — the art, the title and the pitch
-             * are all real from here — but not playable either, so the card
+             * The reveal window. Not locked - the art, the title and the pitch
+             * are all real from here - but not playable either, so the card
              * offers a countdown and a way in to read the rules rather than a
              * play button that would only bounce off the server.
              */
@@ -929,7 +1038,7 @@ export default function Home() {
                   {/*
                     A swipeable strip on a phone, the full grid from `sm` up.
 
-                    Seven cards in two columns is four rows of thumbnails —
+                    Seven cards in two columns is four rows of thumbnails -
                     roughly 800px of scrolling for a control that is meant to be
                     glanceable. Laid on one horizontal rail it costs one card's
                     height, reads as a filmstrip of the week, and the day you
@@ -1094,7 +1203,7 @@ export default function Home() {
 
       {/* ---------------------------------------------------- how it works (8 items) */}
       <Section title="How it works" id="how-it-works" confettiSeed="how-sec" confettiCount={5}>
-        {/* Swipeable row on a phone, grid from `sm` — see `.swipe-rail`. */}
+        {/* Swipeable row on a phone, grid from `sm` - see `.swipe-rail`. */}
         <div class="swipe-rail">
           <For each={EVENT.howItWorks}>
             {(step, index) => (

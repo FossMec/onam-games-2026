@@ -9,14 +9,14 @@ import { lazyPlugins } from "vite-plus";
  * Refuses to produce a production bundle with no Supabase in it.
  *
  * `VITE_*` values are constant-folded at build time, so a missing one does not
- * fail the build — it silently compiles the browser client down to a single
+ * fail the build - it silently compiles the browser client down to a single
  * `throw`, and every sign-in in production dies with "VITE_SUPABASE_URL is not
  * set". That is exactly what shipped once already: an empty `.env.production.
  * local` left behind by `vercel env pull` outranks `.env` in production mode,
  * and a `--prebuilt` deploy uploaded the result.
  *
  * A build is the last place this is cheap to catch, so catch it here. Local
- * URLs are only warned about — building against a local Supabase to test a
+ * URLs are only warned about - building against a local Supabase to test a
  * production bundle is a real thing to want.
  */
 function guardPublicEnv() {
@@ -32,7 +32,7 @@ function guardPublicEnv() {
         throw new Error(
           `Production build is missing ${missing.join(" and ")}.\n` +
             `The browser bundle would ship without Supabase and every sign-in would fail.\n` +
-            `Check for an empty .env.production.local (delete it — 'vercel env pull' writes ` +
+            `Check for an empty .env.production.local (delete it - 'vercel env pull' writes ` +
             `blanks for encrypted values), or set the variables in the build environment.`,
         );
       }
@@ -73,7 +73,7 @@ export default defineConfig({
            *
            * Nothing here is slow on purpose: a page render is one or two
            * in-region queries and finishes in about a second, and the heaviest
-           * request in the app — re-simulating a Maveli Jump run to verify it —
+           * request in the app - re-simulating a Maveli Jump run to verify it -
            * is milliseconds of arithmetic. Anything still running at ten
            * seconds is stuck, not working.
            *

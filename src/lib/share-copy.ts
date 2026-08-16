@@ -4,7 +4,7 @@
  * Kept out of the renderer for the same reason `event-content.ts` is kept out
  * of the landing page: the jokes will be rewritten a dozen times before the
  * event, and whoever rewrites them should not have to read canvas code to do
- * it. Nothing here draws anything — it only decides *what* gets said.
+ * it. Nothing here draws anything - it only decides *what* gets said.
  *
  * The voice is the site's voice: Manglish shouts (see `shouts.ts`), Linux-club
  * sarcasm, and never a sentence that congratulates the player earnestly.
@@ -19,7 +19,7 @@ export type ShareTier =
   | "sharp"
   /** Top half. */
   | "middle"
-  /** Bottom half. The funniest tier — a bad rank is a better joke than a good one. */
+  /** Bottom half. The funniest tier - a bad rank is a better joke than a good one. */
   | "tail"
   /** Correct, but after the day closed. */
   | "late"
@@ -54,7 +54,7 @@ export function tierFor(input: StandingInput): ShareTier {
 
 /**
  * The big comic shout across the card. Short, all-caps, readable from a
- * thumbnail in someone's story feed — that is the entire brief.
+ * thumbnail in someone's story feed - that is the entire brief.
  */
 const TAUNTS: Record<ShareTier, readonly string[]> = {
   champion: ["CAN YOU BEAT ME?", "TOP OF THE BOARD.", "THEE THANNE NJAN!"],
@@ -68,7 +68,7 @@ const TAUNTS: Record<ShareTier, readonly string[]> = {
 
 /**
  * The sarcastic line under the shout. Longer, lower-case, and the place where
- * the joke actually lives — the shout only sets it up.
+ * the joke actually lives - the shout only sets it up.
  */
 const BRAGS: Record<ShareTier, readonly string[]> = {
   champion: [
@@ -131,7 +131,7 @@ const ASIDES: readonly string[] = [
  *
  * Keep this list in step with the folder. The card picks from it by seed, so a
  * new meme starts appearing on roughly one card in eight the moment it is added
- * — no other wiring needed.
+ * - no other wiring needed.
  */
 export const SHARE_MEMES = [
   "/images/memes/sudo-mkdir-pookalam.webp",
@@ -157,7 +157,7 @@ const TIER_SPRITES: Record<ShareTier, readonly string[]> = {
   unranked: ["sadya-leaf", "muthukuda"],
 };
 
-/** FNV-1a, same shape as the one in `shouts.ts` — stable choice from a seed. */
+/** FNV-1a, same shape as the one in `shouts.ts` - stable choice from a seed. */
 function hash(seed: string): number {
   let h = 0x811c9dc5;
   for (let i = 0; i < seed.length; i += 1) {
@@ -169,7 +169,7 @@ function hash(seed: string): number {
 
 /**
  * Deterministic pick. The same attempt always produces the same card, so a
- * player who re-opens the share sheet does not get handed a different joke —
+ * player who re-opens the share sheet does not get handed a different joke -
  * and a card they already posted still matches the one on their screen.
  */
 export function pick<T>(options: readonly T[], seed: string): T {
@@ -204,7 +204,7 @@ export function figureFor(input: FigureInput): {
       label: "M ABOVE PAATHALAM",
     };
   }
-  // Minutes past the minute mark, exactly as the leaderboard writes them —
+  // Minutes past the minute mark, exactly as the leaderboard writes them -
   // "184.3s" is a number, "3m 4s" is a time, and the two screens must agree.
   const seconds = (input.durationMs ?? 0) / 1000;
   const value =
@@ -232,7 +232,7 @@ export interface CaptionInput {
 /**
  * The text that rides along with the image.
  *
- * Instagram throws it away, WhatsApp and Twitter keep it — so the image has to
+ * Instagram throws it away, WhatsApp and Twitter keep it - so the image has to
  * stand alone and this is a bonus, never the payload. Ends with the URL because
  * that is the only part doing any work.
  */
@@ -242,7 +242,7 @@ export function buildCaption(input: CaptionInput): string {
       ? `#${input.rank} of ${input.fieldSize}`
       : "played just for the fun of it";
   return [
-    `Day ${input.day} · ${input.gameTitle} — ${input.figure} (${standing}).`,
+    `Day ${input.day} · ${input.gameTitle} - ${input.figure} (${standing}).`,
     brag(input.tier, input.seed),
     `${taunt(input.tier, input.seed)} ${input.origin}`,
   ].join("\n");

@@ -55,7 +55,7 @@ export async function readOrDegrade<T>(
     return await withDeadline(what, deadlineMs, read());
   } catch (error) {
     if (error instanceof HttpError) throw error;
-    console.error(`[DEGRADED READ] ⚠️ "${what}" — serving fallback due to:`, error);
+    console.error(`[DEGRADED READ] ⚠️ "${what}" - serving fallback due to:`, error);
     return fallback;
   }
 }

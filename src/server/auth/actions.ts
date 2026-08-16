@@ -12,7 +12,7 @@ import { readOrDegrade } from "~/server/degrade";
 /**
  * The viewer, for rendering.
  *
- * Degrades to `null` — signed out — when the session cannot be read at all.
+ * Degrades to `null` - signed out - when the session cannot be read at all.
  * Every page treats a signed-out viewer as a page it can still draw, so an
  * outage costs the visitor their name in the header, not the whole site. The
  * server functions that *act* on a user call `requireCurrentUser` instead, and
@@ -27,7 +27,7 @@ export interface AccessState {
   closedBeta: boolean;
   /** Whether this visitor gets to see the site at all. */
   allowed: boolean;
-  /** Signed in but not on the list — the case that needs an explanation. */
+  /** Signed in but not on the list - the case that needs an explanation. */
   signedIn: boolean;
 }
 
@@ -36,14 +36,14 @@ export interface AccessState {
  *
  * Tester status is decided at sign-in from the `testers` email list, so this is
  * just a role read. Note that it gates the *shell*: it is a door, not a vault.
- * Everything that matters — starting an attempt, submitting a score, reading an
- * unreleased game — is already checked server-side on its own, and none of
+ * Everything that matters - starting an attempt, submitting a score, reading an
+ * unreleased game - is already checked server-side on its own, and none of
  * those checks depend on this one.
  */
 export async function getAccessState(): Promise<AccessState> {
   /*
    * The door defaults *shut* when the flag is merely absent, and *open* when
-   * the database cannot answer — because without it there is no way to prove
+   * the database cannot answer - because without it there is no way to prove
    * anybody is a tester either, and a locked door would then mean nobody at
    * all gets in, testers included. The site behind it is the static half of
    * the landing page; the vault is untouched, since every action that matters
@@ -85,7 +85,7 @@ export interface BanNoticeState {
  * Ban state for the current user, shaped for the UI.
  *
  * Mounted on every page, so it degrades to "nothing to say". The banner is a
- * reminder, not the enforcement — `assertCanPlay` is, and it re-reads the user
+ * reminder, not the enforcement - `assertCanPlay` is, and it re-reads the user
  * on every attempt.
  */
 export async function getMyBanState(): Promise<BanNoticeState | null> {
@@ -141,7 +141,7 @@ export async function getAuthMode() {
  * Same work as `completeSignIn`, except the Supabase session comes from the
  * sealed cookie the callback route parked rather than from the browser, so no
  * token is ever exposed to page JavaScript. The fingerprint still has to come
- * from the client — that is the whole reason this step exists as a round trip
+ * from the client - that is the whole reason this step exists as a round trip
  * instead of finishing inside the redirect.
  */
 export async function completeDirectSignIn(

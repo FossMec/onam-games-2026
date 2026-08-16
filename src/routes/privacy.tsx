@@ -68,7 +68,7 @@ const SECTIONS = [
 export default function Privacy() {
   return (
     <main class="container space-y-8 py-10 max-w-3xl">
-      <Title>Privacy Policy — FOSS Onam Games</Title>
+      <Title>Privacy Policy - FOSS Onam Games</Title>
 
       <header class="space-y-2">
         <p

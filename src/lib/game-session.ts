@@ -15,7 +15,7 @@ const DONE_PREFIX = "og_done:";
  * already told us (the attempt token, which the server re-validates) or
  * something the server will re-derive anyway (the move list, which is replayed
  * at verification). Progress is deliberately the player's *moves*, never a
- * score or an elapsed time — those come from the server and are never written
+ * score or an elapsed time - those come from the server and are never written
  * here, so editing localStorage buys nothing but a rejected submission.
  *
  * Progress is keyed by attempt token rather than by slug: a retry game issues a

@@ -15,7 +15,7 @@ import { getAccessState } from "~/server/auth/actions";
  *   not signed in   we cannot know who you are yet, so: sign in.
  *   signed in       we know, and you are not on the list: contact Dijith.
  *
- * `/auth/*` is always let through — gating the sign-in page behind sign-in
+ * `/auth/*` is always let through - gating the sign-in page behind sign-in
  * would lock out the testers too.
  *
  * This is a door, not a vault: it hides the shell. Every action that actually
@@ -31,7 +31,7 @@ export function BetaGate(props: { children: JSX.Element }) {
   // Legal pages must stay reachable for the Google OAuth consent screen even
   // while the beta door is shut.
   const isLegalRoute = () => location.pathname === "/privacy" || location.pathname === "/terms";
-  // Undefined while the state is loading — render the page rather than flashing
+  // Undefined while the state is loading - render the page rather than flashing
   // a denial at somebody who turns out to be a tester.
   const blocked = () =>
     access() !== undefined && !access()!.allowed && !isAuthRoute() && !isLegalRoute();

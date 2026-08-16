@@ -7,7 +7,7 @@ import { createRng, type Rng } from "../rng";
  * ANTI-CHEAT, HONESTLY
  *
  * A jigsaw cannot hide its answer. The browser has to render each piece, which
- * means it necessarily knows which slot every piece came from — no amount of
+ * means it necessarily knows which slot every piece came from - no amount of
  * server-side secrecy changes that. Pretending otherwise would be theatre.
  *
  * So the defence here is different in kind from the other games:
@@ -41,14 +41,14 @@ export interface JigsawView {
   cols: number;
   rows: number;
   imageUrl: string;
-  /** (rows-1) x cols — edges between vertically adjacent pieces. */
+  /** (rows-1) x cols - edges between vertically adjacent pieces. */
   hEdges: JigsawTab[][];
-  /** rows x (cols-1) — edges between horizontally adjacent pieces. */
+  /** rows x (cols-1) - edges between horizontally adjacent pieces. */
   vEdges: JigsawTab[][];
   /**
    * Where each piece starts, in cell units relative to the board origin.
    * Seeded so a resumed attempt scatters identically, and so two players get
-   * the same scatter — the layout is part of the difficulty.
+   * the same scatter - the layout is part of the difficulty.
    */
   scatter: { id: number; x: number; y: number }[];
 }
@@ -57,8 +57,8 @@ export interface JigsawSubmission {
   /**
    * Where each piece ended up, in whole cells.
    *
-   * A free-placement jigsaw has no slots — the assembled picture can sit
-   * anywhere on the board — so the submission is each piece's grid coordinate
+   * A free-placement jigsaw has no slots - the assembled picture can sit
+   * anywhere on the board - so the submission is each piece's grid coordinate
    * and the check is on the *relative* layout. `gx`/`gy` are integers because
    * snapping aligns pieces exactly; there is no tolerance to argue about.
    */
@@ -114,7 +114,7 @@ export function generate(seed: string, difficulty: string, imageUrl: string): Ge
    * picture, so there is somewhere to put them. Positions are in cell units;
    * the client scales to pixels.
    *
-   * Nothing is placed in its solved spot at the start — a piece that happens to
+   * Nothing is placed in its solved spot at the start - a piece that happens to
    * begin correctly is a free move, and on a ranked day free moves are not free.
    */
   const scatter = rng.shuffle(Array.from({ length: count }, (_, i) => i)).map((id) => {
@@ -135,7 +135,7 @@ export function generate(seed: string, difficulty: string, imageUrl: string): Ge
 
   return {
     view: { kind: "jigsaw", cols, rows, imageUrl, hEdges, vEdges, scatter } satisfies JigsawView,
-    // The "solution" is the identity permutation — see the note above about
+    // The "solution" is the identity permutation - see the note above about
     // why there is nothing here worth hiding.
     solution: { count },
   };
@@ -157,7 +157,7 @@ export function verify(input: VerifyInput): VerifyResult {
    * The assembly check.
    *
    * A finished jigsaw can sit anywhere on the board, so absolute positions mean
-   * nothing — what matters is that every piece sits in the right place relative
+   * nothing - what matters is that every piece sits in the right place relative
    * to the others. Anchor on piece 0 and require every other piece to be at
    * exactly its true grid offset from it.
    *
@@ -194,7 +194,7 @@ export function verify(input: VerifyInput): VerifyResult {
   }
 
   /*
-   * The move log does not prove correctness — the layout above does that. It
+   * The move log does not prove correctness - the layout above does that. It
    * exists to make a completion *take time*, which for a game whose answer the
    * browser necessarily knows is the only defence worth having. See the note
    * at the top of this file.
@@ -206,7 +206,7 @@ export function verify(input: VerifyInput): VerifyResult {
    * This used to demand `count - 1` entries, on the reasoning that assembling N
    * pieces takes N-1 joins. The premise is right and the conclusion is wrong:
    * the log records one entry per *drag*, not per join, and a single drag can
-   * close several joins at once — the snap loop keeps merging while the dragged
+   * close several joins at once - the snap loop keeps merging while the dragged
    * group has neighbours to merge with. So a player who assembles efficiently
    * finishes a 25-piece board in well under 24 drags and had their completed,
    * provably correct puzzle rejected with "move log too short". Being good at

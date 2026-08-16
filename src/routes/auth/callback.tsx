@@ -25,8 +25,8 @@ interface Explained {
  *
  * The default card dumped the raw message and a stack trace, which is right for
  * a bug and wrong for a rule. "This device is already linked to another
- * account" is not a failure — it is the one-account-per-device rule doing
- * exactly its job — and showing it under a red "Sign-In Failed" heading with a
+ * account" is not a failure - it is the one-account-per-device rule doing
+ * exactly its job - and showing it under a red "Sign-In Failed" heading with a
  * stack trace tells someone their sign-in broke when it did not.
  *
  * So the cases we deliberately enforce get an explanation and a way forward;
@@ -40,7 +40,7 @@ function explain(error: unknown): Explained {
     return {
       title: "This device is already taken",
       message:
-        "Somebody has already signed in on this phone or laptop with a different account. It's one account per device — that's how the leaderboard stays honest.",
+        "Somebody has already signed in on this phone or laptop with a different account. It's one account per device - that's how the leaderboard stays honest.",
       hint: "Sign in with that first account, or use your own device. If you think this is a mistake, talk to the organisers.",
       technical: false,
       sprite: "muthukuda",
@@ -51,7 +51,7 @@ function explain(error: unknown): Explained {
     return {
       title: "That took a bit too long",
       message: "Your sign-in window closed before it finished.",
-      hint: "Tap try again — it only takes a second the second time.",
+      hint: "Tap try again - it only takes a second the second time.",
       technical: false,
       sprite: "papad-face",
     };
@@ -70,7 +70,7 @@ function explain(error: unknown): Explained {
   if (/canceled|denied/i.test(raw)) {
     return {
       title: "Sign-in was cancelled",
-      message: "Google didn't hand us an account — you may have closed the window or hit cancel.",
+      message: "Google didn't hand us an account - you may have closed the window or hit cancel.",
       hint: "No harm done. Try again whenever you're ready.",
       technical: false,
       sprite: "papad-face",
@@ -132,7 +132,7 @@ export default function AuthCallback() {
        * All that is left is the fingerprint, which only the browser can take.
        */
       if (url.searchParams.get("direct")) {
-        console.info("[AuthCallback] Direct Google flow — claiming parked session…");
+        console.info("[AuthCallback] Direct Google flow - claiming parked session…");
         const fp = await fingerprint();
         const result = await completeDirectSignIn(fp.signals ?? ({} as never), fp.visitorId);
         leave(result.onboardingCompleted ? "/" : "/onboarding");

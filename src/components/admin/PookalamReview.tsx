@@ -22,7 +22,7 @@ import {
  *
  * Tester verdicts are shown inline as the evidence for the second decision.
  * "Shortlist the top N" seeds the list from them in one click, and is then
- * meant to be edited by hand — a jury decision made purely by counting taps
+ * meant to be edited by hand - a jury decision made purely by counting taps
  * from six testers is not a jury decision.
  */
 
@@ -154,7 +154,7 @@ export function PookalamReview() {
           <span>Shortlist top N by tester votes</span>
         </button>
         <p class="comment basis-full">
-          replaces the whole shortlist, ranked by likes minus dislikes. a starting point — check it
+          replaces the whole shortlist, ranked by likes minus dislikes. a starting point - check it
           entry by entry before voting opens.
         </p>
       </div>
@@ -215,7 +215,7 @@ export function PookalamReview() {
                     </span>
                     {/*
                       Crowd Elo and the correction shown apart, never as one
-                      total — the point of keeping them in separate columns is
+                      total - the point of keeping them in separate columns is
                       that anyone reading this can see a human moved it.
                     */}
                     <span class="font-mono tabular-nums" style={{ opacity: 0.75 }}>
@@ -241,7 +241,7 @@ export function PookalamReview() {
                     </p>
                   </Show>
 
-                  {/* Score correction. Reason required — it goes to activity_logs. */}
+                  {/* Score correction. Reason required - it goes to activity_logs. */}
                   <div class="flex flex-wrap items-center gap-2">
                     <input
                       class="input w-20 font-mono text-xs"
@@ -294,7 +294,7 @@ export function PookalamReview() {
                     </a>
                   </p>
 
-                  {/* The testers' reasoning — the evidence for shortlisting. */}
+                  {/* The testers' reasoning - the evidence for shortlisting. */}
                   <Show when={row.comments.some((entry) => entry.comment)}>
                     <div class="space-y-0.5">
                       <For each={row.comments.filter((entry) => entry.comment)}>
@@ -302,7 +302,7 @@ export function PookalamReview() {
                           <p class="text-xs font-semibold m-0">
                             <span>{entry.verdict === "like" ? "👍" : "👎"} </span>
                             <span class="font-black">{entry.reviewerName}</span>
-                            <span style={{ opacity: 0.85 }}> — {entry.comment}</span>
+                            <span style={{ opacity: 0.85 }}> - {entry.comment}</span>
                           </p>
                         )}
                       </For>

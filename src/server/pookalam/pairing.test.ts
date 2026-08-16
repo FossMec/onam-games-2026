@@ -34,7 +34,7 @@ describe("infoWeight", () => {
 
   /*
    * The transitivity shortcut, stated as a test. Once the crowd has put A well
-   * above B and B well above C, "A or C?" is the question worth asking least —
+   * above B and B well above C, "A or C?" is the question worth asking least -
    * its answer is already implied by the other two.
    */
   it("ranks a derivable comparison below the ones it was derived from", () => {
@@ -100,7 +100,7 @@ describe("candidatePairs", () => {
     expect(pairs.every((pair) => pairKey(pair.a.id, pair.b.id) !== pairKey("a", "b"))).toBe(true);
   });
 
-  it("returns nothing once everything is judged — the finish line", () => {
+  it("returns nothing once everything is judged - the finish line", () => {
     const judged = new Set([pairKey("a", "b"), pairKey("a", "c"), pairKey("b", "c")]);
     expect(candidatePairs(pool, judged, new Map(), pairKey)).toHaveLength(0);
   });

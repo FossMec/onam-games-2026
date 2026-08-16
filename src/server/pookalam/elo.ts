@@ -6,7 +6,7 @@
  * Rating art on a 1-5 scale does not work with a crowd: everybody uses a
  * different part of the scale, the first few voters anchor everyone after them,
  * and entries posted late get systematically fewer ratings. Head-to-head asks a
- * question people can actually answer — "which of these two is better?" — and
+ * question people can actually answer - "which of these two is better?" - and
  * Elo turns those answers into an ordering without anyone ever seeing a number.
  *
  * Kept as pure functions with no database in sight so the maths is testable on
@@ -57,7 +57,7 @@ export function applyResult(
 /**
  * Canonical key for an unordered pair, so "A vs B" and "B vs A" are the same
  * matchup. Backs the unique constraint that stops a voter judging one pair
- * twice — refreshing until you get your friend's entry again is otherwise a
+ * twice - refreshing until you get your friend's entry again is otherwise a
  * complete bypass of one-person-one-vote.
  */
 export function pairKey(a: string, b: string): string {

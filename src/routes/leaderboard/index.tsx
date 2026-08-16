@@ -60,7 +60,7 @@ function formatMetric(entry: DailyEntry): string {
     case "fcfs":
       return formatClock(entry.submittedAt);
     default:
-      return entry.durationMs != null ? formatDuration(entry.durationMs) : "—";
+      return entry.durationMs != null ? formatDuration(entry.durationMs) : "-";
   }
 }
 
@@ -123,7 +123,7 @@ export default function Leaderboard() {
 
   /**
    * Day 7 is Code-a-Pookalam, which has no `games` row and no timed run, so
-   * none of the daily chrome below applies to it — no duration column, no
+   * none of the daily chrome below applies to it - no duration column, no
    * tester split, no "be the first to finish". It gets the two Elo boards
    * instead, in the same day slot, because it is still just a day of the
    * festival and a second leaderboard URL would only be a thing to go find.
@@ -153,7 +153,7 @@ export default function Leaderboard() {
    * The viewer's own row, as a share card.
    *
    * Seeded exactly the way the game page seeds it, so the card offered here is
-   * the same card the player was shown when they finished — same meme, same
+   * the same card the player was shown when they finished - same meme, same
    * joke, same picture. Two different cards for one run would read as a bug.
    */
   const shareData = createMemo<ShareCardData | null>(() => {
@@ -247,7 +247,7 @@ export default function Leaderboard() {
         transition: "opacity 140ms ease-out",
       }}
     >
-      <Title>Daily Leaderboard — FOSS Onam Games</Title>
+      <Title>Daily Leaderboard - FOSS Onam Games</Title>
 
       {/* Desktop Inked Sidebar: Festival Meme (Failure is not an Option<T>) + Share Card Widget on the right margin */}
       <aside class="hidden 2xl:flex flex-col gap-3 absolute left-[calc(100%+2rem)] top-6 w-68 pointer-events-auto">
@@ -536,7 +536,7 @@ export default function Leaderboard() {
                               )}
                               {/*
                               The streak rides along on the row the board is
-                              already fetching — `users.streak_count` is part of
+                              already fetching - `users.streak_count` is part of
                               the same join, so this costs nothing. Shown from
                               two days up: a "streak" of one is just today.
                             */}

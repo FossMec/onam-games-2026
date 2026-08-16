@@ -1,11 +1,11 @@
 /**
- * Maveli Jump — the deterministic simulation, shared verbatim by the browser
+ * Maveli Jump - the deterministic simulation, shared verbatim by the browser
  * and the server.
  *
  * THIS IS THE ANTI-CHEAT.
  *
- * The client never reports a score. It reports the *inputs* it received — a
- * delta-encoded list of "at frame F the player was steering direction D" — and
+ * The client never reports a score. It reports the *inputs* it received - a
+ * delta-encoded list of "at frame F the player was steering direction D" - and
  * the server re-runs this exact simulation over those inputs to derive the
  * height itself.
  *

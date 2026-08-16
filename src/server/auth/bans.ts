@@ -6,7 +6,7 @@ import type { PublicUser } from "./service";
 
 /**
  * Ban levels. Deliberately graduated rather than a single boolean, because at
- * a college event most "suspicious" signals are false positives — a whole
+ * a college event most "suspicious" signals are false positives - a whole
  * hostel shares one NAT IP, and siblings share laptops. A warning that costs
  * an honest player nothing is worth far more than a ban that costs them the week.
  */
@@ -65,7 +65,7 @@ export function describeBan(user: {
 export function banMessage(state: BanState): string {
   switch (state.level) {
     case 1:
-      return "We saw something odd on your account. Consider this your one warning — do it again and you sit out.";
+      return "We saw something odd on your account. Consider this your one warning - do it again and you sit out.";
     case 2:
     case 3: {
       const when = state.until
@@ -85,7 +85,7 @@ export function banMessage(state: BanState): string {
 }
 
 /**
- * Gate for *playing* only — never for browsing.
+ * Gate for *playing* only - never for browsing.
  *
  * Levels 2 and 3 deliberately leave the leaderboard, the schedule and every
  * other page reachable. A benched player who can still watch the board has a
@@ -105,7 +105,7 @@ export async function acknowledgeWarning(userId: string): Promise<void> {
 
 /**
  * Applies a ban level. Level 4 is intentionally not reachable from automated
- * anti-cheat — escalation can propose it, but a human confirms it.
+ * anti-cheat - escalation can propose it, but a human confirms it.
  */
 export async function setBanLevel(
   userId: string,

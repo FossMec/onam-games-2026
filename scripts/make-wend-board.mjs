@@ -17,7 +17,7 @@
  * Wend is a tiling puzzle wearing a word game's clothes. Every open tile must
  * belong to exactly one word, and words are traced through orthogonally
  * adjacent tiles, bending freely around the walls. Finding a word that reads
- * correctly is not enough — if it strands a tile that no other word can reach,
+ * correctly is not enough - if it strands a tile that no other word can reach,
  * it is the wrong path.
  *
  * Construction runs backwards from that rule: lay the words down first as
@@ -149,7 +149,7 @@ function layout(rand) {
  * A board with two solutions is a bad puzzle: two players can both be right and
  * only one gets the "expected" answer. Since `verify` accepts any valid tiling
  * that would not be unfair, but it does mean the puzzle has less of a click to
- * it — so boards are re-rolled until exactly one solution exists.
+ * it - so boards are re-rolled until exactly one solution exists.
  */
 function countSolutions(letters, cap = 2) {
   const open = CELLS.filter((cell) => letters[cell] !== null);
@@ -260,7 +260,7 @@ const quote = (cell) => (cell === null ? '""' : `"${String(cell)}"`);
 const rows = grid.map((row) => `  [${row.map(quote).join(", ")}],`);
 console.log(`export const GRID_SIZE = ${SIZE};
 
-/** Words to find. Order is irrelevant — the player finds them however they like. */
+/** Words to find. Order is irrelevant - the player finds them however they like. */
 export const WORDS = [${WORDS.map((w) => `"${w}"`).join(", ")}] as const;
 
 /**

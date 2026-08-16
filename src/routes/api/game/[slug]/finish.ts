@@ -10,7 +10,7 @@ import { getRequestMeta } from "~/server/request";
 
 /**
  * Note what is *absent*: no score, no duration, no move count. Those used to be
- * accepted from the client. All three are now derived server-side — the clock
+ * accepted from the client. All three are now derived server-side - the clock
  * from the attempt row, the score and moves from the registry's verifier.
  */
 const finishSchema = z.object({

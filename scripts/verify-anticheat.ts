@@ -8,7 +8,7 @@
  * endpoint calls, so a PASS here is the actual production behaviour, not a
  * mock.
  *
- * It deliberately does NOT touch the database or the HTTP layer — those are
+ * It deliberately does NOT touch the database or the HTTP layer - those are
  * checked separately (see the curl block printed at the end), because the two
  * failure modes are different: this file answers "can a forged payload score",
  * and curl answers "can an unauthenticated request get that far at all".
@@ -93,7 +93,7 @@ function expectRejected(what: string, result: { valid: boolean; reason?: string 
   const ok = !result.valid;
   if (!ok) failures += 1;
   console.log(
-    `  ${ok ? "\x1b[32mREJECTED\x1b[0m" : "\x1b[31mACCEPTED — THIS IS A HOLE\x1b[0m"}  ${what}`,
+    `  ${ok ? "\x1b[32mREJECTED\x1b[0m" : "\x1b[31mACCEPTED - THIS IS A HOLE\x1b[0m"}  ${what}`,
     ok && result.reason ? `\x1b[2m(${result.reason})\x1b[0m` : "",
   );
 }
@@ -102,7 +102,7 @@ function expectAccepted(what: string, result: { valid: boolean; reason?: string 
   const ok = result.valid;
   if (!ok) failures += 1;
   console.log(
-    `  ${ok ? "\x1b[32mACCEPTED\x1b[0m" : "\x1b[31mREJECTED — honest play was refused\x1b[0m"}  ${what}`,
+    `  ${ok ? "\x1b[32mACCEPTED\x1b[0m" : "\x1b[31mREJECTED - honest play was refused\x1b[0m"}  ${what}`,
     !ok && result.reason ? `\x1b[2m(${result.reason})\x1b[0m` : "",
   );
 }
@@ -110,7 +110,7 @@ function expectAccepted(what: string, result: { valid: boolean; reason?: string 
 const base = { seed: SEED, difficulty: "hard", durationMs: 120_000 };
 
 /* ------------------------------------------------------------------ wend */
-console.log("\n\x1b[1mWend\x1b[0m — one canonical board, per-player orientation");
+console.log("\n\x1b[1mWend\x1b[0m - one canonical board, per-player orientation");
 {
   expectRejected("empty submission", wend.verify({ ...base, submission: { found: [] } }));
   expectRejected(
@@ -135,7 +135,7 @@ console.log("\n\x1b[1mWend\x1b[0m — one canonical board, per-player orientatio
     wend.verify({ ...base, submission: { found: solveWend(rival.grid) } }),
   );
   expectRejected(
-    "a diagonal path — this is not a word search",
+    "a diagonal path - this is not a word search",
     wend.verify({
       ...base,
       submission: {
@@ -154,7 +154,7 @@ console.log("\n\x1b[1mWend\x1b[0m — one canonical board, per-player orientatio
 }
 
 /* ---------------------------------------------------------------- vallam */
-console.log("\n\x1b[1mEscape the Vallam\x1b[0m — server replays every move");
+console.log("\n\x1b[1mEscape the Vallam\x1b[0m - server replays every move");
 {
   const view = vallam.generate(SEED, "hard").view as VallamView;
   expectRejected("no moves, claiming a win", vallam.verify({ ...base, submission: { moves: [] } }));
@@ -172,7 +172,7 @@ console.log("\n\x1b[1mEscape the Vallam\x1b[0m — server replays every move");
 }
 
 /* ---------------------------------------------------------------- jigsaw */
-console.log("\n\x1b[1mPookalam Jigsaw\x1b[0m — relative-assembly check + monotonic clock");
+console.log("\n\x1b[1mPookalam Jigsaw\x1b[0m - relative-assembly check + monotonic clock");
 {
   expectRejected("nothing placed", jigsaw.verify({ ...base, submission: { layout: [] } }));
   expectRejected(
@@ -201,7 +201,7 @@ console.log("\n\x1b[1mPookalam Jigsaw\x1b[0m — relative-assembly check + monot
 }
 
 /* ---------------------------------------------------------------- tinder */
-console.log("\n\x1b[1mOpen Source Tinder\x1b[0m — full transcript replay");
+console.log("\n\x1b[1mOpen Source Tinder\x1b[0m - full transcript replay");
 {
   expectRejected("empty transcript", tinder.verify({ ...base, submission: { passes: [] } }));
   expectRejected(
@@ -211,7 +211,7 @@ console.log("\n\x1b[1mOpen Source Tinder\x1b[0m — full transcript replay");
 }
 
 /* ------------------------------------------------------------------ jump */
-console.log("\n\x1b[1mMaveli Jump\x1b[0m — server re-simulates the input trace");
+console.log("\n\x1b[1mMaveli Jump\x1b[0m - server re-simulates the input trace");
 {
   const seed = (jump.generate().view as JumpView).seed;
 
@@ -259,7 +259,7 @@ console.log("\n\x1b[1mMaveli Jump\x1b[0m — server re-simulates the input trace
   );
   /*
    * The naive attack: bolt a score onto the payload and hope. There is nowhere
-   * for it to land — the submission type has no score field and `verify`
+   * for it to land - the submission type has no score field and `verify`
    * returns whatever the replay produced.
    *
    * The duration here is deliberately generous. A short one would get this
@@ -274,7 +274,7 @@ console.log("\n\x1b[1mMaveli Jump\x1b[0m — server re-simulates the input trace
   });
   const ignored = claimed.valid && (claimed.score ?? -1) < 500;
   console.log(
-    `  ${ignored ? "\x1b[32mIGNORED\x1b[0m " : "\x1b[31mLEAKED\x1b[0m  "} a client-claimed score of 999,999 — server derived ${claimed.score ?? "nothing"} from the trace`,
+    `  ${ignored ? "\x1b[32mIGNORED\x1b[0m " : "\x1b[31mLEAKED\x1b[0m  "} a client-claimed score of 999,999 - server derived ${claimed.score ?? "nothing"} from the trace`,
   );
   if (!ignored) failures += 1;
 
@@ -295,7 +295,7 @@ console.log(
     : `\n\x1b[31m\x1b[1m${failures} case(s) behaved wrongly.\x1b[0m\n`,
 );
 
-console.log(`\x1b[1mHTTP layer — run these against a live server:\x1b[0m
+console.log(`\x1b[1mHTTP layer - run these against a live server:\x1b[0m
 \x1b[2m# Naive direct POST. Must be 401: no session, no attempt, no score.\x1b[0m
 curl -i -X POST localhost:3000/api/game/wend/finish \\
   -H 'Content-Type: application/json' \\

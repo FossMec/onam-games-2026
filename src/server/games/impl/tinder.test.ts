@@ -179,7 +179,7 @@ describe("verify", () => {
  * The client's half of the contract, simulated.
  *
  * A player only ever sees these two functions disagree at submission time, by
- * which point they have played the whole run — so the agreement is worth
+ * which point they have played the whole run - so the agreement is worth
  * testing directly rather than discovering in production.
  */
 describe("client transcript contract", () => {
@@ -217,7 +217,7 @@ describe("client transcript contract", () => {
         const graded = checkPass(seed, passIds, decisions);
         perceivedWrong = graded.ok ? graded.wrongIds : [];
       } else {
-        // Per-swipe results, accumulated — and some responses never arrived.
+        // Per-swipe results, accumulated - and some responses never arrived.
         perceivedWrong = decisions
           .filter((d) => !dropGrades.has(d.id))
           .filter((d) => {
@@ -254,8 +254,8 @@ describe("client transcript contract", () => {
    * dropped a card from the recycled pass and the replay rejected a run the
    * player had played perfectly well.
    *
-   * Which rejection you get depends on how the two transcripts diverge — a
-   * missing card shortens the pass, a swapped one reorders it — so the test
+   * Which rejection you get depends on how the two transcripts diverge - a
+   * missing card shortens the pass, a swapped one reorders it - so the test
    * pins the failure, not one of its faces.
    */
   it("shows why per-swipe accumulation broke: one lost check kills the run", () => {
@@ -324,7 +324,7 @@ describe("card pool", () => {
 
   /*
    * The category is the card's public "bio" line, so a category appearing on
-   * only one side of the deck would silently be a free answer — swipe right on
+   * only one side of the deck would silently be a free answer - swipe right on
    * anything labelled "Kernel". Every category must be ambiguous on its own.
    */
   it("never lets a category give the answer away", () => {

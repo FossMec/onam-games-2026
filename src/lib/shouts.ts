@@ -1,7 +1,7 @@
 /**
  * Comic onomatopoeia, in Manglish.
  *
- * Every shout is Malayalam — never POW/BAM. That is the one part of this
+ * Every shout is Malayalam - never POW/BAM. That is the one part of this
  * identity nobody else can copy, and it is the difference between "a Memphis
  * template" and "our college's thing".
  *
@@ -20,7 +20,7 @@ export type ShoutMood =
   | "mid"
   /** Submission rejected / wrong answer. */
   | "fail"
-  /** Nonsense state — bad payload, 404, something broke. */
+  /** Nonsense state - bad payload, 404, something broke. */
   | "confused"
   /** Correct, but after the deadline. */
   | "late";
@@ -42,7 +42,7 @@ const SHOUTS: Record<ShoutMood, readonly string[]> = {
 /**
  * Pick a shout for a mood.
  *
- * `key` makes the choice stable for a given result — pass an attempt id and a
+ * `key` makes the choice stable for a given result - pass an attempt id and a
  * player sees the same word on refresh instead of it reshuffling under them.
  * Omit it for a fresh random pick.
  */

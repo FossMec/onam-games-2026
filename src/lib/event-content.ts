@@ -3,7 +3,7 @@
  *
  * Kept out of the JSX deliberately: the words are not final and will change
  * several times before launch, and whoever edits them should not have to read
- * a component to do it. Nothing here is used for logic — game behaviour lives
+ * a component to do it. Nothing here is used for logic - game behaviour lives
  * in `src/server/games/registry.ts`.
  *
  * PLACEHOLDER VALUES are marked TODO. Dates, prize amounts and links must be
@@ -20,7 +20,7 @@ export const EVENT = {
    * just adds to the wall.
    *
    * The old tagline's "zero dignity" is not among them. It worked as the
-   * punchline of a sentence and meant nothing stranded in a chip of its own —
+   * punchline of a sentence and meant nothing stranded in a chip of its own -
    * a reader gets "0 DIGNITY" with no setup and no idea what it refers to. The
    * prize is the fact worth the fourth slot anyway.
    */
@@ -36,13 +36,13 @@ export const EVENT = {
    *
    * The hero previously ran a search-engine sentence and this blurb back to
    * back, which said the same thing twice in small type and pushed the buttons
-   * off a phone screen. The fix was deleting the duplicate, not trimming this —
+   * off a phone screen. The fix was deleting the duplicate, not trimming this -
    * an intermediate draft cut it to a terse list and lost all of the warmth.
    */
   blurb:
     "A celebration of Onam and open source, run by fossmec. Create an intricate flower carpet purely with code in Code-a-Pookalam (open all week), and play a fun new mini-game every evening to climb the leaderboard and win daily cash prizes!",
   // TODO: confirm before launch.
-  dates: "TODO — event dates",
+  dates: "TODO - event dates",
   registerNote: "Sign in with Google. Takes about eleven seconds.",
 
   howItWorks: [
@@ -64,7 +64,7 @@ export const EVENT = {
     },
     {
       title: "The clock does not stop",
-      body: "Refresh, close the tab, throw your phone — the timer keeps ticking server-side. Finish the run you started.",
+      body: "Refresh, close the tab, throw your phone - the timer keeps ticking server-side. Finish the run you started.",
     },
     {
       title: "Daily cash prizes",
@@ -89,19 +89,19 @@ export const EVENT = {
   prizes: [
     {
       rank: "Daily Game Champions (7 Days)",
-      detail: "₹200 cash each day — Awarded to the #1 verified player for that day's challenge",
+      detail: "₹200 cash each day - Awarded to the #1 verified player for that day's challenge",
     },
     {
       rank: "Code-a-Pookalam 1st Place",
-      detail: "₹1,500 cash prize — Crowned best algorithmic coded pookalam",
+      detail: "₹1,500 cash prize - Crowned best algorithmic coded pookalam",
     },
     {
       rank: "Code-a-Pookalam 2nd & 3rd",
-      detail: "₹1,000 (2nd) & ₹500 (3rd) — Podium runners-up cash prizes",
+      detail: "₹1,000 (2nd) & ₹500 (3rd) - Podium runners-up cash prizes",
     },
     {
-      rank: "Lucky Voter Bounty",
-      detail: "₹200 prize drawn randomly among voters in the Day 7 Pookalam showdown",
+      rank: "Best Voter Bounty",
+      detail: "₹200 for the sharpest eyes - spot the best pookalam and it's yours!",
     },
   ],
 
@@ -123,7 +123,7 @@ export const EVENT = {
     },
     {
       q: "Do I need to know how to code?",
-      a: "For the daily games, no. Not even slightly — they're pure arcade reflex, puzzle, and mini-game fun. For Code-a-Pookalam, yes — that one is all about algorithmic pookalam generation.",
+      a: "For the daily games, no. Not even slightly - they're pure arcade reflex, puzzle, and mini-game fun. For Code-a-Pookalam, yes - that one is all about algorithmic pookalam generation.",
     },
     {
       q: "Is it true that the lore behind Maveli is that he got stuck in Vim?",
@@ -151,7 +151,7 @@ export const EVENT = {
     },
     {
       q: "Can I use AI to help create my Code-a-Pookalam?",
-      a: "Yes! AI assistance (Claude, ChatGPT, Gemini, Copilot, Cursor, etc.) is 100% permitted. However, you must submit runnable source code and a rendered snapshot of the output. Pure raw image generations without code do not count — the output must be driven by executable code.",
+      a: "Yes! AI assistance (Claude, ChatGPT, Gemini, Copilot, Cursor, etc.) is 100% permitted. However, you must submit runnable source code and a rendered snapshot of the output. Pure raw image generations without code do not count - the output must be driven by executable code.",
     },
     {
       q: "What if I find a bug?",
@@ -161,14 +161,14 @@ export const EVENT = {
 } as const;
 
 /**
- * The Code-a-Pookalam competition — the one event that isn't a timed game.
+ * The Code-a-Pookalam competition - the one event that isn't a timed game.
  * Runs alongside the week and is judged separately.
  */
 export const POOKALAM = {
   title: "Code-a-Pookalam",
   tagline: "Code your floral masterpiece. Geometry, algorithms, shaders, or turtle math.",
   blurb:
-    "A pookalam is a flower carpet laid out on the ground for Onam — radial, symmetric, and gloriously intricate. Your mission is to code one from scratch. Use HTML Canvas, SVG, CSS, Python Turtle, Graphviz, Shaders, or p5.js. AI assistance is welcome as long as your output is driven by executable code!",
+    "A pookalam is a flower carpet laid out on the ground for Onam - radial, symmetric, and gloriously intricate. Your mission is to code one from scratch. Use HTML Canvas, SVG, CSS, Python Turtle, Graphviz, Shaders, or p5.js. AI assistance is welcome as long as your output is driven by executable code!",
 
   submitBy: "Day 6 (Before 11:59 PM IST)",
   votingOn: "Day 7 (All-day Community ELO Arena)",
@@ -176,8 +176,8 @@ export const POOKALAM = {
   rules: [
     "Submit a link to your runnable source (GitHub repo, Gist, GitLab, Codeberg, CodePen or similar) AND upload the rendered image.",
     "The render must be square (1:1). We check the shape in your browser before it uploads, so a widescreen screenshot will be refused on the spot.",
-    "No name, handle, watermark, signature or logo anywhere in the image. Day 7 voting is anonymous — anything identifying you gets the entry pulled.",
-    "AI assistance is fully allowed! Use LLMs, shader generators, or creative coding prompts — as long as you submit clean, runnable code that produces the render.",
+    "No name, handle, watermark, signature or logo anywhere in the image. Day 7 voting is anonymous - anything identifying you gets the entry pulled.",
+    "AI assistance is fully allowed! Use LLMs, shader generators, or creative coding prompts - as long as you submit clean, runnable code that produces the render.",
     "Any language or medium goes: HTML5 Canvas, SVG, CSS, Python (Turtle / Pygame / Matplotlib), Graphviz, GLSL Shaders, p5.js, Processing, or ASCII art.",
     "The design must read as a pookalam: radial, layered, and geometrically balanced.",
     "Open-source spirit: include a short README or note explaining your concept and approach.",
@@ -207,7 +207,7 @@ export const POOKALAM = {
   ],
 
   votingBlurb:
-    "After submissions close on Day 6, our jury shortlists the top standout pookalams. On Day 7, these entries face off in an all-day live pairwise Elo matchmaker arena where the entire community votes! You never see a name — just two pookalams and one question. Pick enough pairs and you land on the voters' leaderboard, ranked on how well you called it rather than how fast you tapped.",
+    "After submissions close on Day 6, our jury shortlists the top standout pookalams. On Day 7, these entries face off in an all-day live pairwise Elo matchmaker arena where the entire community votes! You never see a name - just two pookalams and one question. Pick enough pairs and you land on the voters' leaderboard, ranked on how well you called it rather than how fast you tapped.",
 
   aside: "someone will submit a fractal. someone always submits a fractal.",
 } as const;

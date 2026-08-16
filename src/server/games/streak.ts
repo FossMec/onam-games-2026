@@ -18,7 +18,7 @@ function dayDate(day: number, eventStartDate: string): string | null {
  * player completes the event's consecutive days; a missed day resets it to 1.
  *
  * `eventStartDate` comes from the schedule settings the caller already loaded
- * (see `resolveSchedule`), so this costs exactly one write — the new streak is
+ * (see `resolveSchedule`), so this costs exactly one write - the new streak is
  * derived in SQL from the row's own previous values.
  */
 export async function updateStreak(

@@ -7,12 +7,12 @@ import type { TinderCardView } from "./TinderGame";
  *
  * A finished Tinder run used to collapse into a single number, which threw away
  * the only part of it worth keeping: the twenty things you now know the licence
- * of. This is the payoff screen — every card, what it actually was, why, and
+ * of. This is the payoff screen - every card, what it actually was, why, and
  * whether you called it right the first time.
  *
  * The answers come from the server (`getMyRecap`), which only hands them over
- * once the attempt is submitted. If that call has not landed — or the player is
- * looking at a board restored from localStorage on a fresh device — this still
+ * once the attempt is submitted. If that call has not landed - or the player is
+ * looking at a board restored from localStorage on a fresh device - this still
  * renders from what the browser has, showing their own swipes without the
  * verdicts. Degraded, never empty.
  */
@@ -32,7 +32,7 @@ export interface TinderRevealCard {
 }
 
 export interface TinderRecapProps {
-  /** The deck as it was dealt. Always present — it is the finished board. */
+  /** The deck as it was dealt. Always present - it is the finished board. */
   cards: TinderCardView[];
   /** Every pass the player made, in order. */
   passes: Decision[][];
@@ -75,7 +75,7 @@ export function TinderRecap(props: TinderRecapProps) {
   const totalWrong = () => [...misses().values()].reduce((sum, n) => sum + n, 0);
   const cleanCount = () => props.cards.length - misses().size;
 
-  /** Undefined when the reveal has not arrived — not the same as "wrong". */
+  /** Undefined when the reveal has not arrived - not the same as "wrong". */
   const wasRight = (id: string): boolean | undefined => {
     const answer = answers().get(id);
     const call = firstCall().get(id);

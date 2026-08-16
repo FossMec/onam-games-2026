@@ -6,7 +6,7 @@
  * The squareness check is here because this is where it can still be *useful*.
  * Telling somebody their 16:9 screenshot is the wrong shape after a slow upload
  * on college wifi is a worse product than telling them the instant they pick
- * the file. The server checks it again and is the actual authority — this is
+ * the file. The server checks it again and is the actual authority - this is
  * the fast, kind copy of the same rule.
  *
  * The downscale is here because a phone camera JPEG is four megabytes and the
@@ -85,7 +85,7 @@ export function aspectDeviationPct(width: number, height: number): number {
  * Validates and re-encodes a chosen file into a square WebP data URL.
  *
  * Throws `ImageRejected` with a message meant for the entrant. Anything within
- * tolerance but not exactly square is centre-cropped to square — at a few
+ * tolerance but not exactly square is centre-cropped to square - at a few
  * percent that removes a sliver of background nobody will miss, and it means
  * every entry renders identically in the voting grid.
  */
@@ -107,7 +107,7 @@ export async function preparePookalamImage(
     }
     if (aspectDeviationPct(width, height) > tolerancePct) {
       throw new ImageRejected(
-        `Pookalams have to be square (1:1). Yours is ${width}×${height} — re-render or crop it to a square and try again.`,
+        `Pookalams have to be square (1:1). Yours is ${width}×${height} - re-render or crop it to a square and try again.`,
       );
     }
 
@@ -128,7 +128,7 @@ export async function preparePookalamImage(
     let quality = 0.9;
     let dataUrl = canvas.toDataURL("image/webp", quality);
     // Older Safari silently hands back a PNG here, which is both huge and not
-    // what the caller was promised — so fall back to JPEG explicitly.
+    // what the caller was promised - so fall back to JPEG explicitly.
     if (!dataUrl.startsWith("data:image/webp")) {
       dataUrl = canvas.toDataURL("image/jpeg", quality);
     }

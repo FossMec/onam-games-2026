@@ -23,7 +23,7 @@ export interface DeviceIdentity {
   audioHash: string | null;
   /**
    * The WebRTC-leaked LAN address, stored raw rather than hashed because it is
-   * only useful when you can read it — "both accounts came from 192.168.1.7"
+   * only useful when you can read it - "both accounts came from 192.168.1.7"
    * is an answer; a hash of it is a yes/no.
    */
   localIp: string | null;
@@ -55,7 +55,7 @@ export function computeDeviceIdentity(signals: FingerprintSignals): DeviceIdenti
     fontHash: signals.fonts != null ? hmac(signals.fonts, ":fonts") : null,
     screenHash: signals.screen != null ? hmac(signals.screen, ":screen") : null,
     audioHash: signals.audio != null ? hmac(signals.audio, ":audio") : null,
-    // mDNS-obfuscated candidates are noise, not addresses — a `.local` name is
+    // mDNS-obfuscated candidates are noise, not addresses - a `.local` name is
     // regenerated per browser and would match nothing.
     localIp: signals.localIp && !signals.mdnsProtected ? signals.localIp : null,
     isVm: isVmWebgl(signals.webgl),

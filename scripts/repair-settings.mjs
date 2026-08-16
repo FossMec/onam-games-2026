@@ -5,7 +5,7 @@
 // so pre-stringifying encoded everything a second time:
 //
 //   double-encoded   "19:00" was stored as a JSON string whose contents are
-//                    "19:00" — quotes and all. Every regex parser fails on it,
+//                    "19:00" - quotes and all. Every regex parser fails on it,
 //                    silently, and the schedule never starts.
 //
 //   wrong type       24 was stored as the JSON string "24" rather than the
@@ -14,7 +14,7 @@
 //                    a boolean read back as the string "false" is truthy.
 //
 // Only keys listed in TYPED below are retyped, so a token that happens to look
-// like a number is never silently turned into one. Idempotent — safe to re-run,
+// like a number is never silently turned into one. Idempotent - safe to re-run,
 // and a no-op on a database that was seeded after the fix.
 //
 // Usage: node --env-file=.env scripts/repair-settings.mjs [--dry]
@@ -78,7 +78,7 @@ for (const { key, value } of rows) {
 }
 
 if (fixes.length === 0) {
-  console.log("nothing to repair — every setting is encoded correctly");
+  console.log("nothing to repair - every setting is encoded correctly");
 } else {
   for (const fix of fixes) {
     console.log(

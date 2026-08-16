@@ -27,7 +27,7 @@ export interface BindResult {
  * (Safari) or storage-blocked browsers never cause false multi-account blocks.
  *
  * Every new (user, device) link is then scored against the accounts already on
- * record — see `detectLinkedAccounts`. That pass only ever flags: the block
+ * record - see `detectLinkedAccounts`. That pass only ever flags: the block
  * above is the only thing here that turns anybody away.
  */
 export async function bindDeviceToUser(
@@ -205,7 +205,7 @@ export async function bindDeviceToUser(
 /**
  * Does this new account look like an account we already have?
  *
- * Runs whenever a user is linked to a device for the first time — which is
+ * Runs whenever a user is linked to a device for the first time - which is
  * exactly the moment a second account appears, however it got there. The
  * `device_hash` block upstream only catches signing up twice in one browser
  * with storage intact; everything past that (cleared site data, a second
@@ -299,7 +299,7 @@ async function detectLinkedAccounts(
    * were. Indian mobile networks put whole cities behind carrier-grade NAT, so
    * a shared public IP would otherwise write a "suspected" row for a large
    * share of honest sign-ups and bury the real matches in noise. It still
-   * counts once something else agrees — that is what the weights are for.
+   * counts once something else agrees - that is what the weights are for.
    */
   const strongest = links[0];
   if (strongest.matched.length === 1 && strongest.matched[0] === "ip") return;
@@ -330,7 +330,7 @@ async function detectLinkedAccounts(
 
   /*
    * The other side of the link gets its own row. The pair only exists in one
-   * direction otherwise — whoever signed up second — and an admin looking at
+   * direction otherwise - whoever signed up second - and an admin looking at
    * the first account would see nothing at all.
    */
   for (const link of links) {

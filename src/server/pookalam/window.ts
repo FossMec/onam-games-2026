@@ -8,7 +8,7 @@
  * moved from /admin without a deploy.
  *
  * Each phase also keeps a boolean **force** flag. That is the manual override
- * for rehearsals and for the moment something goes wrong at 11pm — it opens the
+ * for rehearsals and for the moment something goes wrong at 11pm - it opens the
  * phase regardless of the clock, and it is the only thing that works before the
  * dates are configured. With neither a window nor a force flag a phase is
  * closed, which is the right way for a half-configured deploy to fail.
@@ -51,7 +51,7 @@ export interface PhaseState {
   closesAt: Date | null;
   /** True when the phase is open only because an admin forced it. */
   forced: boolean;
-  /** Why it is shut — lets the page say something better than "closed". */
+  /** Why it is shut - lets the page say something better than "closed". */
   reason: "open" | "not_yet" | "over" | "unscheduled";
 }
 
@@ -59,7 +59,7 @@ export interface PhaseState {
  * Resolves one phase against the clock.
  *
  * `now` is passed in rather than read from `Date.now()` so the whole page can
- * resolve every phase against a single instant — otherwise a render could show
+ * resolve every phase against a single instant - otherwise a render could show
  * submissions closed and voting not yet open across a millisecond boundary.
  */
 export function resolvePhase(

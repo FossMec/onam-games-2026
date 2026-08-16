@@ -7,14 +7,14 @@ import { TINDER_CARDS, type TinderCard } from "../data/tinder-cards";
  *
  * Swipe right for open source, left for proprietary. A wrong call costs three
  * seconds and the card comes back at the end of the deck. The run ends when the
- * deck is empty, so the only score is how long it took — the game is
+ * deck is empty, so the only score is how long it took - the game is
  * self-verifying in the sense that an incorrect answer cannot end the run.
  *
  * ANTI-CHEAT SHAPE
  *
  * The browser never receives the answer key. It posts each swipe to `/check`
  * and gets back only whether *that* card was wrong, plus the licence note for
- * it if it was — information the player has already earned by guessing, and is
+ * it if it was - information the player has already earned by guessing, and is
  * about to be shown as the penalty screen anyway. Nothing is ever said about a
  * card they have not answered.
  *
@@ -35,7 +35,7 @@ export const TINDER_DECK_SIZE = 20;
  * still beat a careful player who read every card. Three seconds makes a guess
  * genuinely more expensive than a moment's thought, without ending the run.
  *
- * Applied server-side in `verify`, from the replayed transcript — the browser
+ * Applied server-side in `verify`, from the replayed transcript - the browser
  * displays a running total but never gets a vote on the number.
  */
 export const WRONG_SWIPE_PENALTY_MS = 3_000;
@@ -70,7 +70,7 @@ function answerKey(seed: string): Map<string, boolean> {
 export function generate(seed: string): GeneratedInstance {
   const deck = dealDeck(seed);
   return {
-    // Name and category only. No `open`, no `why`, no `tricky` — those are the
+    // Name and category only. No `open`, no `why`, no `tricky` - those are the
     // answers. `category` is deliberately shared across both sides of the deck
     // (see `data/tinder-cards.ts`), so it dresses the card without grading it.
     view: {

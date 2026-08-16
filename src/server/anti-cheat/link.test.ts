@@ -73,7 +73,7 @@ describe("scoreLink", () => {
   });
 
   it("treats an audio match as corroboration, not proof", () => {
-    // Alone it is below review — audio stacks are shared by every device of a
+    // Alone it is below review - audio stacks are shared by every device of a
     // given model and OS. With the hardware signature behind it (55) it reaches
     // review and gets flagged, but stays short of the near-certain band, which
     // is reserved for evidence that survives a deliberate attempt to hide.

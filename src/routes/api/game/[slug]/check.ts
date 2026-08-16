@@ -11,11 +11,11 @@ import { checkPass, dealDeck, explainCards } from "~/server/games/impl/tinder";
 import { getRequestMeta } from "~/server/request";
 
 /**
- * Grades swipes mid-attempt — one card at a time as the deck is played, or a
+ * Grades swipes mid-attempt - one card at a time as the deck is played, or a
  * whole pass at once.
  *
  * This exists so the browser never has to hold the answer key. It returns only
- * the ids the player got wrong, and the licence note for those — information
+ * the ids the player got wrong, and the licence note for those - information
  * they earned by guessing, and which they are about to be shown as their
  * penalty screen. Nothing is revealed about cards they have not answered.
  *
@@ -43,7 +43,7 @@ export async function POST({ request }: APIEvent) {
      * One call per swipe, so this has to clear a whole deck inside a minute
      * and leave room for a second run. A 20-card deck plus recycled misses is
      * ~30 calls; 200 is comfortably above a human playing flat out and still
-     * far below anything worth scripting — every call costs a real swipe and
+     * far below anything worth scripting - every call costs a real swipe and
      * only ever grades a card the player has already committed to.
      */
     const rate = await checkRateLimit({

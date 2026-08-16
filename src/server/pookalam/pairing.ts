@@ -5,7 +5,7 @@ import { expectedScore } from "./elo";
  *
  * THE PROBLEM
  *
- * Ranking n entries by showing every pair to every voter is n(n-1)/2 taps — 45
+ * Ranking n entries by showing every pair to every voter is n(n-1)/2 taps - 45
  * for ten entries, 190 for twenty. Nobody does 190 taps, so a naive round-robin
  * gets abandoned halfway and the entries that happened to be drawn late end up
  * ranked on two votes each.
@@ -13,7 +13,7 @@ import { expectedScore } from "./elo";
  * THE WAY OUT
  *
  * Most pairs are not worth asking about. If the crowd has already put A well
- * above B and B well above C, then "A or C?" is a formality — the answer is
+ * above B and B well above C, then "A or C?" is a formality - the answer is
  * already implied, and spending a tap on it buys nothing. What actually moves
  * the ranking is a pair the crowd is *undecided* about, because that is where
  * the current ordering might be wrong.
@@ -22,7 +22,7 @@ import { expectedScore } from "./elo";
  * one entry beats the other, and `p·(1−p)` is the variance of that belief:
  * maximal at p = 0.5 (a genuine coin flip, ask it) and near zero at p = 0.99
  * (the derived answer, skip it). That single term is the transitivity shortcut,
- * stated as maths rather than as a special case — it never needs to know that
+ * stated as maths rather than as a special case - it never needs to know that
  * A > B > C, it just notices that A vs C is a settled question.
  *
  * Three more factors ride along:
@@ -40,7 +40,7 @@ import { expectedScore } from "./elo";
  *             end, so no pair is ever unreachable. Fairness beats optimality
  *             here: an entrant whose pookalam only ever appeared in "settled"
  *             pairings would have a real grievance, and a purely greedy sampler
- *             is also trivially predictable — a voter who works out the
+ *             is also trivially predictable - a voter who works out the
  *             ordering rule can farm it.
  *
  * The result is a weighted random draw, not an argmax. It converges on a
@@ -69,7 +69,7 @@ const EPSILON = 1e-4;
  * How much is still unknown about this matchup, in [INFO_FLOOR, 1].
  *
  * `4·p·(1−p)` is the variance of a coin with bias p, rescaled so an even
- * matchup scores 1. A 400-point Elo gap is p ≈ 0.91, which lands near 0.3 —
+ * matchup scores 1. A 400-point Elo gap is p ≈ 0.91, which lands near 0.3 -
  * already mostly answered.
  */
 export function infoWeight(ratingA: number, ratingB: number): number {
@@ -81,7 +81,7 @@ export function infoWeight(ratingA: number, ratingB: number): number {
  * How badly an entry still needs matches, in (0, 1].
  *
  * Decays like 1/√matches, which is roughly how fast the standard error of a
- * rating actually falls — so the weight tracks real remaining uncertainty
+ * rating actually falls - so the weight tracks real remaining uncertainty
  * rather than an arbitrary quota.
  */
 export function exposureWeight(matches: number): number {

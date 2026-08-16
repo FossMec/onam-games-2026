@@ -141,7 +141,7 @@ export interface MySubmission {
  * A repo link, and only a repo link.
  *
  * This is rendered into an `<a href>` on the results page, so `javascript:` and
- * `data:` are stored XSS with extra steps — allowing exactly two schemes is the
+ * `data:` are stored XSS with extra steps - allowing exactly two schemes is the
  * cheap, complete answer. The host allowlist is a separate, softer rule: the
  * contest is about code, and "submit your source" has to mean somewhere the
  * source can actually be read.
@@ -176,7 +176,7 @@ function normalizeSourceUrl(raw: string): string {
   const allowed = SOURCE_HOSTS.some((known) => host === known || host.endsWith(`.${known}`));
   if (!allowed) {
     throw new Error(
-      `Host your code somewhere it can be read — GitHub, a Gist, GitLab, Codeberg, CodePen or similar. We could not accept ${host}.`,
+      `Host your code somewhere it can be read - GitHub, a Gist, GitLab, Codeberg, CodePen or similar. We could not accept ${host}.`,
     );
   }
   return url.toString();
@@ -235,8 +235,8 @@ export async function upsertSubmission(userId: string, input: SubmissionInput): 
   }
 
   /*
-   * The insert branch always has fresh artwork — a first entry without an image
-   * was rejected above — but these values are built before Postgres decides
+   * The insert branch always has fresh artwork - a first entry without an image
+   * was rejected above - but these values are built before Postgres decides
    * which branch runs, so they fall back to what is already stored rather than
    * dereferencing a null on every plain text edit.
    */
@@ -277,7 +277,7 @@ export async function upsertSubmission(userId: string, input: SubmissionInput): 
       },
     });
 
-  // Only after the row points at the new object — a delete before the write
+  // Only after the row points at the new object - a delete before the write
   // would leave a broken image if the upsert failed.
   if (stored && existing?.imagePath && existing.imagePath !== stored.path) {
     await deleteStoredImage(existing.imagePath);
@@ -320,7 +320,7 @@ function shortlistedFilter() {
 /**
  * The number that actually ranks an entry: crowd Elo plus admin correction.
  *
- * Every board and the final results order by this, never by `rating` alone —
+ * Every board and the final results order by this, never by `rating` alone -
  * an adjustment that did not change the placing would be decorative. The Elo
  * maths in `castVote` still reads and writes the raw `rating`, so a correction
  * shifts where an entry sits without distorting how future votes move it.
@@ -353,7 +353,7 @@ async function loadPool(): Promise<PoolEntry[]> {
  * Picks the next matchup for this voter.
  *
  * The choice is delegated to `pairing.ts`, which weights pairs by how undecided
- * the crowd currently is about them — that is what lets a voter settle a
+ * the crowd currently is about them - that is what lets a voter settle a
  * ranking in far fewer taps than judging every pair, without ever being told
  * they are done early. Everything this function does is fetch the three inputs
  * that weighting needs and remove the pairs this voter must not see.
@@ -399,7 +399,7 @@ export async function nextPair(voterId: string): Promise<VotingPair | null> {
   const votes = judged.size;
 
   // Which one shows on the left is a coin flip. A fixed side wins votes on its
-  // own — a real and well-documented bias in pairwise judging.
+  // own - a real and well-documented bias in pairwise judging.
   const [left, right] = Math.random() < 0.5 ? [picked.a, picked.b] : [picked.b, picked.a];
   return {
     left: { id: left.id, title: left.title, imageUrl: left.imageUrl },
@@ -422,7 +422,7 @@ export interface VoteResult {
  * Everything that makes this fair is enforced here rather than trusted from the
  * client: voting must be open, both entries must be shortlisted, neither may
  * belong to the voter, and the (voter, pair) unique constraint is what actually
- * stops double voting — the check below only exists to word the error.
+ * stops double voting - the check below only exists to word the error.
  */
 export async function castVote(
   voterId: string,
@@ -554,7 +554,7 @@ export interface Standings<T> {
 /**
  * Reads a board, recomputing it only once the configured lag has elapsed.
  *
- * The staleness is the product decision — see `pookalamStandings` — and the
+ * The staleness is the product decision - see `pookalamStandings` - and the
  * caching is what makes it affordable. Two requests racing past the deadline
  * both recompute and both write; they compute the same thing from the same
  * rows, so the loser of the race costs one wasted query and nothing else. That
@@ -597,7 +597,7 @@ async function readCached<T>(
  * There is deliberately no ranked board here that carries `imageUrl`.
  *
  * The live standings during voting are `getEntrantStandings`, which selects
- * artwork out entirely — see the note there for why that single omission is
+ * artwork out entirely - see the note there for why that single omission is
  * what keeps the round honest. Artwork appears next to a rank only in
  * `getResults`, which refuses to return anything until results are public.
  */
@@ -637,7 +637,7 @@ export async function getVoterStandings(limit = 50): Promise<Standings<VoterStan
     }).slice(0, limit);
     if (scored.length === 0) return [];
 
-    // One lookup for the names, after the ranking is settled — joining users
+    // One lookup for the names, after the ranking is settled - joining users
     // into the vote scan would drag a row per vote through the aggregation.
     const profiles = await db
       .select({ id: users.id, name: users.name, avatarUrl: users.avatarUrl })
@@ -673,7 +673,7 @@ export interface Entrant {
 }
 
 /**
- * The live standings during voting: ranked, with Elo — but no artwork.
+ * The live standings during voting: ranked, with Elo - but no artwork.
  *
  * WHAT IS WITHHELD AND WHY IT IS ENOUGH
  *
@@ -681,15 +681,15 @@ export interface Entrant {
  * pookalams, recognising one as the current leader, and backing it for that
  * reason. That requires mapping a *rank to an image*. Withholding `imageUrl`
  * breaks the mapping at the source, so the two pictures on the voting page stay
- * exactly as anonymous as they were — knowing that someone leads on 1340 tells
+ * exactly as anonymous as they were - knowing that someone leads on 1340 tells
  * you nothing about which of the two in front of you is theirs.
  *
  * The title rides along for the same reason it is safe: the voting page renders
  * no titles either, so there is nothing to match it against until results open.
  *
  * The residual leak, stated plainly: rank is now tied to a *person*. Anyone who
- * already knows whose pookalam is whose — told by a friend, or recognising a
- * style — can vote the leader up. That is a much narrower hole than publishing
+ * already knows whose pookalam is whose - told by a friend, or recognising a
+ * style - can vote the leader up. That is a much narrower hole than publishing
  * the images, and it is the deliberate trade for having a live board at all.
  *
  * Served from the lagged cache like the voters' board: it is the busiest day
@@ -741,7 +741,7 @@ export interface ResultRow {
 }
 
 /**
- * The final standings. Authors are revealed here and nowhere else — the whole
+ * The final standings. Authors are revealed here and nowhere else - the whole
  * point of anonymous pairing is that nobody votes for a name.
  *
  * Read live rather than from the cached board: once voting has closed nothing
@@ -788,7 +788,7 @@ export interface ReviewEntry {
   shortlisted: boolean;
   likes: number;
   dislikes: number;
-  /** Every reviewer's verdict and reason. Named — these are not anonymous. */
+  /** Every reviewer's verdict and reason. Named - these are not anonymous. */
   comments: { reviewerName: string; verdict: "like" | "dislike"; comment: string | null }[];
   /** This reviewer's own verdict, so the page can show it selected. */
   myVerdict: "like" | "dislike" | null;
@@ -884,7 +884,7 @@ export interface AdminRow extends ReviewEntry {
   /** Admin correction. Zero for an untouched entry. */
   adjustment: number;
   adjustmentNote: string | null;
-  /** `rating + adjustment` — the number that actually ranks. */
+  /** `rating + adjustment` - the number that actually ranks. */
   effectiveRating: number;
   matches: number;
   wins: number;
@@ -988,14 +988,14 @@ const MAX_ADJUSTMENT_STEP = 400;
  *
  * The escape hatch for what the maths cannot see: a ring of sockpuppets sinking
  * one entry, or a friend group farming one up. Elo has no notion of a vote cast
- * in bad faith — every vote is equally real to it — so when a human establishes
+ * in bad faith - every vote is equally real to it - so when a human establishes
  * that a block of them were not, this is how the standing gets put back.
  *
  * Three properties make this safe enough to ship in a prize contest:
  *
  *   it is additive     `delta` moves the existing correction rather than
  *                      setting it, so two admins acting on the same report
- *                      cannot silently overwrite one another — and passing the
+ *                      cannot silently overwrite one another - and passing the
  *                      negative of the current value is a clean full undo.
  *   it is separate     `rating` keeps the untouched crowd verdict, so the
  *                      intervention can always be measured and reversed.
@@ -1015,7 +1015,7 @@ export async function adjustRating(
 ): Promise<void> {
   const note = reason.trim();
   if (note.length < 3) {
-    throw new Error("Give a reason for the adjustment — it goes on the record.");
+    throw new Error("Give a reason for the adjustment - it goes on the record.");
   }
   if (!Number.isFinite(delta) || delta === 0) {
     throw new Error("Adjustment must be a non-zero number.");
@@ -1059,8 +1059,8 @@ export async function adjustRating(
 /**
  * Puts an entry into (or out of) the public Elo round.
  *
- * Shortlisting implies approval — the admin is saying this is one of the best,
- * which is a strictly stronger statement than "this is valid" — so it sets both
+ * Shortlisting implies approval - the admin is saying this is one of the best,
+ * which is a strictly stronger statement than "this is valid" - so it sets both
  * rather than making them do two clicks and forget one.
  */
 export async function setShortlisted(
@@ -1085,7 +1085,7 @@ export async function setShortlisted(
  * Shortlists the top N by tester likes, as a starting point.
  *
  * Ranked by likes minus dislikes, then by likes, then by newest. Explicitly a
- * suggestion the admin can then edit one entry at a time — a shortlist chosen
+ * suggestion the admin can then edit one entry at a time - a shortlist chosen
  * purely by a handful of tester taps is not a jury decision, and the copy in
  * /admin says so.
  */

@@ -33,7 +33,7 @@ interface AttemptsTabProps {
 }
 
 function formatDuration(ms: number | null): string {
-  if (ms == null) return "—";
+  if (ms == null) return "-";
   const s = ms / 1000;
   if (s < 60) return `${s.toFixed(2)}s`;
   const m = Math.floor(s / 60);
@@ -296,7 +296,7 @@ export function AttemptsTab(props: AttemptsTabProps) {
 
                       {/* IP & Device */}
                       <td class="p-3 font-mono text-[11px]">
-                        <div>IP: {a.ip ?? "—"}</div>
+                        <div>IP: {a.ip ?? "-"}</div>
                         <Show when={a.deviceHash}>
                           <div class="text-[10px] opacity-60 truncate max-w-[120px]">
                             Dev: {a.deviceHash}

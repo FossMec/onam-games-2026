@@ -164,7 +164,7 @@ export function MaveliLetter() {
                   Onam is pure open-source: nobody patents the Avial recipe, Payasam is forkable
                   with extra cashews, and Sambhar has unlimited free redistribution. Meanwhile,
                   corporate suits at Anthropic claim open models are <em>"too dangerous"</em> for
-                  normal developers — classic proprietary gatekeeping.
+                  normal developers - classic proprietary gatekeeping.
                 </p>
 
                 <p class="font-bold text-[var(--ink)]">

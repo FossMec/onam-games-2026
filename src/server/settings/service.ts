@@ -6,7 +6,7 @@ import { appSettings } from "~/server/db/schema";
  * Every setting, once per request.
  *
  * The whole table is sixteen rows and about two hundred bytes of values, so
- * fetching all of it costs the same round trip as fetching one key — and a
+ * fetching all of it costs the same round trip as fetching one key - and a
  * single page render reads settings from several places that know nothing about
  * each other. The home page alone was two separate `app_settings` selects (the
  * closed-beta flag, then the four schedule keys) on top of the games query.
@@ -14,7 +14,7 @@ import { appSettings } from "~/server/db/schema";
  * The snapshot is memoised on the request, not on the module: settings are
  * edited live from the admin panel, and a process-wide cache would keep serving
  * yesterday's schedule from a warm Vercel instance. Within one request the
- * value is fixed anyway — a render that saw two different values for the same
+ * value is fixed anyway - a render that saw two different values for the same
  * flag would be worse than a stale one.
  *
  * Outside a request (scripts, tests) there is nothing to hang it on, so it
@@ -25,7 +25,7 @@ import { appSettings } from "~/server/db/schema";
  *
  * A value written as `JSON.stringify(x)` into a jsonb column gets encoded a
  * second time by the driver, so `"19:00"` lands in the database as a JSON
- * string whose *contents* are `"19:00"` — quotes and all. `scripts/seed.mjs`
+ * string whose *contents* are `"19:00"` - quotes and all. `scripts/seed.mjs`
  * did exactly that for every key it wrote.
  *
  * The failure mode is what makes this worth a defence rather than just a fix:
@@ -34,8 +34,8 @@ import { appSettings } from "~/server/db/schema";
  * `upcoming` forever with no error anywhere. A schedule that silently refuses
  * to start is the worst possible bug for a one-week event.
  *
- * Unwrapping here fixes every reader at once — schedule, pookalam windows and
- * anything added later — instead of hardening one parser at a time. A value
+ * Unwrapping here fixes every reader at once - schedule, pookalam windows and
+ * anything added later - instead of hardening one parser at a time. A value
  * that legitimately begins and ends with a quote character is not something
  * any setting has, so this cannot corrupt a good row.
  */
@@ -83,7 +83,7 @@ export async function getSettings(keys: string[]): Promise<Map<string, unknown>>
  * throws.
  *
  * Most callers want `getSetting`, which flattens both cases into the fallback.
- * The two are worth telling apart exactly once — the closed-beta door, where
+ * The two are worth telling apart exactly once - the closed-beta door, where
  * "the flag was never written" and "we cannot reach the flag" must be answered
  * in opposite directions. See `getAccessState`.
  */

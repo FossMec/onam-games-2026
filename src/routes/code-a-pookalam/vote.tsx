@@ -9,14 +9,14 @@ import { SHOUT_COLOR, shout } from "~/lib/shouts";
 import { getNextPair, getPookalamState, votePookalam } from "~/server/pookalam/actions";
 
 /**
- * Day 7 — head-to-head pookalam voting.
+ * Day 7 - head-to-head pookalam voting.
  *
  * Two entries, no names, pick one. Elo does the rest.
  *
  * Nothing about who made these reaches the browser: the pairing query does not
  * select the author or the source link, and the page does not render the entry
- * *title* either. A title is a free identity leak — "Recursive Thumba by the
- * one guy who talks about recursion" — and it also invites judging the caption
+ * *title* either. A title is a free identity leak - "Recursive Thumba by the
+ * one guy who talks about recursion" - and it also invites judging the caption
  * instead of the picture, which is the one thing this round exists to stop.
  *
  * Laid out in the same 2xl column as a game page, so a pookalam sits at about
@@ -32,8 +32,8 @@ import { getNextPair, getPookalamState, votePookalam } from "~/server/pookalam/a
  *
  * The server picks pairs by how undecided the crowd is about them, so a correct
  * ranking falls out of roughly n·log₂n votes rather than all n(n−1)/2 of them.
- * The progress bar counts toward that target — the number that makes you count
- * as having done a full shift — and every remaining pair stays available to
+ * The progress bar counts toward that target - the number that makes you count
+ * as having done a full shift - and every remaining pair stays available to
  * anyone who wants to keep going. Showing "20 of 45" instead would make a
  * finished voter feel like a quitter.
  */
@@ -52,7 +52,7 @@ interface Pair {
 }
 
 const HOW_TO = [
-  "Two pookalams, side by side. Both are anonymous — no names, no repos, no titles.",
+  "Two pookalams, side by side. Both are anonymous - no names, no repos, no titles.",
   "Pick the one you think is better. There is no draw and no skip; a considered guess beats a blank.",
   "The next pair is chosen by where the crowd is most undecided, so your vote goes where it counts most.",
   "Finish your shift to land on the voters' board. It ranks how well you called it, not how fast you tapped.",
@@ -80,7 +80,7 @@ export default function VotePookalam() {
         setTarget(next.progress.target);
       }
       // A null pair with voting open means this voter has judged everything
-      // available to them — a finish line, not a failure.
+      // available to them - a finish line, not a failure.
       if (!next) setDone(true);
     } catch {
       setError("Could not load the next pair.");
@@ -122,7 +122,7 @@ export default function VotePookalam() {
 
   return (
     <main class="container relative space-y-4 py-6 max-w-2xl mx-auto">
-      <Title>Vote — {POOKALAM.title}</Title>
+      <Title>Vote - {POOKALAM.title}</Title>
 
       <div class="flex flex-wrap items-center justify-between gap-2">
         <a
@@ -171,7 +171,7 @@ export default function VotePookalam() {
               when={qualified()}
               fallback={`${Math.max(0, target() - count())} more to qualify for the voters' board.`}
             >
-              you're on the board. keep going if you like — more votes sharpen the ranking.
+              you're on the board. keep going if you like - more votes sharpen the ranking.
             </Show>
           </p>
         </div>
@@ -202,7 +202,7 @@ export default function VotePookalam() {
               >
                 <div class="card pop-yellow space-y-3 text-center">
                   <p class="font-extrabold m-0">The arena opens in</p>
-                  <Countdown target={opensAt()!} doneLabel="Voting is open — refresh!" />
+                  <Countdown target={opensAt()!} doneLabel="Voting is open - refresh!" />
                 </div>
               </Show>
             }
@@ -345,7 +345,7 @@ function Choice(props: {
       onClick={() => props.onPick(props.entry, props.other)}
     >
       {/*
-        Empty alt, and no caption. The title is deliberately not rendered — see
+        Empty alt, and no caption. The title is deliberately not rendered - see
         the note at the top of this file. Screen readers get the button's own
         label, which says left or right and nothing about whose work it is.
       */}

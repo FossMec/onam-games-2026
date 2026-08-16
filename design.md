@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document is the visual source of truth for generating illustrations, game artwork, decorative assets, thumbnails, backgrounds, character art, and promotional images for FOSS Onam Games.
+This document is the visual source of truth for the FOSS Onam Games design system. It defines the art direction, the six non-negotiable rules, the palette, typography, shape vocabulary, motifs, motion, and even the cursor. Every screen, illustration, decorative asset, thumbnail, background, and piece of character art follows this.
 
 It is not a generic Kerala festival brief and it is not a generic retro-gaming brief. The project has a deliberately specific visual identity:
 
@@ -14,7 +14,23 @@ The most important quality is the double reading. To someone unfamiliar with Ker
 
 ## One-Sentence Art Direction
 
-Create flat, hand-inked, slightly irregular comic-book artwork on warm cream newsprint, using washed festival colours, radial pookalam structures, chunky playful forms, visible halftone dots, and a mischievous Kerala/FOSS personality.
+Create flat, hand-inked, slightly irregular comic-book artwork on warm cream newsprint, using washed pastel festival colours, radial pookalam structures, chunky playful forms, visible halftone dots, and a mischievous Kerala/FOSS personality.
+
+## Inspiration: Memphis × Comic Book Print
+
+The identity is a marriage of two printed-design movements that already agree on the fundamentals - flat colour, hard outlines, and pattern.
+
+### 1980s Memphis
+
+The Memphis Group (Ettore Sottsass and friends) built loud, playful interiors from abstract geometric shapes: squiggles, zigzags, dots, rounded arcs, and chunky forms in soothing pastel-faded colour fields. The shapes are naive on purpose. They feel hand-drawn even when they are tiled.
+
+### Comic-book print
+
+Thick inked contours, Ben-Day halftone dots, starbursts, speech bubbles, tilted stickers, and a photocopied-annual imperfection. Everything reads as something physically printed and handled, never rendered on a screen.
+
+### Why they share a language
+
+Both use flat colour, confident outlines, and pattern to carry emotion. The Onam layer then quietly replaces every abstract Memphis shape with a Kerala motif - so the same geometry reads as pop-art to outsiders and as festival to Malayalis. That overlap is the whole trick: the decoration is never empty, but it never needs explaining.
 
 ## The Six Non-Negotiable Rules
 
@@ -24,7 +40,7 @@ Do not use soft drop shadows, realistic cast shadows, glossy bevels, glassmorphi
 
 Depth comes from:
 
-- confident dark ink outlines
+- confident dark ink outlines (thicker line = closer)
 - overlapping flat colour blocks
 - a second offset flat shape, like printed poster registration
 - Ben-Day halftone dots
@@ -34,7 +50,7 @@ If an asset needs to feel raised, use a thicker outline, a coloured offset layer
 
 ### 2. Halftone dots are a pookalam
 
-Ben-Day dots are not incidental texture. They are the signature pop-art shading language, redesigned as radial pookalam symmetry.
+Ben-Day dots are not incidental texture. They are the signature pop-art shading language, redesigned as radial pookalam symmetry. Ours are laid out in radial flower-carpet rings instead of a sterile square computer grid, so the pop-art motif and the Onam motif are the same object.
 
 Use dots as:
 
@@ -43,8 +59,6 @@ Use dots as:
 - sparse comic-print texture
 - a subtle page-wide background field
 - a press-print imperfection that makes the art feel physical
-
-Avoid a sterile square computer grid. When dots are visible, prefer circular, radial, orbital, or gently irregular arrangements.
 
 ### 3. Memphis decoration secretly means Onam
 
@@ -73,11 +87,11 @@ Every important object should look outlined by one confident warm near-black mar
 - stars and bursts
 - small decorative icons
 
-Do not mix delicate grey hairlines with heavy comic outlines. Do not use pure blue-black. The ink is warm, nearly black, and slightly softer than absolute black.
+Do not mix delicate grey hairlines with heavy comic outlines. Do not use pure blue-black. The ink is warm, nearly black (`#22202b`), and slightly softer than absolute black.
 
-### 5. Washed, never neon
+### 5. Soothing pastel-faded, never neon
 
-The palette should resemble a well-printed comic annual or risograph poster that has been handled for years. Colours are saturated enough to be joyful, but all sit in a similar lightness range.
+The palette should resemble a well-printed comic annual or risograph poster that has been handled for years. Colours are saturated enough to be joyful, but all sit in a similar, soothing lightness range - pastel, faded, and slightly sun-washed rather than electric.
 
 Avoid electric cyan, laser magenta, acid green, pure red, digital royal blue, chrome, and fluorescent yellow. The palette should clash harmoniously, not scream like an esports landing page.
 
@@ -98,19 +112,19 @@ Never rotate anything that must be read quickly or compared precisely:
 
 The image should make someone think:
 
-- “This looks fun.”
-- “Someone here has a sense of humour.”
-- “I recognise the Onam reference, but it is not being explained to me.”
-- “This feels handmade, not cheaply generated.”
-- “I want to tap this.”
+- "This looks fun."
+- "Someone here has a sense of humour."
+- "I recognise the Onam reference, but it is not being explained to me."
+- "This feels handmade, not cheaply generated."
+- "I want to tap this."
 
 It should not make someone think:
 
-- “This is a corporate Indian festival campaign.”
-- “This is a generic mobile game ad.”
-- “This is a glossy 3D mascot brand.”
-- “This is a stock Kerala tourism poster.”
-- “This is random AI cartoon art with no system.”
+- "This is a corporate Indian festival campaign."
+- "This is a generic mobile game ad."
+- "This is a glossy 3D mascot brand."
+- "This is a stock Kerala tourism poster."
+- "This is random AI cartoon art with no system."
 
 ## Material and Surface
 
@@ -145,7 +159,9 @@ Use a bold, rounded, hand-inked contour. Lines can vary slightly in weight, espe
 - **Warm ink:** `#22202B`. All primary outlines, lettering, and structural marks.
 - **Soft ink:** `#6B6478`. Secondary copy and subdued annotations only.
 
-### Washed comic accents
+### Soothing pastel accents
+
+Six accents tuned to near-identical lightness, so they clash harmoniously and feel sun-washed rather than neon:
 
 - **Tomato red:** `#F2695C`. Failure, energy, expressive marks, and the main Maveli face.
 - **Festival yellow:** `#F5C443`. Celebration, highlights, stars, crown, primary emphasis.
@@ -174,18 +190,17 @@ Avoid:
 - dark mode palettes
 - black backgrounds with glowing neon accents
 
-## Typography Direction for Image Assets
+## Typography Direction
 
-Generated imagery should leave deliberate, uncluttered areas for the interface to place text. Do not generate fake UI copy, illegible pseudo-lettering, random Latin glyphs, or decorative words unless the asset specifically requires a supplied phrase to be added later.
+The type system has seven distinct voices, each with exactly one job. That discipline is what keeps a multi-font system from reading like a ransom note.
 
-The type system has six distinct voices:
-
-- **Bungee:** the logo and wordmark. Heavy, condensed, poster-like, layered with a flat yellow offset behind warm ink.
+- **Bungee:** the logo and wordmark. Heavy, condensed, poster-like, layered with a flat yellow offset behind warm ink. Reserved exclusively for the FOSS ONAM wordmark.
 - **Baloo Chettan 2:** headings, labels, buttons, and display copy. Rounded, heavy, friendly, and highly legible.
 - **Nunito:** body text. Soft, readable, generous, and practical on a phone.
 - **Space Mono:** numbers, timers, scores, technical measurements, and leaderboard data.
 - **Bangers:** comic shouts and onomatopoeia. Use for explosive result moments, not normal headings.
 - **Caveat:** handwritten marginal commentary and sarcastic asides. It should feel like a note scribbled beside the panel.
+- **Kalam:** proclamations and royal letters, like the letter from Maveli. A warmer, more formal hand than Caveat.
 
 For generated image compositions, visualise these roles even when no type is present: poster wordmark, rounded display label, readable body block, technical mono number, explosive comic shout, and hand-written annotation.
 
@@ -262,7 +277,19 @@ Maveli is a comic game character, not a mythological painting. He must remain re
 - bold warm ink contour
 - compact, readable silhouette
 
-Keep his expression cheerful, determined, or mildly embarrassed. His dignity should be slightly under pressure, matching the project’s humour. Do not depict him as a hyper-realistic king, a warrior, a deity, or a generic superhero.
+Keep his expression cheerful, determined, or mildly embarrassed. His dignity should be slightly under pressure, matching the project's humour. Do not depict him as a hyper-realistic king, a warrior, a deity, or a generic superhero.
+
+## The Muthukuda Cursor
+
+Even the pointer is part of the identity. The site swaps the system arrow for a muthukuda - the ceremonial umbrella - tilted so it reads as a pointer rather than a sticker parked on the page.
+
+Three tilts of the same umbrella carry the three interaction states, so the shape stays consistent while still telling people what they can do:
+
+- **-18deg** default, resting
+- **-38deg** over anything clickable, leaning in
+- **+24deg** grabbing, leaning back
+
+The hotspot sits on the canopy's top-left, which is where the eye reads the point to be. Text inputs keep the system I-beam: a caret is a precision instrument and an umbrella cannot show which character you are between. Disabled controls keep the system not-allowed cursor.
 
 ## Composition Principles
 
@@ -306,87 +333,6 @@ Even static assets should suggest gentle, ambient motion:
 
 Do not imply chaotic motion blur, speed-line overload, or violent camera movement. The interface uses subtle movement and gameplay surfaces stay stable.
 
-## Game-Specific Art Direction
-
-### Open Source Tinder
-
-Create a small stack of inked cards with a playful, slightly suspicious personality. Cards can show simplified open-source and proprietary concepts, but avoid reproducing real company logos unless supplied separately.
-
-Visual cues:
-
-- cream card stack
-- teal “free” energy versus red “nope” energy
-- subtle rotation on the top card
-- bold stamp-like verdict shapes
-- a hand hovering or a card caught mid-swipe, if a character is needed
-
-Tone: clever, opinionated, fast, and mildly confrontational.
-
-### Pookalam Jigsaw
-
-This is the richest asset opportunity. Generate a pookalam that remains visually interesting when divided into square pieces. It needs strong concentric bands, repeated petal structures, and enough local variation to make pieces difficult without becoming muddy.
-
-Use:
-
-- a cream outer field
-- broad purple, teal, blue, and red rings
-- yellow and pink repeated petals
-- warm ink outlines between major shapes
-- a central flower or dot rosette
-
-Avoid tiny photographic flowers, gradients, text, and a composition that only works as one unbroken poster.
-
-### Wend
-
-Create letter-grid or maze-inspired decorative assets using chunky rounded tiles, ink gaps, cream surfaces, and washed accent paths. Letters should be supplied separately where exact spelling matters. The visual idea is a word hidden inside a physical path, not a cyberpunk puzzle screen.
-
-Use coloured paths to suggest found words, with each path receiving one flat accent colour. Walls can be warm ink. Keep the grid geometry clear and spare.
-
-### Escape the Vallam
-
-Create a flat comic puzzle board language for boats in traffic. The hero vallam is red and longer than the surrounding boats. Other boats can use teal, blue, purple, pink, and yellow.
-
-Use rounded capsule-like boat tokens with bold outlines. A tiny prow, arrow, or repeating chevron can make the hero boat read as a snake boat. Avoid realistic water, wood grain, or nautical illustration.
-
-### Maveli Jump
-
-This is the most character-led game. Show Maveli with a yellow belly, red head, yellow crown, and warm ink moustache. Platforms are rounded flat blocks:
-
-- teal for safe platforms
-- yellow for breakable banana-chip platforms
-- blue for moving platforms
-- pink for pookalam trampoline platforms
-
-The world should feel like a vertical comic strip above Paathalam: optimistic, silly, and slightly dangerous. Use flat height markings and paper space, not a dark sky or realistic landscape.
-
-### The Hunt
-
-The Hunt is more atmospheric but must remain in the same print language. Create clue fragments, folded paper, arrows, crop marks, small pookalam hints, QR-like geometric marks, and suspicious annotations.
-
-It can be the most mysterious asset family, but never become horror, noir, cyberpunk, or a realistic detective mood. The joke is that the website knows more than it is saying.
-
-### Code-a-Pookalam
-
-This is the project’s most geometric and maker-oriented visual family. Show radial symmetry, mathematical repetition, curves, circles, petals, and visibly constructed layers. Include hints of code through diagrams, coordinate marks, loops, modular repetition, or annotated geometry, but do not turn the image into a screen full of source code.
-
-The final result should feel like a flower carpet made by someone who thinks in algorithms.
-
-## Result and Celebration Assets
-
-Result moments are the loudest moments in the product. Use irregular starbursts behind large comic shouts. The words are Manglish/Malayalam-flavoured and should never be replaced by generic “POW”, “BAM”, or “WIN”.
-
-Mood mapping:
-
-- **Triumph / personal best:** festival yellow, biggest burst, strongest contrast.
-- **Great result:** teal, energetic but controlled.
-- **Decent result:** blue, positive and calm.
-- **Mid-table:** purple, affectionate teasing.
-- **Failure or rejection:** red, comic embarrassment rather than cruelty.
-- **Confused or broken state:** pink, strange and playful.
-- **Late:** red, apologetic and knowingly dramatic.
-
-The burst should have a hand-drawn irregular silhouette, a thick ink contour, and optional offset ink registration behind it. The text area must remain clean for exact typography to be applied by the interface.
-
 ## Decorative Confetti Rules
 
 Confetti should feel like Memphis scatter that happens to encode Onam. Use a small number of well-spaced pieces rather than a dense party explosion.
@@ -419,7 +365,7 @@ Reject or revise any output containing:
 - perfect sterile geometry with no print character
 - dense visual noise that competes with gameplay
 - random illegible text or fake interface labels
-- generic “POW”, “BAM”, or American superhero comic clichés
+- generic "POW", "BAM", or American superhero comic clichés
 - overuse of elephants, kathakali faces, lamps, or other literal cultural shorthand
 - a dark theme or black canvas as the dominant surface
 - realistic flowers in place of graphic pookalam geometry
@@ -433,11 +379,11 @@ Use this structure when commissioning or generating an asset:
 
 **Onam translation:** which Kerala motif is being encoded, if any.
 
-**Game context:** where the asset appears and what must remain readable around it.
+**Context:** where the asset appears and what must remain readable around it.
 
 **Composition:** hero silhouette, crop safety, negative space, and whether the asset is radial, horizontal, vertical, or modular.
 
-**Visual treatment:** flat washed comic-print colour, warm ink outline, controlled halftone, slight hand-drawn irregularity, no conventional shadow.
+**Visual treatment:** flat washed pastel comic-print colour, warm ink outline, controlled halftone, slight hand-drawn irregularity, no conventional shadow.
 
 **Palette:** choose one dominant accent, one supporting accent, cream, and warm ink from the approved palette.
 
@@ -449,9 +395,9 @@ Use this structure when commissioning or generating an asset:
 
 ## Example Prompt Language
 
-“A flat hand-inked comic illustration of Maveli jumping upward between rounded festival platforms, with a yellow crown and belly, red head, warm near-black outline, teal safe platforms, yellow breakable platforms, blue moving platforms, and pink pookalam trampoline platforms. Warm cream newsprint background, washed 1990s screen-print colours, restrained radial halftone dots, slight registration imperfection, playful Kerala Onam energy, generous negative space for interface labels, no gradients, no drop shadow, no 3D rendering, no neon, no realistic scenery.”
+"A flat hand-inked comic illustration of Maveli jumping upward between rounded festival platforms, with a yellow crown and belly, red head, warm near-black outline, teal safe platforms, yellow breakable platforms, blue moving platforms, and pink pookalam trampoline platforms. Warm cream newsprint background, washed pastel-faded 1990s screen-print colours, restrained radial halftone dots, slight registration imperfection, playful Kerala Onam energy, generous negative space for interface labels, no gradients, no drop shadow, no 3D rendering, no neon, no realistic scenery."
 
-“A square pookalam artwork designed to be cut into a jigsaw, with broad concentric rings, repeated geometric petals, yellow, teal, purple, red, blue, and pink flat fills, warm ink outlines, radial Ben-Day dot shading, subtle screen-print irregularity, cream outer paper, strong centre and readable local sections, no text, no photorealistic flowers, no gradients, no shadow.”
+"A square pookalam artwork with broad concentric rings, repeated geometric petals, yellow, teal, purple, red, blue, and pink flat fills in soothing pastel-faded tones, warm ink outlines, radial Ben-Day dot shading, subtle screen-print irregularity, cream outer paper, strong centre and readable local sections, no text, no photorealistic flowers, no gradients, no shadow."
 
 ## Final Review Checklist
 
@@ -461,9 +407,9 @@ Before approving an asset, ask:
 - Is the main silhouette readable at thumbnail size?
 - Is the object outlined with the shared warm ink language?
 - Is depth communicated without a blurred shadow?
+- Are the colours soothing pastel-faded and harmonious rather than neon?
 - Is there a clear Onam reference, direct or encoded?
 - Does the image still feel like FOSS Onam Games rather than generic pop art?
-- Are the colours washed and harmonious rather than neon?
 - Is there enough negative space for UI and responsive cropping?
 - Would a Malayali recognise an extra layer of meaning?
 - Would the asset remain clear beside a phone-sized game board?

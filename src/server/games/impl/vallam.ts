@@ -2,7 +2,7 @@ import type { GeneratedInstance, VerifyInput, VerifyResult } from "../registry";
 import { createRng, type Rng } from "../rng";
 
 /**
- * Escape the Vallam — a sliding-block puzzle. Get the chundan vallam out of
+ * Escape the Vallam - a sliding-block puzzle. Get the chundan vallam out of
  * the right edge; every other boat is in the way and only moves along its own
  * axis.
  *
@@ -16,7 +16,7 @@ import { createRng, type Rng } from "../rng";
  * VERIFICATION
  *
  * The server replays the submitted move list on its own copy of the board.
- * Every move must be legal — right boat, right axis, unobstructed — and the
+ * Every move must be legal - right boat, right axis, unobstructed - and the
  * final position must have the vallam at the exit. The client's claims about
  * what happened are never trusted; only the replay counts.
  */
@@ -74,7 +74,7 @@ function buildGrid(boats: Boat[]): Int8Array {
 /**
  * Can `boat` shift by `delta` steps without leaving the board or hitting
  * anything? Walks one step at a time, checking only the cell the boat newly
- * occupies — the cell it vacates is its own and never blocks it.
+ * occupies - the cell it vacates is its own and never blocks it.
  */
 function canMove(grid: Int8Array, boat: Boat, delta: number): boolean {
   const step = Math.sign(delta);
@@ -116,7 +116,7 @@ const isSolved = (boats: Boat[]): boolean => {
  *
  * Written on flat typed arrays rather than the `Boat[]` objects used
  * elsewhere. A boat only ever moves along one axis, so a whole position is
- * just each boat's primary coordinate — one byte each. The object version of
+ * just each boat's primary coordinate - one byte each. The object version of
  * this allocated a fresh array of boat objects per explored state and took
  * ~1s per generated board, which is not a thing you can do inside a request.
  *
@@ -220,7 +220,7 @@ function randomBoard(rng: Rng): Boat[] | null {
 /**
  * Generation runs a BFS solver, so it is far too expensive to repeat. Both
  * `/start` and `verify` need the same board, and a player who refreshes hits
- * it again — memoise per seed so it is computed once per process.
+ * it again - memoise per seed so it is computed once per process.
  */
 const boardCache = new Map<string, GeneratedInstance>();
 const CACHE_LIMIT = 500;
@@ -242,7 +242,7 @@ function generateUncached(seed: string, difficulty: string): GeneratedInstance {
   /*
    * Tuned against the measured distribution. A single random 9-11 boat board
    * usually solves in 5-10 moves, so a high threshold means every generation
-   * exhausts its attempts and falls back — the slowest path, taken every time.
+   * exhausts its attempts and falls back - the slowest path, taken every time.
    * Thresholds of 14 and then 11 both did exactly that.
    *
    * These accept within a few draws. Par is a floor on interest, not the

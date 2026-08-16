@@ -35,7 +35,7 @@ import {
  *
  * Every mutation re-derives the caller from the session and re-reads the phase
  * windows; nothing here trusts an id, a flag or a timestamp from the page. Ban
- * level gates entering and voting on the same rule as playing a game — someone
+ * level gates entering and voting on the same rule as playing a game - someone
  * benched for cheating does not get to keep influencing the outcome.
  */
 
@@ -105,7 +105,7 @@ export async function votePookalam(winnerId: string, loserId: string) {
   const user = await requireCurrentUser();
   assertCanPlay(user);
   /*
-   * A vote is one tap, so a genuine voter fires these in bursts — the limit is
+   * A vote is one tap, so a genuine voter fires these in bursts - the limit is
    * only here to stop a script walking every pair in a second. The real
    * one-vote-per-pair guarantee is the unique index, not this.
    */
@@ -132,14 +132,14 @@ export async function getMyProgress() {
  *
  * WHILE VOTING IS OPEN THIS SENDS NO ARTWORK.
  *
- * Ranks, Elo and names all go out live — what does not is `imageUrl`, and that
+ * Ranks, Elo and names all go out live - what does not is `imageUrl`, and that
  * one omission is the whole safeguard. The bandwagon to avoid is a voter
  * recognising one of the two pictures in front of them as the current leader,
  * which needs a rank-to-image mapping; without the artwork there is nothing to
  * match against, so the pair stays as blind as it ever was.
  *
  * Enforced by not fetching it rather than by not rendering it. A server action
- * is an HTTP endpoint, and "the page doesn't show it" is not privacy — anyone
+ * is an HTTP endpoint, and "the page doesn't show it" is not privacy - anyone
  * can call this directly and read the JSON.
  *
  * Artwork joins the ranking only once results are public, at which point there
@@ -183,7 +183,7 @@ export async function getFinalResults() {
  * testers off the whole page: an admin gets the queue with author names and the
  * approve/shortlist controls, a tester gets the anonymous gallery and a verdict
  * button. Returns a shape instead of throwing because the page asks this to
- * decide what to draw, not to guard a mutation — the mutations guard themselves.
+ * decide what to draw, not to guard a mutation - the mutations guard themselves.
  */
 export async function getReviewAccess() {
   const user = await getCurrentUser();
@@ -213,6 +213,28 @@ export async function reviewerSetVerdict(
   if (!limit.success) throw new Error("Slow down a moment.");
   await setReviewVerdict(user.id, submissionId, verdict, comment);
   return listForTesterReview(user.id);
+}
+
+/**
+ * The current user's entry, for the shortlist notice.
+ *
+ * Returns the fields a shortlisted entrant needs to see the announcement and
+ * the admin's note - nothing else. Reuses `getMySubmission`, so the note rides
+ * along on the same query rather than costing an extra round trip. Null when
+ * the caller has no entry or is signed out.
+ */
+export async function getMyPookalamNotice() {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const mine = await getMySubmission(user.id);
+  if (!mine) return null;
+  return {
+    title: mine.title,
+    imageUrl: mine.imageUrl,
+    status: mine.status,
+    shortlisted: mine.shortlisted,
+    reviewNote: mine.reviewNote,
+  };
 }
 
 /* ---------------------------------------------------------------- admin */

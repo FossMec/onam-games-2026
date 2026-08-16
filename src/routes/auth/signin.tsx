@@ -13,7 +13,7 @@ export default function SignIn() {
 
   /*
    * Falls back to the Supabase redirect until the server answers. Someone who
-   * taps the instant the page paints gets the old flow, which works — the
+   * taps the instant the page paints gets the old flow, which works - the
    * direct path is a nicer consent screen, not a different outcome.
    */
   const mode = createAsync(() => getAuthMode(), {
@@ -59,7 +59,7 @@ export default function SignIn() {
 
   return (
     <main class="container flex min-h-[70vh] flex-col items-center justify-center py-8 gap-4">
-      <Title>Sign in — FOSS Onam Games</Title>
+      <Title>Sign in - FOSS Onam Games</Title>
 
       <img
         src="/images/memes/need-more-tokens.webp"
@@ -102,7 +102,7 @@ export default function SignIn() {
           {/*
             Above the button, not below it.
             The account someone picks is bound to this device for the whole
-            festival, and there is no undo — the only way out is an organiser
+            festival, and there is no undo - the only way out is an organiser
             clearing the binding by hand. Discovering that afterwards, from an
             error page, is a bad way to learn it, so the warning has to be read
             before the tap rather than after it.

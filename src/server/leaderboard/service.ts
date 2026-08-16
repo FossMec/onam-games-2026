@@ -18,7 +18,7 @@ export interface DailyEntry {
   metric: GameMetric;
   durationMs: number | null;
   score: number | null;
-  /** The ranking value for `fcfs` boards — "finished at" wall-clock time. */
+  /** The ranking value for `fcfs` boards - "finished at" wall-clock time. */
   submittedAt: string;
   attemptsUsed: number;
   isTester: boolean;
@@ -127,7 +127,7 @@ export async function getDailyLeaderboard(
  * The window-function core both board reads share. Every row of the filtered
  * field gets its true global rank and the full field size before any
  * LIMIT/OFFSET, so a viewer's own position is known no matter which page they
- * asked for — the caller then filters out the slice (or the viewer) it wants.
+ * asked for - the caller then filters out the slice (or the viewer) it wants.
  */
 function rankedBoard(
   db: Db,
@@ -158,7 +158,7 @@ function rankedBoard(
          * These two are raw SQL inside a CTE, and the outer query filters and
          * orders by `ranked.rank`. Without an explicit alias drizzle cannot
          * name the column from outside, so touching `ranked.rank` throws while
-         * the query is still being *built* — before a single byte reaches the
+         * the query is still being *built* - before a single byte reaches the
          * database. That failure mode is nastier than it sounds: it surfaced as
          * an unhandled rejection that killed the process mid-stream, so the
          * response was never terminated and every page hung until the platform
@@ -181,7 +181,7 @@ function boardConditions(gameId: string, viewerRole: ViewerRole, viewMode: "main
      * Only a hard ban takes a run off the board.
      *
      * This used to demand `banLevel = 0`, which quietly deleted anyone holding
-     * a level-1 *warning* from every board — and a warning is explicitly the
+     * a level-1 *warning* from every board - and a warning is explicitly the
      * level that "costs an honest player nothing" (`auth/bans.ts`), handed out
      * for things as innocent as sharing a hostel's NAT IP. The player was told
      * their run counted, the run was verified, and then it was nowhere, with no
@@ -192,7 +192,7 @@ function boardConditions(gameId: string, viewerRole: ViewerRole, viewMode: "main
      * hiding an already-earned score for three hours and then restoring it
      * reads as a bug from every direction. Level 4 is the only level that means
      * "out of the games", and the rest of the codebase already uses `>= 4` as
-     * the line — this was the one place that disagreed.
+     * the line - this was the one place that disagreed.
      */
     lt(users.banLevel, 4),
     viewerRole === "player" || viewMode === "main"
@@ -210,7 +210,7 @@ function rankingOrder(metric: GameMetric) {
 }
 
 /**
- * Just the caller's own position on a day's board — the share card needs a
+ * Just the caller's own position on a day's board - the share card needs a
  * rank and a field size and nothing else. The window functions compute both
  * over the whole field in one query, so there is no page slice to over-fetch
  * and no second copy of the ranking rules to keep in step.

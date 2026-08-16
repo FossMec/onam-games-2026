@@ -120,7 +120,7 @@ export function LogsTab(props: LogsTabProps) {
                     <td class="p-3 font-sans font-extrabold text-[var(--ink)]">
                       {log.userEmail ?? "anonymous"}
                     </td>
-                    <td class="p-3 opacity-80">{log.ip ?? "—"}</td>
+                    <td class="p-3 opacity-80">{log.ip ?? "-"}</td>
 
                     {/* Formatted Metadata Cell */}
                     <td class="p-3 font-sans max-w-sm">
@@ -184,11 +184,11 @@ export function LogsTab(props: LogsTabProps) {
 
 function MetadataPreview(props: { meta: unknown; onExpand: () => void }) {
   if (!props.meta || typeof props.meta !== "object") {
-    return <span class="opacity-60 text-xs">—</span>;
+    return <span class="opacity-60 text-xs">-</span>;
   }
 
   const entries = Object.entries(props.meta as Record<string, unknown>);
-  if (entries.length === 0) return <span class="opacity-60 text-xs">—</span>;
+  if (entries.length === 0) return <span class="opacity-60 text-xs">-</span>;
 
   return (
     <div class="flex items-center gap-1.5 flex-wrap">

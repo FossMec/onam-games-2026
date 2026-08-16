@@ -16,14 +16,14 @@ const SECTIONS = [
   },
   {
     title: "Your account",
-    body: "You sign in with Google; we never see your password. You are responsible for the activity on your account. One account per person, and — under the event's device rule — one account per device. Accounts created to bypass limits, abuse, or farm prizes may be restricted or removed.",
+    body: "You sign in with Google; we never see your password. You are responsible for the activity on your account. One account per person, and - under the event's device rule - one account per device. Accounts created to bypass limits, abuse, or farm prizes may be restricted or removed.",
   },
   {
     title: "Fair play & anti-cheat",
     body: [
       "We take fair play seriously: automated play, scripts, exploits, and tampering are not allowed.",
       "The Site uses device fingerprinting and behaviour checks to detect abuse. Suspicious activity may be flagged, and players who cheat may be warned, benched, or disqualified.",
-      "Attempting to circumvent these measures — including altering request payloads, timing, or device signals — violates these Terms.",
+      "Attempting to circumvent these measures - including altering request payloads, timing, or device signals - violates these Terms.",
     ],
   },
   {
@@ -63,7 +63,7 @@ const SECTIONS = [
 export default function Terms() {
   return (
     <main class="container space-y-8 py-10 max-w-3xl">
-      <Title>Terms of Service — FOSS Onam Games</Title>
+      <Title>Terms of Service - FOSS Onam Games</Title>
 
       <header class="space-y-2">
         <p

@@ -1,4 +1,4 @@
-// Generates public/pookalam-placeholder.svg — a stand-in pookalam for the
+// Generates public/pookalam-placeholder.svg - a stand-in pookalam for the
 // jigsaw until the real artwork lands.
 //
 // It is generated rather than hand-drawn so the parameters below can be tuned
@@ -40,7 +40,7 @@ const rad = (deg) => (deg * Math.PI) / 180;
 const x = (r, deg) => (C + r * Math.cos(rad(deg))).toFixed(2);
 const y = (r, deg) => (C + r * Math.sin(rad(deg))).toFixed(2);
 
-/** A ring of teardrop petals — the motif that reads most "pookalam". */
+/** A ring of teardrop petals - the motif that reads most "pookalam". */
 function petalRing(count, rInner, rOuter, fill, rotate = 0) {
   const step = 360 / count;
   const spread = step * 0.42;

@@ -410,12 +410,12 @@ export function SecurityTab(props: SecurityTabProps) {
                     <td class="p-2.5 font-sans truncate max-w-[150px]">
                       {row.userEmail ?? "anonymous"}
                     </td>
-                    <td class="p-2.5">{row.ip ?? "—"}</td>
+                    <td class="p-2.5">{row.ip ?? "-"}</td>
                     <td class="p-2.5 text-[11px] opacity-75 font-sans">
                       {/*
                         toLocaleString, not toLocaleTimeString: the latter
                         throws outright on `dateStyle` ("Invalid option"), and a
-                        threat row needs the date as much as the time — an IP
+                        threat row needs the date as much as the time - an IP
                         that tripped a rule "at 14:02" is useless without
                         knowing which day.
                       */}

@@ -13,7 +13,7 @@ describe("expectedScore", () => {
   });
 
   it("puts a 400-point lead at roughly 10:1", () => {
-    // The defining property of the Elo curve — worth pinning so nobody
+    // The defining property of the Elo curve - worth pinning so nobody
     // "simplifies" the formula into something with different behaviour.
     expect(expectedScore(1600, 1200)).toBeCloseTo(10 / 11, 3);
   });

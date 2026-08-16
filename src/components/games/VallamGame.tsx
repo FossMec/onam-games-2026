@@ -19,7 +19,7 @@ const ENEMY_PASSENGERS: SpriteName[] = [
 ];
 
 /**
- * Escape the Vallam — sliding-block board.
+ * Escape the Vallam - sliding-block board.
  *
  * Interaction is tap-to-select then tap-a-destination, same as the jigsaw and
  * wend boards. Dragging a block along an axis on a phone means fighting page
@@ -158,7 +158,7 @@ export function VallamGame(props: VallamGameProps) {
    * Restored by replaying the move list rather than by storing boat positions.
    * The move list is what gets submitted and what the server replays, so
    * rebuilding from it means the board a resuming player sees is exactly the
-   * board their submission describes — two representations could drift.
+   * board their submission describes - two representations could drift.
    */
   const [moves, setMoves] = createSignal<VallamMove[]>(props.initialMoves ?? []);
   const [boats, setBoats] = createSignal<BoatView[]>(
@@ -178,7 +178,7 @@ export function VallamGame(props: VallamGameProps) {
     if (!boat) return new Map<string, number>();
     const map = new Map<string, number>();
     for (const d of reachable(boats(), boat, size())) {
-      // Key on the cell the boat's leading end reaches — "tap where the nose
+      // Key on the cell the boat's leading end reaches - "tap where the nose
       // should end up". Every such cell is empty by construction (reachable
       // stops at the first obstruction) and none of them sit under the boat's
       // current footprint, so the markers never hide the boat they belong to.
@@ -256,7 +256,7 @@ export function VallamGame(props: VallamGameProps) {
           "touch-action": "none",
         }}
       >
-        {/* Water. Purely decorative grid lines — the tap targets are on top. */}
+        {/* Water. Purely decorative grid lines - the tap targets are on top. */}
         <div
           class="absolute inset-0 grid"
           style={{

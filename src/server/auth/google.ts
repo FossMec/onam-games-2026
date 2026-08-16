@@ -7,7 +7,7 @@ import type { OAuthSession } from "./service";
  *
  * Supabase's `signInWithOAuth` sends the browser to
  * `<project-ref>.supabase.co/auth/v1/authorize`, and Google's consent screen
- * prints the host of whatever `redirect_uri` it was handed — so a player is
+ * prints the host of whatever `redirect_uri` it was handed - so a player is
  * asked to sign in to "zejotrgmxdawjlurukpg.supabase.co", which is ugly and,
  * to someone who has been told to watch for phishing, alarming.
  *
@@ -27,7 +27,7 @@ import type { OAuthSession } from "./service";
  * ROLLBACK
  *
  * The two credentials below are the switch. Unset them, redeploy, and the app
- * falls back to `signInWithOAuth` — no code change. This is deliberate: it is
+ * falls back to `signInWithOAuth` - no code change. This is deliberate: it is
  * the sign-in path for a live event, and a broken one locks out every player.
  */
 
@@ -38,7 +38,7 @@ const TOKEN_URL = "https://oauth2.googleapis.com/token";
 /**
  * Ten minutes covers a slow reader on the Google screen and little else. This
  * cookie carries a live Supabase session between the callback route and the
- * page that finishes sign-in, so it is worth stealing — it should not outlive
+ * page that finishes sign-in, so it is worth stealing - it should not outlive
  * the redirect that needs it.
  */
 const PENDING_MAX_AGE_S = 60 * 10;
@@ -84,7 +84,7 @@ function getSecret(): string {
  * Sealed, HttpOnly, and separate from `og_session`.
  *
  * Kept apart from the real auth cookie so that a half-finished sign-in can
- * never touch a live one — clearing this on failure must not sign out the
+ * never touch a live one - clearing this on failure must not sign out the
  * person who was already signed in.
  */
 async function pendingCookie() {
@@ -116,7 +116,7 @@ function randomToken(): string {
  *
  * The client secret alone would satisfy Google here. The verifier costs three
  * lines and closes the case where an authorization code leaks out of the
- * redirect — through a referrer header, a shared browser, a logging proxy —
+ * redirect - through a referrer header, a shared browser, a logging proxy -
  * before we redeem it.
  */
 async function pkce(): Promise<{ verifier: string; challenge: string }> {
@@ -171,7 +171,7 @@ interface GoogleTokens {
 /**
  * Redeems the code and parks the resulting Supabase session in the cookie.
  *
- * Throws with a message meant for a player, not a log line — every one of these
+ * Throws with a message meant for a player, not a log line - every one of these
  * ends up rendered on the sign-in page.
  */
 export async function finishGoogleAuth(url: URL, origin: string): Promise<void> {
@@ -219,7 +219,7 @@ export async function finishGoogleAuth(url: URL, origin: string): Promise<void> 
    * client secret, and `state` covered the leg through the browser.
    *
    * For Supabase to accept this token at all, our client ID has to be listed
-   * under the Google provider's authorized client IDs — otherwise the audience
+   * under the Google provider's authorized client IDs - otherwise the audience
    * is one it does not recognise and it rejects the grant.
    */
   const { data, error } = await getSupabaseAnon().auth.signInWithIdToken({

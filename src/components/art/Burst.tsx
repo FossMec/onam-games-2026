@@ -1,7 +1,7 @@
 import { Show } from "solid-js";
 
 /**
- * The comic action starburst — the spiky explosion a shout sits inside.
+ * The comic action starburst - the spiky explosion a shout sits inside.
  *
  * Points are generated rather than hand-drawn so the spikiness can vary per
  * use without maintaining a dozen path strings, and so a `seed` gives each
@@ -43,7 +43,7 @@ function starPoints(spikes: number, seed: string): string {
 }
 
 export interface BurstProps {
-  /** Fill colour — pass a `--pop-*` var. */
+  /** Fill colour - pass a `--pop-*` var. */
   color?: string;
   spikes?: number;
   seed?: string;
@@ -81,7 +81,7 @@ export function Burst(props: BurstProps) {
 }
 
 /**
- * Halftone dots — the comic way to shade. Used anywhere a shadow would have
+ * Halftone dots - the comic way to shade. Used anywhere a shadow would have
  * been, which in this system is everywhere depth is needed.
  */
 export function Halftone(props: { class?: string; size?: number; opacity?: number }) {
@@ -100,7 +100,7 @@ export function Halftone(props: { class?: string; size?: number; opacity?: numbe
 
 /**
  * Comic speech bubble with a tail. The tail is part of the same path so the
- * outline is continuous — a separate triangle always shows a seam.
+ * outline is continuous - a separate triangle always shows a seam.
  */
 export function Bubble(props: {
   children: unknown;
@@ -156,14 +156,14 @@ export interface ShoutProps {
    * rather than owning the moment.
    *
    * It is scaled, never substituted. Standing a shout down to a plain badge
-   * loses the burst, the comic face and the ink stroke — which is to say all of
+   * loses the burst, the comic face and the ink stroke - which is to say all of
    * it, since the treatment *is* the design. Both dimensions come down together
    * so the proportions hold.
    */
   compact?: boolean;
 }
 
-/** A shout inside its burst — the standard win/fail moment. */
+/** A shout inside its burst - the standard win/fail moment. */
 export function ShoutBurst(props: ShoutProps) {
   return (
     <div class={`relative inline-grid place-items-center ${props.class ?? ""}`}>

@@ -7,6 +7,7 @@ import { BanNotice } from "./components/BanNotice";
 import { BetaGate } from "./components/BetaGate";
 import { Footer } from "./components/Footer";
 import { Nav } from "./components/Nav";
+import { ShortlistNotice } from "./components/pookalam/ShortlistNotice";
 import { InkFilter } from "./components/art/InkFilter";
 import "./app.css";
 
@@ -30,7 +31,7 @@ export default function App() {
             name="google-site-verification"
             content="-lINJGuul9m8kUB9WitBwq3UQZi8gWz52ncMnYWyc9I"
           />
-          <Meta property="og:title" content="FOSS ONAM — FOSS Onam Games by FOSS MEC" />
+          <Meta property="og:title" content="FOSS ONAM - FOSS Onam Games by FOSS MEC" />
           <Meta
             property="og:description"
             content="Seven days of games. One week of Onam. A open-source online festival with daily browser challenges, fair-play leaderboards, and Code-a-Pookalam by FOSS MEC."
@@ -45,7 +46,7 @@ export default function App() {
           <Meta name="twitter:card" content="summary_large_image" />
           <Meta name="twitter:site" content="@fossmec" />
           <Meta name="twitter:creator" content="@fossmec" />
-          <Meta name="twitter:title" content="FOSS ONAM — FOSS Onam Games by FOSS MEC" />
+          <Meta name="twitter:title" content="FOSS ONAM - FOSS Onam Games by FOSS MEC" />
           <Meta
             name="twitter:description"
             content="Seven days of games. One week of Onam. A open-source festival with daily browser challenges, leaderboards, and prizes by FOSS MEC."
@@ -81,7 +82,7 @@ export default function App() {
           <InkFilter />
           <div class="flex min-h-screen flex-col relative z-0">
             {/*
-              Every page, above the navigation header — a warning nobody sees is not
+              Every page, above the navigation header - a warning nobody sees is not
               a warning.
             */}
             {/*
@@ -92,6 +93,11 @@ export default function App() {
             <ErrorBoundary fallback={null}>
               <Suspense>
                 <BanNotice />
+              </Suspense>
+            </ErrorBoundary>
+            <ErrorBoundary fallback={null}>
+              <Suspense>
+                <ShortlistNotice />
               </Suspense>
             </ErrorBoundary>
             <ErrorBoundary fallback={null}>

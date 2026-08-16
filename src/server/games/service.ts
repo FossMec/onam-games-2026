@@ -9,7 +9,7 @@ import { getSettings } from "~/server/settings/service";
  * Where a game sits in its day.
  *
  *   upcoming  nothing is known: a "???" card with a countdown
- *   preview   the reveal — title, art and rules visible, still not playable
+ *   preview   the reveal - title, art and rules visible, still not playable
  *   tester    testers and admins only, ahead of the public release
  *   live      open to everyone
  *   closed    past its window; still playable for fun, off the daily board
@@ -31,7 +31,7 @@ export interface GameCard {
   previewAt: string | null;
   testerReleaseAt: string | null;
   status: GameStatus;
-  /** Registry copy — safe for every game at every status. */
+  /** Registry copy - safe for every game at every status. */
   tagline: string;
   howTo: string[];
   metric: GameMetric;
@@ -73,7 +73,7 @@ type ScheduleSettings = {
  * One query for the whole schedule.
  *
  * These four keys are always read together, and reading them one at a time cost
- * a round trip each on every request that resolves a game's status — which is
+ * a round trip each on every request that resolves a game's status - which is
  * the home page, the game page and the leaderboard. Adding the preview window
  * here made that four; batching makes it one.
  */
@@ -132,7 +132,7 @@ export async function resolveSchedule(
   previewAt: Date | null;
   testerReleaseAt: Date | null;
   status: GameStatus;
-  /** Raw `schedule.event_start_date` — lets callers reuse the settings fetch. */
+  /** Raw `schedule.event_start_date` - lets callers reuse the settings fetch. */
   eventStartDate: string;
 }> {
   const scheduleSettings = settings ?? (await getScheduleSettings());
@@ -209,8 +209,8 @@ function toCard(
     testerReleaseAt: schedule.testerReleaseAt?.toISOString() ?? null,
     status: schedule.status,
     // Only registry *copy* ships here. The previous version returned
-    // `configJson` wholesale for every published game — including unreleased
-    // ones — which handed tomorrow's setup to anyone who called the action.
+    // `configJson` wholesale for every published game - including unreleased
+    // ones - which handed tomorrow's setup to anyone who called the action.
     // Puzzle data now reaches the browser solely through `/start`, which
     // refuses to run until the game is live.
     tagline: def?.public.tagline ?? "",
@@ -233,7 +233,7 @@ function toCard(
  * it opens, and that it is locked.
  *
  * Only `upcoming` gets this treatment. A game in `preview` has deliberately
- * given its details up — that is the entire point of the status — and hiding
+ * given its details up - that is the entire point of the status - and hiding
  * them again here would make the reveal do nothing.
  */
 function maskCard(card: GameCard): GameCard {

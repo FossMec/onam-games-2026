@@ -5,22 +5,22 @@
  *
  * An edge shared by two pieces must be *the same curve* in absolute space,
  * whichever piece draws it. A jigsaw where the tab and the socket are not
- * congruent looks broken even when the puzzle logic is perfect — the pieces
+ * congruent looks broken even when the puzzle logic is perfect - the pieces
  * snap together and still visibly do not fit, which reads as a bug in the game
  * rather than a quirk of the art.
  *
  * The subtlety that gets this wrong: a piece walks its own outline clockwise,
  * so of the four edges it draws, two are traversed in the opposite direction to
  * the neighbour that shares them. Generating the curve from whichever end
- * happens to come first puts the tab at `offset` measured from *that* end — so
+ * happens to come first puts the tab at `offset` measured from *that* end - so
  * the two sides place it at `offset` and `1 - offset` respectively, and the
  * shapes only agree when `offset` is exactly 0.5. With `offset` roaming
  * 0.35..0.65 and an asymmetric `skew` on top, every shared edge was mismatched
  * by up to 15% of its length.
  *
  * The fix is the whole design here: every edge is generated once in a canonical
- * direction — left-to-right for horizontal edges, top-to-bottom for vertical
- * ones — and a piece that needs to walk it the other way emits the *same*
+ * direction - left-to-right for horizontal edges, top-to-bottom for vertical
+ * ones - and a piece that needs to walk it the other way emits the *same*
  * points in reverse. Reversing a cubic Bézier is exact: swap the endpoints and
  * swap the two control points. So both pieces trace geometry that is identical
  * to the last decimal, by construction rather than by tolerance.
@@ -42,7 +42,7 @@ export interface JigsawTab {
 type Pt = [number, number];
 
 /**
- * The seven points describing one edge — three on-curve, four control — always
+ * The seven points describing one edge - three on-curve, four control - always
  * in the edge's canonical direction.
  *
  * The normal is the canonical direction rotated a quarter turn, so for a

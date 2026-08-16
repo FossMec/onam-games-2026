@@ -24,7 +24,7 @@ const optionalTrimmed = (min: number, max: number, pattern?: RegExp) =>
 
 /**
  * Free text that ends up on a public leaderboard. Letters, digits and basic
- * punctuation only — enough for "St. Joseph's College" or "Working
+ * punctuation only - enough for "St. Joseph's College" or "Working
  * professional", not enough to inject markup or paste an essay.
  */
 const freeText = (max: number) =>

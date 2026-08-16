@@ -28,7 +28,7 @@ export interface MyStanding {
  * Just the caller's own position on a day's board.
  *
  * The share card needs a rank and a field size and nothing else. This asks the
- * leaderboard service directly for those two values in one query — no page
+ * leaderboard service directly for those two values in one query - no page
  * slice is fetched, and the ranking rules live in exactly one place.
  */
 export async function getMyStanding(gameId: string): Promise<MyStanding | null> {

@@ -18,20 +18,20 @@ const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36";
 
 /**
- * `out`    — filename written to public/fonts (must match @font-face in app.css)
- * `query`  — Google Fonts CSS2 `family=` value
- * `subset` — which unicode subset block to keep. Everything is latin except the
+ * `out`    - filename written to public/fonts (must match @font-face in app.css)
+ * `query`  - Google Fonts CSS2 `family=` value
+ * `subset` - which unicode subset block to keep. Everything is latin except the
  *            Malayalam cut of Baloo Chettan 2, where we take both.
  */
 const FONTS = [
-  // Wordmark only — two layers stacked for comic-poster chrome.
+  // Wordmark only - two layers stacked for comic-poster chrome.
   { out: "bungee.woff2", query: "Bungee", subsets: ["latin"] },
 
   // Display / headings / buttons.
   { out: "baloo-chettan-2.woff2", query: "Baloo+Chettan+2:wght@400..800", subsets: ["latin"] },
   // Baloo Chettan 2 also ships a Malayalam cut (+44 KB). Nothing renders
-  // Malayalam script today — the shouts are transliterated ("ADIPOLI", not
-  // "അടിപൊളി") — so it is left out. Add this back the moment real Malayalam
+  // Malayalam script today - the shouts are transliterated ("ADIPOLI", not
+  // "അടിപൊളി") - so it is left out. Add this back the moment real Malayalam
   // appears in the UI, or it will fall back to a system font and look wrong:
   // { out: "baloo-chettan-2-ml.woff2", query: "Baloo+Chettan+2:wght@400..800",
   //   subsets: ["malayalam"] },
@@ -39,7 +39,7 @@ const FONTS = [
   // Body / UI.
   { out: "nunito.woff2", query: "Nunito:wght@400..900", subsets: ["latin"] },
 
-  // Numerals — timers, leaderboards.
+  // Numerals - timers, leaderboards.
   { out: "space-mono-400.woff2", query: "Space+Mono:wght@400", subsets: ["latin"] },
   { out: "space-mono-700.woff2", query: "Space+Mono:wght@700", subsets: ["latin"] },
 
@@ -101,7 +101,7 @@ for (const font of FONTS) {
     total += bytes;
     console.log(`  ${font.out.padEnd(34)} ${(bytes / 1024).toFixed(1).padStart(7)} KB`);
   } catch (error) {
-    console.error(`  ${font.out.padEnd(34)}  FAILED — ${error.message}`);
+    console.error(`  ${font.out.padEnd(34)}  FAILED - ${error.message}`);
     process.exitCode = 1;
   }
 }

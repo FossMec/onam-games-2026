@@ -4,7 +4,7 @@
  * The block in `bindDeviceToUser` only catches the lazy version: signing up
  * again in the same browser without clearing anything. Anyone who clears site
  * data, opens a second browser, or uses a fresh profile gets a brand new
- * `device_hash` and walks straight through — while leaving behind a pile of
+ * `device_hash` and walks straight through - while leaving behind a pile of
  * evidence the database was already storing and nobody was reading.
  *
  * So this is deliberately a *scorer*, not a gate. It does not stop anybody: it
@@ -12,7 +12,7 @@
  * a human deciding who is eligible for a prize. A wrong block costs an honest
  * player their week; a wrong flag costs an admin thirty seconds.
  *
- * Kept pure and separate from the database so the weights can be tested — the
+ * Kept pure and separate from the database so the weights can be tested - the
  * one part of anti-cheat where being wrong is expensive and silent.
  */
 
@@ -33,15 +33,15 @@ export type LinkSignal =
  *
  * The weights encode how hard each signal is to change by accident:
  *
- *   ip         a household shares one public address. Nearly worthless alone —
- *              siblings on the same wifi are not cheating — but it corroborates.
+ *   ip         a household shares one public address. Nearly worthless alone -
+ *              siblings on the same wifi are not cheating - but it corroborates.
  *   screen     resolution + DPR. Thousands of people share the common ones.
  *   fonts      the installed font set. Fairly distinctive, survives a browser
  *              change, but common on stock phones.
  *   webgl      the GPU string. Same GPU across two browsers on one machine.
  *   audio      the audio stack's rendering quirks. Hardware and OS influenced,
  *              and it survives a cleared profile.
- *   localIp    the private LAN address, which belongs to the *machine* — two
+ *   localIp    the private LAN address, which belongs to the *machine* - two
  *              browsers on one phone report the same one. Not globally unique
  *              (half the routers on earth hand out 192.168.1.x), so it is
  *              priced to need company rather than to convict alone.
@@ -52,7 +52,7 @@ export type LinkSignal =
  *              which is exactly the move being looked for.
  *
  * Nothing except `fpVisitor` alone crosses the flag line, and even it does not
- * reach the top band by itself — a match needs corroboration to be called
+ * reach the top band by itself - a match needs corroboration to be called
  * near-certain. Note the deliberate pairing: `ip` + `localIp` together (30)
  * reach review, because the same public *and* private address is one machine
  * on one network rather than two people in one house.
@@ -76,7 +76,7 @@ const WEIGHTS: Record<LinkSignal, number> = {
 };
 
 export interface LinkVerdict {
-  /** 0–100. Not a probability — a ranking for triage. */
+  /** 0–100. Not a probability - a ranking for triage. */
   confidence: number;
   matched: LinkSignal[];
   severity: "info" | "warn" | "critical";

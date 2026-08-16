@@ -45,7 +45,7 @@ export const settingsRegistry: SettingDef[] = [
     /**
      * The whole site behind the tester list. A setting rather than a constant
      * so opening the doors on launch night is a toggle in /admin, not a deploy
-     * — the one change guaranteed to be needed at the worst possible moment.
+     * - the one change guaranteed to be needed at the worst possible moment.
      */
     description: "Closed beta: only testers and admins can see the site",
     defaultValue: true,
@@ -84,7 +84,7 @@ export const settingsRegistry: SettingDef[] = [
     key: "hunt.final_token",
     group: "hunt",
     /**
-     * Server-only. Never expose this through a public settings reader — it is
+     * Server-only. Never expose this through a public settings reader - it is
      * the single answer to the day-6 hunt for every player.
      */
     description: "Treasure hunt final-stage token (case/punctuation insensitive). Keep secret.",
@@ -113,7 +113,7 @@ export const settingsRegistry: SettingDef[] = [
   {
     key: "pookalam.submissions_close_at",
     group: "pookalam",
-    description: "IST datetime entries close — the Day 6 deadline (YYYY-MM-DDTHH:MM)",
+    description: "IST datetime entries close - the Day 6 deadline (YYYY-MM-DDTHH:MM)",
     defaultValue: "",
   },
   {
@@ -157,7 +157,7 @@ export const settingsRegistry: SettingDef[] = [
     group: "pookalam",
     /**
      * Advisory: the admin shortlists by hand and the UI counts against this.
-     * Nothing refuses a shortlist of eleven — it is a target, not a cap.
+     * Nothing refuses a shortlist of eleven - it is a target, not a cap.
      */
     description: "How many entries to shortlist for the public Elo round (target, not a cap)",
     defaultValue: 10,
@@ -167,7 +167,7 @@ export const settingsRegistry: SettingDef[] = [
     group: "pookalam",
     /**
      * A percentage of the n·log₂n sorting budget, NOT of the total pair count.
-     * See `voteTarget` — a percentage of every pair grows quadratically and
+     * See `voteTarget` - a percentage of every pair grows quadratically and
      * becomes unreachable exactly when the shortlist gets big.
      */
     description:
@@ -178,7 +178,7 @@ export const settingsRegistry: SettingDef[] = [
     key: "pookalam.leaderboard_delay_ms",
     group: "pookalam",
     description:
-      "How stale the Day 7 boards are allowed to be. The lag is deliberate — a live board makes late voters follow the leader",
+      "How stale the Day 7 boards are allowed to be. The lag is deliberate - a live board makes late voters follow the leader",
     defaultValue: 60000,
   },
   {
@@ -186,6 +186,27 @@ export const settingsRegistry: SettingDef[] = [
     group: "pookalam",
     description: "How far from a 1:1 square an uploaded pookalam may be, in percent",
     defaultValue: 5,
+  },
+  {
+    key: "collab.open",
+    group: "collab",
+    description: "Collaborative pookalam: allow placing flowers",
+    defaultValue: true,
+  },
+  {
+    key: "collab.daily_flowers",
+    group: "collab",
+    /**
+     * Counted in the browser, not here. Enforcing it server-side means storing
+     * a row per placement, which is the whole design this feature avoids — and
+     * the prize for defeating a localStorage counter is putting more flowers on
+     * a communal drawing, which is the point of the exercise.
+     *
+     * It lives in settings anyway so the number can be raised on a quiet night
+     * without a deploy.
+     */
+    description: "Flowers each person may place per day (enforced in the browser)",
+    defaultValue: 30,
   },
 ];
 

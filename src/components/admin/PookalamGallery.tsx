@@ -3,7 +3,7 @@ import { For, Show, createMemo, createSignal, onMount } from "solid-js";
 import { reviewerListPookalams, reviewerSetVerdict } from "~/server/pookalam/actions";
 
 /**
- * The shortlisting gallery — the tester half of the Pookalam admin tab.
+ * The shortlisting gallery - the tester half of the Pookalam admin tab.
  *
  * Between the day-6 deadline and the day-7 arena somebody has to look at every
  * entry: check the code runs, check nothing in the image identifies its author,
@@ -63,7 +63,7 @@ export function PookalamGallery() {
       </div>
 
       <p class="comment">
-        no names, on purpose. say what you think and why — the why is what the shortlist gets picked
+        no names, on purpose. say what you think and why - the why is what the shortlist gets picked
         on. flag anything with a watermark or a signature in it.
       </p>
 
@@ -166,7 +166,7 @@ export function PookalamGallery() {
                     </button>
                   </div>
 
-                  {/* What the other reviewers said. Named — this half is not anonymous. */}
+                  {/* What the other reviewers said. Named - this half is not anonymous. */}
                   <Show when={row.comments.some((entry) => entry.comment)}>
                     <div class="space-y-1 pt-1">
                       <For each={row.comments.filter((entry) => entry.comment)}>
@@ -174,7 +174,7 @@ export function PookalamGallery() {
                           <p class="text-xs font-semibold m-0">
                             <span>{entry.verdict === "like" ? "👍" : "👎"} </span>
                             <span class="font-black">{entry.reviewerName}</span>
-                            <span style={{ opacity: 0.85 }}> — {entry.comment}</span>
+                            <span style={{ opacity: 0.85 }}> - {entry.comment}</span>
                           </p>
                         )}
                       </For>

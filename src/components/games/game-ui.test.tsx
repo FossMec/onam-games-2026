@@ -67,7 +67,7 @@ describe("how to play", () => {
 
   /*
    * Mid-run the rules must be readable without offering anything that looks
-   * like it might restart the attempt — the case that sent somebody looking for
+   * like it might restart the attempt - the case that sent somebody looking for
    * a how-to that only existed behind the start button.
    */
   it("offers no start button when opened read-only", () => {
@@ -153,7 +153,7 @@ describe("jigsaw board", () => {
     const restored = restoreBoard(saved, view, 4);
     expect(restored.pieces).toEqual(saved.pieces);
     expect(restored.moveLog).toEqual(saved.moveLog);
-    // Copied, not aliased — the board mutates its own state.
+    // Copied, not aliased - the board mutates its own state.
     expect(restored.pieces[0]).not.toBe(saved.pieces[0]);
   });
 

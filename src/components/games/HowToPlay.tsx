@@ -5,7 +5,7 @@ import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { edgesForPiece, pieceOutline, type JigsawTab } from "~/lib/jigsaw-shape";
 
 /**
- * How to play — the rules, and a toy board that plays itself.
+ * How to play - the rules, and a toy board that plays itself.
  *
  * Written text alone does not survive a countdown. Somebody about to start a
  * ranked, one-shot, timed puzzle reads the first line and clicks Start, and
@@ -14,7 +14,7 @@ import { edgesForPiece, pieceOutline, type JigsawTab } from "~/lib/jigsaw-shape"
  * nothing and cannot be misread.
  *
  * The demo is always a *toy*: a 3x3 jigsaw, a 4x4 word grid, two boats. It has
- * to be obviously not the real puzzle, or it would be a spoiler — and none of
+ * to be obviously not the real puzzle, or it would be a spoiler - and none of
  * these boards are ever the instance the player is about to be dealt.
  *
  * Shown in two places: a modal on the way into a game (so it is read before
@@ -51,13 +51,13 @@ function Stage(props: { children: JSX.Element; seed: string; pop?: string }) {
  *
  * The framing here matters more than the animation. An earlier version labelled
  * the two cards "free, forever" and "$9.99 / month", which taught precisely the
- * wrong lesson — that open source means costs nothing. That is the single most
+ * wrong lesson - that open source means costs nothing. That is the single most
  * common misunderstanding this game exists to correct, and half the deck is
  * built on it: Obsidian costs nothing and is proprietary; Chrome costs nothing
  * and is proprietary. The test is whether you can read, change and share the
  * code, so the demo says that and nothing about money.
  *
- * The two products are invented — every real name is a card somebody is about
+ * The two products are invented - every real name is a card somebody is about
  * to be dealt, and showing one here with its answer stamped on it would be
  * handing over a free point. A matched pair in one category also teaches the
  * mechanic better than two unrelated products: the difference between them is
@@ -95,7 +95,7 @@ function TinderDemo() {
             </span>
           </div>
 
-          {/* Top card: swipes right straight away. It must be on top — that is
+          {/* Top card: swipes right straight away. It must be on top - that is
               the whole point of a deck, and the first version had it behind. */}
           <div
             class="absolute inset-0"
@@ -171,7 +171,7 @@ function DemoCard(props: { name: string; sub: string; pop: string; locked?: bool
 /**
  * Four pieces drifting together into one lump.
  *
- * Drawn with the real `pieceOutline`, on fixed tabs — so what a player watches
+ * Drawn with the real `pieceOutline`, on fixed tabs - so what a player watches
  * here is exactly the geometry they are about to drag around, tab for socket.
  * The earlier version showed a 3x3 of dashed slots with squares dropping into
  * them, which described a completely different game: this jigsaw has no slots,

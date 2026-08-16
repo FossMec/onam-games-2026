@@ -6,7 +6,7 @@ import { Confetti } from "~/components/art/Confetti";
  * The moment a run lands.
  *
  * A celebration is an event, not a piece of furniture. The shout used to live
- * in a card that sat on the page forever — loud on the first render, then just
+ * in a card that sat on the page forever - loud on the first render, then just
  * a large yellow box repeating a number you had already read, pushing the thing
  * you actually made below the fold. It belongs here: front and centre for as
  * long as the player wants it, then gone, leaving the board and the time behind
@@ -25,7 +25,7 @@ export interface WinModalProps {
   valid: boolean;
   /** Why it was rejected, when it was. */
   reason?: string;
-  /** The headline figures — time, score, penalty — as the caller renders them. */
+  /** The headline figures - time, score, penalty - as the caller renders them. */
   figures: JSX.Element;
   /**
    * The share card, drawn and ready to post.
@@ -128,7 +128,7 @@ export function WinModal(props: WinModalProps) {
                 Go again
               </button>
             </Show>
-            {/* Two ways onward, on one row. Short labels — at half width these
+            {/* Two ways onward, on one row. Short labels - at half width these
                 buttons are ~150px and anything longer wraps to two lines. */}
             <div class="grid grid-cols-2 gap-2">
               <a href="/leaderboard" class="btn-accent">

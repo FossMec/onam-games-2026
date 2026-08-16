@@ -26,7 +26,7 @@ const SEED = (generate().view as JumpView).seed;
  * The bot the anti-cheat has to survive, and the proof the game is winnable at
  * all: aim for the highest platform the current jump can still reach.
  *
- * Targeting "the next platform up" does not work — Maveli passes platforms on
+ * Targeting "the next platform up" does not work - Maveli passes platforms on
  * the way up and only lands on the way down, so a bot chasing what is above him
  * is steering away from where he is about to be. Predicting the apex is the
  * whole trick, and it is also roughly what a human is doing by eye.
@@ -138,7 +138,7 @@ describe("level generation", () => {
 });
 
 describe("simulate", () => {
-  it("is deterministic — the same trace always scores the same", () => {
+  it("is deterministic - the same trace always scores the same", () => {
     const inputs = autoplay(SEED, 900);
     const first = simulate(SEED, inputs);
     const second = simulate(SEED, inputs);
@@ -164,7 +164,7 @@ describe("simulate", () => {
 
   it("rejects malformed traces rather than repairing them", () => {
     expect(simulate(SEED, "nope")).toBeNull();
-    // A delta of zero — two changes on one frame. Unrepresentable by design.
+    // A delta of zero - two changes on one frame. Unrepresentable by design.
     expect(simulate(SEED, [packInput(4, 1), 1])).toBeNull();
     expect(simulate(SEED, [-3])).toBeNull();
     expect(simulate(SEED, [7.5])).toBeNull();
@@ -209,7 +209,7 @@ describe("verify", () => {
     expect(run({ inputs }, (played.frames / FPS) * 1000).valid).toBe(true);
   });
 
-  it("accepts a run slower than its frame count — a struggling phone is not a cheat", () => {
+  it("accepts a run slower than its frame count - a struggling phone is not a cheat", () => {
     const inputs = autoplay(SEED, 1_800);
     const played = simulate(SEED, inputs)!;
     // Three times as long on the clock as the simulation implies. A device

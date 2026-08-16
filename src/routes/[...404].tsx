@@ -9,7 +9,7 @@ import { SHOUT_COLOR } from "~/lib/shouts";
 export default function NotFound() {
   return (
     <main class="container flex min-h-[60vh] items-center justify-center py-10">
-      <Title>Nothing here — FOSS Onam Games</Title>
+      <Title>Nothing here - FOSS Onam Games</Title>
       <HttpStatusCode code={404} />
 
       <div
@@ -33,7 +33,7 @@ export default function NotFound() {
           <ShoutBurst text="ENTHUVA!" color={SHOUT_COLOR.confused} seed="404" />
           <h1 class="text-2xl">There's nothing here</h1>
           <p class="font-semibold">
-            This page doesn't exist. If a clue sent you here, the clue was lying — or you're early.
+            This page doesn't exist. If a clue sent you here, the clue was lying - or you're early.
           </p>
           <p class="comment">not every 404 is a treasure hunt stage. this one isn't.</p>
           <a href="/" class="btn-brand">

@@ -1,7 +1,7 @@
 // Seeds settings + the 7-day schedule into the DATABASE_URL from .env.
 //
 // The `games` rows carry schedule and operational state only. How each game
-// behaves — attempts, limits, generation, verification — lives in
+// behaves - attempts, limits, generation, verification - lives in
 // src/server/games/registry.ts, joined on `game_type`. Keep the types below in
 // sync with that file or the game will refuse to start.
 //
@@ -68,7 +68,7 @@ const games = [
     difficulty: "hard",
     // THE ARTWORK SWAP POINT. The jigsaw only uses this as a texture inside
     // its clip paths, so dropping in the real pookalam means changing this URL
-    // — no deploy, no code change. Requirements: square aspect ratio, and busy
+    // - no deploy, no code change. Requirements: square aspect ratio, and busy
     // near the edges (a plain border makes the corner pieces pure guesswork).
     // A more symmetric design is a HARDER puzzle, so revisit `minPlausibleMs`
     // for the jigsaw in src/server/games/registry.ts when you change it.

@@ -47,7 +47,7 @@ export interface StartResult {
 
 /**
  * An attempt left open past the game's `maxDurationMs` is dead. It still burns
- * an attempt — otherwise parking a tab open would be a free reroll on a
+ * an attempt - otherwise parking a tab open would be a free reroll on a
  * seed you did not like.
  */
 async function expireIfStale(
@@ -68,7 +68,7 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
   if (!game) throw new HttpError(404, "Game not found");
   /*
    * `closed` is deliberately playable. Every past day stays open forever, so
-   * somebody who joins on day 5 can still go back and play days 1-4 — which is
+   * somebody who joins on day 5 can still go back and play days 1-4 - which is
    * most of the point of a week-long event with a growing audience.
    *
    * A late run counts towards the overall table at the completion floor and
@@ -78,7 +78,7 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
    * `upcoming` and `preview` are refused, because releasing a puzzle early is
    * the one thing that cannot be undone. Preview shows a player what the game
    * is; the seed still only exists once the clock says so, and this check is
-   * what makes that true rather than the button being hidden — the endpoint is
+   * what makes that true rather than the button being hidden - the endpoint is
    * callable directly.
    */
   if (game.status === "upcoming" || game.status === "preview") {
@@ -132,7 +132,7 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
     );
   }
 
-  // Canonical daily seed ensures fair competition — every player receives the exact same puzzle/level.
+  // Canonical daily seed ensures fair competition - every player receives the exact same puzzle/level.
   const seed = sha256(`foss-onam:daily-game:${game.slug}:day-${game.day}`);
   const { view } = def.generate(seed, game.difficulty, game.assets as GameAssets);
   const attemptNumber = (prior[0]?.attemptNumber ?? 0) + 1;
@@ -351,7 +351,7 @@ export interface TinderRecap {
  * Three things keep this from being a leak. It reads the caller's own attempt
  * row; it refuses unless that attempt is `submitted`; and it regenerates from
  * that attempt's seed, which is unique per player per run. So the most it can
- * ever hand over is the deck you just finished — and every card in it is one
+ * ever hand over is the deck you just finished - and every card in it is one
  * you have already answered correctly, or the run would not have ended.
  */
 export async function getMyRecapBySlug(slug: string, userId: string): Promise<TinderRecap | null> {
@@ -438,7 +438,7 @@ async function upsertDailyBest(params: {
 
   if (written.length > 0) return true;
 
-  // Not an improvement — still keep the run counter honest.
+  // Not an improvement - still keep the run counter honest.
   await db
     .update(dailyLeaderboard)
     .set({ attemptsUsed: params.attemptsUsed })
@@ -472,7 +472,7 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
   const afterDeadline = schedule.endAt ? now.getTime() > schedule.endAt.getTime() : false;
 
   // Attempts are numbered 1..N at creation and never deleted, so the current
-  // row's number already is the count of runs used — no recount needed.
+  // row's number already is the count of runs used - no recount needed.
   const attemptsUsed = attempt.attemptNumber;
   const unlimited = input.role !== "player";
   const attemptsRemaining = unlimited
@@ -507,7 +507,7 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
 
   // The registry regenerates the answer from the seed and grades the
   // submission. For score games the number it returns is the only score that
-  // reaches the DB — anything the client claimed is dropped on the floor.
+  // reaches the DB - anything the client claimed is dropped on the floor.
   const result = await def.verify({
     seed: attempt.seed,
     difficulty: game.difficulty,
@@ -516,8 +516,8 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
   });
 
   /*
-   * The ranked duration. A game may charge its own time penalty — Tinder adds
-   * three seconds per wrong swipe — and that penalty is derived from the replay
+   * The ranked duration. A game may charge its own time penalty - Tinder adds
+   * three seconds per wrong swipe - and that penalty is derived from the replay
    * above, so it is as server-authoritative as the clock it is added to. This
    * combined figure is what gets stored and ranked; `rawDurationMs` survives
    * only to show the player what the mistakes cost them.
@@ -598,14 +598,14 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
    * currently looks wrong with it.
    *
    * Detection rules get written after the event, once you can see what the
-   * cheating actually looked like — but they can only ever run over what was
+   * cheating actually looked like - but they can only ever run over what was
    * captured while it happened. A row that omits the submitting IP because
    * nothing suspicious was flagged at the time is a row no later query can
    * rescue.
    *
    * Note `startIp` and `submitIp` are separate on purpose: `attempt.ip` is
    * where the attempt was *opened*, and the two differing is itself worth
-   * knowing — a run started on wifi and submitted from another network, or a
+   * knowing - a run started on wifi and submitted from another network, or a
    * device that changed hands mid-attempt.
    */
   const submitMeta = getRequestMeta();

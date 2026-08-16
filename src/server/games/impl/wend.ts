@@ -2,13 +2,13 @@ import type { GeneratedInstance, VerifyInput, VerifyResult } from "../registry";
 import { createRng } from "../rng";
 
 /**
- * Wend — a word puzzle that is really a tiling puzzle.
+ * Wend - a word puzzle that is really a tiling puzzle.
  *
  * THE RULES
  *
  * A grid of letters with a few walls. Six words are hidden in it, one of each
  * length from three to eight. A word is traced through orthogonally adjacent
- * tiles — up, down, left, right, never diagonally — and the path may bend as
+ * tiles - up, down, left, right, never diagonally - and the path may bend as
  * often as it likes, winding around the walls.
  *
  * The constraint that makes it a puzzle rather than a word search: EVERY open
@@ -32,13 +32,13 @@ import { createRng } from "../rng";
  *
  * The board itself is a frozen constant rather than something generated at
  * runtime. Constructing one is a backtracking search and *proving it has a
- * single solution* is a bigger one — seconds of work, which is fine offline and
+ * single solution* is a bigger one - seconds of work, which is fine offline and
  * unacceptable on a cold start. See `scripts/make-wend-board.mjs`.
  */
 
 export const GRID_SIZE = 6;
 
-/** Words to find. Order is irrelevant — the player finds them however they like. */
+/** Words to find. Order is irrelevant - the player finds them however they like. */
 export const WORDS = ["GNU", "ONAM", "LINUX", "KERNEL", "PAYASAM", "POOKALAM"] as const;
 
 /**
@@ -104,7 +104,7 @@ export interface WendView {
    * How long each hidden word is, ascending. NOT the words themselves.
    *
    * Deducing which routes spell which words is the puzzle. An earlier version
-   * shipped the word list to the browser, which gave the whole thing away —
+   * shipped the word list to the browser, which gave the whole thing away -
    * with the answers in hand the board is a five-minute tracing exercise.
    * The player gets what the real game gives them: how many words, and how
    * long each one is.
@@ -148,8 +148,8 @@ export function generate(seed: string): GeneratedInstance {
       openCells: countOpen(grid),
     } satisfies WendView,
     /*
-     * Nothing to withhold. Verification is structural — it checks that the
-     * submitted paths are legal and tile the board — so it never needs a stored
+     * Nothing to withhold. Verification is structural - it checks that the
+     * submitted paths are legal and tile the board - so it never needs a stored
      * answer to compare against. That also means any genuinely valid solution
      * is accepted, not just the one the generator happened to find.
      */
@@ -164,8 +164,8 @@ const adjacent = (a: Cell, b: Cell): boolean => Math.abs(a.r - b.r) + Math.abs(a
  *
  * Backs the mid-attempt trace endpoint. The words are the puzzle and are never
  * sent to the browser, so the client cannot answer this itself. Shipping hashes
- * instead would not help — an eight-letter uppercase word falls to a wordlist
- * in seconds — so the check is a server round trip.
+ * instead would not help - an eight-letter uppercase word falls to a wordlist
+ * in seconds - so the check is a server round trip.
  *
  * It returns only the word the player just traced, which they can read off
  * their own screen, and says nothing about the ones they have not found.
@@ -240,7 +240,7 @@ export function verify(input: VerifyInput): VerifyResult {
       if (grid[cell.r][cell.c] !== entry.word[i]) {
         return { valid: false, reason: `"${entry.word}" is not there. ENTHUVA!` };
       }
-      // Steps must be orthogonal and one tile long — the path may bend, but it
+      // Steps must be orthogonal and one tile long - the path may bend, but it
       // may never jump or cut a corner.
       if (i > 0 && !adjacent(entry.cells[i - 1], cell)) {
         return { valid: false, reason: `"${entry.word}" does not join up.` };

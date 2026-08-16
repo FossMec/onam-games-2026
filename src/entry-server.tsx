@@ -23,7 +23,7 @@ export default createHandler(() => {
             <link rel="apple-touch-icon" href="/foss-logo-original.png" />
             {/*
             Only the two faces that carry every page are preloaded. The other
-            four (wordmark, shouts, mono, marker hand) load lazily — preloading
+            four (wordmark, shouts, mono, marker hand) load lazily - preloading
             all six would fight the HTML for bandwidth on a campus connection.
           */}
             <link

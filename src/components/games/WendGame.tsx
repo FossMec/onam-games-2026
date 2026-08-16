@@ -1,16 +1,16 @@
 import { For, Show, createMemo, createSignal, onCleanup } from "solid-js";
 
 /**
- * Wend board — drag a finger across the letters to trace a word.
+ * Wend board - drag a finger across the letters to trace a word.
  *
  * You do not get the words. The board tells you how many there are and how long
  * each one is; working out which route through the letters spells which word is
  * the entire puzzle. So the browser genuinely cannot tell whether a path is a
- * word — it asks the server when you let go.
+ * word - it asks the server when you let go.
  *
  * Dragging is the primary input, unlike every other board in this project.
  * Elsewhere tapping wins because a drag fights the page scroll; here the
- * gesture *is* the mechanic — you are drawing a line through a maze — and
+ * gesture *is* the mechanic - you are drawing a line through a maze - and
  * `touch-action: none` on the grid takes scrolling out of the fight. Tapping
  * still works for anyone who prefers it, or who cannot drag accurately.
  */
@@ -120,7 +120,7 @@ export function WendGame(props: WendGameProps) {
       setPath([cell]);
       return;
     }
-    // Dragging back over the previous tile retraces — the natural undo for a gesture
+    // Dragging back over the previous tile retraces - the natural undo for a gesture
     if (current.length > 1 && key(current[current.length - 2]) === k) {
       setPath(current.slice(0, -1));
       return;
@@ -196,7 +196,7 @@ export function WendGame(props: WendGameProps) {
   const tapCell = (r: number, c: number) => {
     if (props.disabled || checking()) return;
     const k = key({ r, c });
-    // Tapping a locked word releases it — one tap to undo a wrong-but-real word
+    // Tapping a locked word releases it - one tap to undo a wrong-but-real word
     // that turned out to strand a tile.
     const owner = lockedCells().get(k);
     if (owner !== undefined) {

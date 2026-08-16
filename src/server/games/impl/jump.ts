@@ -2,7 +2,7 @@ import { FPS, MAX_FRAMES, MAX_INPUTS, simulate } from "~/lib/jump-sim";
 import type { GeneratedInstance, VerifyInput, VerifyResult } from "../registry";
 
 /**
- * Maveli Jump — server half.
+ * Maveli Jump - server half.
  *
  * All the physics lives in `~/lib/jump-sim`, which the browser imports too;
  * this file only decides what to *believe*. The rules:
@@ -18,7 +18,7 @@ import type { GeneratedInstance, VerifyInput, VerifyResult } from "../registry";
  *      anyone and would only mean the game could not render.
  *
  * What this does *not* stop: someone who writes a good bot and lets it run in
- * real time for six minutes. That is a deliberate line — defeating it would
+ * real time for six minutes. That is a deliberate line - defeating it would
  * mean behavioural fingerprinting of input timing, which has false positives on
  * exactly the players least able to argue about it (cheap phones, screen
  * readers, anyone using a keyboard). Twelve attempts a day bounds the damage.
@@ -30,13 +30,13 @@ import type { GeneratedInstance, VerifyInput, VerifyResult } from "../registry";
  * Same policy as Wend, for the same reason. A per-player seed was measured
  * first and the spread was indefensible: on identical bot play, one seed
  * scored 11,858 and another 256. That is not a leaderboard, it is a lottery
- * with a skill garnish, and the user's own call on Wend applies exactly —
+ * with a skill garnish, and the user's own call on Wend applies exactly -
  * different levels mean different difficulty and you cannot rank people across
  * puzzles that are not equally hard.
  *
  * The accepted cost is that a player going late has heard about the mean
- * stretch at 2,000. That is worth far less than it sounds — knowing a moving
- * platform is coming does not make you land on it — and it is a smaller
+ * stretch at 2,000. That is worth far less than it sounds - knowing a moving
+ * platform is coming does not make you land on it - and it is a smaller
  * unfairness than handing one player a level forty times harder than another's.
  *
  * Never change this string once the day is live: it would invalidate every
@@ -47,7 +47,7 @@ const LEVEL_SEED = "maveli-jump-canonical-v1";
 /**
  * A known and accepted property: the score has a ceiling of roughly 11,200.
  *
- * Six minutes at a fixed 60Hz is a *rate* limit — a player who simply never
+ * Six minutes at a fixed 60Hz is a *rate* limit - a player who simply never
  * dies climbs at a near-constant speed, so anyone flawless for the whole run
  * arrives at the same number. Tuning was tried in both directions and could not
  * remove it: widening gaps past the jump apex only converts skill into luck,
@@ -57,13 +57,13 @@ const LEVEL_SEED = "maveli-jump-canonical-v1";
  *
  * That is fine, because ranking is by percentile and ties share a rank: several
  * people who each played six flawless minutes *should* share first place. It is
- * also a useful signal — an 11,200 is either a genuinely extraordinary run or a
+ * also a useful signal - an 11,200 is either a genuinely extraordinary run or a
  * bot, and either way it is worth an admin glancing at.
  */
 
 export interface JumpView {
   kind: "jump";
-  /** The level seed. Public by design — see rule 3. */
+  /** The level seed. Public by design - see rule 3. */
   seed: string;
   fps: number;
   maxFrames: number;
@@ -87,7 +87,7 @@ export function generate(): GeneratedInstance {
  * Slack on the wall-clock check.
  *
  * The simulation advances one frame per animation frame, so a device that
- * cannot hold 60fps simulates *slower* than real time — that direction is fine
+ * cannot hold 60fps simulates *slower* than real time - that direction is fine
  * and needs no allowance. The allowance exists for the other direction: the
  * clock starts at `/start`, and page setup, asset decode and the player's own
  * "wait, how do I play" pause all land before frame one. A run can therefore

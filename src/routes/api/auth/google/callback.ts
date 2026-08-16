@@ -6,7 +6,7 @@ import { finishGoogleAuth, isDirectGoogleEnabled } from "~/server/auth/google";
  *
  * Redeems the code and parks the Supabase session in a sealed cookie, then
  * hands off to `/auth/callback`, which collects the device fingerprint and
- * finishes sign-in. The tokens never touch the URL or any JavaScript — the
+ * finishes sign-in. The tokens never touch the URL or any JavaScript - the
  * page claims them through a server function that reads the cookie.
  */
 function bounce(to: string): Response {

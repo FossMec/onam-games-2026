@@ -1,6 +1,7 @@
 import { Title } from "@solidjs/meta";
-import { Send } from "lucide-solid";
-import { For, type JSX } from "solid-js";
+import { createAsync } from "@solidjs/router";
+import { Pencil, Send } from "lucide-solid";
+import { For, Show, type JSX } from "solid-js";
 
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
@@ -9,8 +10,21 @@ import { PookalamInteractiveCanvas } from "~/components/pookalam/PookalamInterac
 import { PookalamTutorials } from "~/components/pookalam/PookalamTutorials";
 import { PreviousPookalamCarousel } from "~/components/pookalam/PreviousPookalamCarousel";
 import { POOKALAM } from "~/lib/event-content";
+import { getPookalamState } from "~/server/pookalam/actions";
 
 const POPS = ["pop-yellow", "pop-teal", "pop-blue", "pop-purple", "pop-pink"];
+
+const STATUS_COLOR: Record<string, string> = {
+  pending: "var(--pop-yellow)",
+  approved: "var(--pop-teal)",
+  rejected: "var(--pop-red)",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: "waiting on review",
+  approved: "accepted",
+  rejected: "not accepted",
+};
 
 function Section(props: {
   title: string;
@@ -33,9 +47,12 @@ function Section(props: {
 }
 
 export default function CodeAPookalam() {
+  const state = createAsync(() => getPookalamState());
+  const mine = () => state()?.mine ?? null;
+
   return (
     <main class="container space-y-12 py-6">
-      <Title>{POOKALAM.title} — FOSS Onam Games</Title>
+      <Title>{POOKALAM.title} - FOSS Onam Games</Title>
 
       {/* ------------------------------------------------------------- HERO */}
       <section
@@ -106,6 +123,80 @@ export default function CodeAPookalam() {
           <p class="comment text-xs">Submissions close Day 6 Midnight</p>
         </div>
       </section>
+
+      {/* --------------------------------------------------- YOUR ENTRY STATUS */}
+      <Show when={mine()}>
+        <section class="space-y-3">
+          <div class="flex items-center gap-2">
+            <SpriteIcon name="concentric-pookalam" size={22} interactive />
+            <h2 class="rule m-0">Your entry</h2>
+          </div>
+
+          <div
+            class="card space-y-3 sm:flex sm:items-start sm:gap-4 sm:space-y-0"
+            style={{
+              "--pop": mine()!.shortlisted ? "var(--pop-purple)" : STATUS_COLOR[mine()!.status],
+            }}
+          >
+            <img
+              src={mine()!.imageUrl}
+              alt={mine()!.title}
+              class="w-full sm:w-32 sm:shrink-0"
+              style={{
+                "aspect-ratio": "1 / 1",
+                "object-fit": "contain",
+                background: "var(--paper-2)",
+                border: "var(--ink-w) solid var(--ink)",
+                "border-radius": "var(--radius)",
+              }}
+            />
+            <div class="w-full space-y-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <Show when={mine()!.shortlisted}>
+                  <span class="badge" style={{ "--pop": "var(--pop-purple)" }}>
+                    shortlisted for Day 7
+                  </span>
+                </Show>
+                <span class="badge" style={{ "--pop": STATUS_COLOR[mine()!.status] }}>
+                  {STATUS_LABEL[mine()!.status]}
+                </span>
+                <p class="font-extrabold m-0">{mine()!.title}</p>
+              </div>
+
+              <p class="comment text-xs">
+                <Show
+                  when={mine()!.shortlisted}
+                  fallback="your entry is in the review queue. shortlisted entries face the community vote on Day 7."
+                >
+                  the jury picked your pookalam for the head-to-head arena. the community votes all
+                  day on Day 7 - good luck!
+                </Show>
+              </p>
+
+              <Show when={mine()!.reviewNote}>
+                <p
+                  class="text-xs font-semibold m-0"
+                  style={{
+                    color: "var(--ink-soft)",
+                    "border-left": "3px solid var(--ink-soft)",
+                    "padding-left": "0.5rem",
+                  }}
+                >
+                  note from the judges: {mine()!.reviewNote}
+                </p>
+              </Show>
+
+              <a
+                href="/code-a-pookalam/submit"
+                class="btn-ghost text-xs inline-flex items-center gap-1.5"
+              >
+                <Pencil size={14} />
+                <span>View / edit your entry</span>
+              </a>
+            </div>
+          </div>
+        </section>
+      </Show>
 
       {/* ---------------------------------------------------- PRIZES & BOUNTIES */}
       <Section title="Prizes & Bounties" id="prizes" confettiSeed="cap-prizes" confettiCount={5}>

@@ -86,7 +86,7 @@ interface FinishPayload {
 /**
  * Server errors, rewritten for a human mid-game.
  *
- * The raw strings are correct but they read like a status code — "You have
+ * The raw strings are correct but they read like a status code - "You have
  * already played this game" lands as a rejection when what actually happened is
  * that the player finished it and their board is sitting right below the
  * message. Anything unrecognised falls through unchanged rather than being
@@ -95,14 +95,14 @@ interface FinishPayload {
  */
 const FRIENDLY_ERRORS: Record<string, string> = {
   "You have already played this game":
-    "You have already played this one — it was one run only. Your board and your time are below.",
+    "You have already played this one - it was one run only. Your board and your time are below.",
   "You are out of runs for today":
     "That was your last run of the day. Your best one is the one that counts.",
   "This game is not available yet": "Not open yet. The countdown above is the honest answer.",
   "Attempt not found": "That run has gone stale. Reload the page and start a fresh one.",
   "This attempt has already been submitted":
     "That run is already in. Reload the page to see how it went.",
-  "Too many requests": "Easy — too many requests too fast. Give it a few seconds.",
+  "Too many requests": "Easy - too many requests too fast. Give it a few seconds.",
   Forbidden: "That run belongs to a different account.",
   "Game not found": "There is no game at this address.",
   "Submission too large": "That submission was too big to accept. Reload and play the run again.",
@@ -132,7 +132,7 @@ export default function GamePage() {
   /**
    * The rules screen, in one of two modes.
    *
-   *   "start"  on the way into a run — ends with the button that starts it
+   *   "start"  on the way into a run - ends with the button that starts it
    *   "read"   reference only, for a player already mid-run
    */
   const [howTo, setHowTo] = createSignal<"start" | "read" | null>(null);
@@ -164,7 +164,7 @@ export default function GamePage() {
 
   /*
    * A refresh loses the board, so an attempt found in local storage is
-   * rehydrated by calling `/start` again. That endpoint is idempotent — it
+   * rehydrated by calling `/start` again. That endpoint is idempotent - it
    * returns the *existing* attempt with the same seed and the same original
    * `startedAt`, so resuming never re-rolls the puzzle or resets the clock.
    */
@@ -173,7 +173,7 @@ export default function GamePage() {
     setRehydrated(true);
 
     // A finished board outlives the attempt, so it is restored first and
-    // independently — a player who comes back tomorrow still gets to see it.
+    // independently - a player who comes back tomorrow still gets to see it.
     const done = getFinished(slug());
     if (done) {
       setFinishedBoard({ view: done.view as GameView, submission: done.submission });
@@ -237,7 +237,7 @@ export default function GamePage() {
       setView(data.view ?? null);
       setResult(null);
     } catch {
-      setError("Network hiccup — the run could not be started. Check your connection.");
+      setError("Network hiccup - the run could not be started. Check your connection.");
     } finally {
       setBusy(false);
     }
@@ -306,7 +306,7 @@ export default function GamePage() {
         setFinishedBoard({ view: board, submission: submittedState });
       }
       // The celebration is for the moment it happened, so it is armed here and
-      // nowhere else — a reload restores the result but not the fireworks.
+      // nowhere else - a reload restores the result but not the fireworks.
       setCelebrating(true);
       clearProgress(token);
       clearAttempt(slug());
@@ -326,7 +326,7 @@ export default function GamePage() {
         reason: data.reason,
       });
     } catch {
-      setError("Network hiccup — that submission did not land. Try again.");
+      setError("Network hiccup - that submission did not land. Try again.");
     } finally {
       setBusy(false);
     }
@@ -362,7 +362,7 @@ export default function GamePage() {
   };
 
   /*
-   * Closed games stay playable — every past day is open forever so a latecomer
+   * Closed games stay playable - every past day is open forever so a latecomer
    * can catch up. The run counts towards the overall table at the completion
    * floor and never touches that day's board; the server decides that from its
    * own clock, this is only what to render.
@@ -379,13 +379,13 @@ export default function GamePage() {
   /**
    * Done for good.
    *
-   * Testing a *submitted* attempt alone was not enough — an expired or void run
+   * Testing a *submitted* attempt alone was not enough - an expired or void run
    * left a Start button the server then refused with a 409, so the player got
    * an error where they should have got their board. Runs remaining is the
    * honest question and covers every terminal status.
    *
    * The `attempt()` guard is load-bearing and was missing: with no attempt row
-   * — signed out, or the query still in flight — `attemptsLeft()` falls back to
+   * - signed out, or the query still in flight - `attemptsLeft()` falls back to
    * zero, and a first-time visitor was told "you're done with this one, every
    * run has been used" before they had ever played it. No attempt record means
    * nothing is known, which is not the same as nothing is left.
@@ -402,8 +402,8 @@ export default function GamePage() {
   /**
    * The last run, as the server remembers it.
    *
-   * `result` only exists in the tab that finished the run. Coming back later —
-   * a reload, a new device, the next morning — used to show an empty page with
+   * `result` only exists in the tab that finished the run. Coming back later -
+   * a reload, a new device, the next morning - used to show an empty page with
    * a "Your board" heading and nothing under it. The attempt row has everything
    * needed to say what happened, so a revisit says it.
    */
@@ -425,7 +425,7 @@ export default function GamePage() {
   });
 
   /**
-   * The run to describe under the board — this tab's fresh result if there is
+   * The run to describe under the board - this tab's fresh result if there is
    * one, otherwise whatever the server remembers. One value, so the ending is
    * one panel rather than a fresh card stacked on top of a historical one
    * repeating the same number.
@@ -463,7 +463,7 @@ export default function GamePage() {
   /**
    * The finished jigsaw, as board state.
    *
-   * What was submitted is a *layout* — `{ id, gx, gy }` in whole grid cells —
+   * What was submitted is a *layout* - `{ id, gx, gy }` in whole grid cells -
    * and what the board renders is *progress*, `{ pieces, moveLog }`. Those are
    * different shapes, and handing the first to the component expecting the
    * second crashed it on `pieces.length` of undefined. A cast was papering over
@@ -501,7 +501,7 @@ export default function GamePage() {
   /**
    * The final hunt clue hands the token over as a URL parameter, so a scanned
    * QR lands straight on a resolved submission. The value is stripped from the
-   * address bar once read — it is the answer, and it should not sit in history
+   * address bar once read - it is the answer, and it should not sit in history
    * or get pasted into a group chat along with the page link.
    */
   createEffect(() => {
@@ -538,7 +538,7 @@ export default function GamePage() {
    * Where this run currently sits on the day's board.
    *
    * Fetched only once a run has actually landed, because it is only ever used
-   * by the share card — the rank on the card is the whole reason anyone else
+   * by the share card - the rank on the card is the whole reason anyone else
    * clicks the link. A failure here is not worth surfacing: the card falls back
    * to a "just for fun" badge and still shares.
    */
@@ -557,7 +557,7 @@ export default function GamePage() {
   /**
    * Everything the card needs, or null when there is nothing to brag about.
    *
-   * Invalid runs never get here — a rejected submission is not a score, and a
+   * Invalid runs never get here - a rejected submission is not a score, and a
    * card announcing one would be a strange thing to post.
    */
   const shareData = createMemo<ShareCardData | null>(() => {
@@ -597,7 +597,7 @@ export default function GamePage() {
 
   return (
     <main class="container space-y-6 py-6">
-      <Title>{game()?.title ?? "Game"} — FOSS Onam Games</Title>
+      <Title>{game()?.title ?? "Game"} - FOSS Onam Games</Title>
 
       <Show when={!game()}>
         <div class="card pop-red space-y-2 text-center">
@@ -627,7 +627,7 @@ export default function GamePage() {
         {/*
           The warning modal and the benched banner both live in the app shell
           now, so they show on every page. All this page still does is refuse to
-          hand out a board — which is the part that has to be here.
+          hand out a board - which is the part that has to be here.
         */}
         <Show when={banState()?.blocksPlay}>
           <div class="card pop-red space-y-2">
@@ -677,7 +677,7 @@ export default function GamePage() {
         {/*
           ---------------------------------------------------------- preview
           The reveal, a day before the release. The same panel a player will
-          start the run from, minus the start button — and the rules panel
+          start the run from, minus the start button - and the rules panel
           below it, which is the part worth reading early.
         */}
         <Show when={game()!.status === "preview"}>
@@ -856,7 +856,7 @@ export default function GamePage() {
                   }
                 >
                   <p class="text-sm text-muted">
-                    This game's board is not wired up yet — it will render here.
+                    This game's board is not wired up yet - it will render here.
                   </p>
                 </Show>
               </div>
@@ -867,8 +867,8 @@ export default function GamePage() {
           {/*
             One panel for the whole ending: what you built, then what it cost.
 
-            This used to be three stacked cards — a result card with the shout,
-            a quieter duplicate of it for revisits, and the board underneath —
+            This used to be three stacked cards - a result card with the shout,
+            a quieter duplicate of it for revisits, and the board underneath -
             which meant the thing the player actually made was the last item on
             the page, below two boxes repeating the same number. The shout has
             moved to a modal at the moment of finishing, where a celebration
@@ -881,8 +881,8 @@ export default function GamePage() {
               <div class="flex items-start justify-between gap-3">
                 <p class="rule flex-1">{hasFinishedBoard() ? "Your board" : "Your run"}</p>
                 {/*
-                  The shout keeps its own treatment here — burst, comic face,
-                  ink stroke — at a smaller size. It was briefly a plain badge,
+                  The shout keeps its own treatment here - burst, comic face,
+                  ink stroke - at a smaller size. It was briefly a plain badge,
                   which threw away the entire design to save a few pixels.
                 */}
                 <Show when={settledResult()?.valid}>
@@ -1092,7 +1092,7 @@ const METRIC_CHIP: Record<string, string> = {
  * One line above the game. That is the entire budget.
  *
  * While a run is open it is the only thing between the top of the page and the
- * board, and it carries the clock — which is the one piece of chrome a player
+ * board, and it carries the clock - which is the one piece of chrome a player
  * mid-run actually looks at. Idle, it drops the title (the start panel below is
  * already shouting it) and is just a way back.
  */
@@ -1113,7 +1113,7 @@ function GameBar(props: {
   status: string;
   /** Seconds elapsed, or null when no run is open. */
   elapsed: number | null;
-  /** Opens the rules. Always available — see the note on the button. */
+  /** Opens the rules. Always available - see the note on the button. */
   onHowTo?: () => void;
 }) {
   const chip = () => STATUS_CHIP[props.status] ?? STATUS_CHIP.upcoming;
@@ -1243,8 +1243,8 @@ function GameBar(props: {
 /**
  * Everything a player needs before starting, in one panel.
  *
- * This replaces four stacked cards — title panel, tester notice, catch-up
- * notice, how-to accordion, start card — that between them pushed the actual
+ * This replaces four stacked cards - title panel, tester notice, catch-up
+ * notice, how-to accordion, start card - that between them pushed the actual
  * game a full screen down on a phone. They were all saying things worth
  * saying; they just did not each need their own box. The day's caveat is a
  * line here, and the rules are one tap away in the modal that the button opens
@@ -1335,7 +1335,7 @@ function StartPanel(props: {
               class="mx-auto max-w-prose text-sm font-semibold"
               style={{ color: "var(--pop-blue)" }}
             >
-              This day has closed. You can still play just for fun — daily leaderboard rankings are
+              This day has closed. You can still play just for fun - daily leaderboard rankings are
               closed for this day.
             </p>
           </Show>
@@ -1354,8 +1354,8 @@ function StartPanel(props: {
           </Show>
 
           {/*
-            Preview: everything above this line is real — the art, the title,
-            the rules — and the only thing missing is the button. Showing the
+            Preview: everything above this line is real - the art, the title,
+            the rules - and the only thing missing is the button. Showing the
             game a day early is the trailer; the clock is what decides when
             anybody may actually touch it.
           */}

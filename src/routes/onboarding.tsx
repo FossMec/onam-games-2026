@@ -132,7 +132,7 @@ export default function Onboarding() {
   return (
     <main class="container flex justify-center py-8">
       <Title>
-        {me()?.onboardingCompleted ? "Edit Profile" : "Complete your profile"} — FOSS Onam Games
+        {me()?.onboardingCompleted ? "Edit Profile" : "Complete your profile"} - FOSS Onam Games
       </Title>
 
       <div class="w-full max-w-lg space-y-6">

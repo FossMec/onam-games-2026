@@ -1,7 +1,7 @@
 // Seeds fake Code-a-Pookalam entries so the day-7 arena can be exercised
 // before anyone has actually submitted anything.
 //
-// The artwork is the existing game key art in public/images/games — already
+// The artwork is the existing game key art in public/images/games - already
 // square, already served by the site, and unmistakably not a real entry, so
 // there is no chance of a seeded row being mistaken for a contestant's work.
 // They point at local paths rather than the storage bucket, which also means

@@ -10,7 +10,7 @@ import { edgesForPiece, pieceOutline, type JigsawTab } from "~/lib/jigsaw-shape"
  *
  * This replaces a tray-and-slots version where you tapped a piece and then
  * tapped a grid cell. That was easier to build and easier to verify, and it
- * was not a jigsaw — it never connected anything, so none of the satisfaction
+ * was not a jigsaw - it never connected anything, so none of the satisfaction
  * of a jigsaw was there. Groups are the whole point.
  *
  * The win condition is "one group", not "pieces at the correct absolute
@@ -18,7 +18,7 @@ import { edgesForPiece, pieceOutline, type JigsawTab } from "~/lib/jigsaw-shape"
  *
  * Piece outlines come from the seeded edge specs the server sends, so tabs
  * differ per player over the same artwork. The image is painted through a clip
- * path — it is only a texture, which is what keeps swapping the artwork a
+ * path - it is only a texture, which is what keeps swapping the artwork a
  * one-line change.
  */
 
@@ -88,7 +88,7 @@ const SNAP = 0.3;
  * Decides what the board opens with: restored progress, or a fresh scatter.
  *
  * Pulled out of `onMount` and exported so it can be tested, because the bug it
- * exists to prevent lives exactly here and is invisible to a server render —
+ * exists to prevent lives exactly here and is invisible to a server render -
  * `onMount` does not run during SSR, so a test that only renders the component
  * proves nothing about this path.
  *
@@ -147,7 +147,7 @@ export function JigsawGame(props: JigsawGameProps) {
   /**
    * The window onto the board, in cell units.
    *
-   * While playing it is the whole scattered area — pieces need somewhere to
+   * While playing it is the whole scattered area - pieces need somewhere to
    * live. The moment the puzzle comes together that space is dead weight: the
    * finished pookalam sat in a corner at a third of the width with two thirds
    * of the panel empty, which is a poor look at the one moment the player has
@@ -181,7 +181,7 @@ export function JigsawGame(props: JigsawGameProps) {
   let origin = { x: 0, y: 0 };
   let startPositions: Piece[] = [];
 
-  /** Board width in px per cell unit — everything is stored in cell units. */
+  /** Board width in px per cell unit - everything is stored in cell units. */
   const unit = () => (board?.getBoundingClientRect().width ?? 1) / viewport().w;
 
   const onPointerDown = (event: PointerEvent, piece: Piece) => {
@@ -223,7 +223,7 @@ export function JigsawGame(props: JigsawGameProps) {
         const otherHome = homeOf(other.id);
         const dRow = otherHome.y - activeHome.y;
         const dCol = otherHome.x - activeHome.x;
-        // Grid neighbours only — pieces that do not touch cannot join.
+        // Grid neighbours only - pieces that do not touch cannot join.
         if (Math.abs(dRow) + Math.abs(dCol) !== 1) continue;
 
         // Where `other` would sit if the two were correctly joined.
@@ -266,7 +266,7 @@ export function JigsawGame(props: JigsawGameProps) {
 
     if (new Set(next.map((p) => p.groupId)).size === 1) {
       /*
-       * Positions are floats — the assembled picture sits wherever the player
+       * Positions are floats - the assembled picture sits wherever the player
        * left it. They are reported relative to piece 0 and rounded, which is
        * exact because every piece in a group shares the same fractional offset.
        */
@@ -407,7 +407,7 @@ export function JigsawGame(props: JigsawGameProps) {
       </div>
 
       <p class="comment shrink-0 text-xs sm:text-sm">
-        drag a piece onto its neighbour — when they fit they lock together and move as one.
+        drag a piece onto its neighbour - when they fit they lock together and move as one.
       </p>
     </div>
   );

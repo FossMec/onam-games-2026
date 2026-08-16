@@ -10,7 +10,7 @@ import { For } from "solid-js";
  *   palm                -> squiggle
  *
  * Reads as ordinary 80s Memphis scatter to an outsider and as Onam to anyone
- * from Kerala. That double reading is the whole point — it is decoration that
+ * from Kerala. That double reading is the whole point - it is decoration that
  * means something without having to explain itself.
  *
  * Layout-neutral by construction: absolutely positioned, `pointer-events:none`,
@@ -38,7 +38,7 @@ const COLORS = [
   "var(--pop-purple)",
 ];
 
-/** mulberry32 — the scatter must be identical on server and client or SSR tears. */
+/** mulberry32 - the scatter must be identical on server and client or SSR tears. */
 function rng(seed: string) {
   let h = 0x811c9dc5;
   for (let i = 0; i < seed.length; i += 1) {

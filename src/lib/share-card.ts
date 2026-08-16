@@ -3,7 +3,7 @@
  *
  * A player who finishes a run should leave with something better than a
  * screenshot. This draws that something: 1080×1920 (Instagram story), in the
- * site's own fonts, sprites and memes, obeying the six rules in `design.md` —
+ * site's own fonts, sprites and memes, obeying the six rules in `design.md` -
  * no shadows, halftone as shading, Memphis geometry that is secretly Onam,
  * everything inked, washed colour, and a degree or two of tilt.
  *
@@ -15,7 +15,7 @@
  *
  *  1. Nothing cross-origin may be drawn. One tainted pixel and `toBlob()`
  *     throws SecurityError, which kills the entire feature. That is why the
- *     player's Google avatar is *not* on the card — an initial medallion
+ *     player's Google avatar is *not* on the card - an initial medallion
  *     stands in for it.
  *  2. The card is read at thumbnail size in someone's story feed before it is
  *     ever read full size. If a line does not survive being 200px wide, it
@@ -41,7 +41,7 @@ import {
  * The palette, mirrored from `:root` in `app.css`.
  *
  * Canvas cannot read CSS custom properties, so these are copies. If a colour
- * changes there it must change here — they are the same six inks.
+ * changes there it must change here - they are the same six inks.
  */
 const INK = "#22202b";
 const INK_SOFT = "#6b6478";
@@ -61,7 +61,7 @@ const POP = {
 
 const ACCENTS = [POP.red, POP.yellow, POP.teal, POP.blue, POP.pink, POP.purple];
 
-/** The two-tone panel split, per tier. Two accents only — rule 5. */
+/** The two-tone panel split, per tier. Two accents only - rule 5. */
 const TIER_PANEL: Record<ShareTier, [string, string]> = {
   champion: [POP.yellow, POP.teal],
   podium: [POP.teal, POP.pink],
@@ -104,7 +104,7 @@ const FOOTER_H = 98;
 
 /* -------------------------------------------------------------- utilities */
 
-/** mulberry32, seeded by FNV-1a — the same generator the on-page art uses. */
+/** mulberry32, seeded by FNV-1a - the same generator the on-page art uses. */
 function rng(seed: string) {
   let h = 0x811c9dc5;
   for (let i = 0; i < seed.length; i += 1) {
@@ -174,7 +174,7 @@ function inkedRect(
 
 /**
  * The hard offset shadow that makes a shape read as a sticker rather than a
- * box. No blur, no transparency — a second solid shape sitting behind and
+ * box. No blur, no transparency - a second solid shape sitting behind and
  * down-right, which is how every printed comic and every Memphis poster fakes
  * depth. Blur would be the wrong century.
  */
@@ -213,7 +213,7 @@ function stickerRect(
 }
 
 /**
- * A zigzag ribbon of ink — the torn edge between two comic panels.
+ * A zigzag ribbon of ink - the torn edge between two comic panels.
  *
  * Memphis loves a repeated angular motif and comics love a ragged gutter; this
  * is both, and it stops the two panels reading as a plain stack of rectangles.
@@ -292,7 +292,7 @@ function fitSize(
  * Split a short phrase into at most `maxLines`, as evenly as the words allow.
  *
  * Used for the shout, where greedy wrapping is wrong: "CAN YOU BEAT ME?" wants
- * to be two balanced lines, not one long line and one orphan — and stacking
+ * to be two balanced lines, not one long line and one orphan - and stacking
  * every word on its own line shrinks the type until it stops being a shout.
  */
 function balanceLines(text: string, maxLines: number): string[] {
@@ -307,7 +307,7 @@ function balanceLines(text: string, maxLines: number): string[] {
   return out;
 }
 
-/** "generated 15 aug 2026, 8:14 pm ist" — always IST, like every other clock here. */
+/** "generated 15 aug 2026, 8:14 pm ist" - always IST, like every other clock here. */
 function stampedAt(when?: Date): string {
   const date = when ?? new Date();
   const text = date.toLocaleString("en-IN", {
@@ -372,7 +372,7 @@ function inkedText(
 /* ------------------------------------------------------------------- art  */
 
 /**
- * The comic action starburst. Ported from `starPoints` in `art/Burst.tsx` —
+ * The comic action starburst. Ported from `starPoints` in `art/Burst.tsx` -
  * radius and angle are both jittered so no two spikes match, because a
  * perfectly regular star reads as clip-art and a slightly uneven one reads as
  * drawn.
@@ -571,7 +571,7 @@ function confettiShape(ctx: CanvasRenderingContext2D, kind: ShapeKind, color: st
 }
 
 /**
- * Scatter confetti everywhere except over the panel — the geometry is
+ * Scatter confetti everywhere except over the panel - the geometry is
  * decoration, and decoration never sits on top of a number somebody has to
  * read at thumbnail size.
  */
@@ -659,7 +659,7 @@ async function loadImage(src: string): Promise<HTMLImageElement | null> {
  * Load every face the card sets, at a representative size.
  *
  * Without this the first `fillText` runs before the woff2 has landed and the
- * card silently renders in Comic Sans — which is a fine fallback for a web page
+ * card silently renders in Comic Sans - which is a fine fallback for a web page
  * and a disaster for an image that outlives the session.
  */
 export async function ensureFonts(): Promise<void> {
@@ -705,7 +705,7 @@ export interface ShareCardData {
   rank: number | null;
   fieldSize: number | null;
   afterDeadline: boolean;
-  /** `window.location.origin` — the one piece of the card doing any work. */
+  /** `window.location.origin` - the one piece of the card doing any work. */
   origin: string;
   /** Stable per attempt, so the same run always draws the same card. */
   seed: string;
@@ -738,7 +738,7 @@ export function captionFor(data: ShareCardData): string {
 
 /**
  * Draw the whole card. Everything is laid out against the fixed 1080×1920
- * frame — there is no responsive behaviour here by design, because the output
+ * frame - there is no responsive behaviour here by design, because the output
  * is an image, not a page.
  */
 export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasElement> {
@@ -774,7 +774,7 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   ctx.fillStyle = PAPER;
   ctx.fillRect(0, 0, CARD_W, CARD_H);
 
-  // Print grain. Restrained — rule: printed, never distressed.
+  // Print grain. Restrained - rule: printed, never distressed.
   const grain = rng(`${seed}-grain`);
   ctx.fillStyle = INK;
   for (let i = 0; i < 900; i += 1) {
@@ -844,7 +844,7 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
    * The old hero was one photograph with everything floating on top of it: the
    * game art ran full bleed behind the whole panel, was dimmed by a four-stop
    * vignette so the type could survive on top of it, and the score sat in a
-   * plain cream box in the middle. That cost twice over — the artwork became
+   * plain cream box in the middle. That cost twice over - the artwork became
    * grey mush nobody could read as a picture, and the score box had nothing
    * behind it but mush, which is why the middle of the card looked empty.
    *
@@ -855,8 +855,8 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
    * way a sticker sits over a panel edge.
    *
    * Selfie mode swaps the *contents* of the lower panel and nothing else. The
-   * old version rebuilt the whole layout when a photo appeared — halving the
-   * score box, shrinking the medallion, moving everything — so the two modes
+   * old version rebuilt the whole layout when a photo appeared - halving the
+   * score box, shrinking the medallion, moving everything - so the two modes
    * looked like two different cards, and the selfie one looked like the
    * afterthought it was.
    */
@@ -980,8 +980,8 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   const stageY = nameChipY + nameChipH + 22;
   const stageH = panel.y + panel.h - 26 - stageY;
   /*
-   * The score takes the smaller share. It is one short string — five
-   * characters at the very most — and giving it the larger half is what left
+   * The score takes the smaller share. It is one short string - five
+   * characters at the very most - and giving it the larger half is what left
    * all that emptiness around it. The picture below can actually use the room.
    */
   const scoreH = Math.round(stageH * 0.44);
@@ -998,7 +998,7 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   const scoreCx = chipX + chipW / 2;
   const scoreMidY = stageY + scoreH / 2;
 
-  // Speed lines radiating from behind the number — the comic way to say
+  // Speed lines radiating from behind the number - the comic way to say
   // "this number is moving", and it fills the field without adding clutter.
   const spoke = rng(`${seed}-spokes`);
   ctx.strokeStyle = INK;
@@ -1045,7 +1045,7 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   ctx.font = font("display", figSize, 800);
   /*
    * Duotone numerals: an ink copy offset down-right, then the cream face over
-   * it. Risograph misregistration on purpose — the same trick the wordmark
+   * it. Risograph misregistration on purpose - the same trick the wordmark
    * uses at the top of the card, so the two loudest things on it rhyme.
    */
   ctx.fillStyle = INK;
@@ -1080,7 +1080,7 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   }
 
   /* --- 2d. rank sticker, straddling the gutter ------------------------- */
-  // Hung off the panel's left edge rather than tucked inside it — a sticker
+  // Hung off the panel's left edge rather than tucked inside it - a sticker
   // slapped over the seam reads as applied, where a centred one reads as
   // drawn-in and loses the collage feel entirely.
   const medallionR = Math.min(artH * 0.36, 118);
@@ -1092,7 +1092,7 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   ctx.rotate(rad(-7));
   ctx.translate(-medallionCx, -medallionCy);
   /*
-   * Colour on the burst, cream on the numeral — not the other way round. A
+   * Colour on the burst, cream on the numeral - not the other way round. A
    * cream star carrying cream type disappears against cream paper, and the
    * rank is the second thing anyone looks at.
    */
@@ -1233,7 +1233,7 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   /*
    * When the card was made.
    *
-   * A leaderboard moves all week, so "#3 of 47" is only true as of a moment —
+   * A leaderboard moves all week, so "#3 of 47" is only true as of a moment -
    * and a card doing the rounds three days later should say when it was true
    * rather than quietly claim to be current. IST, because the whole event is.
    */

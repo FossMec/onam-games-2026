@@ -5,7 +5,7 @@
  *
  * The contest used to take a URL. That is free until the day it isn't: a link
  * can rot between review and voting, it can be swapped for something else after
- * approval, and it leaks — an imgur album title or a raw.githubusercontent path
+ * approval, and it leaks - an imgur album title or a raw.githubusercontent path
  * names the author, which destroys the anonymity the whole Elo round depends
  * on. Uploading once, to our own bucket, under a random filename, fixes all
  * three at the cost of a storage bucket we already run for avatars.
@@ -20,7 +20,7 @@
  * WHAT IS CHECKED HERE
  *
  * Squareness is checked in the browser first, which is what makes the error
- * useful — the entrant finds out before a slow upload. It is checked *again*
+ * useful - the entrant finds out before a slow upload. It is checked *again*
  * here because the browser check is advice, not enforcement: a server action is
  * an HTTP endpoint and anyone can post to it directly.
  */
@@ -55,12 +55,12 @@ const DATA_URL = /^data:image\/(webp|png|jpeg);base64,([A-Za-z0-9+/=]+)$/;
  * larger attack surface than the thing it is guarding.
  */
 export function readImageSize(bytes: Buffer): { width: number; height: number } | null {
-  // PNG — IHDR is fixed-position, so this is two reads.
+  // PNG - IHDR is fixed-position, so this is two reads.
   if (bytes.length >= 24 && bytes.readUInt32BE(0) === 0x89504e47) {
     return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
   }
 
-  // WebP — RIFF container, then one of three VP8 chunk flavours.
+  // WebP - RIFF container, then one of three VP8 chunk flavours.
   if (bytes.length >= 16 && bytes.toString("ascii", 0, 4) === "RIFF") {
     if (bytes.toString("ascii", 8, 12) !== "WEBP") return null;
     const chunk = bytes.toString("ascii", 12, 16);
@@ -88,7 +88,7 @@ export function readImageSize(bytes: Buffer): { width: number; height: number } 
     return null;
   }
 
-  // JPEG — walk the marker chain to the start-of-frame.
+  // JPEG - walk the marker chain to the start-of-frame.
   if (bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
     let offset = 2;
     while (offset + 9 < bytes.length) {
@@ -146,12 +146,12 @@ export function decodeSubmissionImage(dataUrl: string, tolerancePct: number): De
   }
   if (size.width < MIN_IMAGE_SIDE || size.height < MIN_IMAGE_SIDE) {
     throw new Error(
-      `That image is too small — it needs to be at least ${MIN_IMAGE_SIDE}px square.`,
+      `That image is too small - it needs to be at least ${MIN_IMAGE_SIDE}px square.`,
     );
   }
   if (!isNearlySquare(size.width, size.height, tolerancePct)) {
     throw new Error(
-      `Pookalams have to be square. Yours is ${size.width}×${size.height} — crop it to 1:1 and re-upload.`,
+      `Pookalams have to be square. Yours is ${size.width}×${size.height} - crop it to 1:1 and re-upload.`,
     );
   }
   return { bytes, mime, ext, width: size.width, height: size.height };

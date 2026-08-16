@@ -6,8 +6,8 @@ import type { SpriteName } from "~/lib/sprites";
 /**
  * The screen a player watches while their sign-in completes.
  *
- * There is a genuine wait here — a code exchange with Google, a round trip to
- * Supabase, the device fingerprint, then the session write — and it is the
+ * There is a genuine wait here - a code exchange with Google, a round trip to
+ * Supabase, the device fingerprint, then the session write - and it is the
  * first thing a new player ever sees. A grey spinner would be a wasted
  * introduction, so it gets the meme wall instead, on a rotation.
  *
@@ -15,7 +15,7 @@ import type { SpriteName } from "~/lib/sprites";
  * and its rays, a `card` with its colour strip, a `badge`, `wordmark`,
  * `comment`, the Onam-shaped Confetti, the sprite cast, and the same memes the
  * home and design pages already use. Nothing new was invented for it, which is
- * the point — a loading screen that introduces its own visual language reads as
+ * the point - a loading screen that introduces its own visual language reads as
  * a different website.
  *
  * The captions are the actual steps, in order, rather than decoration. Someone
@@ -31,7 +31,7 @@ import type { SpriteName } from "~/lib/sprites";
  * The whole meme wall, flipped fast.
  *
  * Not meant to be read. At this speed it registers as "this site has a pile of
- * these" and nothing more, which is the entire intent — the readable copy is
+ * these" and nothing more, which is the entire intent - the readable copy is
  * the status line underneath, which runs on its own slower clock so it stays
  * legible while the pictures blur past.
  *
@@ -63,8 +63,8 @@ interface Step {
 /**
  * Roughly the real sequence.
  *
- * Not driven by real progress — the steps are server-side and mostly finish
- * faster than one beat — but the order is honest, so nothing here claims
+ * Not driven by real progress - the steps are server-side and mostly finish
+ * faster than one beat - but the order is honest, so nothing here claims
  * something that did not happen.
  */
 const STEPS: Step[] = [
@@ -176,7 +176,7 @@ export function SignInScene() {
             {current().status}
           </p>
 
-          {/* Three dots keeping time — the "it has not hung" signal. */}
+          {/* Three dots keeping time - the "it has not hung" signal. */}
           <div class="flex justify-center gap-2" aria-hidden="true">
             <For each={["var(--pop-red)", "var(--pop-yellow)", "var(--pop-teal)"]}>
               {(color, i) => (

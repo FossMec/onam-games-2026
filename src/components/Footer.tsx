@@ -71,7 +71,7 @@ export function Footer() {
               src="/foss-logo-original.webp"
               alt="FOSS MEC Official Logo"
               // Intrinsic size so the row reserves the right width before the
-              // image lands — `h-7 w-auto` alone leaves it zero until then.
+              // image lands - `h-7 w-auto` alone leaves it zero until then.
               width={289}
               height={232}
               class="h-7 w-auto object-contain"
@@ -109,7 +109,7 @@ export function Footer() {
         </div>
 
         <p class="comment text-base">
-          free as in freedom, free as in payasam. licensed under GPLv3 — fork the repo, not Maveli's
+          free as in freedom, free as in payasam. licensed under GPLv3 - fork the repo, not Maveli's
           moustache.
         </p>
 

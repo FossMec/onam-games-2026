@@ -6,7 +6,7 @@ import { Show, createEffect, createSignal, onCleanup } from "solid-js";
  * The old version rendered one unclassed `<span>` with unpadded values
  * ("0d 5h 3m 9s") and never stopped at zero. Digits now live in their own
  * inked boxes with zero-padding, so the width is stable and the number never
- * jitters as it ticks — important when it sits next to a release time people
+ * jitters as it ticks - important when it sits next to a release time people
  * are staring at.
  */
 

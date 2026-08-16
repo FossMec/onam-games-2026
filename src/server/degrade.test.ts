@@ -18,7 +18,7 @@ describe("readOrDegrade", () => {
     /*
      * The failure that actually took the site down. `postgres` has no query
      * timeout, so a statement written to a socket that died while the instance
-     * was frozen never settles — and a fallback that only triggers on rejection
+     * was frozen never settles - and a fallback that only triggers on rejection
      * never fires. The render hangs, the stream stays open, and the platform
      * bills five minutes before killing it.
      */

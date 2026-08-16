@@ -29,7 +29,7 @@ function coords(path: string, dx = 0, dy = 0): number[] {
  *
  * The final `L` is dropped. It is the straight run-out to the piece's *own*
  * corner, and the two pieces sharing an edge legitimately run out to opposite
- * corners — only the curve between the two shoulders has to agree.
+ * corners - only the curve between the two shoulders has to agree.
  */
 function tabPoints(path: string, dx = 0, dy = 0): [number, number][] {
   const nums = coords(path, dx, dy);

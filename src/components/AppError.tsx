@@ -39,7 +39,7 @@ export function AppError(props: { error?: unknown; reset: () => void }) {
         </div>
         <h1 class="text-2xl font-black text-[var(--ink)]">Something broke on our side</h1>
         <p class="font-semibold leading-relaxed text-sm">
-          This page could not be loaded properly. It is almost certainly temporary — the rest of the
+          This page could not be loaded properly. It is almost certainly temporary - the rest of the
           festival is still standing.
         </p>
 

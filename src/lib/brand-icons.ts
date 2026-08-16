@@ -8,12 +8,12 @@
  * needs instead of three thousand.
  *
  * The marks themselves remain the trademarks of their respective owners. They
- * appear nominatively — to identify the project a card is asking about, in a
- * quiz about software licensing — and imply no affiliation or endorsement.
+ * appear nominatively - to identify the project a card is asking about, in a
+ * quiz about software licensing - and imply no affiliation or endorsement.
  *
  * ANSWER SAFETY, and this is the important part: a logo must never distinguish
  * a trap pair. simple-icons carries Google Chrome but not Chromium, and
- * VSCodium but not VS Code — so giving one half of a pair a real logo while the
+ * VSCodium but not VS Code - so giving one half of a pair a real logo while the
  * other fell back to a drawing would hand over the exact answer the card exists
  * to test. Both halves of both pairs are deliberately absent from this table
  * and share a hand-drawn mark instead. Docker Engine and Docker Desktop appear

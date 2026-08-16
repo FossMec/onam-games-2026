@@ -14,7 +14,7 @@ import { getRequestMeta } from "~/server/request";
  * Checks whether a traced path in Wend spells one of the hidden words.
  *
  * This exists because the words are the puzzle. The board tells a player how
- * many words there are and how long each one is, and nothing else — so the
+ * many words there are and how long each one is, and nothing else - so the
  * browser genuinely cannot know whether a path is a word, and has to ask.
  *
  * Shipping the list, or hashes of it, was considered and rejected: an
@@ -23,7 +23,7 @@ import { getRequestMeta } from "~/server/request";
  *
  * The response reveals only the word the player just traced, which they can
  * read off their own screen. It says nothing about the words they have not
- * found. And it is not authoritative — the whole board is re-validated at
+ * found. And it is not authoritative - the whole board is re-validated at
  * finish, so lying to this endpoint gains nothing.
  */
 const traceSchema = z.object({
@@ -43,7 +43,7 @@ export async function POST({ request }: APIEvent) {
     /*
      * A player traces a handful of wrong guesses per word, so this is called
      * far more often than /check. The limit is set for a determined human
-     * rather than a patient one — anything above this is a script walking the
+     * rather than a patient one - anything above this is a script walking the
      * grid, and a script gains nothing anyway since the board is re-validated
      * at finish.
      */

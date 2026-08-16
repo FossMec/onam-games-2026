@@ -50,7 +50,7 @@ export async function adminSetUserRole(userId: string, role: "player" | "tester"
 }
 
 /**
- * Sets a player's ban level (0-4). Level 4 is only ever reachable from here —
+ * Sets a player's ban level (0-4). Level 4 is only ever reachable from here -
  * automated anti-cheat can propose it, but a human confirms it, because the
  * shared-NAT and shared-device signals this event runs on produce real false
  * positives.

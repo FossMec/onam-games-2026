@@ -1,6 +1,6 @@
 # assets-raw
 
-Source images. **Not** served — nothing in here reaches the browser.
+Source images. **Not** served - nothing in here reaches the browser.
 
 These are the originals the sprite and artwork scripts (`scripts/*.py`) cut
 down into the webp files under `public/`. They used to live in
@@ -13,17 +13,17 @@ to _produce_ those files belongs here.
 
 ## Layout
 
-- `*.jpeg`, `memes/` — the sheets and photographs the `scripts/*.py` sprite and
+- `*.jpeg`, `memes/` - the sheets and photographs the `scripts/*.py` sprite and
   artwork passes read.
-- `sprite-sheets/` — the recomposed sheets `generate-sprites.py` writes out
+- `sprite-sheets/` - the recomposed sheets `generate-sprites.py` writes out
   after cutting the icons. A contact sheet for eyeballing the result; the site
   loads the individual icons from `public/sprites/icons/`.
-- `previous-pookalam/` — contributors' original PNG/JPEG submissions. The
+- `previous-pookalam/` - contributors' original PNG/JPEG submissions. The
   carousel loads the `.webp` conversions in `public/previous-pookalam/`; every
   original here has one, and the originals are kept because they are somebody
   else's work, not ours to throw away.
-- `originals/` — full-size artwork the site only ships downscaled.
-- `retired/` — files that were being served but nothing referenced. The paths
+- `originals/` - full-size artwork the site only ships downscaled.
+- `retired/` - files that were being served but nothing referenced. The paths
   under it mirror where they used to sit, so restoring one is a `git mv` back.
   Note `retired/images/pookalam/pookalam.webp`: the jigsaw's image comes from
   the `games.assets_json` column, and the local database points it at

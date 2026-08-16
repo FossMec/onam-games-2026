@@ -17,7 +17,7 @@ function cells(boats: Boat[]): string[] {
 
 /**
  * Brute-force replay of a solution found by BFS. The solver only returns a
- * length, so tests that need actual moves search for them directly — small
+ * length, so tests that need actual moves search for them directly - small
  * boards make this cheap and it keeps the solver honest.
  */
 function findSolution(boats: Boat[], maxDepth: number): VallamMove[] | null {
@@ -175,7 +175,7 @@ describe("verify", () => {
   it("rejects sliding a boat through another boat", () => {
     const vallam = viewOf().boats[0];
     // Straight to the exit in one move. It stays on the board, so this is
-    // rejected for hitting something rather than for leaving the grid — and
+    // rejected for hitting something rather than for leaving the grid - and
     // par >= 3 guarantees something is in the way.
     const toExit = BOARD - vallam.len - vallam.c;
     expect(run({ moves: [{ b: 0, d: toExit }] }).valid).toBe(false);

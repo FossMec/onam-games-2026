@@ -1,5 +1,6 @@
 import {
   boolean,
+  customType,
   date,
   doublePrecision,
   index,
@@ -12,6 +13,17 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
+
+/**
+ * Raw bytes. Drizzle's pg-core has no `bytea`, so this is the standard escape
+ * hatch — used by the collaborative pookalam, which is one packed bit array
+ * rather than anything a column type could describe.
+ */
+const customBytea = customType<{ data: Uint8Array; driverData: Buffer }>({
+  dataType: () => "bytea",
+  toDriver: (value) => Buffer.from(value),
+  fromDriver: (value) => new Uint8Array(value),
+});
 
 export const collegeEnum = pgEnum("college", ["mec", "other"]);
 export const branchEnum = pgEnum("branch", ["cs", "cu", "ee", "eb", "ec", "ev", "me", "other"]);
@@ -42,7 +54,7 @@ export const users = pgTable(
     /**
      * Graduated enforcement, replacing the old boolean block:
      *   0 none · 1 warning (must acknowledge) · 2 soft 3h · 3 soft 24h · 4 hard
-     * Levels 2 and 3 set `banUntil` and only gate *playing* — browsing and the
+     * Levels 2 and 3 set `banUntil` and only gate *playing* - browsing and the
      * leaderboard stay open, so a benched player still has a reason to return.
      */
     banLevel: integer("ban_level").notNull().default(0),
@@ -150,7 +162,7 @@ export const games = pgTable(
     endAt: timestamp("end_at", { withTimezone: true }),
     /**
      * When the game stops being a "???" and starts showing its title, art and
-     * rules — while still refusing to be played. Null means "derive it from
+     * rules - while still refusing to be played. Null means "derive it from
      * `schedule.preview_hours` before the release", which is how every game
      * runs unless somebody sets a one-off.
      */
@@ -159,7 +171,7 @@ export const games = pgTable(
     status: gameStatusEnum("status").notNull().default("upcoming"),
     /**
      * Public asset references only (pookalam image URL, sprite sheet). Anything
-     * that would spoil a puzzle belongs in the registry, not here — this column
+     * that would spoil a puzzle belongs in the registry, not here - this column
      * is reachable from the browser for every published game.
      */
     assetsJson: jsonb("assets_json"),
@@ -205,7 +217,7 @@ export const gameAttempts = pgTable(
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     durationMs: integer("duration_ms"),
     /**
-     * Server-derived score for `metric: "score"` games — the value returned by
+     * Server-derived score for `metric: "score"` games - the value returned by
      * the registry's `verify`, never the number the client claimed.
      */
     score: integer("score"),
@@ -328,7 +340,7 @@ export const metricEnum = pgEnum("metric", ["time", "score", "fcfs"]);
  * One row per (game, user): the player's *best* result for that day.
  *
  * `durationMs` and `score` are both nullable because the games are not
- * commensurable in their raw units — a time game has no score and Maveli Jump
+ * commensurable in their raw units - a time game has no score and Maveli Jump
  * has no meaningful completion time. `metric` says which column ranks this row.
  * Cross-game comparison happens only through `points`, never through raw units.
  */
@@ -351,7 +363,7 @@ export const dailyLeaderboard = pgTable(
     durationMs: integer("duration_ms"),
     /** Ranking value for `score` games (best run of the day). */
     score: integer("score"),
-    /** Runs used today. Display only — never affects ranking. */
+    /** Runs used today. Display only - never affects ranking. */
     attemptsUsed: integer("attempts_used").notNull().default(1),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull(),
@@ -396,13 +408,13 @@ export const authSessions = pgTable(
 export const pookalamStatusEnum = pgEnum("pookalam_status", ["pending", "approved", "rejected"]);
 
 /**
- * Code-a-Pookalam entries. One per person, hence the unique on `userId` — the
+ * Code-a-Pookalam entries. One per person, hence the unique on `userId` - the
  * contest is judged by head-to-head voting and letting one person field three
  * entries would let them farm the pairing.
  *
  * Artwork is uploaded to our own bucket rather than linked. A borrowed URL rots
  * between review and voting, can be swapped for something else after approval,
- * and leaks the author's identity through the hosting path — which would defeat
+ * and leaks the author's identity through the hosting path - which would defeat
  * the anonymous round entirely. `status` gates whether an entry is *valid*;
  * `shortlisted` gates whether it enters the day-7 pairing.
  */
@@ -448,7 +460,7 @@ export const pookalamSubmissions = pgTable(
      *
      * Deliberately a *separate* column rather than an edit to `rating`. A
      * public contest that lets a human quietly rewrite a number has no result
-     * worth announcing — keeping the correction beside the Elo means the raw
+     * worth announcing - keeping the correction beside the Elo means the raw
      * crowd verdict survives, the intervention is visible, and setting it back
      * to zero fully undoes it. It exists for the cases the maths cannot see:
      * a brigade of sockpuppets downvoting one entry, or a friend group farming
@@ -478,7 +490,7 @@ export const pookalamVerdictEnum = pgEnum("pookalam_verdict", ["like", "dislike"
  * This is the shortlisting instrument, not a score: the admin picks the top N
  * by hand, and these give them something to pick *on* besides their own taste.
  * A verdict without a reason is nearly useless for that, which is why the
- * comment sits on the same row rather than in a separate table — one row per
+ * comment sits on the same row rather than in a separate table - one row per
  * (reviewer, entry), rewritten when they change their mind.
  *
  * Kept strictly apart from `pookalam_votes`. These are named opinions from a
@@ -516,7 +528,7 @@ export const pookalamReviews = pgTable(
  * which pookalam is winning and vote for it. A minute of staleness breaks that
  * feedback loop while still feeling live.
  *
- * It happens to be the cheap option too — the voter board is an aggregate over
+ * It happens to be the cheap option too - the voter board is an aggregate over
  * every vote ever cast, and day 7 is the one day everybody is refreshing it.
  * A table rather than process memory because serverless instances do not share
  * one, so an in-process cache would show a different lag per instance.
@@ -526,6 +538,39 @@ export const pookalamStandings = pgTable("pookalam_standings", {
   key: text("key").primaryKey(),
   payload: jsonb("payload").notNull(),
   computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * The shared pookalam everybody draws on together — one row per day.
+ *
+ * `cells` is a fixed 1250-byte `bytea`: 2500 grid squares at four bits each,
+ * where 0 is bare ground and 1–15 index the flower catalogue. The whole canvas
+ * therefore fits in a single column and a single round trip, which is what lets
+ * the page just re-read the lot instead of syncing deltas.
+ *
+ * A row per *placement* was the other option and is worse in every direction:
+ * thousands of rows a day, a query that grows with how well the thing goes, and
+ * an audit trail of who put which marigold where that nobody will ever read.
+ *
+ * `dayKey` is an IST calendar date, `YYYY-MM-DD`. Days accumulate rather than
+ * reset — yesterday's rows are still here, and the page paints them underneath
+ * today's, so by the end of the week the canvas is a stack of pookalams laid
+ * one on another exactly as they are at home.
+ *
+ * There is deliberately no per-user column anywhere. How many flowers someone
+ * has left today is counted in their own browser: enforcing it here would mean
+ * a row per placement after all, and the worst a forged counter buys you is
+ * more flowers on a communal drawing.
+ */
+export const collabPookalam = pgTable("collab_pookalam", {
+  /** IST calendar date, `YYYY-MM-DD`. */
+  dayKey: text("day_key").primaryKey(),
+  /** 1250 bytes: 2500 cells x 4 bits. See `server/pookalam/grid.ts`. */
+  cells: customBytea("cells").notNull(),
+  /** Denormalised count, so the header does not decode 1250 bytes to say "412". */
+  placed: integer("placed").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /**

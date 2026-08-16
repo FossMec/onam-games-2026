@@ -6,7 +6,7 @@ import { randomBytes } from "node:crypto";
  * Generation must be a pure function of the seed: `startAttempt` regenerates a
  * resumed attempt from the stored seed, and `finishAttempt` regenerates the
  * solution from that same seed to verify a submission. Nothing generated is
- * persisted, so the RNG has to be stable across processes and deploys — do not
+ * persisted, so the RNG has to be stable across processes and deploys - do not
  * swap the algorithm mid-event or every in-flight attempt breaks.
  */
 export interface Rng {
@@ -34,7 +34,7 @@ function hashSeed(seed: string): number {
   return hash >>> 0;
 }
 
-/** mulberry32 — small, fast, and good enough for puzzle layout. */
+/** mulberry32 - small, fast, and good enough for puzzle layout. */
 export function createRng(seed: string): Rng {
   let state = hashSeed(seed);
 

@@ -1,5 +1,5 @@
 /**
- * The Open Source Tinder card pool. SERVER ONLY — `open` is the answer key and
+ * The Open Source Tinder card pool. SERVER ONLY - `open` is the answer key and
  * must never reach the browser.
  *
  * Curated list of 25 canonical software tools with official brand marks.
@@ -25,7 +25,7 @@ export const TINDER_CARDS: readonly TinderCard[] = [
     open: true,
     category: "Design & Art",
     why: "GPL. Still named that, still free.",
-    fact: "The GNU Image Manipulation Program, GPL since 1996 — older than most of the people complaining about its interface.",
+    fact: "The GNU Image Manipulation Program, GPL since 1996 - older than most of the people complaining about its interface.",
   },
   {
     id: "vlc",
@@ -50,7 +50,7 @@ export const TINDER_CARDS: readonly TinderCard[] = [
     category: "Browser",
     why: "BSD. The open core Chrome is built on.",
     tricky: true,
-    fact: "The open-source browser project Chrome is built from. BSD-licensed — Chromium is the free part; the branding, codecs and sync bolted on top are not.",
+    fact: "The open-source browser project Chrome is built from. BSD-licensed - Chromium is the free part; the branding, codecs and sync bolted on top are not.",
   },
   {
     id: "vim",
@@ -58,7 +58,7 @@ export const TINDER_CARDS: readonly TinderCard[] = [
     open: true,
     category: "Code Editor",
     why: "Vim Licence, GPL-compatible. You still can't quit.",
-    fact: "Vi IMproved, 1991. Its licence is charityware — GPL-compatible, and it asks you to consider donating to children in Uganda.",
+    fact: "Vi IMproved, 1991. Its licence is charityware - GPL-compatible, and it asks you to consider donating to children in Uganda.",
   },
   {
     id: "git",
@@ -66,7 +66,7 @@ export const TINDER_CARDS: readonly TinderCard[] = [
     open: true,
     category: "Dev Tools",
     why: "GPL. Written to manage the kernel.",
-    fact: "Linus wrote it in ten days in 2005, after the kernel lost access to a proprietary tool called BitKeeper. GPLv2 — you use it daily because something closed was taken away.",
+    fact: "Linus wrote it in ten days in 2005, after the kernel lost access to a proprietary tool called BitKeeper. GPLv2 - you use it daily because something closed was taken away.",
   },
   {
     id: "dockerengine",
@@ -107,7 +107,7 @@ export const TINDER_CARDS: readonly TinderCard[] = [
     open: true,
     category: "Dev Tools",
     why: "MIT. Since 2017.",
-    fact: "Meta's UI library. MIT only since 2017 — before that it carried a patent clause that got it banned from Apache projects until the backlash forced a relicence.",
+    fact: "Meta's UI library. MIT only since 2017 - before that it carried a patent clause that got it banned from Apache projects until the backlash forced a relicence.",
   },
   {
     id: "signal",
@@ -132,7 +132,7 @@ export const TINDER_CARDS: readonly TinderCard[] = [
     open: true,
     category: "Game Dev",
     why: "MIT. Game engine, no royalties.",
-    fact: "A game engine with no royalties, no seat fees and no revenue share, ever. MIT-licensed — which is exactly why so many studios moved to it in 2023.",
+    fact: "A game engine with no royalties, no seat fees and no revenue share, ever. MIT-licensed - which is exactly why so many studios moved to it in 2023.",
   },
 
   // --------------------------------------------------------- proprietary (11)
@@ -158,7 +158,7 @@ export const TINDER_CARDS: readonly TinderCard[] = [
     open: false,
     category: "Audio & Video",
     why: "Proprietary. Built on open source, gives none back.",
-    fact: "Music streaming built on a mountain of open source, some of which they publish back — but the product itself is firmly closed.",
+    fact: "Music streaming built on a mountain of open source, some of which they publish back - but the product itself is firmly closed.",
   },
   {
     id: "chrome",
@@ -167,7 +167,7 @@ export const TINDER_CARDS: readonly TinderCard[] = [
     category: "Browser",
     why: "Chromium plus proprietary Google bits.",
     tricky: true,
-    fact: "Chromium plus Google's additions — proprietary codecs, sync, DRM and branding. The base is open; the thing you installed is not.",
+    fact: "Chromium plus Google's additions - proprietary codecs, sync, DRM and branding. The base is open; the thing you installed is not.",
   },
   {
     id: "safari",
@@ -212,7 +212,7 @@ export const TINDER_CARDS: readonly TinderCard[] = [
     category: "Comms",
     why: "Proprietary, despite what the API docs suggest.",
     tricky: true,
-    fact: "Chat for communities and games. Proprietary — the public bot API makes it feel open, but neither client nor server is.",
+    fact: "Chat for communities and games. Proprietary - the public bot API makes it feel open, but neither client nor server is.",
   },
   {
     id: "windows",
@@ -220,7 +220,7 @@ export const TINDER_CARDS: readonly TinderCard[] = [
     open: false,
     category: "Operating System",
     why: "Microsoft. Come on.",
-    fact: "Microsoft's desktop OS. Proprietary and licensed per device — you bought permission to run it, not a copy of it.",
+    fact: "Microsoft's desktop OS. Proprietary and licensed per device - you bought permission to run it, not a copy of it.",
   },
   {
     id: "unity",

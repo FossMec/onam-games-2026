@@ -16,7 +16,7 @@ import { getFinalResults } from "~/server/pookalam/actions";
  * check a contest before announcing it.
  *
  * The winner gets the whole top of the page rather than being row one of a
- * table. Somebody spent a week on that and beat the field in a public vote —
+ * table. Somebody spent a week on that and beat the field in a public vote -
  * the layout should say so.
  */
 
@@ -30,7 +30,7 @@ export default function PookalamResults() {
 
   return (
     <main class="container space-y-8 py-6">
-      <Title>Results — {POOKALAM.title}</Title>
+      <Title>Results - {POOKALAM.title}</Title>
 
       <a
         href="/code-a-pookalam"

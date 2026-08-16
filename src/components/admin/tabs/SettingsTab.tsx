@@ -130,7 +130,7 @@ const SETTINGS_META: Record<string, SettingMetadata> = {
       "URL query parameter name that the final clue uses to submit the secret token (e.g. /games/treasure-hunt?token=...).",
   },
 
-  // Day-7 Pookalam — each phase has a window plus a manual force override.
+  // Day-7 Pookalam - each phase has a window plus a manual force override.
   "pookalam.submissions_open_at": {
     label: "Entry Form Opens (IST)",
     type: "datetime",
@@ -194,7 +194,7 @@ const SETTINGS_META: Record<string, SettingMetadata> = {
     min: 0,
     max: 200,
     explanation:
-      "Votes needed to qualify for the voters' leaderboard, as a percentage of the n·log₂n comparison budget — NOT of every possible pair. At 100%, ten shortlisted entries means about 33 votes and twenty means about 87. Voters can always keep going past the target.",
+      "Votes needed to qualify for the voters' leaderboard, as a percentage of the n·log₂n comparison budget - NOT of every possible pair. At 100%, ten shortlisted entries means about 33 votes and twenty means about 87. Voters can always keep going past the target.",
   },
   "pookalam.leaderboard_delay_ms": {
     label: "Leaderboard Lag",
@@ -450,7 +450,7 @@ export function SettingsTab(props: SettingsTabProps) {
                     </Show>
 
                     {/*
-                      5. Datetime input — always IST.
+                      5. Datetime input - always IST.
 
                       `datetime-local` produces exactly the `YYYY-MM-DDTHH:MM`
                       the server parses, and it has no timezone of its own, so

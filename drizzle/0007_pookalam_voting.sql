@@ -1,7 +1,7 @@
 -- Day 7: Code-a-Pookalam entries and head-to-head Elo voting.
 --
 -- Purely additive: two new tables and one new enum, nothing existing is
--- touched. Hand-written for the same reason as 0006 — drizzle-kit's generator
+-- touched. Hand-written for the same reason as 0006 - drizzle-kit's generator
 -- needs a TTY this environment does not have.
 
 CREATE TYPE "public"."pookalam_status" AS ENUM('pending', 'approved', 'rejected');

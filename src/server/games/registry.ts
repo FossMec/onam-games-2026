@@ -15,7 +15,7 @@ const DEFAULT_POOKALAM = "/images/games/pookalam.webp";
 /**
  * Tokens get typed off a phone screen, read off paper, and pasted out of URLs.
  * Normalising away case, spacing and punctuation means a correct answer is not
- * rejected over a stray hyphen — without widening what actually counts.
+ * rejected over a stray hyphen - without widening what actually counts.
  */
 function normalizeToken(value: string): string {
   return value
@@ -25,7 +25,7 @@ function normalizeToken(value: string): string {
 }
 
 /**
- * The game registry — one place that owns how every game *behaves*.
+ * The game registry - one place that owns how every game *behaves*.
  *
  * Split of responsibilities, on purpose:
  *   - this file  : behaviour, limits, secrets, generation, verification.
@@ -39,7 +39,7 @@ function normalizeToken(value: string): string {
  *     so no puzzle state is ever persisted or trusted from the client.
  *  2. `generate` returns `view` and `solution` separately. Only `view` is ever
  *     serialised into a response. The solution never leaves the server, which
- *     is what actually keeps an unreleased game secret — not hiding the JS.
+ *     is what actually keeps an unreleased game secret - not hiding the JS.
  */
 
 /** How a game's field is ordered. Decides ranking direction and UI labels. */
@@ -73,13 +73,13 @@ export interface VerifyResult {
   reason?: string;
   /**
    * Server-derived score for `metric: "score"` games. Any score the client
-   * claimed is discarded — this value is the only one that reaches the DB.
+   * claimed is discarded - this value is the only one that reaches the DB.
    */
   score?: number;
   /** Server-counted moves, for anomaly detection. */
   movesCount?: number;
   /**
-   * Time added to the measured duration as an in-game penalty — Tinder charges
+   * Time added to the measured duration as an in-game penalty - Tinder charges
    * three seconds per wrong swipe. Derived here from the replayed submission,
    * never accepted from the client, and added on top of the server-measured
    * clock so the stored duration is the one the leaderboard ranks.
@@ -88,8 +88,8 @@ export interface VerifyResult {
 }
 
 /**
- * Admin-editable assets from `games.assets_json`. Public by definition — these
- * reach the browser — so puzzle secrets never belong here.
+ * Admin-editable assets from `games.assets_json`. Public by definition - these
+ * reach the browser - so puzzle secrets never belong here.
  *
  * This is the seam that makes artwork swappable without a deploy: the jigsaw
  * paints whatever `imageUrl` points at into its clip paths.
@@ -118,7 +118,7 @@ export interface GameDef {
    * "impossibly fast" for a 64-piece jigsaw is nothing like it is for Tinder.
    */
   minPlausibleMs: number;
-  /** An attempt open longer than this is void — stops all-day tab parking. */
+  /** An attempt open longer than this is void - stops all-day tab parking. */
   maxDurationMs: number;
   /** Hard cap on the posted body, enforced before parsing. Bounds replay cost. */
   maxSubmissionBytes: number;
@@ -152,7 +152,7 @@ export const GAMES: readonly GameDef[] = [
       hint: "Some of these logos are lying to you.",
       howTo: [
         "Swipe right if it's open source. Swipe left if it's proprietary. Arrow keys work too.",
-        "Open source means you can read the code, change it, and share it. Not just that it's free to download — plenty of things cost nothing and still own you.",
+        "Open source means you can read the code, change it, and share it. Not just that it's free to download - plenty of things cost nothing and still own you.",
         "Guess wrong and it costs you 3 seconds. You'll spend them reading what the thing actually is, so at least you get something for your money.",
         "Wrong cards come back at the end of the deck. Again. And again.",
         "Some of these are traps. Chrome is not Chromium. You have been warned.",
@@ -179,7 +179,7 @@ export const GAMES: readonly GameDef[] = [
       hint: "Every piece looks like every other piece. That is the joke.",
       howTo: [
         "Every piece is loose on one board. Drag them around.",
-        "There are no slots. Pieces join to each other — get two neighbours close enough and they snap together.",
+        "There are no slots. Pieces join to each other - get two neighbours close enough and they snap together.",
         "Once joined they move as one lump, so drag the lump.",
         "You're done when everything is a single lump. It can sit anywhere on the board.",
         "The pookalam is rotationally symmetric, so every piece looks like every other piece. That is the joke, and it is on you.",
@@ -205,7 +205,7 @@ export const GAMES: readonly GameDef[] = [
       tagline: "Six words, one grid, and absolutely no room to spare.",
       hint: "If a word leaves a tile stranded, it's the wrong word.",
       howTo: [
-        "Drag across the letters to trace a word. Paths bend — up, down, left, right, never diagonally.",
+        "Drag across the letters to trace a word. Paths bend - up, down, left, right, never diagonally.",
         "You don't get the words. You get how many there are and how long each one is.",
         "Every tile belongs to exactly one word. Nothing may be left over.",
         "Fastest correct board wins.",
@@ -213,7 +213,7 @@ export const GAMES: readonly GameDef[] = [
     },
     /**
      * Variant policy: ONE canonical board for the whole event, presented under
-     * a seed-chosen isomorphism. Distinct boards were rejected deliberately —
+     * a seed-chosen isomorphism. Distinct boards were rejected deliberately -
      * different boards mean different difficulty, and you cannot rank players
      * fairly across puzzles that are not equally hard.
      *
@@ -254,7 +254,7 @@ export const GAMES: readonly GameDef[] = [
     /**
      * Every board is generated backwards from a BFS solver, so it is provably
      * solvable and its true minimum move count is known before it ships. The
-     * generator rejects boards below a par floor — a puzzle you clear in three
+     * generator rejects boards below a par floor - a puzzle you clear in three
      * moves does not separate 500 players.
      */
     generate: (seed, difficulty) => vallam.generate(seed, difficulty),
@@ -316,7 +316,7 @@ export const GAMES: readonly GameDef[] = [
       hint: "Clue one is here. The rest are not.",
       howTo: [
         "Follow the clues. Some are on this site. Some are very much not.",
-        "The last stage hands you a token — scan it, or paste it here.",
+        "The last stage hands you a token - scan it, or paste it here.",
         "First correct submission wins. There is no second prize worth having.",
       ],
     },

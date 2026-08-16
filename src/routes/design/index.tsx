@@ -1,15 +1,16 @@
 import { Title } from "@solidjs/meta";
-import { For } from "solid-js";
+import { For, createSignal } from "solid-js";
 import { Bubble, Halftone, ShoutBurst } from "~/components/art/Burst";
 import { Confetti, ConfettiShape } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { SHOUT_COLOR, type ShoutMood } from "~/lib/shouts";
 import { SPRITE_REGISTRY, type SpriteName } from "~/lib/sprites";
+import designPrompt from "../../../design-prompt.md?raw";
 
 /**
  * The FOSS Onam Design Language & System Specification.
  *
- * Every example on this page is a live, working component —
+ * Every example on this page is a live, working component -
  * tokens are live CSS custom properties, shouts are reactive SVG components,
  * and confetti motifs demonstrate the Memphis × Onam geometric system.
  */
@@ -211,8 +212,8 @@ const RULES = [
     body: "Every surface and interactive button is bordered in solid comic ink (--ink-w: 2.5px mobile / 4px desktop). Never grey hairline dividers.",
   },
   {
-    title: "Harmonious Washed Palette.",
-    body: "Six vibrant pop accents calibrated to identical perceived lightness so they clash comfortably against newsprint cream without harsh neon fatigue.",
+    title: "Soothing Pastel-Faded Palette.",
+    body: "Six vibrant pop accents calibrated to identical perceived lightness so they clash comfortably against newsprint cream - pastel, faded, and sun-washed rather than electric. Never neon fatigue.",
   },
   {
     title: "Purposeful Comic Tilt.",
@@ -235,9 +236,16 @@ export default function DesignLanguage() {
     (typeof SPRITE_REGISTRY)[SpriteName],
   ][];
 
+  const [copied, setCopied] = createSignal(false);
+  const copyPrompt = () => {
+    void navigator.clipboard.writeText(designPrompt);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <main class="container space-y-12 py-6">
-      <Title>Design System & Art Language — FOSS Onam Games</Title>
+      <Title>Design System & Art Language - FOSS Onam Games</Title>
 
       <a
         href="/"
@@ -268,7 +276,7 @@ export default function DesignLanguage() {
             style={{ "font-family": "var(--font-stack-display)" }}
           >
             Bold, approachable, expressive, and rooted in open-source culture. Inked lines, radial
-            pookalam halftones, and zero drop shadows.
+            pookalam halftones, soothing pastel-faded colours, and zero drop shadows.
           </p>
         </div>
       </section>
@@ -297,6 +305,91 @@ export default function DesignLanguage() {
               satisfying to interact with, it doesn't belong in the games arena.
             </p>
           </Bubble>
+        </div>
+      </Section>
+
+      {/* The Two Inspirations */}
+      <Section title="The Two Inspirations: Memphis × Comic Book Print">
+        <div class="grid gap-3.5 sm:grid-cols-2">
+          <div class="card p-5 space-y-2" style={{ "--pop": "var(--pop-pink)" }}>
+            <p class="font-black text-lg">1980s Memphis</p>
+            <p class="text-sm font-semibold leading-relaxed text-[var(--ink-soft)]">
+              The Memphis Group built loud, playful geometry from abstract shapes: squiggles,
+              zigzags, dots, rounded arcs, and chunky forms in soothing pastel-faded colour fields.
+              Naive on purpose - hand-drawn even when tiled.
+            </p>
+          </div>
+          <div class="card p-5 space-y-2" style={{ "--pop": "var(--pop-blue)" }}>
+            <p class="font-black text-lg">Comic Book Print</p>
+            <p class="text-sm font-semibold leading-relaxed text-[var(--ink-soft)]">
+              Thick inked contours, Ben-Day halftone dots, starbursts, speech bubbles, and a
+              photocopied-annual imperfection. Everything reads as physically printed and handled,
+              never rendered on a screen.
+            </p>
+          </div>
+        </div>
+        <div class="card card-plain p-5 space-y-2 bg-[var(--paper-2)]">
+          <p class="font-black text-base">Why they share a language</p>
+          <p class="text-sm font-semibold leading-relaxed text-[var(--ink-soft)]">
+            Both use flat colour, confident outlines, and pattern to carry emotion. The Onam layer
+            quietly replaces every abstract Memphis shape with a Kerala motif, so the same geometry
+            reads as pop-art to outsiders and as festival to Malayalis. The decoration is never
+            empty, but it never needs explaining.
+          </p>
+        </div>
+      </Section>
+
+      {/* The Muthukuda Cursor */}
+      <Section title="The Muthukuda Cursor">
+        <div class="space-y-4">
+          <p class="font-semibold text-sm sm:text-base">
+            Even the pointer is part of the identity. The system arrow is swapped for a muthukuda -
+            the ceremonial umbrella - tilted so it reads as a pointer rather than a sticker parked
+            on the page.
+          </p>
+          <div class="grid gap-3.5 sm:grid-cols-3">
+            <div class="card card-plain p-4 text-center bg-[var(--paper-2)]">
+              <div class="mx-auto w-12 h-12 grid place-items-center rounded-lg border-2 border-[var(--ink)] bg-[var(--paper)]">
+                <img src="/cursors/muthukuda.png" alt="Resting muthukuda cursor" class="w-8 h-8" />
+              </div>
+              <p class="font-extrabold text-sm pt-3">Resting</p>
+              <p class="text-xs font-semibold text-[var(--ink-soft)] pt-1">
+                -18deg tilt. The default, resting state.
+              </p>
+            </div>
+            <div class="card card-plain p-4 text-center bg-[var(--paper-2)]">
+              <div class="mx-auto w-12 h-12 grid place-items-center rounded-lg border-2 border-[var(--ink)] bg-[var(--paper)]">
+                <img
+                  src="/cursors/muthukuda-point.png"
+                  alt="Pointing muthukuda cursor"
+                  class="w-8 h-8"
+                />
+              </div>
+              <p class="font-extrabold text-sm pt-3">Pointing</p>
+              <p class="text-xs font-semibold text-[var(--ink-soft)] pt-1">
+                -38deg tilt. Leaning in over anything clickable.
+              </p>
+            </div>
+            <div class="card card-plain p-4 text-center bg-[var(--paper-2)]">
+              <div class="mx-auto w-12 h-12 grid place-items-center rounded-lg border-2 border-[var(--ink)] bg-[var(--paper)]">
+                <img
+                  src="/cursors/muthukuda-grab.png"
+                  alt="Grabbing muthukuda cursor"
+                  class="w-8 h-8"
+                />
+              </div>
+              <p class="font-extrabold text-sm pt-3">Grabbing</p>
+              <p class="text-xs font-semibold text-[var(--ink-soft)] pt-1">
+                +24deg tilt. Leaning back while dragging or grabbing.
+              </p>
+            </div>
+          </div>
+          <p class="text-xs font-semibold text-[var(--ink-soft)]">
+            The hotspot sits on the canopy's top-left, where the eye reads the point to be. Text
+            inputs keep the system I-beam - a caret is a precision instrument and an umbrella cannot
+            show which character you are between. Disabled controls keep the system not-allowed
+            cursor.
+          </p>
         </div>
       </Section>
 
@@ -375,7 +468,7 @@ export default function DesignLanguage() {
         <div class="space-y-4">
           <div class="flex items-center justify-between flex-wrap gap-2">
             <p class="font-semibold text-sm sm:text-base">
-              Custom sprites blending open-source mascots with traditional Onam festival elements —
+              Custom sprites blending open-source mascots with traditional Onam festival elements -
               Tux wearing a Mahabali crown, Linus Torvalds with Sadya, Docker whale carrying a
               flower pookalam, and Ferris crab in a lotus.
             </p>
@@ -448,8 +541,9 @@ export default function DesignLanguage() {
       {/* The Palette */}
       <Section title="The Color Tokens & Palette">
         <p class="font-semibold text-sm sm:text-base">
-          Ten semantic tokens calibrated to harmonious perceptual lightness. All colors degrade
-          gracefully across high-contrast monitors and mobile displays.
+          Ten semantic tokens calibrated to harmonious perceptual lightness - soothing pastel-faded
+          inks, like a comic annual handled for years. All colours degrade gracefully across
+          high-contrast monitors and mobile displays.
         </p>
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
           <For each={PALETTE}>
@@ -586,22 +680,22 @@ export default function DesignLanguage() {
         </div>
       </Section>
 
-      {/* Footer Navigation CTA */}
+      {/* Copy the Design Prompt */}
       <section
         class="relative overflow-hidden rounded-xl p-8 text-center"
         style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--paper-3)" }}
       >
         <Halftone opacity={0.12} />
-        <div class="art-over space-y-3">
-          <h2 class="text-2xl font-black">All styling encapsulated in pure Vanilla CSS</h2>
-          <p class="font-semibold text-sm sm:text-base">
-            Engineered with zero CSS bloat, full responsiveness, and accessible high-contrast
-            tokens.
+        <div class="art-over space-y-4">
+          <h2 class="text-2xl font-black">Want to add this design to your app?</h2>
+          <p class="font-semibold text-sm sm:text-base mx-auto max-w-xl">
+            Grab a compact prompt distilled from the whole design system - palette, typography, the
+            six rules, motifs, and mood colours - ready to hand to any AI agent.
           </p>
-          <div class="pt-2">
-            <a href="/" class="btn-brand text-sm px-6 py-2.5">
-              ← Return to Arena
-            </a>
+          <div class="pt-2 flex flex-wrap items-center justify-center gap-3">
+            <button type="button" class="btn-brand text-sm px-6 py-2.5" onClick={copyPrompt}>
+              {copied() ? "Copied!" : "Copy the design prompt"}
+            </button>
           </div>
         </div>
       </section>

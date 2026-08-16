@@ -3,13 +3,13 @@ import { Confetti } from "~/components/art/Confetti";
 import { ProjectMark } from "./ProjectMark";
 
 /**
- * Open Source Tinder — the swipe deck.
+ * Open Source Tinder - the swipe deck.
  *
  * Right = open source, left = proprietary. The browser holds no answer key.
  * Each swipe is posted to `/check` on its own and the server says only whether
  * *that* card was wrong, plus the licence note for it if it was. A wrong call
  * costs three seconds, and those three seconds are spent reading what the thing
- * actually is — the penalty and the teaching moment are the same screen.
+ * actually is - the penalty and the teaching moment are the same screen.
  *
  * Wrong cards still recycle to the end of the deck, and the run ends when a
  * pass comes back clean.
@@ -25,7 +25,7 @@ export interface TinderCardView {
   id: string;
   name: string;
   /**
-   * "Browser", "Code Editor" — the card's bio line. Optional because a board
+   * "Browser", "Code Editor" - the card's bio line. Optional because a board
    * restored from a previous version's localStorage will not have it.
    */
   category?: string;
@@ -69,7 +69,7 @@ export interface TinderProgress {
   passNumber: number;
   /** Wrong swipes confirmed by a settled pass. Display only. */
   confirmedWrong?: number;
-  /** Running penalty, for display only — the server recomputes its own. */
+  /** Running penalty, for display only - the server recomputes its own. */
   penaltyMs?: number;
 }
 
@@ -100,7 +100,7 @@ function hash(seed: string): number {
 
 /**
  * The card's colour and its joke distance. Hashed from the id, which is the
- * only thing the browser has — there is no way for this to leak the answer
+ * only thing the browser has - there is no way for this to leak the answer
  * because the answer is not here to leak.
  */
 const cardPop = (id: string) => POPS[hash(id) % POPS.length];
@@ -112,7 +112,7 @@ export function TinderGame(props: TinderGameProps) {
   /*
    * Restored wholesale, including the pass number and the graded transcript.
    * A partial restore would desynchronise the deck from what the server will
-   * replay at verification, and a mismatched transcript is a rejected run —
+   * replay at verification, and a mismatched transcript is a rejected run -
    * so it is all of it or none of it.
    */
   const saved = props.initialProgress;
@@ -125,7 +125,7 @@ export function TinderGame(props: TinderGameProps) {
   const [passNumber, setPassNumber] = createSignal(saved?.passNumber ?? 1);
   /**
    * Wrong swipes the server has confirmed, per closed pass. The display total
-   * is this plus whatever the current pass has charged so far — the server
+   * is this plus whatever the current pass has charged so far - the server
    * recomputes its own number from the transcript regardless, so this only ever
    * has to be honest, not authoritative.
    */
@@ -204,7 +204,7 @@ export function TinderGame(props: TinderGameProps) {
       setError("");
       return { wrongIds: data.wrongIds, wrong: data.wrong ?? [] };
     } catch {
-      setError("Network trouble — retrying.");
+      setError("Network trouble - retrying.");
       return null;
     }
   };
@@ -236,7 +236,7 @@ export function TinderGame(props: TinderGameProps) {
    * The timer is a plain variable, NOT an `onCleanup` inside this effect. It
    * was, and that hung the game: `onCleanup` registered in an effect fires
    * before every *re-run* of that effect, and `setShowing`/`setPending` here
-   * re-run it immediately — so the three-second timer was cancelled the instant
+   * re-run it immediately - so the three-second timer was cancelled the instant
    * it was created and the penalty screen stayed up forever. Cleanup belongs to
    * the component's lifetime, which is the only thing that should cancel it.
    */
@@ -262,15 +262,15 @@ export function TinderGame(props: TinderGameProps) {
    *
    * This exists because the per-swipe grading is not allowed to decide which
    * cards come back. It used to: the client accumulated wrong ids from each
-   * swipe's response and recycled those. Lose one response — a blip, a 429,
-   * a tab suspended mid-flight — and the client rebuilt the next pass without
+   * swipe's response and recycled those. Lose one response - a blip, a 429,
+   * a tab suspended mid-flight - and the client rebuilt the next pass without
    * that card while the server's replay still expected it. The run then died at
    * submission with "Cards answered out of order", after the player had done
    * everything right. A dropped response is indistinguishable from "nothing was
    * wrong" if you only ever add to a list.
    *
    * So the pass is regraded in full, in order, and the recycled deck is built
-   * from *that* answer — the same computation the server will run at
+   * from *that* answer - the same computation the server will run at
    * verification, from the same input. If the call fails the pass does not
    * advance; it retries, because guessing here is what caused the bug.
    */
@@ -293,7 +293,7 @@ export function TinderGame(props: TinderGameProps) {
       }
 
       const nextTranscript = [...transcript(), finishedPass];
-      // Misses recycle, keeping their relative order — the server replay
+      // Misses recycle, keeping their relative order - the server replay
       // reconstructs exactly this from the same list, so the orders agree.
       const missed = passIds().filter((id) => graded.wrongIds.includes(id));
 
@@ -411,8 +411,8 @@ export function TinderGame(props: TinderGameProps) {
   /**
    * The penalty as shown. Confirmed passes are authoritative; the pass in hand
    * contributes whatever its advisory checks have charged so far. Reconciled
-   * upward each time a pass settles, and the server's own figure — computed
-   * from the transcript at verification — is the one that actually counts.
+   * upward each time a pass settles, and the server's own figure - computed
+   * from the transcript at verification - is the one that actually counts.
    */
   const penaltySeconds = () =>
     (Math.max(penaltyMs(), confirmedWrong() * PENALTY_MS) / 1000).toFixed(0);
@@ -523,7 +523,7 @@ export function TinderGame(props: TinderGameProps) {
 
           A keyframe animation, not a transition. This element is *mounted*
           already carrying its end transform, so there is no start state for a
-          transition to run from and the card simply blinked out of existence —
+          transition to run from and the card simply blinked out of existence -
           the swipe had no follow-through at all. An animation always plays from
           its own 0%, whatever the element looked like when it appeared.
         */}
@@ -564,7 +564,7 @@ export function TinderGame(props: TinderGameProps) {
       </div>
 
       {/* --------------------------------------------------- action buttons */}
-      {/* Buttons are not a fallback — they are the fast way to play, and they
+      {/* Buttons are not a fallback - they are the fast way to play, and they
           keep the game usable without a pointer. */}
       <div class="flex items-center justify-center gap-5 pt-1">
         <ActionButton
@@ -650,7 +650,7 @@ function CardFace(props: { card: TinderCardView | undefined; id: string }) {
 /**
  * Three seconds you cannot skip, spent on the thing you just got wrong.
  *
- * The countdown ring is a CSS animation rather than a ticking signal — it has
+ * The countdown ring is a CSS animation rather than a ticking signal - it has
  * to be smooth, and nothing else on screen needs to know how much is left.
  */
 function PenaltyScreen(props: { verdict: Verdict; card: TinderCardView | undefined }) {

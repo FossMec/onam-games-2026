@@ -199,7 +199,7 @@ export default function ComicsPage() {
    *
    * The first attempt at this rotated a leaf a full 180° and swapped its
    * content halfway; the second swung it out to edge-on, swapped, and swung it
-   * back. Both avoided the actual problem instead of solving it — a turning
+   * back. Both avoided the actual problem instead of solving it - a turning
    * page has *two* faces, and the one you see after 90° is the back of the
    * sheet you are lifting.
    *
@@ -318,7 +318,7 @@ export default function ComicsPage() {
   /*
    * Swipe, which on a phone is the only control anyone reaches for.
    *
-   * Turning the page was arrow keys and two small buttons — neither of which
+   * Turning the page was arrow keys and two small buttons - neither of which
    * exists on a touch screen in the way a reader expects. A swipe is the
    * gesture people already try first, and it silently did nothing.
    *
@@ -333,7 +333,7 @@ export default function ComicsPage() {
    *
    * Releasing and *then* animating is what a carousel does, not what a book
    * does. Here the pointer writes `progress` directly on every move, so the
-   * page hangs off the hand — you can take it halfway, stop, look, and pull it
+   * page hangs off the hand - you can take it halfway, stop, look, and pull it
    * back. Only on release does anything ease: past a third of the way it falls
    * open, short of that it drops closed.
    *
@@ -410,7 +410,7 @@ export default function ComicsPage() {
         try {
           stage.releasePointerCapture(pointerId);
         } catch {
-          // Already released — nothing to undo.
+          // Already released - nothing to undo.
         }
       }
       reset();
@@ -431,7 +431,7 @@ export default function ComicsPage() {
 
   return (
     <>
-      <Title>Comics — FOSS Onam Games</Title>
+      <Title>Comics - FOSS Onam Games</Title>
 
       <style>{`
         .book-stage {
@@ -460,7 +460,7 @@ export default function ComicsPage() {
           transform-origin: right center;
         }
         /*
-          Paper standing on edge catches less light — done with an ink overlay,
+          Paper standing on edge catches less light - done with an ink overlay,
           never a filter.
 
           A filter on the leaf silently forces preserve-3d back to flat, which
@@ -505,9 +505,9 @@ export default function ComicsPage() {
           /*
             The `sm` height leaves more slack than the nav strictly needs.
             Subtracting only the nav pinned the reader's bottom edge to the
-            exact bottom of the viewport, so anything else in the shell — the
+            exact bottom of the viewport, so anything else in the shell - the
             ban notice, a wrapper's padding, a nav a few pixels taller than the
-            guess — pushed its footer, and therefore the page controls, below
+            guess - pushed its footer, and therefore the page controls, below
             the fold. Losing a couple of rems of comic beats losing the
             "Next issue" button.
           */
@@ -626,7 +626,7 @@ export default function ComicsPage() {
                     </div>
                     {/*
                       The reverse. Turning a right page leftwards puts its back
-                      down as the new left page — so that is literally what is
+                      down as the new left page - so that is literally what is
                       drawn here, not a mirror of the front.
                     */}
                     <div class="book-face book-face-back" style={{ background: "var(--paper)" }}>

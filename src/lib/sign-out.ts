@@ -5,7 +5,7 @@ import { signOutAction } from "~/server/auth/actions";
  *
  * The reload is the point, not laziness. `signOutAction` revokes the session
  * and clears the cookie server-side, but the browser is still holding every
- * `createAsync` result it has already resolved — `getMe()`, the ban state, the
+ * `createAsync` result it has already resolved - `getMe()`, the ban state, the
  * games list. None of those are router queries, so nothing invalidates them,
  * and the page carried on showing the signed-in user until something unrelated
  * happened to refetch. That looked exactly like sign-out being ignored.

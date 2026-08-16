@@ -3,7 +3,7 @@
 
 /*
  * ============================================================================
- * DESIGN LANGUAGE — pop art / comic book x Memphis x Linux ricing
+ * DESIGN LANGUAGE - pop art / comic book x Memphis x Linux ricing
  * ============================================================================
  *
  * Childlike, loud, funny, approachable. Washed vintage-comic-print colour on
@@ -35,7 +35,7 @@
  *
  *  6. TILT IS PUNCTUATION. A degree or two of rotation on stickers and badges
  *     sells the collage. Never rotate anything a player must read under time
- *     pressure — no boards, no timers, no leaderboard rows.
+ *     pressure - no boards, no timers, no leaderboard rows.
  *
  * Restyle here, not in routes.
  */
@@ -82,14 +82,14 @@
 }
 
 :root {
-  /* Single theme. Cream paper IS the identity — a dark variant would dilute it. */
+  /* Single theme. Cream paper IS the identity - a dark variant would dilute it. */
   color-scheme: light;
 
   /* --- paper + ink ------------------------------------------------------- */
   --paper: #fbf3e4; /* newsprint cream */
   --paper-2: #fffcf5; /* raised panel */
   --paper-3: #f0e4cc; /* sunken / muted fill */
-  --ink: #22202b; /* warm near-black — every outline, every glyph */
+  --ink: #22202b; /* warm near-black - every outline, every glyph */
   --ink-soft: #6b6478;
 
   /* --- washed comic print ------------------------------------------------ */
@@ -116,7 +116,7 @@
   --radius-lg: 1rem;
 
   /*
-   * Six faces, each with exactly one job — that discipline is what keeps a
+   * Six faces, each with exactly one job - that discipline is what keeps a
    * multi-font system from reading like a ransom note. A reader should never
    * wonder why a face changed.
    *
@@ -142,7 +142,7 @@
 }
 
 /*
- * Self-hosted, OFL-licensed, no CDN. Every font on this site is free software —
+ * Self-hosted, OFL-licensed, no CDN. Every font on this site is free software -
  * which is both the correct call for a FOSS event and a line in the footer.
  * Files are fetched by `vp run fonts:fetch`; the stacks above degrade cleanly
  * until they land, so nothing is broken by their absence.
@@ -162,7 +162,7 @@
 }
 
 /*
- * Wordmark only. One cut is enough — `.wordmark` builds its poster chrome by
+ * Wordmark only. One cut is enough - `.wordmark` builds its poster chrome by
  * drawing this same face twice, because the Bungee display cuts are not
  * metric-compatible with each other and cannot be stacked.
  */
@@ -173,7 +173,7 @@
   font-display: swap;
 }
 
-/* Numerals — timers, leaderboards, anything measurable. */
+/* Numerals - timers, leaderboards, anything measurable. */
 @font-face {
   font-family: "Space Mono";
   src: url("/fonts/space-mono-400.woff2") format("woff2");
@@ -195,7 +195,7 @@
   font-display: swap;
 }
 
-/* Margin scribbles — the sarcasm channel. */
+/* Margin scribbles - the sarcasm channel. */
 @font-face {
   font-family: "Caveat";
   src: url("/fonts/caveat.woff2") format("woff2");
@@ -203,7 +203,7 @@
   font-display: swap;
 }
 
-/* Handwritten letter text — Kalam. */
+/* Handwritten letter text - Kalam. */
 @font-face {
   font-family: "Kalam";
   src: url("/fonts/kalam-400.woff2") format("woff2");
@@ -354,7 +354,7 @@ a {
  * sticker parked on the page.
  *
  * Three tilts of the same umbrella rather than three different objects, so the
- * states still tell people what they can do — the whole job a cursor has:
+ * states still tell people what they can do - the whole job a cursor has:
  *
  *   -18deg   default, resting
  *   -38deg   over anything clickable, leaning in
@@ -410,7 +410,7 @@ input[type="button"] {
     grabbing;
 }
 
-/* Disabled controls say so with the system cursor — the umbrella cannot. */
+/* Disabled controls say so with the system cursor - the umbrella cannot. */
 button:disabled,
 [aria-disabled="true"],
 .cursor-not-allowed {
@@ -467,7 +467,7 @@ textarea {
    * A horizontal card rail for phones, a plain grid from `sm` up.
    *
    * Stacked vertically, a list of eight cards is eight screens of scrolling
-   * past content most readers already understand — so on a phone they become
+   * past content most readers already understand - so on a phone they become
    * one swipeable row, and the rail bleeds to both screen edges so a partial
    * card is visible and the gesture advertises itself. Above `sm` there is
    * room to lay them out properly and the whole thing reverts to a grid.
@@ -481,7 +481,7 @@ textarea {
    * For horizontal card rails, where the bar is noise: the partial card at the
    * edge already says "this moves sideways", and a full-width grey track under
    * a row of comic panels is the one part that looks unstyled. Vertical
-   * scrollbars keep theirs — there the bar is the only position indicator
+   * scrollbars keep theirs - there the bar is the only position indicator
    * anyone gets.
    *
    * Note this class was already in use across the admin tabs before it existed
@@ -535,7 +535,7 @@ textarea {
 
   /*
    * Comic panel. Flat fill, confident outline, no shadow. A coloured strip
-   * along the top does the job a shadow used to — it separates the panel from
+   * along the top does the job a shadow used to - it separates the panel from
    * the page and lets each card carry its own accent.
    */
   .card {
@@ -590,7 +590,7 @@ textarea {
   /*
    * Depth without shadow: the button is a flat inked block that physically
    * sinks. On press it translates 2px and the fill darkens via an inset
-   * halftone. Big tap targets — 48px minimum, this is a phone-first event.
+   * halftone. Big tap targets - 48px minimum, this is a phone-first event.
    */
   .btn-brand,
   .btn-accent,
@@ -605,7 +605,7 @@ textarea {
     color: var(--ink);
   }
 
-  /* Ben-Day dots wash across the button on press — comic shading, not a shadow. */
+  /* Ben-Day dots wash across the button on press - comic shading, not a shadow. */
   .btn-brand::after,
   .btn-accent::after,
   .btn-ghost::after,
@@ -694,7 +694,7 @@ textarea {
   }
 
   /*
-   * Comic onomatopoeia. Manglish, never POW/BAM — this is the joke nobody
+   * Comic onomatopoeia. Manglish, never POW/BAM - this is the joke nobody
    * else can copy. Pair with <Burst/> for the starburst behind it.
    */
   .shout {
@@ -710,7 +710,7 @@ textarea {
   }
 
   /*
-   * A small, tilted comic shout — `.shout`'s little sibling.
+   * A small, tilted comic shout - `.shout`'s little sibling.
    *
    * For the two links flanking the hero meme. They were animated vignettes
    * first, which worked on their own and stole the eye from Linus in the
@@ -738,13 +738,13 @@ textarea {
 
   /*
    * The sarcasm channel. Rendering asides in a distinct marked style keeps
-   * the jokes from muddying functional copy — you can be as rude as you like
+   * the jokes from muddying functional copy - you can be as rude as you like
    * in here without ever making a button ambiguous.
    */
   /*
    * Set in a marker hand so every aside looks scrawled in the margin of the
    * comic rather than typeset. Giving the jokes their own visual voice is what
-   * lets the functional copy stay plain — you can be as rude as you like in
+   * lets the functional copy stay plain - you can be as rude as you like in
    * here without ever making a button ambiguous.
    */
   .comment {
@@ -778,7 +778,7 @@ textarea {
    * it. One font for both layers makes misalignment structurally impossible at
    * any size.
    *
-   * The offset is in `em`, so the chrome scales with the type — the nav
+   * The offset is in `em`, so the chrome scales with the type - the nav
    * wordmark and the 60px hero get proportionally the same depth.
    *
    * This is not a violation of the no-shadows rule: it is a second flat
@@ -1015,7 +1015,7 @@ textarea {
 /*
  * The how-to-play demos. Each loop is one full explanation of a game, run on
  * a toy board, and every keyframe set below is written to read at a glance
- * rather than to be pretty — a player watches this once, before their clock
+ * rather than to be pretty - a player watches this once, before their clock
  * starts, and must come away knowing which way to move.
  */
 /*
@@ -1023,13 +1023,13 @@ textarea {
  *
  * The card being swiped must be the card on top. The first version stacked a
  * static card over the animating one, so the "free" card slid out from *behind*
- * the card it was supposed to be in front of — which taught the mechanic
+ * the card it was supposed to be in front of - which taught the mechanic
  * backwards. Each card now owns its whole journey: front of the deck, swipe
  * out, park off-screen, and teleport back to the rear of the deck while
  * invisible so the loop restarts without a flicker.
  */
 
-/* Top card. Swipes right — this one is free. */
+/* Top card. Swipes right - this one is free. */
 @keyframes demo-card-free {
   0%,
   10% {
@@ -1057,7 +1057,7 @@ textarea {
   }
 }
 
-/* Second card. Rises as the first leaves, then swipes left — this one bills you. */
+/* Second card. Rises as the first leaves, then swipes left - this one bills you. */
 @keyframes demo-card-paid {
   0%,
   22% {
@@ -1125,7 +1125,7 @@ textarea {
 /*
  * Four loose pieces drifting into one lump, then coming apart to go again.
  * Each piece starts offset by its own `--from-x`/`--from-y` and settles at its
- * true position — the pieces join to each other, not into slots, which is the
+ * true position - the pieces join to each other, not into slots, which is the
  * one thing this jigsaw's demo has to communicate.
  */
 @keyframes demo-join {
@@ -1240,8 +1240,8 @@ textarea {
  * The full-screen parade shown while a sign-in finishes.
  *
  * Deliberately more than a spinner. This is the first thing a new player sees,
- * and the wait behind it is real work — the Google code exchange, Supabase,
- * the device fingerprint, the session write — so it is long enough to be worth
+ * and the wait behind it is real work - the Google code exchange, Supabase,
+ * the device fingerprint, the session write - so it is long enough to be worth
  * filling with something that says what kind of site this is.
  *
  * Built only from what the rest of the site already uses: the paper ground and
