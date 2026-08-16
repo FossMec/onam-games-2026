@@ -18,9 +18,10 @@ export default createHandler(() => {
           <head>
             <meta charset="utf-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1" />
-            <link rel="icon" type="image/png" sizes="32x32" href="/foss-logo-original.png" />
+            <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+            <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
             <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-            <link rel="apple-touch-icon" href="/foss-logo-original.png" />
+            <link rel="apple-touch-icon" href="/favicon.png" />
             {/*
             Only the two faces that carry every page are preloaded. The other
             four (wordmark, shouts, mono, marker hand) load lazily - preloading
