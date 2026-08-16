@@ -127,6 +127,13 @@
       "when": 1786870882652,
       "tag": "0017_talented_fabian_cortez",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786882121820,
+      "tag": "0018_wise_strong_guy",
+      "breakpoints": true
     }
   ]
 }
