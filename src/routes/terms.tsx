@@ -4,7 +4,7 @@ import { For } from "solid-js";
 const SECTIONS = [
   {
     title: "Acceptance",
-    body: 'By accessing or using foss-onam-games.vercel.app ("the Site"), you agree to these Terms. If you do not agree, please do not use the Site. The Site is operated by FOSS MEC for the FOSS Onam Games 2026 event.',
+    body: 'By accessing or using foss-onam.onrender.com ("the Site"), you agree to these Terms. If you do not agree, please do not use the Site. The Site is operated by FOSS MEC for the FOSS Onam Games 2026 event.',
   },
   {
     title: "The games",

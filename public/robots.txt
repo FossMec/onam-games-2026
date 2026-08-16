@@ -4,4 +4,4 @@ Disallow: /admin/
 Disallow: /api/
 Disallow: /onboarding
 
-Sitemap: https://foss-onam-games.vercel.app/sitemap.xml
+Sitemap: https://foss-onam.onrender.com/sitemap.xml

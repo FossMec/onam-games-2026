@@ -46,7 +46,7 @@ const PENDING_MAX_AGE_S = 60 * 10;
 /**
  * Non-sensitive scopes only, and that is a constraint rather than a default:
  * the moment anything here needs Google's review, the app is back in the
- * verification queue, which cannot be cleared from a `*.vercel.app` domain.
+ * verification queue, which cannot be cleared from a custom deployment domain.
  */
 const SCOPES = "openid email profile";
 

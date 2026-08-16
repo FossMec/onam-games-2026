@@ -26,20 +26,17 @@ export default function App() {
           <Meta name="application-name" content="FOSS ONAM" />
           <Meta property="og:site_name" content="FOSS ONAM" />
           <Meta property="og:type" content="website" />
-          <Meta property="og:url" content="https://foss-onam-games.vercel.app/" />
+          <Meta property="og:url" content="https://foss-onam.onrender.com/" />
           <Meta
             name="google-site-verification"
-            content="-lINJGuul9m8kUB9WitBwq3UQZi8gWz52ncMnYWyc9I"
+            content="hmMLL8KnfSg_CX5_cjL7qq_fqiclk-QLJsPh2xqA_MM"
           />
           <Meta property="og:title" content="FOSS ONAM - FOSS Onam Games by FOSS MEC" />
           <Meta
             property="og:description"
             content="Seven days of games. One week of Onam. A open-source online festival with daily browser challenges, fair-play leaderboards, and Code-a-Pookalam by FOSS MEC."
           />
-          <Meta
-            property="og:image"
-            content="https://foss-onam-games.vercel.app/images/og-image.webp"
-          />
+          <Meta property="og:image" content="https://foss-onam.onrender.com/images/og-image.webp" />
           <Meta property="og:image:type" content="image/webp" />
           <Meta property="og:image:width" content="1376" />
           <Meta property="og:image:height" content="768" />
@@ -53,9 +50,9 @@ export default function App() {
           />
           <Meta
             name="twitter:image"
-            content="https://foss-onam-games.vercel.app/images/og-image.webp"
+            content="https://foss-onam.onrender.com/images/og-image.webp"
           />
-          <Link rel="canonical" href="https://foss-onam-games.vercel.app/" />
+          <Link rel="canonical" href="https://foss-onam.onrender.com/" />
           <Link rel="manifest" href="/site.webmanifest" />
 
           {/* Privacy-Friendly Web Analytics (Umami / Cloudflare / Vercel) */}
