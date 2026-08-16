@@ -246,8 +246,11 @@ export function WendGame(props: WendGameProps) {
       </div>
 
       <div
-        class="relative mx-auto my-auto aspect-square w-full max-w-[26rem] max-h-[min(50dvh,370px)] select-none overflow-hidden p-2.5 sm:p-3"
+        class="relative mx-auto my-auto aspect-square w-full select-none p-2.5 sm:p-3"
         style={{
+          "aspect-ratio": "1 / 1",
+          "max-height": "min(50dvh, 370px)",
+          "max-width": "min(50dvh, 370px, 100%)",
           background: "var(--paper-3)",
           border: "var(--ink-w-bold) solid var(--ink)",
           "border-radius": "var(--radius)",
@@ -278,8 +281,9 @@ export function WendGame(props: WendGameProps) {
             class="absolute inset-0 grid w-full h-full"
             style={{
               "grid-template-columns": `repeat(${props.view.size}, 1fr)`,
-              gap: "1px",
-              background: "rgba(34,32,43,0.15)",
+              "grid-template-rows": `repeat(${props.view.size}, 1fr)`,
+              gap: "2px",
+              background: "rgba(34,32,43,0.18)",
             }}
           >
             <For each={props.view.grid}>
@@ -289,6 +293,7 @@ export function WendGame(props: WendGameProps) {
                     const wall = () => isWall(r(), c());
                     return (
                       <div
+                        class="w-full h-full"
                         style={{
                           background: wall() ? "var(--ink)" : "var(--paper-2)",
                         }}
@@ -478,6 +483,8 @@ export function WendGame(props: WendGameProps) {
             class="absolute inset-0 grid w-full h-full select-none"
             style={{
               "grid-template-columns": `repeat(${props.view.size}, 1fr)`,
+              "grid-template-rows": `repeat(${props.view.size}, 1fr)`,
+              gap: "2px",
               "z-index": 5,
             }}
           >
@@ -498,14 +505,10 @@ export function WendGame(props: WendGameProps) {
                         aria-label={
                           wall() ? "Wall" : `Row ${r() + 1} column ${c() + 1}, letter ${letter}`
                         }
-                        class="relative transition-transform select-none"
+                        class="relative w-full h-full flex items-center justify-center select-none font-display font-extrabold"
                         style={{
-                          "aspect-ratio": "1 / 1",
-                          display: "grid",
-                          "place-items": "center",
-                          "font-family": "var(--font-stack-display)",
-                          "font-weight": 800,
-                          "font-size": "clamp(1.1rem, 5.5vw, 1.65rem)",
+                          "font-size": "clamp(1.1rem, 5.2vw, 1.65rem)",
+                          "line-height": 1,
                           color: "var(--ink)",
                           background: "transparent",
                           border: "none",
@@ -513,7 +516,7 @@ export function WendGame(props: WendGameProps) {
                           cursor: props.disabled || wall() ? "default" : "pointer",
                         }}
                       >
-                        <span class="relative select-none">{letter}</span>
+                        <span class="relative select-none leading-none">{letter}</span>
                       </button>
                     );
                   }}
