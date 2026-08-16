@@ -21,9 +21,9 @@ import { createRng, type Rng } from "../rng";
  * what happened are never trusted; only the replay counts.
  */
 
-export const BOARD = 6;
+export const BOARD = 7;
 /** The vallam always sits on this row and escapes to the right. */
-export const EXIT_ROW = 2;
+export const EXIT_ROW = 3;
 
 export interface Boat {
   id: number;
@@ -182,24 +182,58 @@ export function solve(boats: Boat[], cap = 30_000): number | null {
   return null;
 }
 
-/** Places boats at random without overlapping. Vallam is always id 0. */
-function randomBoard(rng: Rng): Boat[] | null {
-  const boats: Boat[] = [{ id: 0, r: EXIT_ROW, c: rng.int(0, 1), len: 3, horizontal: true }];
+/**
+ * Backward-scramble board generator:
+ * Places vertical blocker boats crossing the exit lane, then scrambles
+ * backwards via legal moves, guaranteeing deep 7x7 sliding puzzles with high par.
+ */
+export function randomBoard(rng: Rng): Boat[] | null {
+  const vallamLen = 2;
+  // Start with Vallam at the exit (solved position)
+  let boats: Boat[] = [
+    {
+      id: 0,
+      r: EXIT_ROW,
+      c: BOARD - vallamLen,
+      len: vallamLen,
+      horizontal: true,
+    },
+  ];
   const occupied = new Set<string>();
   for (const cell of cellsOf(boats[0])) occupied.add(`${cell.r},${cell.c}`);
 
-  const target = rng.int(10, 13);
+  // Guarantee 2 to 3 vertical blocker boats crossing the exit row
+  const exitBlockCols = [2, 3, 4].filter((col) => !occupied.has(`${EXIT_ROW},${col}`));
+  for (const col of exitBlockCols) {
+    if (rng.chance(0.85)) {
+      const len = rng.chance(0.6) ? 2 : 3;
+      const r = rng.int(Math.max(0, EXIT_ROW - len + 1), Math.min(BOARD - len, EXIT_ROW));
+      const candidate: Boat = {
+        id: boats.length,
+        r,
+        c: col,
+        len,
+        horizontal: false,
+      };
+      const cells = cellsOf(candidate);
+      if (!cells.some((cell) => occupied.has(`${cell.r},${cell.c}`))) {
+        for (const cell of cells) occupied.add(`${cell.r},${cell.c}`);
+        boats.push(candidate);
+      }
+    }
+  }
+
+  // Place additional random horizontal and vertical blockers
+  const target = rng.int(11, 14);
   let guard = 0;
   while (boats.length < target && guard < 400) {
     guard += 1;
-    const horizontal = rng.chance(0.5);
-    const len = rng.chance(0.72) ? 2 : 3;
+    const horizontal = rng.chance(0.55);
+    const len = rng.chance(0.6) ? 2 : 3;
     const r = rng.int(0, BOARD - (horizontal ? 1 : len));
     const c = rng.int(0, BOARD - (horizontal ? len : 1));
     const candidate: Boat = { id: boats.length, r, c, len, horizontal };
 
-    // A horizontal boat on the exit row would make the puzzle unsolvable or
-    // trivial depending on side; keep that row for the vallam alone.
     if (horizontal && r === EXIT_ROW) continue;
 
     const cells = cellsOf(candidate);
@@ -207,7 +241,33 @@ function randomBoard(rng: Rng): Boat[] | null {
     for (const cell of cells) occupied.add(`${cell.r},${cell.c}`);
     boats.push(candidate);
   }
-  return boats.length >= 8 ? boats : null;
+
+  // Deep random walk to scramble the board backwards
+  for (let step = 0; step < 250; step += 1) {
+    const grid = buildGrid(boats);
+    const boatIdx = rng.int(0, boats.length - 1);
+    const boat = boats[boatIdx];
+    const deltas: number[] = [];
+    for (const d of [-3, -2, -1, 1, 2, 3]) {
+      if (d !== 0 && canMove(grid, boat, d)) deltas.push(d);
+    }
+    if (deltas.length > 0) {
+      const chosenD = deltas[rng.int(0, deltas.length - 1)];
+      boats = applyMove(boats, { b: boat.id, d: chosenD });
+    }
+  }
+
+  // Push Vallam away from exit to c:0 or c:1
+  if (boats[0].c > 1) {
+    for (let c = boats[0].c; c > 0; c -= 1) {
+      const grid = buildGrid(boats);
+      if (canMove(grid, boats[0], -1)) {
+        boats = applyMove(boats, { b: 0, d: -1 });
+      }
+    }
+  }
+
+  return boats.length >= 8 && boats[0].c <= 1 ? boats : null;
 }
 
 /**
@@ -238,46 +298,186 @@ export function generate(seed: string, difficulty: string): GeneratedInstance {
   return result;
 }
 
+/** Handcrafted curated challenge levels with known high-quality move paths */
+export const CUSTOM_LEVELS: {
+  id: string;
+  name: string;
+  difficulty: "normal" | "hard" | "master";
+  boats: Omit<Boat, "id">[];
+}[] = [
+  {
+    id: "vembanad-7x7",
+    name: "Vembanad Grand Express",
+    difficulty: "normal",
+    boats: [
+      { r: 3, c: 0, len: 2, horizontal: true },
+      { r: 6, c: 1, len: 3, horizontal: true },
+      { r: 1, c: 2, len: 3, horizontal: true },
+      { r: 0, c: 4, len: 2, horizontal: true },
+      { r: 5, c: 3, len: 2, horizontal: true },
+      { r: 4, c: 5, len: 2, horizontal: false },
+      { r: 1, c: 0, len: 2, horizontal: true },
+      { r: 4, c: 1, len: 3, horizontal: true },
+      { r: 6, c: 5, len: 2, horizontal: true },
+      { r: 2, c: 4, len: 2, horizontal: false },
+      { r: 2, c: 2, len: 2, horizontal: false },
+      { r: 1, c: 5, len: 2, horizontal: true },
+    ],
+  },
+  {
+    id: "punnamada-7x7",
+    name: "Punnamada Channel Surge",
+    difficulty: "normal",
+    boats: [
+      { r: 3, c: 0, len: 2, horizontal: true },
+      { r: 4, c: 0, len: 3, horizontal: true },
+      { r: 2, c: 5, len: 3, horizontal: false },
+      { r: 0, c: 1, len: 2, horizontal: false },
+      { r: 2, c: 4, len: 2, horizontal: false },
+      { r: 0, c: 2, len: 3, horizontal: true },
+      { r: 2, c: 0, len: 3, horizontal: true },
+      { r: 2, c: 3, len: 3, horizontal: false },
+      { r: 6, c: 4, len: 3, horizontal: true },
+      { r: 0, c: 0, len: 2, horizontal: false },
+      { r: 2, c: 6, len: 3, horizontal: false },
+      { r: 0, c: 6, len: 2, horizontal: false },
+      { r: 5, c: 3, len: 2, horizontal: false },
+    ],
+  },
+  {
+    id: "ashtamudi-7x7",
+    name: "Ashtamudi Eight-Fold Lock",
+    difficulty: "hard",
+    boats: [
+      { r: 3, c: 0, len: 2, horizontal: true },
+      { r: 4, c: 0, len: 2, horizontal: false },
+      { r: 0, c: 2, len: 2, horizontal: false },
+      { r: 3, c: 5, len: 3, horizontal: false },
+      { r: 3, c: 2, len: 2, horizontal: false },
+      { r: 0, c: 0, len: 2, horizontal: true },
+      { r: 6, c: 0, len: 3, horizontal: true },
+      { r: 0, c: 3, len: 2, horizontal: false },
+      { r: 2, c: 3, len: 3, horizontal: false },
+      { r: 1, c: 4, len: 2, horizontal: true },
+      { r: 6, c: 4, len: 3, horizontal: true },
+      { r: 3, c: 4, len: 3, horizontal: false },
+      { r: 2, c: 0, len: 2, horizontal: true },
+    ],
+  },
+  {
+    id: "aranmula-7x7",
+    name: "Aranmula Mirror Maze",
+    difficulty: "hard",
+    boats: [
+      { r: 3, c: 0, len: 2, horizontal: true },
+      { r: 6, c: 5, len: 2, horizontal: true },
+      { r: 2, c: 3, len: 2, horizontal: false },
+      { r: 0, c: 1, len: 3, horizontal: false },
+      { r: 1, c: 3, len: 3, horizontal: true },
+      { r: 0, c: 2, len: 2, horizontal: false },
+      { r: 6, c: 1, len: 3, horizontal: true },
+      { r: 4, c: 3, len: 2, horizontal: true },
+      { r: 2, c: 5, len: 2, horizontal: false },
+      { r: 0, c: 6, len: 2, horizontal: false },
+      { r: 4, c: 5, len: 2, horizontal: false },
+      { r: 4, c: 2, len: 2, horizontal: false },
+      { r: 2, c: 6, len: 3, horizontal: false },
+    ],
+  },
+  {
+    id: "chambakkulam-7x7",
+    name: "Chambakkulam Chundan Fury",
+    difficulty: "master",
+    boats: [
+      { r: 3, c: 0, len: 2, horizontal: true },
+      { r: 3, c: 2, len: 2, horizontal: false },
+      { r: 1, c: 2, len: 2, horizontal: false },
+      { r: 4, c: 0, len: 2, horizontal: false },
+      { r: 5, c: 4, len: 2, horizontal: false },
+      { r: 4, c: 4, len: 3, horizontal: true },
+      { r: 1, c: 3, len: 2, horizontal: false },
+      { r: 1, c: 0, len: 2, horizontal: false },
+      { r: 0, c: 4, len: 3, horizontal: false },
+      { r: 5, c: 5, len: 2, horizontal: false },
+      { r: 5, c: 1, len: 2, horizontal: true },
+      { r: 4, c: 3, len: 2, horizontal: false },
+      { r: 0, c: 2, len: 2, horizontal: true },
+    ],
+  },
+];
+
 function generateUncached(seed: string, difficulty: string): GeneratedInstance {
-  /*
-   * Tuned against the measured distribution. A single random 9-11 boat board
-   * usually solves in 5-10 moves, so a high threshold means every generation
-   * exhausts its attempts and falls back - the slowest path, taken every time.
-   * Thresholds of 14 and then 11 both did exactly that.
-   *
-   * These accept within a few draws. Par is a floor on interest, not the
-   * score: the day is ranked on time, so a 6-move board still separates
-   * players by how fast they see it.
-   */
-  const minPar = difficulty === "hard" ? 8 : 6;
+  const rng = createRng(`${seed}:vallam:level-pick`);
+
+  // First, check if a matching curated handcrafted level can be selected
+  const matchingLevels = CUSTOM_LEVELS.filter(
+    (lvl) =>
+      difficulty === "all" ||
+      lvl.difficulty === difficulty ||
+      (difficulty === "hard" && lvl.difficulty === "master"),
+  );
+
+  const levelPool = matchingLevels.length > 0 ? matchingLevels : CUSTOM_LEVELS;
+  const pickedLevel = levelPool[rng.int(0, levelPool.length - 1)];
+
+  if (pickedLevel) {
+    const boats: Boat[] = pickedLevel.boats.map((b, idx) => ({
+      ...b,
+      id: idx,
+    }));
+    const par = solve(boats);
+    if (par !== null && par > 0) {
+      return {
+        view: {
+          kind: "vallam",
+          size: BOARD,
+          exitRow: EXIT_ROW,
+          boats,
+          par,
+        } satisfies VallamView,
+        solution: { par },
+      };
+    }
+  }
+
+  // BFS solver random generator
+  const minPar = difficulty === "hard" || difficulty === "master" ? 14 : 10;
   let fallback: { boats: Boat[]; par: number } | null = null;
 
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    const rng = createRng(`${seed}:vallam:${attempt}`);
-    const boats = randomBoard(rng);
+  for (let attempt = 0; attempt < 16; attempt += 1) {
+    const genRng = createRng(`${seed}:vallam:${attempt}`);
+    const boats = randomBoard(genRng);
     if (!boats) continue;
     const par = solve(boats);
     if (par === null || par === 0) continue;
     if (par >= minPar) {
       return {
-        view: { kind: "vallam", size: BOARD, exitRow: EXIT_ROW, boats, par } satisfies VallamView,
+        view: {
+          kind: "vallam",
+          size: BOARD,
+          exitRow: EXIT_ROW,
+          boats,
+          par,
+        } satisfies VallamView,
         solution: { par },
       };
     }
-    // Keep the hardest solvable board seen, so we always have something.
     if (!fallback || par > fallback.par) fallback = { boats, par };
   }
 
-  if (!fallback) throw new Error("Vallam: could not generate a solvable board");
+  const safeFallback = fallback ?? {
+    boats: CUSTOM_LEVELS[0].boats.map((b, idx) => ({ ...b, id: idx })),
+    par: solve(CUSTOM_LEVELS[0].boats.map((b, idx) => ({ ...b, id: idx }))) ?? 10,
+  };
   return {
     view: {
       kind: "vallam",
       size: BOARD,
       exitRow: EXIT_ROW,
-      boats: fallback.boats,
-      par: fallback.par,
+      boats: safeFallback.boats,
+      par: safeFallback.par,
     } satisfies VallamView,
-    solution: { par: fallback.par },
+    solution: { par: safeFallback.par },
   };
 }
 
@@ -287,7 +487,10 @@ export function verify(input: VerifyInput): VerifyResult {
     return { valid: false, reason: "Nothing submitted." };
   }
   if (submission.moves.length > 2_000) {
-    return { valid: false, reason: "That is a lot of moves. Too many, in fact." };
+    return {
+      valid: false,
+      reason: "That is a lot of moves. Too many, in fact.",
+    };
   }
 
   // Regenerate the player's own board from their seed.

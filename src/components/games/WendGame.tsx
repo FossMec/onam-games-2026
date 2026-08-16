@@ -54,6 +54,8 @@ const PATH_POPS = [
   "var(--pop-purple)",
   "var(--pop-yellow)",
   "var(--pop-red)",
+  "var(--pop-green, #10b981)",
+  "var(--pop-orange, #f97316)",
 ];
 
 const key = (cell: Cell) => `${cell.r},${cell.c}`;

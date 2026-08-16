@@ -119,7 +119,13 @@ export async function getGates(): Promise<PookalamGates> {
 /* ---------------------------------------------------------------- entry */
 
 export interface SubmissionInput {
-  title: string;
+  /**
+   * Optional. The entry form stopped asking for one - a title is never shown
+   * while voting is open, so it was a required field that bought the entrant
+   * nothing and gave them one more way to accidentally identify themselves.
+   * Older entries keep the titles they already have.
+   */
+  title?: string;
   sourceUrl: string;
   /** Data URL from `preparePookalamImage`. Omitted when editing text only. */
   imageDataUrl?: string;
@@ -212,9 +218,19 @@ export async function upsertSubmission(userId: string, input: SubmissionInput): 
   const config = await getConfig();
   if (!config.submissions.open) throw new Error("Submissions are closed.");
 
-  const title = input.title.trim();
-  if (title.length < 3 || title.length > 80) {
-    throw new Error("Give it a title between 3 and 80 characters.");
+  /*
+   * A title is optional and no longer asked for. When one does arrive - from an
+   * older client, or an admin tool - it is still length-checked; when it does
+   * not, an edit must not wipe the title an entry already had, so the existing
+   * value is kept and only a brand new row falls back to the placeholder.
+   */
+  const submitted = input.title?.trim();
+  if (
+    submitted !== undefined &&
+    submitted !== "" &&
+    (submitted.length < 3 || submitted.length > 80)
+  ) {
+    throw new Error("A title has to be between 3 and 80 characters.");
   }
   const notes = input.notes?.trim().slice(0, 500) || null;
   const sourceUrl = normalizeSourceUrl(input.sourceUrl);
@@ -226,6 +242,13 @@ export async function upsertSubmission(userId: string, input: SubmissionInput): 
   if (!input.imageDataUrl && !existing) {
     throw new Error("Upload a square render of your pookalam.");
   }
+
+  /*
+   * `undefined` means "leave whatever is there alone", which is what an edit
+   * from the current form always wants. Only a first entry needs a value at
+   * all, and nothing displays it before results are public.
+   */
+  const title = submitted || undefined;
 
   let stored: { url: string; path: string; width: number; height: number } | null = null;
   if (input.imageDataUrl) {
@@ -244,7 +267,9 @@ export async function upsertSubmission(userId: string, input: SubmissionInput): 
     .insert(pookalamSubmissions)
     .values({
       userId,
-      title,
+      // The column is NOT NULL and the form no longer asks, so a first entry
+      // gets a neutral placeholder. It is never rendered while voting is open.
+      title: title ?? "Untitled pookalam",
       sourceUrl,
       imageUrl: stored?.url ?? existing?.imageUrl ?? "",
       imagePath: stored?.path ?? existing?.imagePath ?? null,
@@ -255,11 +280,13 @@ export async function upsertSubmission(userId: string, input: SubmissionInput): 
     .onConflictDoUpdate({
       target: pookalamSubmissions.userId,
       set: {
-        title,
+        // Absent title means "keep what is stored" - an edit from the current
+        // form carries no title at all and must not blank an older one.
+        ...(title ? { title } : {}),
         sourceUrl,
         notes,
         // Only overwrite the artwork when new artwork actually arrived, so a
-        // typo fix in the title does not require re-uploading the render.
+        // link fix does not require re-uploading the render.
         ...(stored
           ? {
               imageUrl: stored.url,

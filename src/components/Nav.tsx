@@ -10,6 +10,7 @@ import { SpriteIcon } from "./art/SpriteIcon";
  */
 const LINKS = [
   { href: "/", label: "Home" },
+  { href: "/games", label: "Games" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/code-a-pookalam", label: "Pookalam" },
 ];

@@ -214,12 +214,13 @@ export const POOKALAM = {
 
   rules: [
     "Submit a link to your runnable source (GitHub repo, Gist, GitLab, Codeberg, CodePen or similar) AND upload the rendered image.",
+    "Valid Open-Source License Required: Your code repository must contain a standard open-source license file (e.g. MIT, Apache 2.0, GPLv3, AGPL, BSD, or Unlicense) in true FOSS spirit.",
     "The render must be square (1:1). We check the shape in your browser before it uploads, so a widescreen screenshot will be refused on the spot.",
     "No name, handle, watermark, signature or logo anywhere in the image. Day 7 voting is anonymous - anything identifying you gets the entry pulled.",
     "AI assistance is fully allowed! Use LLMs, shader generators, or creative coding prompts - as long as you submit clean, runnable code that produces the render.",
     "Any language or medium goes: HTML5 Canvas, SVG, CSS, Python (Turtle / Pygame / Matplotlib), Graphviz, GLSL Shaders, p5.js, Processing, or ASCII art.",
     "The design must read as a pookalam: radial, layered, and geometrically balanced.",
-    "Open-source spirit: include a short README or note explaining your concept and approach.",
+    "Open-source spirit: include a short README explaining how to run your code and your creative approach.",
   ],
 
   judging: [

@@ -7,11 +7,18 @@
 3. **Redirect URLs** (Authentication → URL Configuration):
    - `http://localhost:3000/auth/callback`
    - `https://<your-domain>/auth/callback`
-4. **Storage buckets**: create two public buckets, `avatars` and `pookalams`.
+4. **Storage buckets**: two public buckets, `avatars` and `pookalams`. Once the
+   environment variables below are in place, `pnpm run storage:buckets` creates
+   whichever is missing and leaves existing ones untouched (it works against a
+   local `supabase start` stack too). You can also create them by hand in
+   Storage → New bucket.
+
    Both are written server-side with the service-role key, so no RLS policies
    are needed beyond public read. Contest artwork is stored under
    `pookalams/entries/<uuid>.webp` - a random name, never the user id, because
-   those URLs are handed to every voter during an anonymous round.
+   those URLs are handed to every voter during an anonymous round. If the
+   `pookalams` bucket is missing, submissions fail with "Could not save that
+   image" and the real reason is only in the server log.
 
 ## 2. Environment variables
 

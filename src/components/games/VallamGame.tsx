@@ -154,17 +154,14 @@ function replay(start: BoatView[], moves: VallamMove[]): BoatView[] {
 }
 
 export function VallamGame(props: VallamGameProps) {
-  /*
-   * Restored by replaying the move list rather than by storing boat positions.
-   * The move list is what gets submitted and what the server replays, so
-   * rebuilding from it means the board a resuming player sees is exactly the
-   * board their submission describes - two representations could drift.
-   */
+  let boardRef: HTMLDivElement | undefined;
+
   const [moves, setMoves] = createSignal<VallamMove[]>(props.initialMoves ?? []);
   const [boats, setBoats] = createSignal<BoatView[]>(
     replay(props.view.boats, props.initialMoves ?? []),
   );
   const [selected, setSelected] = createSignal<number | null>(null);
+  const [dragOffset, setDragOffset] = createSignal<{ id: number; d: number } | null>(null);
 
   const size = () => props.view.size;
   const vallam = () => boats().find((b) => b.id === 0)!;
@@ -178,10 +175,6 @@ export function VallamGame(props: VallamGameProps) {
     if (!boat) return new Map<string, number>();
     const map = new Map<string, number>();
     for (const d of reachable(boats(), boat, size())) {
-      // Key on the cell the boat's leading end reaches - "tap where the nose
-      // should end up". Every such cell is empty by construction (reachable
-      // stops at the first obstruction) and none of them sit under the boat's
-      // current footprint, so the markers never hide the boat they belong to.
       const from = boat.horizontal ? boat.c : boat.r;
       const lead = d > 0 ? from + boat.len - 1 + d : from + d;
       map.set(boat.horizontal ? `${boat.r},${lead}` : `${lead},${boat.c}`, d);
@@ -190,6 +183,7 @@ export function VallamGame(props: VallamGameProps) {
   });
 
   const slide = (boatId: number, d: number) => {
+    if (d === 0) return;
     const next = boats().map((b) =>
       b.id === boatId
         ? { ...b, r: b.horizontal ? b.r : b.r + d, c: b.horizontal ? b.c + d : b.c }
@@ -199,6 +193,7 @@ export function VallamGame(props: VallamGameProps) {
     setBoats(next);
     setMoves(log);
     setSelected(null);
+    setDragOffset(null);
     props.onProgress?.(log);
 
     const escapee = next.find((b) => b.id === 0)!;
@@ -220,10 +215,80 @@ export function VallamGame(props: VallamGameProps) {
       slide(selected()!, d);
       return;
     }
-    // Not a destination: either pick up whatever boat is here, or drop the
-    // current selection so a stray tap on water is an undo, not a no-op.
     const occupant = occupancy(boats(), size())[r * size() + c];
     setSelected(occupant === -1 || occupant === selected() ? null : occupant);
+  };
+
+  /* ------------------------------------------------ Dragging Support */
+  let activePointerId: number | null = null;
+  let dragOrigin = { x: 0, y: 0 };
+  let activeBoatId: number | null = null;
+  let allowedDeltas: number[] = [];
+  let minAllowed = 0;
+  let maxAllowed = 0;
+  let hasDragged = false;
+
+  const onBoatPointerDown = (event: PointerEvent, boat: BoatView) => {
+    if (props.disabled || escaped()) return;
+    activePointerId = event.pointerId;
+    activeBoatId = boat.id;
+    dragOrigin = { x: event.clientX, y: event.clientY };
+    hasDragged = false;
+
+    // Calculate legal range for this boat
+    allowedDeltas = reachable(boats(), boat, size());
+    const negs = allowedDeltas.filter((d) => d < 0);
+    const poss = allowedDeltas.filter((d) => d > 0);
+    minAllowed = negs.length > 0 ? Math.min(...negs) : 0;
+    maxAllowed = poss.length > 0 ? Math.max(...poss) : 0;
+
+    setSelected(boat.id);
+    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+  };
+
+  const onBoatPointerMove = (event: PointerEvent) => {
+    if (activePointerId !== event.pointerId || activeBoatId === null || !boardRef) return;
+    const boat = boats().find((b) => b.id === activeBoatId);
+    if (!boat) return;
+
+    const cellSizePx = boardRef.getBoundingClientRect().width / size();
+    const pixelDelta = boat.horizontal
+      ? event.clientX - dragOrigin.x
+      : event.clientY - dragOrigin.y;
+    const rawStepDelta = pixelDelta / cellSizePx;
+
+    if (Math.abs(pixelDelta) > 5) {
+      hasDragged = true;
+    }
+
+    // Clamp fractional offset inside allowable bounds with slight bounce resistance
+    const clamped = Math.max(minAllowed - 0.2, Math.min(maxAllowed + 0.2, rawStepDelta));
+    setDragOffset({ id: boat.id, d: clamped });
+  };
+
+  const onBoatPointerUp = (event: PointerEvent) => {
+    if (activePointerId !== event.pointerId) return;
+    const boatId = activeBoatId;
+    activePointerId = null;
+    activeBoatId = null;
+
+    const offset = dragOffset();
+    setDragOffset(null);
+
+    if (boatId !== null) {
+      if (hasDragged && offset && offset.id === boatId) {
+        const rounded = Math.round(offset.d);
+        if (rounded !== 0 && allowedDeltas.includes(rounded)) {
+          slide(boatId, rounded);
+          return;
+        }
+      }
+      // If was just a tap without drag, tapCell toggles/selects
+      const boat = boats().find((b) => b.id === boatId);
+      if (boat && !hasDragged) {
+        tapCell(boat.r, boat.c);
+      }
+    }
   };
 
   const reset = () => {
@@ -231,6 +296,7 @@ export function VallamGame(props: VallamGameProps) {
     setBoats(props.view.boats);
     setMoves([]);
     setSelected(null);
+    setDragOffset(null);
     props.onProgress?.([]);
   };
 
@@ -243,11 +309,12 @@ export function VallamGame(props: VallamGameProps) {
           {moves().length} moves (par {props.view.par})
         </span>
         <span class="badge" style={{ "--pop": "var(--pop-yellow)" }}>
-          {selected() === null ? "tap a boat" : "tap where it should go"}
+          {selected() === null ? "drag or tap a boat" : "drag or tap destination"}
         </span>
       </div>
 
       <div
+        ref={(el) => (boardRef = el)}
         class="relative mx-auto my-auto aspect-square w-full max-w-md max-h-[min(55dvh,400px)]"
         style={{
           background: "var(--paper-2)",
@@ -288,23 +355,35 @@ export function VallamGame(props: VallamGameProps) {
           {(boat) => {
             const isVallam = boat.id === 0;
             const active = () => selected() === boat.id;
+            const currentOffset = () => {
+              const off = dragOffset();
+              return off && off.id === boat.id ? off.d : 0;
+            };
+            const currentC = () => (boat.horizontal ? boat.c + currentOffset() : boat.c);
+            const currentR = () => (!boat.horizontal ? boat.r + currentOffset() : boat.r);
+            const isDraggingThis = () => dragOffset()?.id === boat.id;
+
             return (
               <button
                 type="button"
-                onClick={() => tapCell(boat.r, boat.c)}
+                onPointerDown={(e) => onBoatPointerDown(e, boat)}
+                onPointerMove={onBoatPointerMove}
+                onPointerUp={onBoatPointerUp}
+                onPointerCancel={onBoatPointerUp}
                 disabled={props.disabled}
                 style={{
                   position: "absolute",
-                  left: pct(boat.c),
-                  top: pct(boat.r),
+                  left: pct(currentC()),
+                  top: pct(currentR()),
                   width: pct(boat.horizontal ? boat.len : 1),
                   height: pct(boat.horizontal ? 1 : boat.len),
                   padding: "2px",
                   background: "transparent",
                   border: "none",
-                  cursor: props.disabled ? "default" : "pointer",
-                  transition: "left 140ms ease-out, top 140ms ease-out",
+                  cursor: props.disabled ? "default" : isDraggingThis() ? "grabbing" : "grab",
+                  transition: isDraggingThis() ? "none" : "left 140ms ease-out, top 140ms ease-out",
                   "z-index": active() ? 10 : 2,
+                  "touch-action": "none",
                 }}
                 aria-label={
                   isVallam

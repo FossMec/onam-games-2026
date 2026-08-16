@@ -6,7 +6,6 @@ import {
   MAX_FRAMES,
   MAX_INPUTS,
   PLATFORM_BREAKABLE,
-  PLATFORM_H,
   PLATFORM_MOVING,
   PLATFORM_SPRING,
   PLATFORM_W,
@@ -91,8 +90,9 @@ export function JumpGame(props: JumpGameProps) {
   const [score, setScore] = createSignal(0);
   const [started, setStarted] = createSignal(false);
   const [balloonSeconds, setBalloonSeconds] = createSignal(0);
-  const [hasGyro, setHasGyro] = createSignal(false);
+  const [isMobileDevice, setIsMobileDevice] = createSignal(false);
   const [gyroActive, setGyroActive] = createSignal(false);
+  const [permissionError, setPermissionError] = createSignal(false);
 
   const state: SimState = initialState(props.view.seed);
   const inputs: number[] = [];
@@ -101,6 +101,7 @@ export function JumpGame(props: JumpGameProps) {
   let finished = false;
   const held = { left: false, right: false };
   let gyroDir = 0;
+  let smoothTilt = 0;
 
   const setDir = (next: number) => {
     if (finished || next === dir) return;
@@ -127,8 +128,9 @@ export function JumpGame(props: JumpGameProps) {
     props.onFinish({ inputs: [...inputs] });
   };
 
-  // Request gyroscope permission on iOS
+  // Request gyroscope permission on iOS and modern mobile browsers
   const enableTilt = async () => {
+    setPermissionError(false);
     if (
       typeof window !== "undefined" &&
       typeof (DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> })
@@ -140,13 +142,22 @@ export function JumpGame(props: JumpGameProps) {
         ).requestPermission();
         if (res === "granted") {
           setGyroActive(true);
+        } else {
+          setPermissionError(true);
         }
       } catch (err) {
         console.error("Gyroscope error:", err);
+        setPermissionError(true);
       }
     } else {
       setGyroActive(true);
     }
+  };
+
+  const disableTilt = () => {
+    setGyroActive(false);
+    gyroDir = 0;
+    applyControls();
   };
 
   onMount(() => {
@@ -190,7 +201,13 @@ export function JumpGame(props: JumpGameProps) {
       const s = scale();
       const vs = height / VIEW_H;
 
-      // 1. Infinite Seamless Paathalam Cavern Background (Alternating X-flipped tiles)
+      // 1. Paathalam Deep Cavern Base Fill
+      ctx.fillStyle = "#141026";
+      ctx.fillRect(0, 0, width, height);
+
+      // Background Cavern with Atmospheric Depth Wash (Dimmed to ~38% so platforms pop)
+      ctx.save();
+      ctx.globalAlpha = 0.38;
       const tileWorldH = 175; // aspect ratio height for 768x1376 image
       const firstTile = Math.floor((state.cameraY - 20) / tileWorldH);
       for (let t = firstTile; t <= firstTile + 3; t += 1) {
@@ -202,9 +219,10 @@ export function JumpGame(props: JumpGameProps) {
           ctx.drawImage(bgImg, 0, canvasTop, width, canvasH + 1);
         }
       }
+      ctx.restore();
 
-      // 2. Height markers every 100 units
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+      // 2. Height markers every 100 units (High-visibility comic guide rails)
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 4]);
       ctx.font = `800 ${Math.round(11)}px var(--font-stack-mono), monospace`;
@@ -218,16 +236,19 @@ export function JumpGame(props: JumpGameProps) {
         ctx.stroke();
 
         // High contrast comic badge for height marker
-        ctx.fillStyle = "rgba(34, 32, 43, 0.75)";
+        ctx.fillStyle = "#221c38";
+        ctx.strokeStyle = "#ffd166";
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.roundRect(8 * s, y - 14, 48 * s, 14, 4);
+        ctx.roundRect(8 * s, y - 16, 52 * s, 16, 4);
         ctx.fill();
+        ctx.stroke();
         ctx.fillStyle = "#ffd166";
         ctx.fillText(`${mark} m`, 12 * s, y - 4);
       }
       ctx.setLineDash([]);
 
-      // Platforms
+      // Platforms (High-Contrast Neon-Comic Styling)
       for (let i = state.floor; i < state.level.platforms.length; i += 1) {
         const platform = state.level.platforms[i];
         if (platform.y > state.cameraY + VIEW_H) break;
@@ -236,32 +257,115 @@ export function JumpGame(props: JumpGameProps) {
         const left = platformX(platform, state.frame) * s;
         const top = screenY(platform.y);
         const pWidth = PLATFORM_W * s;
-        const pHeight = PLATFORM_H * vs;
+        const pHeight = Math.max(8 * vs, 11);
 
-        let spriteImg: HTMLImageElement | undefined;
-        if (platform.type === PLATFORM_SPRING) spriteImg = images.platformSpring;
-        else if (platform.type === PLATFORM_MOVING) spriteImg = images.platformMoving;
-        else if (platform.type === PLATFORM_BREAKABLE) spriteImg = images.platformBreakable;
-        else spriteImg = images.platformNormal;
+        ctx.save();
 
-        if (spriteImg && spriteImg.complete && spriteImg.naturalWidth > 0) {
-          ctx.drawImage(spriteImg, left, top - 2, pWidth, pHeight + 4);
-        } else {
-          ctx.fillStyle =
-            platform.type === PLATFORM_SPRING
-              ? palette.pink
-              : platform.type === PLATFORM_MOVING
-                ? palette.blue
-                : platform.type === PLATFORM_BREAKABLE
-                  ? palette.yellow
-                  : palette.teal;
+        // 1. Deep solid drop shadow under platform
+        ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+        ctx.beginPath();
+        ctx.roundRect(left, top + 4, pWidth, pHeight, 6);
+        ctx.fill();
+
+        // 2. High-visibility solid fill and accents
+        let baseColor = "#00f090"; // Normal: Vibrant Neon Mint/Emerald
+        let accentColor = "#00c878";
+        let label = "";
+
+        if (platform.type === PLATFORM_SPRING) {
+          baseColor = "#ff2e63"; // Spring: Radiant Coral Crimson
+          accentColor = "#d61c4e";
+          label = "spring";
+        } else if (platform.type === PLATFORM_MOVING) {
+          baseColor = "#00d2ff"; // Moving: Electric Cyan
+          accentColor = "#00a3cc";
+          label = "moving";
+        } else if (platform.type === PLATFORM_BREAKABLE) {
+          baseColor = "#ffea00"; // Breakable: Bright Gold
+          accentColor = "#e6be00";
+          label = "break";
+        }
+
+        // Platform Body with Bevel
+        ctx.fillStyle = baseColor;
+        ctx.beginPath();
+        ctx.roundRect(left, top, pWidth, pHeight, 6);
+        ctx.fill();
+
+        // Dark bottom bevel strip
+        ctx.fillStyle = accentColor;
+        ctx.beginPath();
+        ctx.roundRect(left + 2, top + pHeight * 0.55, pWidth - 4, pHeight * 0.45, [0, 0, 4, 4]);
+        ctx.fill();
+
+        // Type-specific icons & markings
+        if (label === "moving") {
+          // Bright white high-contrast bidirectional arrow
+          ctx.fillStyle = "#ffffff";
           ctx.beginPath();
-          ctx.roundRect(left, top, pWidth, pHeight, 999);
+          // Left arrow
+          ctx.moveTo(left + pWidth * 0.3, top + pHeight * 0.25);
+          ctx.lineTo(left + pWidth * 0.2, top + pHeight * 0.55);
+          ctx.lineTo(left + pWidth * 0.3, top + pHeight * 0.85);
+          // Right arrow
+          ctx.moveTo(left + pWidth * 0.7, top + pHeight * 0.25);
+          ctx.lineTo(left + pWidth * 0.8, top + pHeight * 0.55);
+          ctx.lineTo(left + pWidth * 0.7, top + pHeight * 0.85);
           ctx.fill();
+
+          // Center bar
+          ctx.strokeStyle = "#ffffff";
           ctx.lineWidth = 2;
-          ctx.strokeStyle = palette.ink;
+          ctx.beginPath();
+          ctx.moveTo(left + pWidth * 0.28, top + pHeight * 0.55);
+          ctx.lineTo(left + pWidth * 0.72, top + pHeight * 0.55);
+          ctx.stroke();
+        } else if (label === "break") {
+          // Jagged dark comic fracture line
+          ctx.strokeStyle = "#221c38";
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(left + pWidth * 0.25, top + 1);
+          ctx.lineTo(left + pWidth * 0.35, top + pHeight * 0.6);
+          ctx.lineTo(left + pWidth * 0.5, top + pHeight * 0.3);
+          ctx.lineTo(left + pWidth * 0.65, top + pHeight * 0.8);
+          ctx.lineTo(left + pWidth * 0.75, top + 1);
+          ctx.stroke();
+        } else if (label === "spring") {
+          // Glowing white launch chevron
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.moveTo(left + pWidth * 0.4, top + pHeight * 0.75);
+          ctx.lineTo(left + pWidth * 0.5, top + pHeight * 0.25);
+          ctx.lineTo(left + pWidth * 0.6, top + pHeight * 0.75);
+          ctx.stroke();
+        } else {
+          // Normal grip lines
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.25)";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(left + pWidth * 0.35, top + 3);
+          ctx.lineTo(left + pWidth * 0.35, top + pHeight - 3);
+          ctx.moveTo(left + pWidth * 0.65, top + 3);
+          ctx.lineTo(left + pWidth * 0.65, top + pHeight - 3);
           ctx.stroke();
         }
+
+        // Bold black ink contour for crisp separation from background
+        ctx.strokeStyle = "#080a1a";
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.roundRect(left, top, pWidth, pHeight, 6);
+        ctx.stroke();
+
+        // Luminous White Top Landing Rim (Guarantees instant visibility)
+        ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+        ctx.beginPath();
+        ctx.roundRect(left + 2, top + 1, pWidth - 4, Math.max(2.2, pHeight * 0.28), 3);
+        ctx.fill();
+
+        ctx.restore();
 
         // Render Collectible Balloon (compact, cute size)
         if (platform.item && !state.collectedItems.has(platform.id)) {
@@ -453,6 +557,12 @@ export function JumpGame(props: JumpGameProps) {
 
     frameHandle = requestAnimationFrame(loop);
 
+    // Detect mobile touch device
+    const isTouch =
+      typeof window !== "undefined" &&
+      ("ontouchstart" in window || navigator.maxTouchPoints > 0 || window.innerWidth <= 768);
+    setIsMobileDevice(isTouch);
+
     // Keyboard Input
     const onKey = (event: KeyboardEvent, down: boolean) => {
       if (event.key === "ArrowLeft" || event.key === "a") held.left = down;
@@ -466,18 +576,46 @@ export function JumpGame(props: JumpGameProps) {
     window.addEventListener("keydown", keyDown);
     window.addEventListener("keyup", keyUp);
 
-    // Gyroscope / DeviceOrientation tilt
+    // Highly responsive, orientation-aware Gyroscope / Tilt Listener
     const onOrientation = (e: DeviceOrientationEvent) => {
-      if (e.gamma !== null && e.gamma !== undefined) {
-        setHasGyro(true);
-        if (gyroActive()) {
-          if (e.gamma < -6) gyroDir = -1;
-          else if (e.gamma > 6) gyroDir = 1;
-          else gyroDir = 0;
-          applyControls();
+      if (!gyroActive()) return;
+
+      let angle = 0;
+      if (typeof window !== "undefined") {
+        if (window.screen?.orientation?.angle !== undefined) {
+          angle = window.screen.orientation.angle;
+        } else if (
+          typeof (window as unknown as { orientation?: number }).orientation === "number"
+        ) {
+          angle = (window as unknown as { orientation?: number }).orientation ?? 0;
         }
       }
+
+      let lateral = 0;
+      if (angle === 90) {
+        lateral = e.beta ?? 0;
+      } else if (angle === -90 || angle === 270) {
+        lateral = -(e.beta ?? 0);
+      } else if (angle === 180) {
+        lateral = -(e.gamma ?? 0);
+      } else {
+        lateral = e.gamma ?? 0;
+      }
+
+      // Responsive Exponential Moving Average smoothing
+      smoothTilt = smoothTilt * 0.6 + lateral * 0.4;
+
+      // Fast, sensitive threshold (2.8 degrees)
+      if (smoothTilt < -2.8) {
+        gyroDir = -1;
+      } else if (smoothTilt > 2.8) {
+        gyroDir = 1;
+      } else {
+        gyroDir = 0;
+      }
+      applyControls();
     };
+
     if (typeof window !== "undefined" && window.DeviceOrientationEvent) {
       window.addEventListener("deviceorientation", onOrientation);
     }
@@ -528,8 +666,9 @@ export function JumpGame(props: JumpGameProps) {
   });
 
   return (
-    <div ref={(el) => (shell = el)} class="space-y-3">
-      <div class="flex items-center justify-between gap-2">
+    <div ref={(el) => (shell = el)} class="space-y-2.5">
+      {/* Top Status Bar */}
+      <div class="flex items-center justify-between gap-2 flex-wrap">
         <span class="badge" style={{ "--pop": "var(--pop-yellow)" }}>
           {score().toLocaleString("en-IN")} m
         </span>
@@ -538,25 +677,70 @@ export function JumpGame(props: JumpGameProps) {
             🎈 Balloon Glide: {balloonSeconds()}s
           </span>
         </Show>
-        <Show
-          when={hasGyro() && !gyroActive()}
-          fallback={
-            <span class="badge" style={{ "--pop": "var(--paper-3)" }}>
-              {gyroActive() ? "📱 Tilt Enabled" : "hold left / right"}
-            </span>
-          }
-        >
-          <button
-            type="button"
-            class="badge text-xs underline cursor-pointer"
-            style={{ "--pop": "var(--pop-teal)" }}
-            onClick={enableTilt}
-          >
-            📱 Enable Tilt Mode
-          </button>
-        </Show>
+
+        <span class="badge" style={{ "--pop": "var(--paper-3)" }}>
+          {gyroActive() ? "📱 Tilt Active" : "hold left / right"}
+        </span>
       </div>
 
+      {/* Prominent Mobile Tilt Toggle Bar */}
+      <Show when={isMobileDevice()}>
+        <div
+          class="flex items-center justify-between gap-2 p-2 rounded text-xs select-none"
+          style={{
+            background: gyroActive() ? "var(--pop-teal)" : "var(--paper-2)",
+            border: "1.5px solid var(--ink)",
+          }}
+        >
+          <div class="flex items-center gap-1.5 font-extrabold truncate">
+            <span>📱</span>
+            <Show
+              when={gyroActive()}
+              fallback={
+                <span>
+                  Tilt Controls:{" "}
+                  <span class="font-normal text-muted">Disabled (Hold sides to steer)</span>
+                </span>
+              }
+            >
+              <span>
+                Tilt Controls:{" "}
+                <span class="text-[var(--pop-teal-deep)]">Active (Tilt phone ◀ / ▶)</span>
+              </span>
+            </Show>
+          </div>
+
+          <Show
+            when={gyroActive()}
+            fallback={
+              <button
+                type="button"
+                class="btn-brand py-1 px-2.5 text-[11px] font-black shrink-0 cursor-pointer"
+                onClick={enableTilt}
+              >
+                ⚡ Enable Tilt
+              </button>
+            }
+          >
+            <button
+              type="button"
+              class="btn-ghost py-0.5 px-2 text-[10px] font-bold shrink-0 cursor-pointer bg-[var(--paper-3)]"
+              onClick={disableTilt}
+            >
+              Turn Off
+            </button>
+          </Show>
+        </div>
+      </Show>
+
+      <Show when={permissionError()}>
+        <p class="text-[11px] font-bold text-[var(--pop-red-deep)] text-center m-0">
+          ⚠️ Gyroscope permission was not granted. You can still hold the left/right screen halves
+          to steer!
+        </p>
+      </Show>
+
+      {/* Canvas Board */}
       <div class="relative mx-auto" style={{ "max-width": "min(100%, 26rem)" }}>
         <canvas
           ref={(el) => (canvas = el)}
@@ -584,6 +768,19 @@ export function JumpGame(props: JumpGameProps) {
               <p class="text-xs sm:text-sm font-semibold">
                 Hold left/right side or tilt your phone to steer.
               </p>
+
+              <Show when={isMobileDevice() && !gyroActive()}>
+                <div class="pt-1">
+                  <button
+                    type="button"
+                    class="btn-brand text-xs py-1.5 px-3 font-black inline-flex items-center gap-1.5 cursor-pointer"
+                    onClick={enableTilt}
+                  >
+                    <span>📱 Enable Tilt Mode Now</span>
+                  </button>
+                </div>
+              </Show>
+
               <div class="flex flex-wrap items-center justify-center gap-2 pt-2 text-[0.75rem]">
                 <span class="badge" style={{ "--pop": "var(--pop-teal)" }}>
                   Safe Floor

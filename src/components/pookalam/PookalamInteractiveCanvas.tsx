@@ -1,7 +1,6 @@
 import {
   ChevronDown,
   ChevronRight,
-  Download,
   Layers,
   Play,
   RotateCcw,
@@ -747,55 +746,6 @@ export function PookalamInteractiveCanvas() {
     onSettingsChange();
   };
 
-  const downloadPNG = () => {
-    const size = 1600;
-    const exportCanvas = document.createElement("canvas");
-    exportCanvas.width = size;
-    exportCanvas.height = size;
-    const ctx = exportCanvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.fillStyle = "#121b44";
-    ctx.fillRect(0, 0, size, size);
-
-    const scale = size / 400;
-    const cx = size / 2;
-    const cy = size / 2;
-
-    const layers = getLayers();
-
-    layers.forEach((layer) => {
-      const scaledRadius = (layer.radius / state.currentScaleFactor) * scale;
-      for (let i = 0; i < layer.elements; i++) {
-        const elementSpec = layer.spec[i % layer.spec.length];
-        const scaledSize = (elementSpec.size / state.currentScaleFactor) * scale;
-        const angle = ((2 * Math.PI) / layer.elements) * i + (layer.rotationOffset || 0);
-        const x = cx + Math.cos(angle) * scaledRadius;
-        const y = cy + Math.sin(angle) * scaledRadius;
-
-        drawElement(ctx, {
-          ...elementSpec,
-          size: scaledSize,
-          x,
-          y,
-          angle: angle + Math.PI / 2,
-        });
-
-        if (layer.id === 0 && i === 0) {
-          drawCenterLogo(ctx, x, y, scaledSize * 0.85);
-        }
-      }
-    });
-
-    const dataUrl = exportCanvas.toDataURL("image/png");
-    const a = document.createElement("a");
-    a.href = dataUrl;
-    a.download = `code-a-pookalam-foss-${new Date().toISOString().slice(0, 10)}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-
   const layerConfigs = [
     {
       id: 1,
@@ -917,16 +867,18 @@ export function PookalamInteractiveCanvas() {
   return (
     <div class="flex flex-col md:flex-row items-center justify-center gap-5 w-full my-2">
       {/* ---------------------------------------------------- LEFT: LIVE CANVAS */}
-      <div
-        ref={(el) => (containerRef = el)}
-        class="relative w-full max-w-[490px] h-[340px] sm:h-[440px] md:h-[490px] aspect-square mx-auto rounded p-2.5 bg-[#121b44] inked flex items-center justify-center shrink-0"
-      >
-        <canvas
-          ref={(el) => (canvasRef = el)}
-          class="object-contain cursor-pointer select-none rounded-full max-h-full max-w-full"
-          onClick={() => setIsPaused((prev) => !prev)}
-          title="Click to Pause / Resume"
-        />
+      <div class="flex flex-col items-center gap-2 w-full max-w-[490px] shrink-0">
+        <div
+          ref={(el) => (containerRef = el)}
+          class="relative w-full h-[340px] sm:h-[420px] md:h-[445px] aspect-square mx-auto rounded p-2.5 bg-[#121b44] inked flex items-center justify-center shrink-0"
+        >
+          <canvas
+            ref={(el) => (canvasRef = el)}
+            class="object-contain cursor-pointer select-none rounded-full max-h-full max-w-full"
+            onClick={() => setIsPaused((prev) => !prev)}
+            title="Click to Pause / Resume"
+          />
+        </div>
       </div>
 
       {/* ---------------------------------------------------- RIGHT: CONTROLS PANEL */}
@@ -1256,15 +1208,6 @@ export function PookalamInteractiveCanvas() {
                 <RotateCcw size={13} strokeWidth={2.5} />
               </button>
             </div>
-
-            <button
-              type="button"
-              onClick={downloadPNG}
-              class="btn-brand w-full py-2 text-xs sm:text-sm"
-            >
-              <Download size={15} strokeWidth={2.5} />
-              <span>Download 1600px PNG</span>
-            </button>
           </div>
         </div>
       </Show>

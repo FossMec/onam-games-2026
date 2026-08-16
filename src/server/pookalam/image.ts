@@ -179,7 +179,17 @@ export async function storeSubmissionImage(image: DecodedImage): Promise<StoredI
     upsert: false,
     cacheControl: "31536000",
   });
-  if (error) throw new Error("Could not save that image. Try again in a moment.");
+  if (error) {
+    /*
+     * The entrant gets a sentence they can act on; the operator gets the real
+     * one. Every plausible cause here - a bucket that was never created, a
+     * service key without write access, a size limit on the bucket - is
+     * invisible from the browser and indistinguishable from the others, and
+     * swallowing it once already cost an evening of guessing.
+     */
+    console.error(`[pookalam] storage upload failed for ${path}:`, error);
+    throw new Error("Could not save that image. Try again in a moment.");
+  }
 
   const { data } = storage.from(POOKALAM_BUCKET).getPublicUrl(path);
   return { url: data.publicUrl, path, width: image.width, height: image.height };

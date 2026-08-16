@@ -26,13 +26,12 @@
  * only thing left to check is that it is solvable exactly one way.
  */
 
-const SIZE = 6;
+const SIZE = 7;
 
 /**
- * The ladder: one word of each length from 3 to 8, totalling 33 of the 36
- * cells, which leaves 3 walls. Half FOSS, half Onam, which is the entire brief.
+ * The ladder: 8 FOSS and Onam words, totalling 45 of the 49 cells, leaving 4 walls.
  */
-const WORDS = ["GNU", "ONAM", "LINUX", "KERNEL", "PAYASAM", "POOKALAM"];
+const WORDS = ["GNU", "FOSS", "LINUX", "MAVELI", "KERNEL", "DEBIAN", "PAYASAM", "POOKALAM"];
 
 const total = WORDS.reduce((n, w) => n + w.length, 0);
 if (total > SIZE * SIZE) {

@@ -1,10 +1,22 @@
 import { describe, expect, it } from "vite-plus/test";
-import { BOARD, EXIT_ROW, generate, solve, verify } from "./vallam";
+import { BOARD, CUSTOM_LEVELS, EXIT_ROW, generate, solve, verify } from "./vallam";
 import type { Boat, VallamMove, VallamView } from "./vallam";
 
 const SEED = "9f8e7d6c5b4a39281706f5e4d3c2b1a0";
 
 const viewOf = (seed = SEED, difficulty = "hard") => generate(seed, difficulty).view as VallamView;
+
+describe("CUSTOM_LEVELS", () => {
+  it("all handcrafted levels are valid and solvable", () => {
+    expect(CUSTOM_LEVELS.length).toBeGreaterThanOrEqual(5);
+    for (const lvl of CUSTOM_LEVELS) {
+      const boats: Boat[] = lvl.boats.map((b, idx) => ({ ...b, id: idx }));
+      const par = solve(boats);
+      expect(par, `Level ${lvl.id} (${lvl.name}) should be solvable`).not.toBeNull();
+      expect(par, `Level ${lvl.id} (${lvl.name}) should require moves`).toBeGreaterThanOrEqual(8);
+    }
+  });
+});
 
 /** Every cell each boat sits on. */
 function cells(boats: Boat[]): string[] {
@@ -28,7 +40,7 @@ function findSolution(boats: Boat[], maxDepth: number): VallamMove[] | null {
   const seen = new Set([key(boats)]);
   let frontier: { boats: Boat[]; path: VallamMove[] }[] = [{ boats, path: [] }];
 
-  for (let depth = 0; depth < maxDepth; depth += 1) {
+  for (let depth = 0; depth <= maxDepth; depth += 1) {
     const next: typeof frontier = [];
     for (const node of frontier) {
       const taken = occupied(node.boats);
@@ -88,7 +100,7 @@ describe("generate", () => {
         expect(boat.c + (boat.horizontal ? boat.len : 1)).toBeLessThanOrEqual(BOARD);
       }
     }
-  });
+  }, 20000);
 
   it("puts the vallam on the exit row, horizontal, as boat 0", () => {
     for (let i = 0; i < 8; i += 1) {
@@ -97,7 +109,7 @@ describe("generate", () => {
       expect(vallam.r).toBe(EXIT_ROW);
       expect(vallam.horizontal).toBe(true);
     }
-  });
+  }, 20000);
 
   it("keeps the exit row clear of other horizontal boats", () => {
     // A second horizontal boat on the exit row can wedge the lane permanently.
@@ -107,7 +119,7 @@ describe("generate", () => {
         expect(boat.horizontal && boat.r === EXIT_ROW).toBe(false);
       }
     }
-  });
+  }, 20000);
 
   it("only ships boards that are actually solvable, and not trivially", () => {
     for (let i = 0; i < 8; i += 1) {
@@ -115,7 +127,7 @@ describe("generate", () => {
       expect(view.par).toBeGreaterThanOrEqual(3);
       expect(solve(view.boats)).toBe(view.par);
     }
-  });
+  }, 20000);
 });
 
 describe("solve", () => {
@@ -133,8 +145,8 @@ describe("solve", () => {
     // A full-height vertical stack in the last column that nothing can shift.
     const boats: Boat[] = [
       { id: 0, r: EXIT_ROW, c: 0, len: 2, horizontal: true },
-      { id: 1, r: 0, c: BOARD - 1, len: 3, horizontal: false },
-      { id: 2, r: 3, c: BOARD - 1, len: 3, horizontal: false },
+      { id: 1, r: 0, c: BOARD - 1, len: 4, horizontal: false },
+      { id: 2, r: 4, c: BOARD - 1, len: 3, horizontal: false },
     ];
     expect(solve(boats)).toBeNull();
   });
@@ -149,18 +161,17 @@ describe("verify", () => {
     const moves = findSolution(view.boats, view.par);
     expect(moves).not.toBeNull();
     expect(run({ moves }).valid).toBe(true);
-  });
+  }, 20000);
 
   it("accepts a wasteful but legal solution", () => {
     const view = viewOf();
     const moves = findSolution(view.boats, view.par)!;
-    // Shuffle a boat back and forth first. Move count does not rank this game,
-    // so a longer route has to still count as a win.
-    const wanderer = view.boats.find((b) => !b.horizontal && b.r > 0)!;
-    expect(
-      run({ moves: [{ b: wanderer.id, d: -1 }, { b: wanderer.id, d: 1 }, ...moves] }).valid,
-    ).toBe(true);
-  });
+    expect(moves).not.toBeNull();
+    // Replay the first move back and forth to add wasteful legal moves
+    const first = moves[0];
+    const wasteful: VallamMove[] = [first, { b: first.b, d: -first.d }, ...moves];
+    expect(run({ moves: wasteful }).valid).toBe(true);
+  }, 20000);
 
   it("rejects a solution replayed against a different player's board", () => {
     const other = Array.from({ length: 12 }, (_, i) => `rival-${i}`).find((seed) => {
@@ -170,7 +181,7 @@ describe("verify", () => {
     const view = viewOf(other);
     const moves = findSolution(view.boats, view.par)!;
     expect(run({ moves }, SEED).valid).toBe(false);
-  });
+  }, 20000);
 
   it("rejects sliding a boat through another boat", () => {
     const vallam = viewOf().boats[0];

@@ -1,6 +1,6 @@
 import { Title } from "@solidjs/meta";
 import { createAsync, useSearchParams } from "@solidjs/router";
-import { BookOpen, ChevronLeft, ChevronRight, Clock, HelpCircle, Lock, Zap } from "lucide-solid";
+import { BookOpen, Clock, Lock, Zap } from "lucide-solid";
 import { For, Show, createEffect, createSignal } from "solid-js";
 
 import { Countdown } from "~/components/Countdown";
@@ -246,7 +246,7 @@ export default function Home() {
   const scheduleLoading = () => games() === undefined;
   const scheduleMissing = () => games()?.length === 0;
 
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   const parseQueryDay = () => {
     const rawDay = Array.isArray(searchParams.day) ? searchParams.day[0] : searchParams.day;
@@ -268,19 +268,6 @@ export default function Home() {
   };
 
   const [selectedDay, setSelectedDay] = createSignal<number>(parseQueryDay() ?? 1);
-
-  const selectDay = (day: number) => {
-    setSelectedDay(day);
-    const g = games()?.find((item) => item.day === day);
-    setSearchParams({ day, ...(g?.slug ? { game: g.slug } : {}) }, { replace: true });
-    if (typeof window !== "undefined") {
-      const el =
-        document.getElementById("arena-hero-card") ?? document.getElementById("games-arena");
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    }
-  };
 
   const currentActiveDay = () => {
     const list = games();
@@ -507,11 +494,7 @@ export default function Home() {
           */}
           <div class="grid grid-cols-2 items-center gap-2.5 sm:grid-cols-[1fr_auto_1fr] sm:gap-4">
             <div class="order-1 col-span-2 flex justify-center sm:order-2 sm:col-span-1">
-              <a
-                href="#games-arena"
-                class="cursor-pointer inline-block"
-                title="Jump to Daily Games"
-              >
+              <a href="/games" class="cursor-pointer inline-block" title="Explore Daily Games">
                 <img
                   src="/images/memes/talk-is-cheap-sadya.webp"
                   alt="Talk is cheap. Give me Sadya."
@@ -534,10 +517,7 @@ export default function Home() {
               further down. Same two pops as those buttons, so the pair reads
               as labels for them rather than a third colour scheme.
             */}
-            <a
-              href="#games-arena"
-              class="order-2 hidden justify-center no-underline sm:order-1 sm:flex"
-            >
+            <a href="/games" class="order-2 hidden justify-center no-underline sm:order-1 sm:flex">
               <span class="pop-label" style={{ "--pop": "var(--pop-teal)", "--tilt": "-5deg" }}>
                 Play games
               </span>
@@ -552,13 +532,19 @@ export default function Home() {
 
           <div class="flex flex-col items-center gap-2 pt-1 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3">
             <a
-              href="#games-arena"
+              href={
+                liveGame()
+                  ? liveGame()!.day === 7
+                    ? "/code-a-pookalam/vote"
+                    : `/games/${liveGame()!.slug}`
+                  : "/games"
+              }
               class="btn-brand inline-flex items-center gap-1.5 w-full sm:w-auto justify-center whitespace-nowrap"
             >
-              <Show when={liveGame()} fallback={<span>Play Daily Games ↓</span>}>
+              <Show when={liveGame()} fallback={<span>Explore Daily Games →</span>}>
                 <span>
                   Play Day {liveGame()!.day} (
-                  {liveGame()!.status === "live" ? "Live Now" : "Early Access"}) ↓
+                  {liveGame()!.status === "live" ? "Live Now" : "Early Access"}) →
                 </span>
               </Show>
             </a>
@@ -789,9 +775,9 @@ export default function Home() {
         </div>
       </Section>
 
-      {/* ------------------------------------------------------- daily games arena */}
+      {/* ------------------------------------------------------- Explore Daily Games Card */}
       <Section
-        title="Daily Games Arena"
+        title="Daily Mini-Games Arena"
         id="games-arena"
         confettiSeed="games-sec"
         confettiCount={5}
@@ -808,13 +794,6 @@ export default function Home() {
           {(() => {
             const current = activeGame()!;
             const locked = current.status === "upcoming";
-            /*
-             * The reveal window. Not locked - the art, the title and the pitch
-             * are all real from here - but not playable either, so the card
-             * offers a countdown and a way in to read the rules rather than a
-             * play button that would only bounce off the server.
-             */
-            const previewing = current.status === "preview";
             const sticker = statusSticker[current.status] ?? statusSticker.upcoming;
             const teaser = GAME_TEASERS[current.day] ?? {
               hint: "A mystery game",
@@ -825,59 +804,14 @@ export default function Home() {
             const playHref = me() ? targetHref : "/auth/signin";
 
             return (
-              <div id="arena-hero-card" class="space-y-6 max-w-4xl mx-auto scroll-mt-20">
-                {/* Control bar: Prev / Day Selector / Next / Help */}
-                <div class="flex items-center justify-between gap-2 flex-wrap">
-                  <div class="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => selectDay(selectedDay() > 1 ? selectedDay() - 1 : 7)}
-                      class="btn-ghost px-3 py-1.5 text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer"
-                      aria-label="Previous Day"
-                    >
-                      <ChevronLeft size={16} strokeWidth={2.5} />
-                      <span class="font-extrabold">Prev Day</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => selectDay(selectedDay() < 7 ? selectedDay() + 1 : 1)}
-                      class="btn-ghost px-3 py-1.5 text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer"
-                      aria-label="Next Day"
-                    >
-                      <span class="font-extrabold">Next Day</span>
-                      <ChevronRight size={16} strokeWidth={2.5} />
-                    </button>
-                  </div>
-
-                  <div class="flex items-center gap-2">
-                    <span
-                      class="text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full"
-                      style={{
-                        background: "var(--paper-2)",
-                        border: "2px solid var(--ink)",
-                      }}
-                    >
-                      Day {current.day} of 7
-                    </span>
-                    <a
-                      href="#how-it-works"
-                      class="text-xs font-extrabold underline decoration-2 underline-offset-4 px-2 py-1 inline-flex items-center gap-1"
-                      style={{ color: "var(--ink)" }}
-                    >
-                      <HelpCircle size={14} strokeWidth={2.5} />
-                      <span>Rules & Help ↓</span>
-                    </a>
-                  </div>
-                </div>
-
-                {/* Main Centered Showcase Card */}
+              <div class="space-y-5 max-w-4xl mx-auto">
                 <article
                   class={`card ${DAY_POPS[(current.day - 1) % DAY_POPS.length]} relative overflow-hidden p-5 sm:p-7 space-y-5`}
                 >
                   <div class="flex flex-col md:flex-row gap-6 items-center md:items-start">
-                    {/* 1:1 Square Artwork Container */}
+                    {/* Artwork */}
                     <div
-                      class="relative overflow-hidden rounded-lg aspect-square w-full sm:w-64 md:w-72 shrink-0 bg-[var(--paper-3)] flex items-center justify-center"
+                      class="relative overflow-hidden rounded-lg aspect-square w-full sm:w-56 md:w-64 shrink-0 bg-[var(--paper-3)] flex items-center justify-center"
                       style={{ border: "var(--ink-w-bold) solid var(--ink)" }}
                     >
                       <Show
@@ -921,8 +855,8 @@ export default function Home() {
                       </Show>
                     </div>
 
-                    {/* Game Details */}
-                    <div class="space-y-4 flex-1 w-full text-center md:text-left">
+                    {/* Game Info */}
+                    <div class="space-y-3 flex-1 w-full text-center md:text-left">
                       <div class="flex items-center justify-center md:justify-between gap-2 flex-wrap">
                         <div class="flex items-center gap-2">
                           <SpriteIcon name={teaser.icon} size={28} animate="wobble" interactive />
@@ -932,7 +866,7 @@ export default function Home() {
                               "font-family": "var(--font-stack-display)",
                             }}
                           >
-                            Day {current.day}
+                            Day {current.day} · Daily Challenge
                           </span>
                         </div>
                         <span class="sticker" style={{ "--pop": sticker.pop }}>
@@ -940,7 +874,7 @@ export default function Home() {
                         </span>
                       </div>
 
-                      <h3 class="text-2xl sm:text-3xl">
+                      <h3 class="text-2xl sm:text-3xl m-0">
                         <Show when={!locked} fallback={<span>Day {current.day}: ????????</span>}>
                           <a href={playHref} class="underline decoration-2 underline-offset-4">
                             {current.title}
@@ -951,155 +885,92 @@ export default function Home() {
                       <Show
                         when={!locked}
                         fallback={
-                          <div class="space-y-2">
-                            <p
-                              class="text-sm sm:text-base font-extrabold"
-                              style={{ color: "var(--ink-soft)" }}
-                            >
-                              Teaser:
-                            </p>
-                            <p class="comment text-lg font-semibold">"{teaser.hint}"</p>
-                          </div>
+                          <p class="comment text-base font-semibold leading-relaxed">
+                            "{teaser.hint}"
+                          </p>
                         }
                       >
-                        <p class="text-base font-semibold leading-relaxed">{current.tagline}</p>
+                        <p class="text-sm sm:text-base font-semibold leading-relaxed text-[var(--ink-soft)]">
+                          {current.tagline}
+                        </p>
                       </Show>
 
                       <div class="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1">
                         <span class="badge">{current.difficulty}</span>
                         <span class="badge">
-                          {current.maxAttempts > 1 ? `${current.maxAttempts} runs` : "one shot"}
+                          {current.maxAttempts > 100
+                            ? "unlimited tries"
+                            : current.maxAttempts > 1
+                              ? `${current.maxAttempts} runs`
+                              : "one shot"}
                         </span>
                         <span class="badge">
-                          {current.metric === "score"
-                            ? "highest wins"
-                            : isDay7
-                              ? "community vote"
-                              : "fastest wins"}
+                          {current.metric === "score" ? "highest score wins" : "fastest wins"}
                         </span>
                       </div>
 
-                      {/* Main Action Area */}
-                      <div class="pt-3 space-y-2">
-                        <Show when={locked && current.releaseAt}>
-                          <div class="card card-plain flex flex-col items-center justify-center gap-2 p-3 text-center">
-                            <p class="comment text-sm">Unlocks in</p>
-                            <Countdown target={new Date(current.releaseAt!)} />
-                          </div>
-                        </Show>
-
-                        <Show when={locked && !current.releaseAt}>
-                          <div class="card card-plain text-center py-2">
-                            <p class="comment font-semibold">
-                              Unlocks on Day {current.day} evening
-                            </p>
-                          </div>
-                        </Show>
-
-                        <Show when={previewing}>
-                          <div class="card card-plain flex flex-col items-center justify-center gap-2 p-3 text-center">
-                            <p class="comment text-sm">Playable in</p>
-                            <Show
-                              when={current.releaseAt}
-                              fallback={<p class="font-extrabold">Later today</p>}
-                            >
-                              <Countdown target={new Date(current.releaseAt!)} />
-                            </Show>
-                          </div>
-                          <a
-                            href={playHref}
-                            class="btn-ghost w-full text-center text-base py-2.5 block"
-                          >
-                            Take a look before it opens →
-                          </a>
-                        </Show>
-
+                      <div class="pt-2 flex flex-col sm:flex-row items-center gap-2">
                         <Show when={current.status === "live" || current.status === "tester"}>
                           <a
                             href={playHref}
-                            class="btn-brand w-full text-center text-lg py-3 block"
+                            class="btn-brand w-full sm:w-auto text-center px-6 py-2.5 inline-block"
                           >
                             <Show
                               when={me()}
                               fallback={
-                                isDay7
-                                  ? "Sign in to Vote in ELO Showdown →"
-                                  : `Sign in & Play Day ${current.day} →`
+                                isDay7 ? "Sign in to Vote →" : `Sign in & Play Day ${current.day} →`
                               }
                             >
                               {isDay7 ? "Vote in ELO Showdown →" : `Play Day ${current.day} Now →`}
                             </Show>
                           </a>
                         </Show>
-
-                        <Show when={current.status === "closed"}>
-                          <a
-                            href={playHref}
-                            class="btn-ghost w-full text-center text-base py-2.5 block"
-                          >
-                            <Show
-                              when={me()}
-                              fallback={
-                                isDay7 ? "Sign in to View Results →" : "Sign in to Play Catch-up →"
-                              }
-                            >
-                              {isDay7 ? "View Results →" : `Play Catch-up (Unranked) →`}
-                            </Show>
-                          </a>
-                        </Show>
+                        <a
+                          href="/games"
+                          class="btn-ghost w-full sm:w-auto text-center px-5 py-2.5 inline-block"
+                        >
+                          Explore All 7 Games Arena →
+                        </a>
                       </div>
                     </div>
                   </div>
                 </article>
 
-                {/* 7-Day Mini Selector Strip */}
+                {/* 7-Day Mini Rail Preview */}
                 <div class="space-y-2">
-                  <p
-                    class="text-xs font-extrabold uppercase tracking-widest text-center"
-                    style={{ "font-family": "var(--font-stack-display)" }}
-                  >
-                    Select Day to Preview
-                  </p>
-                  {/*
-                    A swipeable strip on a phone, the full grid from `sm` up.
-
-                    Seven cards in two columns is four rows of thumbnails -
-                    roughly 800px of scrolling for a control that is meant to be
-                    glanceable. Laid on one horizontal rail it costs one card's
-                    height, reads as a filmstrip of the week, and the day you
-                    are on is already the one scrolled into view. Snap points
-                    keep the cards from stopping half off the edge.
-
-                    `-mx-4 px-4` lets the rail bleed to the screen edges so it
-                    is obvious there is more to the right, while the cards still
-                    line up with the text above them.
-                  */}
-                  <div class="scrollbar-none -mx-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-7 sm:overflow-visible sm:px-0">
+                  <div class="flex items-center justify-between px-1">
+                    <p
+                      class="text-xs font-extrabold uppercase tracking-widest"
+                      style={{ "font-family": "var(--font-stack-display)" }}
+                    >
+                      All 7 Days at a Glance
+                    </p>
+                    <a
+                      href="/games"
+                      class="text-xs font-extrabold underline decoration-2 underline-offset-4"
+                      style={{ color: "var(--ink)" }}
+                    >
+                      Open Games Hub →
+                    </a>
+                  </div>
+                  <div class="scrollbar-none -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-7 sm:overflow-visible sm:px-0">
                     <For each={fullSchedule()}>
                       {(item) => {
-                        const isSelected = item.day === selectedDay();
                         const isLock = item.status === "upcoming";
                         const st = statusSticker[item.status] ?? statusSticker.upcoming;
 
                         return (
-                          <button
-                            type="button"
-                            onClick={() => selectDay(item.day)}
-                            class={`card w-[7.5rem] shrink-0 snap-start sm:w-auto p-2 text-center flex flex-col items-center justify-between gap-1.5 transition-all cursor-pointer ${
+                          <a
+                            href={`/games?day=${item.day}`}
+                            class={`card w-[6.8rem] shrink-0 snap-start sm:w-auto p-2 text-center flex flex-col items-center justify-between gap-1.5 transition-all no-underline ${
                               DAY_POPS[(item.day - 1) % DAY_POPS.length]
-                            } ${
-                              isSelected
-                                ? "ring-4 ring-[var(--ink)] translate-y-[-2px] shadow-none font-bold"
-                                : "opacity-85 hover:opacity-100 hover:translate-y-[-1px]"
-                            }`}
+                            } opacity-90 hover:opacity-100 hover:translate-y-[-1px]`}
                             style={{
-                              border: isSelected
-                                ? "var(--ink-w-bold) solid var(--ink)"
-                                : "var(--ink-w) solid var(--ink)",
+                              border: "var(--ink-w) solid var(--ink)",
                             }}
                           >
                             <span
-                              class="text-[11px] font-extrabold uppercase tracking-wider"
+                              class="text-[10px] font-extrabold uppercase tracking-wider"
                               style={{
                                 "font-family": "var(--font-stack-display)",
                               }}
@@ -1107,9 +978,8 @@ export default function Home() {
                               Day {item.day}
                             </span>
 
-                            {/* Actual 1:1 Event Image Thumbnail */}
                             <div
-                              class="w-12 h-12 xs:w-14 xs:h-14 sm:w-16 sm:h-16 rounded aspect-square overflow-hidden bg-[var(--paper-3)] shrink-0 relative flex items-center justify-center"
+                              class="w-11 h-11 sm:w-12 sm:h-12 rounded aspect-square overflow-hidden bg-[var(--paper-3)] shrink-0 relative flex items-center justify-center"
                               style={{
                                 border: "var(--ink-w) solid var(--ink)",
                               }}
@@ -1126,8 +996,8 @@ export default function Home() {
                                       alt="Locked preview"
                                       class="absolute inset-0 w-full h-full object-cover blur-sm opacity-40 grayscale"
                                     />
-                                    <div class="relative z-10 w-6 h-6 rounded-full bg-[var(--paper-2)] border border-[var(--ink)] grid place-items-center text-[var(--ink)]">
-                                      <Lock size={12} strokeWidth={2.5} />
+                                    <div class="relative z-10 w-5 h-5 rounded-full bg-[var(--paper-2)] border border-[var(--ink)] grid place-items-center text-[var(--ink)]">
+                                      <Lock size={10} strokeWidth={2.5} />
                                     </div>
                                   </div>
                                 }
@@ -1144,11 +1014,11 @@ export default function Home() {
                               </Show>
                             </div>
 
-                            <span class="text-[10px] font-extrabold truncate w-full">
+                            <span class="text-[9px] font-extrabold truncate w-full text-[var(--ink)]">
                               {isLock ? "Locked" : item.title}
                             </span>
                             <span
-                              class="text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase"
+                              class="text-[8px] font-extrabold px-1 py-0.5 rounded uppercase"
                               style={{
                                 background: st.pop,
                                 border: "1px solid var(--ink)",
@@ -1156,7 +1026,7 @@ export default function Home() {
                             >
                               {st.label}
                             </span>
-                          </button>
+                          </a>
                         );
                       }}
                     </For>

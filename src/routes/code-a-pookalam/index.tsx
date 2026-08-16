@@ -1,18 +1,17 @@
 import { Title } from "@solidjs/meta";
 import { createAsync } from "@solidjs/router";
-import { Pencil, Send } from "lucide-solid";
-import { For, Show, type JSX } from "solid-js";
+import { Pencil } from "lucide-solid";
+import { Show, type JSX } from "solid-js";
 
+import { Countdown } from "~/components/Countdown";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { SpriteScatter } from "~/components/art/SpriteScatter";
+import { PookalamHeroInvite } from "~/components/pookalam/PookalamHeroInvite";
 import { PookalamInteractiveCanvas } from "~/components/pookalam/PookalamInteractiveCanvas";
-import { PookalamTutorials } from "~/components/pookalam/PookalamTutorials";
-import { PreviousPookalamCarousel } from "~/components/pookalam/PreviousPookalamCarousel";
+import { PookalamRoad } from "~/components/pookalam/PookalamRoad";
 import { POOKALAM } from "~/lib/event-content";
 import { getPookalamState } from "~/server/pookalam/actions";
-
-const POPS = ["pop-yellow", "pop-teal", "pop-blue", "pop-purple", "pop-pink"];
 
 const STATUS_COLOR: Record<string, string> = {
   pending: "var(--pop-yellow)",
@@ -84,11 +83,28 @@ export default function CodeAPookalam() {
         />
 
         <div class="art-over space-y-3 max-w-3xl mx-auto">
-          {/* Top Prize Badge */}
-          <div class="flex justify-center">
+          {/* Prize and deadline together, above everything else. "Day 6
+              midnight" tells nobody whether there is still time; a clock that
+              says three days does, and it has to be on the first screen to do
+              any work at all. */}
+          <div class="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
             <span class="badge" style={{ "--pop": "var(--pop-yellow)" }}>
               ₹3,000 Prize Pool · Open All Week
             </span>
+
+            <Show
+              when={state()?.phases.submissions.closesAt}
+              fallback={<span class="badge">Closes Day 6 midnight</span>}
+            >
+              {(closesAt) => (
+                <div class="flex items-center gap-2">
+                  <span class="text-[11px] font-black uppercase tracking-wider text-muted">
+                    time left
+                  </span>
+                  <Countdown target={new Date(closesAt())} doneLabel="Submissions closed" />
+                </div>
+              )}
+            </Show>
           </div>
 
           {/* Main Title Row */}
@@ -116,11 +132,18 @@ export default function CodeAPookalam() {
           </p>
 
           {/* Interactive Pookalam Canvas & Studio Centerpiece */}
-          <div class="pt-1 text-left">
+          <div id="studio" class="scroll-mt-28 pt-1 text-left">
             <PookalamInteractiveCanvas />
           </div>
 
-          <p class="comment text-xs">Submissions close Day 6 Midnight</p>
+          {/* The handoff: from playing with a pookalam to building one. */}
+          <div class="pt-1">
+            <PookalamHeroInvite />
+          </div>
+
+          <Show when={!state()?.phases.submissions.closesAt}>
+            <p class="comment text-xs">Submissions close Day 6 Midnight</p>
+          </Show>
         </div>
       </section>
 
@@ -227,110 +250,17 @@ export default function CodeAPookalam() {
         </div>
       </Section>
 
-      {/* ---------------------------------------------------- HOW IT WORKS */}
-      <Section
-        title="How the Competition Works"
-        id="how-it-works"
-        confettiSeed="cap-how"
-        confettiCount={4}
-      >
-        <div class="grid md:grid-cols-3 gap-3">
-          <div class="card pop-yellow space-y-2">
-            <div class="flex items-center justify-between">
-              <SpriteIcon name="git-nodes" size={24} interactive />
-              <span class="badge text-[10px]">Days 1 – 6</span>
-            </div>
-            <h3 class="font-black text-base">1. Code & Submit</h3>
-            <p class="text-xs font-semibold leading-relaxed text-muted">
-              Create your pookalam in any language. Submit your GitHub repository link and output
-              render before the Day 6 deadline.
-            </p>
-          </div>
-
-          <div class="card pop-teal space-y-2">
-            <div class="flex items-center justify-between">
-              <SpriteIcon name="sadya-leaf" size={24} interactive />
-              <span class="badge text-[10px]">Day 6 Night</span>
-            </div>
-            <h3 class="font-black text-base">2. Jury Shortlist</h3>
-            <p class="text-xs font-semibold leading-relaxed text-muted">
-              Our jury reviews all submitted codebases and renders, shortlisting the standout
-              pookalams based on geometry, craft, and originality.
-            </p>
-          </div>
-
-          <div class="card pop-pink space-y-2">
-            <div class="flex items-center justify-between">
-              <SpriteIcon name="docker-pookalam" size={24} interactive />
-              <span class="badge text-[10px]">Day 7 All-Day</span>
-            </div>
-            <h3 class="font-black text-base">3. Community Elo Arena</h3>
-            <p class="text-xs font-semibold leading-relaxed text-muted">
-              Shortlisted entries face off head-to-head in our live pairwise Elo matchmaker where
-              the community votes all day to settle the winners!
-            </p>
-          </div>
-        </div>
-      </Section>
-
-      {/* ---------------------------------------------------- RULES & CRITERIA */}
-      <Section title="Rules & Judging" confettiSeed="cap-rules" confettiCount={4}>
-        <div class="grid md:grid-cols-2 gap-4">
-          {/* Rules */}
-          <div class="card pop-blue space-y-3">
-            <div class="flex items-center gap-2">
-              <SpriteIcon name="arch-crown" size={22} interactive />
-              <h3 class="text-lg font-black">Submission Guidelines</h3>
-            </div>
-            <ul class="space-y-2">
-              <For each={POOKALAM.rules}>
-                {(rule) => (
-                  <li class="flex items-start gap-2 text-xs sm:text-sm font-semibold leading-relaxed">
-                    <span class="text-[var(--pop-pink)] font-black shrink-0">▸</span>
-                    <span>{rule}</span>
-                  </li>
-                )}
-              </For>
-            </ul>
-          </div>
-
-          {/* Judging Criteria */}
-          <div class="card pop-purple space-y-3">
-            <div class="flex items-center gap-2">
-              <SpriteIcon name="nilavilakku" size={22} interactive />
-              <h3 class="text-lg font-black">Judging Pillars</h3>
-            </div>
-            <div class="space-y-2">
-              <For each={POOKALAM.judging}>
-                {(criterion, index) => (
-                  <div class="card card-plain bg-surface p-2.5 space-y-0.5">
-                    <p class="font-black text-xs text-ink flex items-center gap-1.5">
-                      <span
-                        class="w-2 h-2 rounded-full"
-                        style={{
-                          background: `var(--${POPS[index() % POPS.length]})`,
-                        }}
-                      />
-                      <span>{criterion.name}</span>
-                    </p>
-                    <p class="text-xs font-semibold text-muted">{criterion.body}</p>
-                  </div>
-                )}
-              </For>
-            </div>
-          </div>
-        </div>
-      </Section>
-
-      {/* ---------------------------------------------------- PREVIOUS YEAR CAROUSEL */}
-      <Section title="Past Community Creations" confettiSeed="cap-past" confettiCount={5}>
-        <PreviousPookalamCarousel />
-      </Section>
-
-      {/* ---------------------------------------------------- TUTORIALS & STARTER LAB */}
-      <Section title="Ways to Code a Pookalam" confettiSeed="cap-tutorials" confettiCount={4}>
-        <PookalamTutorials />
-      </Section>
+      {/* ------------------------------------------------------------- THE ROAD
+       * Everything that used to be four parallel sections - how it works, the
+       * rules, the judging pillars, last year's gallery and the six tutorial
+       * tracks - now lives inside the stop where it is actually needed. A page
+       * of parallel cards asked the reader to work out the order; the road
+       * hands it to them.
+       */}
+      <PookalamRoad
+        hasEntry={Boolean(mine())}
+        closesAt={state()?.phases.submissions.closesAt ?? null}
+      />
 
       {/* ---------------------------------- NOT INTERESTED IN CODING? BUILD THE SHARED POOKALAM */}
       <section
@@ -369,35 +299,6 @@ export default function CodeAPookalam() {
           <SpriteIcon name="pookalam-flower" size={20} />
           <span>Draw on Community Pookalam →</span>
         </a>
-      </section>
-
-      {/* ---------------------------------------------------- BOTTOM CTA */}
-      <section class="card pop-yellow p-6 sm:p-8 relative overflow-hidden">
-        <Confetti seed="pookalam-footer" count={8} animate opacity={0.5} />
-        <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6 max-w-3xl mx-auto">
-          {/* Deploy Meme on the Left on Desktop */}
-          <img
-            src="/images/memes/meme-deploy.webp"
-            alt="Deploy Flower Carpet Meme"
-            class="w-38 sm:w-40 md:w-44 h-auto object-contain select-none shrink-0 rounded-xl border-2 border-[var(--ink)] block"
-          />
-
-          <div class="space-y-3 text-center md:text-left flex-1">
-            <h2 class="text-2xl sm:text-3xl font-black text-[var(--ink)]">
-              Ready to deploy your flower carpet?
-            </h2>
-            <p class="comment  sm:text-lg font-bold">
-              Submissions are open now through Day 6. Submit your GitHub repository and render
-              snapshot to enter the running!
-            </p>
-            <div class="pt-1 flex justify-center md:justify-start">
-              <a href="/code-a-pookalam/submit" class="btn-brand inline-flex items-center gap-2">
-                <Send size={18} />
-                <span>Submit Your Pookalam Entry</span>
-              </a>
-            </div>
-          </div>
-        </div>
       </section>
     </main>
   );

@@ -28,19 +28,21 @@ const PAPER = "var(--paper-2)";
 /* ------------------------------------------------------------------ demos */
 
 /** A demo frame: fixed height, inked, quietly confettied. */
-function Stage(props: { children: JSX.Element; seed: string; pop?: string }) {
+function Stage(props: { children: JSX.Element; seed: string; pop?: string; noConfetti?: boolean }) {
   return (
     <div
-      class="relative w-full overflow-hidden rounded"
+      class="relative w-full overflow-hidden rounded flex flex-col justify-center items-center"
       style={{
         height: "180px",
         border: "var(--ink-w) solid var(--ink)",
         background: props.pop ?? "var(--paper-3)",
       }}
     >
-      <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-        <Confetti seed={props.seed} count={4} />
-      </div>
+      <Show when={!props.noConfetti}>
+        <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          <Confetti seed={props.seed} count={4} />
+        </div>
+      </Show>
       {props.children}
     </div>
   );
@@ -83,7 +85,7 @@ function TinderDemo() {
             class="absolute inset-0"
             style={{ "z-index": 2, animation: "demo-card-paid 6s ease-in-out infinite" }}
           >
-            <DemoCard name="Notes Pro" sub="source: sealed" pop="var(--pop-red)" locked />
+            <DemoCard name="Notes Pro" sub="source: sealed" pop="var(--pop-red)" />
             <span
               class="sticker absolute left-1.5 top-1.5 text-[0.6rem]"
               style={{
@@ -95,8 +97,7 @@ function TinderDemo() {
             </span>
           </div>
 
-          {/* Top card: swipes right straight away. It must be on top - that is
-              the whole point of a deck, and the first version had it behind. */}
+          {/* Top card: swipes right straight away. */}
           <div
             class="absolute inset-0"
             style={{ "z-index": 3, animation: "demo-card-free 6s ease-in-out infinite" }}
@@ -114,11 +115,6 @@ function TinderDemo() {
           </div>
         </div>
       </div>
-
-      <div class="absolute inset-x-0 bottom-1.5 flex items-center justify-between px-3 text-[0.65rem] font-extrabold uppercase tracking-wider">
-        <span style={{ color: "var(--pop-red)" }}>← closed source</span>
-        <span style={{ color: "var(--pop-teal-deep)" }}>open source →</span>
-      </div>
     </Stage>
   );
 }
@@ -126,43 +122,21 @@ function TinderDemo() {
 function DemoCard(props: { name: string; sub: string; pop: string; locked?: boolean }) {
   return (
     <div
-      class="flex h-full w-full flex-col overflow-hidden rounded"
-      style={{ background: PAPER, border: "var(--ink-w) solid var(--ink)" }}
+      class="card relative h-full w-full select-none p-2.5 text-center"
+      style={{
+        background: props.pop,
+        border: "var(--ink-w) solid var(--ink)",
+        "box-shadow": "var(--shadow-hard)",
+      }}
     >
-      <div class="relative grid flex-1 place-items-center" style={{ background: props.pop }}>
-        <div class="halftone absolute inset-0" aria-hidden="true" />
-        {/* An open padlock or a shut one. The whole joke in one glyph. */}
-        <svg width="34" height="34" viewBox="0 0 32 32" aria-hidden="true">
-          <rect
-            x="7"
-            y="14"
-            width="18"
-            height="14"
-            rx="3"
-            fill={PAPER}
-            stroke={INK}
-            stroke-width="2.5"
-          />
-          <path
-            d={props.locked ? "M11 14v-4a5 5 0 0 1 10 0v4" : "M11 14v-4a5 5 0 0 1 10 0"}
-            fill="none"
-            stroke={INK}
-            stroke-width="2.5"
-            stroke-linecap="round"
-          />
-        </svg>
-      </div>
-      <div
-        class="px-1.5 py-1 text-center"
-        style={{ "border-top": "var(--ink-w) solid var(--ink)" }}
-      >
+      <div class="space-y-0.5 pt-3">
         <p
-          class="truncate text-[0.7rem] leading-tight"
-          style={{ "font-family": "var(--font-stack-display)", "font-weight": 800 }}
+          class="text-xs font-black tracking-tight text-ink truncate"
+          style={{ "font-family": "var(--font-stack-display)" }}
         >
           {props.name}
         </p>
-        <p class="truncate text-[0.6rem] font-bold text-muted">{props.sub}</p>
+        <p class="text-[0.65rem] font-bold text-ink/75 truncate">{props.sub}</p>
       </div>
     </div>
   );
@@ -173,10 +147,6 @@ function DemoCard(props: { name: string; sub: string; pop: string; locked?: bool
  *
  * Drawn with the real `pieceOutline`, on fixed tabs - so what a player watches
  * here is exactly the geometry they are about to drag around, tab for socket.
- * The earlier version showed a 3x3 of dashed slots with squares dropping into
- * them, which described a completely different game: this jigsaw has no slots,
- * the pieces join to *each other*, and that is the one thing the demo has to
- * get across.
  */
 const DEMO_CELL = 44;
 
@@ -243,7 +213,11 @@ function JigsawDemo() {
 
 /** A finger drags across letters and the path locks in. */
 function WendDemo() {
-  const letters = ["O", "N", "A", "M", "K", "E", "R", "A", "L", "A", "S", "T", "V", "I", "P", "U"];
+  // 4x4 Grid containing ONAM, FOSS, LINUX, TUX
+  const letters = ["O", "N", "A", "L", "K", "E", "M", "I", "F", "O", "S", "N", "T", "U", "X", "U"];
+  // Indices for ONAM: 0 (O), 1 (N), 2 (A), 6 (M)
+  const activeIndices = new Set([0, 1, 2, 6]);
+
   return (
     <Stage seed="demo-wend">
       <div class="absolute inset-0 grid place-items-center pb-6">
@@ -252,17 +226,18 @@ function WendDemo() {
             {(letter, i) => {
               const col = () => i() % 4;
               const row = () => Math.floor(i() / 4);
+              const isActive = activeIndices.has(i());
               return (
-                <>
+                <g>
                   <rect
                     x={23 + col() * 24}
                     y={8 + row() * 24}
                     width="22"
                     height="22"
                     rx="4"
-                    fill={PAPER}
-                    stroke={INK}
-                    stroke-width="2"
+                    fill={isActive ? "#d8f3dc" : PAPER}
+                    stroke={isActive ? "var(--pop-teal)" : INK}
+                    stroke-width={isActive ? "2.5" : "2"}
                   />
                   <text
                     x={34 + col() * 24}
@@ -274,12 +249,12 @@ function WendDemo() {
                   >
                     {letter}
                   </text>
-                </>
+                </g>
               );
             }}
           </For>
 
-          {/* O-N-A-M, bending down at the end to show paths are not straight. */}
+          {/* O (34,19) -> N (58,19) -> A (82,19) -> M (82,43) */}
           <path
             d="M34 19 H58 H82 V43"
             fill="none"
@@ -291,13 +266,36 @@ function WendDemo() {
             style={{
               "--len": "80",
               "stroke-dasharray": "80",
-              animation: "demo-trace 4s ease-in-out infinite",
+              animation: "demo-trace 3.5s ease-in-out infinite",
             }}
           />
+
+          {/* Target Word Chip */}
+          <g transform="translate(48, 108)">
+            <rect
+              width="44"
+              height="16"
+              rx="4"
+              fill="var(--pop-teal)"
+              stroke={INK}
+              stroke-width="1.5"
+            />
+            <text
+              x="22"
+              y="11"
+              text-anchor="middle"
+              fill={INK}
+              font-size="9"
+              font-weight="900"
+              font-family="var(--font-stack-mono)"
+            >
+              ONAM ✓
+            </text>
+          </g>
         </svg>
       </div>
       <p class="absolute inset-x-0 bottom-1.5 text-center text-[0.65rem] font-extrabold uppercase tracking-wider text-muted">
-        paths bend. every tile belongs to one word.
+        drag across letters · words can bend
       </p>
     </Stage>
   );
@@ -364,12 +362,12 @@ function VallamDemo() {
   );
 }
 
-/** Maveli climbs. Hold a side or tilt to steer. */
+/** Maveli climbs. Calm, beautifully paced and properly proportioned demonstration. */
 function JumpDemo() {
   const [anim, setAnim] = createSignal({
-    px: 30,
-    py: 78,
-    moveX: 86,
+    px: 42,
+    py: 110,
+    moveX: 110,
     sprite: "/sprites/jump/maveli-jump.webp",
     balloonVisible: true,
     showUmbrellaBurst: false,
@@ -379,51 +377,51 @@ function JumpDemo() {
   onMount(() => {
     let frame = 0;
     const interval = setInterval(() => {
-      frame = (frame + 1) % 180; // 3 seconds cycle at 60fps
-      const t = frame / 180; // 0 to 1
+      frame = (frame + 1) % 240; // 4 seconds cycle at 60fps
+      const t = frame / 240; // 0 to 1
 
-      // Moving platform position:
-      const moveX = 86 + Math.sin(t * Math.PI * 4) * 16;
+      // Moving platform smooth glide
+      const moveX = 105 + Math.sin(t * Math.PI * 2) * 22;
 
-      let px = 30;
-      let py = 78;
+      let px = 42;
+      let py = 110;
       let sprite = "/sprites/jump/maveli-jump.webp";
       let balloonVisible = true;
       let showUmbrellaBurst = false;
       let flip = false;
 
-      if (t < 0.28) {
-        // Hop 1: Bottom Mint (x: 30, y: 78) -> Moving Blue Platform
-        const p = t / 0.28;
-        px = 30 + p * (moveX + 10 - 30);
-        py = 78 - Math.sin(p * Math.PI) * 36;
-        sprite = p > 0.5 ? "/sprites/jump/maveli-fall.webp" : "/sprites/jump/maveli-jump.webp";
-      } else if (t < 0.55) {
-        // Hop 2: Blue Platform -> Balloon Grab (x: 102, y: 38)
-        const p = (t - 0.28) / 0.27;
-        px = moveX + 10 + p * (102 - (moveX + 10));
-        py = 50 - Math.sin(p * Math.PI) * 32;
+      if (t < 0.32) {
+        // 1. Hop: Bottom Mint (x: 42, y: 110) -> Middle Moving Cyan Platform
+        const p = t / 0.32;
+        px = 42 + p * (moveX + 10 - 42);
+        py = 110 - Math.sin(p * Math.PI) * 44;
+        sprite = p > 0.55 ? "/sprites/jump/maveli-fall.webp" : "/sprites/jump/maveli-jump.webp";
+      } else if (t < 0.65) {
+        // 2. Hop: Middle Cyan -> Grab Balloon (x: 135, y: 55)
+        const p = (t - 0.32) / 0.33;
+        px = moveX + 10 + p * (135 - (moveX + 10));
+        py = 72 - Math.sin(p * Math.PI) * 36;
         if (p > 0.45) {
           balloonVisible = false;
           sprite = "/sprites/jump/maveli-balloon.webp";
         } else {
           sprite = "/sprites/jump/maveli-jump.webp";
         }
-      } else if (t < 0.78) {
-        // Hop 3: Float down onto Orange Umbrella Spring Platform (x: 165, y: 22)
-        const p = (t - 0.55) / 0.23;
+      } else if (t < 0.82) {
+        // 3. Float down gently onto Top Coral Spring Platform (x: 172, y: 36)
+        const p = (t - 0.65) / 0.17;
         balloonVisible = false;
-        px = 102 + p * (165 - 102);
-        py = 32 + p * (22 - 32) + Math.sin(p * Math.PI) * 4;
+        px = 135 + p * (172 - 135);
+        py = 46 + p * (36 - 46);
         sprite = "/sprites/jump/maveli-balloon.webp";
       } else {
-        // Hop 4: BOING! Super Launch off Umbrella Platform with Olakuda!
-        const p = (t - 0.78) / 0.22;
+        // 4. BOING! Super-Launch off Spring Platform with Olakuda Umbrella!
+        const p = (t - 0.82) / 0.18;
         balloonVisible = false;
         showUmbrellaBurst = true;
         flip = true;
-        px = 165 - p * 135;
-        py = 22 - Math.sin(p * Math.PI) * 58;
+        px = 172 - p * 130;
+        py = 36 - Math.sin(p * Math.PI) * 65;
         sprite = "/sprites/jump/maveli-umbrella.webp";
       }
 
@@ -442,113 +440,105 @@ function JumpDemo() {
   });
 
   return (
-    <Stage seed="demo-jump">
-      <div class="absolute inset-0 grid place-items-center pb-5">
+    <Stage seed="demo-jump" pop="#141026" noConfetti>
+      {/* Background Cavern Atmosphere */}
+      <div
+        class="absolute inset-0 opacity-35 bg-cover bg-center pointer-events-none"
+        style={{ "background-image": "url('/images/games/paathalam-bg-a.webp')" }}
+      />
+
+      <div class="absolute inset-0 grid place-items-center pb-5 relative z-10">
         <svg
-          viewBox="0 0 220 130"
-          class="w-full h-full max-w-[240px] max-h-[140px] overflow-visible select-none"
+          viewBox="0 0 240 145"
+          class="w-full h-full max-w-[260px] max-h-[145px] overflow-visible select-none"
           aria-hidden="true"
         >
-          {/* Subtle comic height guide line */}
+          {/* Subtle Height Marker Guide Line */}
           <line
-            x1="10"
-            y1="35"
-            x2="210"
-            y2="35"
-            stroke="var(--ink)"
+            x1="12"
+            y1="34"
+            x2="228"
+            y2="34"
+            stroke="rgba(255, 255, 255, 0.28)"
             stroke-width="1.5"
             stroke-dasharray="4 4"
-            opacity="0.25"
           />
-          <text
-            x="15"
-            y="30"
-            fill="var(--ink)"
-            opacity="0.5"
-            font-size="8"
-            font-weight="800"
-            font-family="var(--font-stack-mono)"
-          >
-            100 m
-          </text>
-
-          {/* Platform 1: Mint Normal */}
-          <g transform="translate(18, 98)">
+          <g transform="translate(14, 24)">
             <rect
-              width="46"
-              height="10"
-              rx="4"
-              fill="#2ec4b6"
-              stroke="var(--ink)"
-              stroke-width="2"
+              width="40"
+              height="14"
+              rx="3"
+              fill="#221c38"
+              stroke="#ffd166"
+              stroke-width="1.2"
             />
-            <line
-              x1="15"
-              y1="0"
-              x2="15"
-              y2="10"
-              stroke="var(--ink)"
-              stroke-width="1.5"
-              opacity="0.4"
-            />
-            <line
-              x1="31"
-              y1="0"
-              x2="31"
-              y2="10"
-              stroke="var(--ink)"
-              stroke-width="1.5"
-              opacity="0.4"
-            />
+            <text
+              x="20"
+              y="10"
+              text-anchor="middle"
+              fill="#ffd166"
+              font-size="8.5"
+              font-weight="800"
+              font-family="var(--font-stack-mono)"
+            >
+              100 m
+            </text>
           </g>
 
-          {/* Platform 2: Blue Moving */}
-          <g transform={`translate(${anim().moveX}, 68)`}>
-            <rect
-              width="46"
-              height="10"
-              rx="4"
-              fill="#3a86ff"
-              stroke="var(--ink)"
-              stroke-width="2"
-            />
-            <path d="M 8 5 L 14 2 L 14 8 Z" fill="#ffffff" />
-            <path d="M 38 5 L 32 2 L 32 8 Z" fill="#ffffff" />
+          {/* Platform 1 (Bottom): Neon Mint Normal */}
+          <g transform="translate(24, 126)">
+            <rect x="0" y="3" width="52" height="11" rx="4" fill="rgba(0,0,0,0.75)" />
+            <rect width="52" height="11" rx="4" fill="#00f090" />
+            <rect x="2" y="6" width="48" height="4.5" rx="2" fill="#00c878" />
+            <line x1="18" y1="2" x2="18" y2="9" stroke="rgba(0,0,0,0.3)" stroke-width="1.5" />
+            <line x1="34" y1="2" x2="34" y2="9" stroke="rgba(0,0,0,0.3)" stroke-width="1.5" />
+            <rect width="52" height="11" rx="4" fill="none" stroke="#080a1a" stroke-width="2" />
+            <rect x="2" y="1" width="48" height="2.5" rx="1.2" fill="rgba(255,255,255,0.85)" />
           </g>
 
-          {/* Platform 3: Orange Umbrella Launch */}
-          <g transform="translate(154, 40)">
-            <rect
-              width="46"
-              height="10"
-              rx="4"
-              fill="#ff9f1c"
-              stroke="var(--ink)"
-              stroke-width="2"
-            />
+          {/* Platform 2 (Middle): Electric Cyan Moving with Arrows */}
+          <g transform={`translate(${anim().moveX}, 88)`}>
+            <rect x="0" y="3" width="52" height="11" rx="4" fill="rgba(0,0,0,0.75)" />
+            <rect width="52" height="11" rx="4" fill="#00d2ff" />
+            <rect x="2" y="6" width="48" height="4.5" rx="2" fill="#00a3cc" />
+            <path d="M 15 3.5 L 9 5.5 L 15 7.5 Z" fill="#ffffff" />
+            <path d="M 37 3.5 L 43 5.5 L 37 7.5 Z" fill="#ffffff" />
+            <line x1="13" y1="5.5" x2="39" y2="5.5" stroke="#ffffff" stroke-width="1.5" />
+            <rect width="52" height="11" rx="4" fill="none" stroke="#080a1a" stroke-width="2" />
+            <rect x="2" y="1" width="48" height="2.5" rx="1.2" fill="rgba(255,255,255,0.85)" />
+          </g>
+
+          {/* Platform 3 (Top): Radiant Coral Olakuda Spring Platform */}
+          <g transform="translate(162, 52)">
+            <rect x="0" y="3" width="52" height="11" rx="4" fill="rgba(0,0,0,0.75)" />
+            <rect width="52" height="11" rx="4" fill="#ff2e63" />
+            <rect x="2" y="6" width="48" height="4.5" rx="2" fill="#d61c4e" />
             <path
-              d="M 23 0 A 7 7 0 0 1 30 -7 L 16 -7 A 7 7 0 0 1 23 0 Z"
-              fill="#e71d36"
-              stroke="var(--ink)"
-              stroke-width="1.5"
+              d="M 21 8 L 26 3.5 L 31 8"
+              fill="none"
+              stroke="#ffffff"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
             />
-            <line x1="23" y1="-7" x2="23" y2="0" stroke="var(--ink)" stroke-width="1.5" />
+            <rect width="52" height="11" rx="4" fill="none" stroke="#080a1a" stroke-width="2" />
+            <rect x="2" y="1" width="48" height="2.5" rx="1.2" fill="rgba(255,255,255,0.85)" />
           </g>
 
-          {/* Tiny Floating Collectible Balloon */}
+          {/* Floating Collectible Balloon */}
           <Show when={anim().balloonVisible}>
-            <g transform="translate(102, 36)">
-              <image href="/sprites/jump/item-balloon.webp" width="14" height="14" />
+            <g transform="translate(135, 48)">
+              <image href="/sprites/jump/item-balloon.webp" width="16" height="16" />
             </g>
           </Show>
 
           {/* Umbrella Super-Launch Burst Effect */}
           <Show when={anim().showUmbrellaBurst}>
-            <g transform="translate(177, 36)">
-              <circle r="6" fill="#ffbf69" opacity="0.6" />
-              <line x1="0" y1="-3" x2="0" y2="-10" stroke="#e71d36" stroke-width="2" />
-              <line x1="-5" y1="-2" x2="-9" y2="-7" stroke="#e71d36" stroke-width="2" />
-              <line x1="5" y1="-2" x2="9" y2="-7" stroke="#e71d36" stroke-width="2" />
+            <g transform="translate(188, 46)">
+              <circle r="7" fill="#ffd166" opacity="0.8" />
+              <line x1="0" y1="-3" x2="0" y2="-12" stroke="#ff2e63" stroke-width="2" />
+              <line x1="-6" y1="-2" x2="-10" y2="-8" stroke="#ff2e63" stroke-width="2" />
+              <line x1="6" y1="-2" x2="10" y2="-8" stroke="#ff2e63" stroke-width="2" />
             </g>
           </Show>
 
@@ -559,21 +549,21 @@ function JumpDemo() {
           >
             <image
               href={anim().sprite}
-              x={anim().flip ? -26 : 0}
-              y={anim().sprite.includes("umbrella") || anim().sprite.includes("balloon") ? -10 : 0}
+              x={anim().flip ? -28 : 0}
+              y={anim().sprite.includes("umbrella") || anim().sprite.includes("balloon") ? -12 : 0}
               width={
-                anim().sprite.includes("umbrella") || anim().sprite.includes("balloon") ? 32 : 24
+                anim().sprite.includes("umbrella") || anim().sprite.includes("balloon") ? 36 : 26
               }
               height={
-                anim().sprite.includes("umbrella") || anim().sprite.includes("balloon") ? 34 : 26
+                anim().sprite.includes("umbrella") || anim().sprite.includes("balloon") ? 38 : 28
               }
-              style={{ filter: "drop-shadow(0 2px 3px rgba(34,32,43,0.35))" }}
+              style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))" }}
             />
           </g>
         </svg>
       </div>
 
-      <p class="absolute inset-x-0 bottom-1 text-center text-[0.65rem] font-extrabold uppercase tracking-wider text-muted">
+      <p class="absolute inset-x-0 bottom-1.5 text-center text-[0.65rem] font-extrabold uppercase tracking-wider text-[#ffd166] relative z-10">
         hold sides or tilt phone to steer
       </p>
     </Stage>

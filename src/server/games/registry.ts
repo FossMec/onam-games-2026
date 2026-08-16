@@ -142,8 +142,7 @@ export const GAMES: readonly GameDef[] = [
     gameType: "tinder",
     metric: "time",
     maxAttempts: 1,
-    // A 30-card deck at even a frantic 250ms/swipe is ~7.5s.
-    minPlausibleMs: 6_000,
+    minPlausibleMs: 1_500,
     maxDurationMs: 20 * MINUTE,
     maxSubmissionBytes: 32_000,
     public: {
@@ -170,7 +169,7 @@ export const GAMES: readonly GameDef[] = [
     gameType: "jigsaw",
     metric: "time",
     maxAttempts: 1,
-    minPlausibleMs: 20_000,
+    minPlausibleMs: 3_000,
     maxDurationMs: 45 * MINUTE,
     maxSubmissionBytes: 64_000,
     public: {
@@ -197,7 +196,7 @@ export const GAMES: readonly GameDef[] = [
     gameType: "wend",
     metric: "time",
     maxAttempts: 1,
-    minPlausibleMs: 15_000,
+    minPlausibleMs: 3_000,
     maxDurationMs: 30 * MINUTE,
     maxSubmissionBytes: 16_000,
     public: {
@@ -211,22 +210,6 @@ export const GAMES: readonly GameDef[] = [
         "Fastest correct board wins.",
       ],
     },
-    /**
-     * Variant policy: ONE canonical board for the whole event, presented under
-     * a seed-chosen isomorphism. Distinct boards were rejected deliberately -
-     * different boards mean different difficulty, and you cannot rank players
-     * fairly across puzzles that are not equally hard.
-     *
-     * Every transform below is difficulty-preserving by construction:
-     *   - 8 dihedral presentations (4 rotations x optional reflection)
-     *   - 4! = 24 group colour/label permutations
-     *   => 192 presentations of a provably identical puzzle.
-     *
-     * The accepted tradeoff: a shared screenshot still leaks the *solution
-     * structure* to anyone willing to mentally re-orient it. That is inherent
-     * to any simultaneous single-puzzle release; the transforms raise the cost
-     * of copying without ever changing what a player is asked to solve.
-     */
     generate: (seed) => wend.generate(seed),
     verify: (input) => wend.verify(input),
   },
@@ -238,7 +221,7 @@ export const GAMES: readonly GameDef[] = [
     gameType: "unblock",
     metric: "time",
     maxAttempts: 1,
-    minPlausibleMs: 10_000,
+    minPlausibleMs: 2_000,
     maxDurationMs: 30 * MINUTE,
     maxSubmissionBytes: 32_000,
     public: {
@@ -251,12 +234,6 @@ export const GAMES: readonly GameDef[] = [
         "Fastest escape wins. Move count is recorded but does not rank you.",
       ],
     },
-    /**
-     * Every board is generated backwards from a BFS solver, so it is provably
-     * solvable and its true minimum move count is known before it ships. The
-     * generator rejects boards below a par floor - a puzzle you clear in three
-     * moves does not separate 500 players.
-     */
     generate: (seed, difficulty) => vallam.generate(seed, difficulty),
     verify: (input) => vallam.verify(input),
   },
@@ -268,10 +245,10 @@ export const GAMES: readonly GameDef[] = [
     gameType: "jump",
     metric: "score",
     /**
-     * Three runs allowed per player today. Best score counts.
+     * Unlimited runs allowed for all players. Best score counts.
      */
-    maxAttempts: 3,
-    minPlausibleMs: 3_000,
+    maxAttempts: 999_999,
+    minPlausibleMs: 1_000,
     maxDurationMs: 6 * MINUTE,
     /** ~40k frames of delta-encoded input, with headroom. */
     maxSubmissionBytes: 128_000,
@@ -283,7 +260,7 @@ export const GAMES: readonly GameDef[] = [
         "Hold the left or right half of the board or tilt your phone to steer. Maveli jumps on his own.",
         "Mint platforms are safe, orange platforms launch high, blue ones move, yellow ones break.",
         "Height above Paathalam is your score.",
-        "Three runs today. Your best one is the one that counts.",
+        "Unlimited tries! Climb as many times as you like, your best height is what counts.",
       ],
     },
     /**

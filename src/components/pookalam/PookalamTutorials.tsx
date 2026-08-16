@@ -215,7 +215,16 @@ for y in range(H):
   },
 ];
 
-export function PookalamTutorials() {
+/**
+ * `compact` is for the road, where this sits inside a stop card that already
+ * has its own heading and coloured strip - a second card frame around it would
+ * read as a nested box. Everywhere else the default framing is what you want.
+ */
+export interface PookalamTutorialsProps {
+  compact?: boolean;
+}
+
+export function PookalamTutorials(props: PookalamTutorialsProps = {}) {
   const [activeId, setActiveId] = createSignal<string>("web");
   const [copiedId, setCopiedId] = createSignal<string | null>(null);
 
@@ -252,7 +261,9 @@ export function PookalamTutorials() {
       </div>
 
       {/* Active Tutorial Content Box */}
-      <div class="card pop-teal space-y-4">
+      <div
+        class={props.compact ? "card card-plain bg-surface space-y-3" : "card pop-teal space-y-4"}
+      >
         <div class="space-y-1">
           <div class="flex items-center gap-2">
             <span

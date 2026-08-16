@@ -389,7 +389,7 @@ export function CollabPookalam() {
   const paint = () => {
     const grid = today();
     if (!canvas || !grid) return;
-    const css = fit() * zoom();
+    const css = fit();
     const dpr = Math.max(window.devicePixelRatio || 1, 2);
     canvas.width = Math.floor(css * dpr);
     canvas.height = Math.floor(css * dpr);
@@ -425,7 +425,13 @@ export function CollabPookalam() {
     paintLayer(ctx, grid, css, 1);
   };
 
-  createEffect(paint);
+  createEffect(() => {
+    // Only re-paint when grid, history or fit size changes (not on every frame of zoom!)
+    today();
+    history();
+    fit();
+    paint();
+  });
 
   // Auto-center scroll when zoom level changes
   createEffect(() => {
@@ -469,7 +475,7 @@ export function CollabPookalam() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const css = fit() * zoom();
+    const css = fit();
     const dpr = Math.max(window.devicePixelRatio || 1, 2);
     ctx.save();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -972,7 +978,7 @@ export function CollabPookalam() {
           {/* Center Canvas Viewport (Fixed dimensions, never overflows surrounding layout) */}
           <div
             ref={(el) => (shell = el)}
-            class="scrollbar-none relative rounded"
+            class="scrollbar-none relative rounded select-none"
             classList={{
               "overflow-auto": zoom() > 1,
               "overflow-hidden flex items-center justify-center": zoom() <= 1,
@@ -987,21 +993,34 @@ export function CollabPookalam() {
               "touch-action": zoom() > 1 ? "pan-x pan-y" : "none",
             }}
           >
-            <canvas
-              ref={(el) => (canvas = el)}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerUp}
-              onWheel={handleWheel}
-              class="block select-none"
+            <div
               style={{
-                "touch-action": "none",
-                cursor: canPlace()
-                  ? 'url("/cursors/muthukuda-point.png") 6 2, crosshair'
-                  : 'url("/cursors/muthukuda.png") 6 2, default',
+                width: `${fit() * zoom()}px`,
+                height: `${fit() * zoom()}px`,
+                position: "relative",
+                transform: `scale(${zoom()})`,
+                "transform-origin": "top left",
+                transition: "transform 150ms cubic-bezier(0.2, 0, 0, 1)",
               }}
-            />
+            >
+              <canvas
+                ref={(el) => (canvas = el)}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+                onWheel={handleWheel}
+                class="block select-none"
+                style={{
+                  width: `${fit()}px`,
+                  height: `${fit()}px`,
+                  "touch-action": "none",
+                  cursor: canPlace()
+                    ? 'url("/cursors/muthukuda-point.png") 6 2, crosshair'
+                    : 'url("/cursors/muthukuda.png") 6 2, default',
+                }}
+              />
+            </div>
           </div>
 
           <Show when={loaded() && !open()}>
@@ -1501,21 +1520,27 @@ function WishBubble(props: {
 
       {/* 2. Message Speech Bubble (Distinct bubble with multi-line text wrapping) */}
       <div
-        class="relative inline-flex flex-wrap items-center gap-1 rounded-2xl rounded-tl-xs border-2 border-[var(--ink)] shadow-xs"
+        class="relative flex flex-col justify-between gap-1 rounded-2xl rounded-tl-xs border-2 border-[var(--ink)] shadow-xs min-w-0"
         classList={{
           "px-2.5 py-1 text-xs sm:text-[12.5px] max-w-[150px] sm:max-w-[175px]": !props.compact,
           "px-1.5 py-0.5 text-[10px] max-w-[115px]": props.compact,
         }}
         style={{
           background: bg(),
+          "word-break": "break-word",
+          "overflow-wrap": "anywhere",
         }}
       >
-        {/* Full Message Text without truncation */}
+        {/* Full Message Text with character-level breaking */}
         <span
-          class="font-black text-[var(--ink)] leading-snug break-words whitespace-normal inline"
+          class="font-black text-[var(--ink)] leading-snug break-all min-w-0 block w-full"
           classList={{
             "text-xs sm:text-[12px]": !props.compact,
             "text-[9.5px]": props.compact,
+          }}
+          style={{
+            "word-break": "break-word",
+            "overflow-wrap": "anywhere",
           }}
         >
           "{props.msg.message}"

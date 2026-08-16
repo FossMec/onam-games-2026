@@ -147,13 +147,16 @@ export const SLOTS: readonly Slot[] = buildSlots();
  * runs on every pointer-move of a drag.
  */
 export function slotAt(nx: number, ny: number): number | null {
-  const dx = (nx - 0.5) / PADDING_SCALE;
-  const dy = (ny - 0.5) / PADDING_SCALE;
+  const dx = nx - 0.5;
+  const dy = ny - 0.5;
   const distance = Math.hypot(dx, dy);
   if (distance > 0.5) return null;
 
   const dr = 0.5 / RING_COUNT;
-  const ringIndex = Math.min(RING_COUNT - 1, Math.max(0, Math.floor(distance / dr)));
+  const ringIndex = Math.min(
+    RING_COUNT - 1,
+    Math.max(0, Math.floor(distance / PADDING_SCALE / dr)),
+  );
   const ring = RINGS[ringIndex];
 
   let angle = Math.atan2(dy, dx);

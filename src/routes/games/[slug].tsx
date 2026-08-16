@@ -20,6 +20,7 @@ import { ShoutBurst } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { LoadingScreen } from "~/components/LoadingScreen";
+import { FairPlayModal, hasAcknowledgedFairPlay } from "~/components/games/FairPlayModal";
 import { HowToPlayModal, HowToPlayPanel } from "~/components/games/HowToPlay";
 import {
   JigsawGame,
@@ -139,7 +140,6 @@ export default function GamePage() {
   const [howTo, setHowTo] = createSignal<"start" | "read" | null>(null);
   /** The playable board from the server. Never contains the solution. */
   const [view, setView] = createSignal<GameView | null>(null);
-  const [rehydrated, setRehydrated] = createSignal(false);
   /** Board state restored from a previous visit, handed to the board on mount. */
   const [restored, setRestored] = createSignal<unknown>(null);
   /**
@@ -164,29 +164,42 @@ export default function GamePage() {
   };
 
   /*
-   * A refresh loses the board, so an attempt found in local storage is
-   * rehydrated by calling `/start` again. That endpoint is idempotent - it
-   * returns the *existing* attempt with the same seed and the same original
-   * `startedAt`, so resuming never re-rolls the puzzle or resets the clock.
+   * Rehydrate or reset on slug change.
+   * Tracks slug reactively so navigating between days resets previous game state
+   * and loads the newly selected game's attempt/board cleanly.
    */
-  createEffect(() => {
-    if (rehydrated() || result()) return;
-    setRehydrated(true);
+  createEffect((prevSlug?: string) => {
+    const currentSlug = slug();
+    if (!currentSlug) return currentSlug;
 
-    // A finished board outlives the attempt, so it is restored first and
-    // independently - a player who comes back tomorrow still gets to see it.
-    const done = getFinished(slug());
-    if (done) {
-      setFinishedBoard({ view: done.view as GameView, submission: done.submission });
+    if (prevSlug !== currentSlug) {
+      setAttemptToken(null);
+      setStartedAt(null);
+      setError("");
+      setResult(null);
+      setView(null);
+      setRestored(null);
+      setFinishedBoard(null);
+      setCelebrating(false);
+      setHowTo(null);
+      setStanding(null);
+
+      const done = getFinished(currentSlug);
+      if (done) {
+        setFinishedBoard({ view: done.view as GameView, submission: done.submission });
+      }
+
+      const stored = getStoredAttempt(currentSlug);
+      if (stored) {
+        setAttemptToken(stored.attemptToken);
+        setStartedAt(new Date(stored.startedAt).getTime());
+        setNow(Date.now());
+        setRestored(getProgress(stored.attemptToken));
+        void start();
+      }
     }
 
-    const stored = getStoredAttempt(slug());
-    if (!stored) return;
-    setAttemptToken(stored.attemptToken);
-    setStartedAt(new Date(stored.startedAt).getTime());
-    setNow(Date.now());
-    setRestored(getProgress(stored.attemptToken));
-    void start();
+    return currentSlug;
   });
 
   createEffect(() => {
@@ -250,6 +263,8 @@ export default function GamePage() {
     setHowTo("start");
   };
 
+  const [showFairPlay, setShowFairPlay] = createSignal(false);
+
   /**
    * The rules on their own. Opens read-only whenever a run is already under
    * way, so nothing on that screen can be mistaken for restarting it.
@@ -257,6 +272,16 @@ export default function GamePage() {
   const openRules = () => setHowTo(attemptToken() ? "read" : "start");
 
   const confirmStart = async () => {
+    if (!hasAcknowledgedFairPlay()) {
+      setShowFairPlay(true);
+      return;
+    }
+    await start();
+    setHowTo(null);
+  };
+
+  const onAcceptFairPlay = async () => {
+    setShowFairPlay(false);
     await start();
     setHowTo(null);
   };
@@ -607,8 +632,8 @@ export default function GamePage() {
       <Show when={game() === null}>
         <div class="card pop-red space-y-2 text-center">
           <p class="font-extrabold">There is no game at this address.</p>
-          <a href="/#games-arena" class="btn-ghost mt-2 inline-block">
-            Back to the schedule
+          <a href="/games" class="btn-ghost mt-2 inline-block">
+            Back to Games Hub
           </a>
         </div>
       </Show>
@@ -1045,6 +1070,14 @@ export default function GamePage() {
         />
       </Show>
 
+      {/* Fair Play & Anti-Cheat Confirmation Modal */}
+      <Show when={showFairPlay()}>
+        <FairPlayModal
+          onAccept={() => void onAcceptFairPlay()}
+          onClose={() => setShowFairPlay(false)}
+        />
+      </Show>
+
       {/* The fanfare, for the moment it happened and no longer. */}
       <Show when={celebrating() && result()}>
         <WinModal
@@ -1139,10 +1172,11 @@ function GameBar(props: {
         when={!playing()}
         fallback={
           <a
-            href="/#games-arena"
+            href="/games"
             class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5"
             style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
-            aria-label="Back to games"
+            aria-label="Back to games hub"
+            title="Back to games hub"
           >
             <ChevronLeft size={20} />
           </a>
@@ -1153,11 +1187,11 @@ function GameBar(props: {
           when={prevGame()}
           fallback={
             <a
-              href="/#games-arena"
-              class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5"
+              href="/games"
+              class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5 hover:bg-paper-3"
               style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
-              aria-label="Back to all games"
-              title="All games"
+              aria-label="Back to games hub"
+              title="Games Hub"
             >
               <ChevronLeft size={20} />
             </a>
@@ -1177,9 +1211,13 @@ function GameBar(props: {
 
       {/* Breadcrumb Title */}
       <div class="min-w-0 flex-1">
-        <p class="truncate text-[0.65rem] font-extrabold uppercase tracking-widest text-muted">
-          Day {props.day} of 7
-        </p>
+        <div class="flex items-center gap-1.5 text-[0.68rem] font-extrabold uppercase tracking-wider text-muted">
+          <a href="/games" class="hover:underline hover:text-[var(--ink)]">
+            Games Hub
+          </a>
+          <span>/</span>
+          <span>Day {props.day} of 7</span>
+        </div>
         <p
           class="truncate text-base sm:text-lg leading-tight font-black"
           style={{ "font-family": "var(--font-stack-display)" }}

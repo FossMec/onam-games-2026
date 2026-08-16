@@ -47,7 +47,7 @@ export function isValidIndex(index: number): boolean {
 }
 
 export function isValidFlower(id: number): boolean {
-  return Number.isInteger(id) && id >= 0 && id <= MAX_FLOWER_ID;
+  return Number.isInteger(id) && id >= 1 && id <= MAX_FLOWER_ID;
 }
 
 /**

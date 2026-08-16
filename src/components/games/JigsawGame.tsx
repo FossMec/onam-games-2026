@@ -137,6 +137,11 @@ export function JigsawGame(props: JigsawGameProps) {
     const restored = restoreBoard(props.initialProgress, props.view, count());
     setPieces(restored.pieces);
     setMoveLog(restored.moveLog);
+
+    if (props.view.imageUrl) {
+      const img = new Image();
+      img.src = props.view.imageUrl;
+    }
   });
 
   const homeOf = (id: number) => ({ x: id % cols(), y: Math.floor(id / cols()) });
@@ -181,8 +186,9 @@ export function JigsawGame(props: JigsawGameProps) {
   let origin = { x: 0, y: 0 };
   let startPositions: Piece[] = [];
 
-  /** Board width in px per cell unit - everything is stored in cell units. */
-  const unit = () => (board?.getBoundingClientRect().width ?? 1) / viewport().w;
+  /** Board pixel dimensions per cell unit on both axes. */
+  const unitX = () => (board?.getBoundingClientRect().width ?? 1) / viewport().w;
+  const unitY = () => (board?.getBoundingClientRect().height ?? 1) / viewport().h;
 
   const onPointerDown = (event: PointerEvent, piece: Piece) => {
     if (props.disabled || solved()) return;
@@ -196,9 +202,8 @@ export function JigsawGame(props: JigsawGameProps) {
 
   const onPointerMove = (event: PointerEvent) => {
     if (pointerId !== event.pointerId || activeGroup() === null) return;
-    const scale = unit();
-    const dx = (event.clientX - origin.x) / scale;
-    const dy = (event.clientY - origin.y) / scale;
+    const dx = (event.clientX - origin.x) / unitX();
+    const dy = (event.clientY - origin.y) / unitY();
     const group = activeGroup();
     setPieces(
       startPositions.map((p) => (p.groupId === group ? { ...p, x: p.x + dx, y: p.y + dy } : p)),
@@ -359,9 +364,10 @@ export function JigsawGame(props: JigsawGameProps) {
 
       <div
         ref={(el) => (board = el)}
-        class="relative mx-auto my-auto w-full max-h-[min(60dvh,460px)]"
+        class="relative mx-auto my-auto max-h-[min(60dvh,460px)]"
         style={{
           "max-width": "min(100%, 34rem)",
+          width: `min(100%, calc(min(60dvh, 460px) * ${viewport().w} / ${viewport().h}))`,
           "aspect-ratio": `${viewport().w} / ${viewport().h}`,
           background: "var(--paper-2)",
           border: "var(--ink-w-bold) solid var(--ink)",
