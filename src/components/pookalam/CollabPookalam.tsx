@@ -22,7 +22,7 @@ import type { CollabMessageItem } from "~/server/pookalam/comments";
  * The pookalam the whole room draws together.
  *
  * A 50x50 grid with 4-hour rolling window allowances (3 drops of 10 flowers = 30/day),
- * 20% species cap, continuous layered collaboration, and live community wishes.
+ * 20% species cap, continuous layered collaboration, and playful tilted community wishes.
  */
 
 const MAX_CANVAS_PX_DESKTOP = 540;
@@ -700,20 +700,21 @@ export function CollabPookalam() {
     }
   };
 
-  // Split messages for left and right flanks on desktop
-  const leftMessages = () =>
+  // Split messages for outer left and outer right margins on desktop
+  const leftOuterMessages = () =>
     displayedMessages()
       .filter((_, i) => i % 2 === 0)
-      .slice(0, 3);
-  const rightMessages = () =>
+      .slice(0, 2);
+  const rightOuterMessages = () =>
     displayedMessages()
       .filter((_, i) => i % 2 === 1)
-      .slice(0, 3);
+      .slice(0, 2);
+  const mobileWishes = () => displayedMessages().slice(0, 3);
 
   return (
     <div
       ref={(el) => (rootRef = el)}
-      class="w-full flex flex-col items-center justify-center space-y-2"
+      class="w-full flex flex-col items-center justify-center space-y-2 relative"
     >
       {/* ---------------- Mobile Only Top Utility Bar (Single Compact Line) ---------------- */}
       <div class="lg:hidden w-full flex items-center justify-between gap-1 px-1">
@@ -797,126 +798,134 @@ export function CollabPookalam() {
         </div>
       </div>
 
-      {/* ---------------- Main Drawing Arena: 3-Column Best-Effort Layout ---------------- */}
-      <div class="flex items-start justify-center gap-3 lg:gap-4 w-full max-w-full">
-        {/* Left Flank: Desktop Vertical Poov Brushes + Floating Wishes */}
-        <div class="hidden lg:flex flex-col space-y-2 shrink-0 w-44 self-start">
-          <Show when={canPlace()}>
-            <div
-              class="flex flex-col card card-plain p-1.5 space-y-1 w-full transition-opacity"
-              style={{
-                border: "var(--ink-w) solid var(--ink)",
-                background: "var(--paper)",
-              }}
-            >
-              <div class="flex items-center justify-between px-0.5">
-                <p class="font-black text-[10px] uppercase tracking-wider m-0 text-[var(--ink)]">
-                  Pick Poov
-                </p>
-                <Show when={left() <= 0}>
-                  <span class="text-[8.5px] font-black px-1 rounded bg-[var(--paper-3)] text-[var(--ink-soft)]">
-                    {isWindowCapped() ? "Window limit" : "Daily limit"}
-                  </span>
-                </Show>
-              </div>
+      {/* ---------------- Mobile Playful Scattered Mini Wishes (Non-overlapping) ---------------- */}
+      <Show when={mobileWishes().length > 0}>
+        <div class="lg:hidden w-full flex items-center justify-center gap-2 py-0.5 px-1 overflow-x-auto scrollbar-none">
+          <For each={mobileWishes()}>
+            {(msg, idx) => <WishBubble msg={msg} onLike={toggleLike} index={idx()} compact />}
+          </For>
+        </div>
+      </Show>
 
-              <div
-                class="flex flex-col gap-0.5 w-full transition-all"
-                classList={{ "opacity-40 grayscale pointer-events-none": left() <= 0 }}
-              >
-                <For each={FLOWERS}>
-                  {(flower) => {
-                    const capped = () => isFlowerCapped(flower.id);
-                    return (
-                      <button
-                        type="button"
-                        disabled={capped()}
-                        title={
-                          capped()
-                            ? `${flower.name} (Max 20% reached)`
-                            : `${flower.name} (${flower.english})`
-                        }
-                        onClick={() => setPicked(flower)}
-                        class="flex items-center justify-between gap-1.5 px-2 py-1 rounded transition-all text-left w-full"
-                        classList={{
-                          "opacity-35 grayscale cursor-not-allowed": capped(),
-                          "cursor-pointer": !capped(),
-                        }}
-                        style={{
-                          border: "1.5px solid var(--ink)",
-                          background:
-                            picked().id === flower.id && !capped()
-                              ? "var(--pop-yellow)"
-                              : "var(--paper-2)",
-                          transform:
-                            picked().id === flower.id && !capped() ? "translateX(2px)" : undefined,
-                        }}
-                      >
-                        <div class="flex items-center gap-1.5 min-w-0">
-                          <div class="w-5 h-5 shrink-0 flex items-center justify-center">
-                            <FlowerSwatch flower={flower} size={20} />
-                          </div>
-                          <span class="text-[9px] font-black uppercase tracking-tight text-[var(--ink)] leading-tight whitespace-nowrap truncate">
-                            {flower.name}
-                          </span>
-                        </div>
-                        <Show when={capped()}>
-                          <span class="text-[7px] font-black px-1 py-0.2 rounded bg-[var(--paper-3)] text-[var(--pop-red)] shrink-0">
-                            20%
-                          </span>
-                        </Show>
-                      </button>
-                    );
-                  }}
-                </For>
-              </div>
+      {/* ---------------- Main Drawing Arena: Centered Canvas with Flank Toolbars & Outer Floating Wishes ---------------- */}
+      <div class="flex items-center justify-center gap-2.5 lg:gap-3.5 w-full max-w-full relative">
+        {/* Far Left Margin: Outer Floating Tilted Wishes (Desktop Only) */}
+        <div class="hidden xl:flex flex-col gap-3 shrink-0 w-36 self-center pointer-events-auto">
+          <For each={leftOuterMessages()}>
+            {(msg, idx) => <WishBubble msg={msg} onLike={toggleLike} index={idx() * 2} />}
+          </For>
+        </div>
 
-              {/* Eraser Tool */}
-              <button
-                type="button"
-                title="Eraser (Remove flower / clear square)"
-                onClick={() => setPicked(EMPTY_BRUSH)}
-                class="flex items-center gap-2 px-2 py-1 rounded transition-all cursor-pointer text-left w-full mt-0.5"
-                style={{
-                  border: "1.5px dashed var(--ink)",
-                  background:
-                    picked().id === EMPTY_BRUSH.id ? "var(--pop-yellow)" : "var(--paper-2)",
-                  transform: picked().id === EMPTY_BRUSH.id ? "translateX(2px)" : undefined,
-                }}
-              >
-                <div class="w-5 h-5 shrink-0 flex items-center justify-center rounded bg-[#2B2733] border border-[var(--ink)] text-[var(--pop-red)] font-black text-xs">
-                  ✕
-                </div>
-                <span class="text-[9px] font-black uppercase tracking-tight text-[var(--ink)] leading-tight whitespace-nowrap">
-                  Eraser (Empty)
-                </span>
-              </button>
-
+        {/* Left Toolbar: Desktop Vertical Poov Brushes */}
+        <Show when={canPlace()}>
+          <div
+            class="hidden lg:flex flex-col card card-plain p-1.5 space-y-1 shrink-0 w-44 self-center transition-opacity"
+            style={{
+              border: "var(--ink-w) solid var(--ink)",
+              background: "var(--paper)",
+            }}
+          >
+            <div class="flex items-center justify-between px-0.5">
+              <p class="font-black text-[10px] uppercase tracking-wider m-0 text-[var(--ink)]">
+                Pick Poov
+              </p>
               <Show when={left() <= 0}>
-                <div class="text-[9px] font-bold text-center text-[var(--ink-soft)] pt-1 m-0 border-t border-[var(--ink)]/15 space-y-0.5">
-                  <Show
-                    when={isWindowCapped()}
-                    fallback={
-                      <p class="m-0">Daily max ({dailyLimit()}) reached — resets at midnight!</p>
-                    }
-                  >
-                    <p class="m-0 flex items-center justify-center gap-1 text-[var(--pop-teal)] font-black">
-                      <Clock size={10} strokeWidth={2.5} />
-                      <span>
-                        Next +{windowLimit()} drop in {nextDropIn() ?? "soon"}
-                      </span>
-                    </p>
-                  </Show>
-                </div>
+                <span class="text-[8.5px] font-black px-1 rounded bg-[var(--paper-3)] text-[var(--ink-soft)]">
+                  {isWindowCapped() ? "Window limit" : "Daily limit"}
+                </span>
               </Show>
             </div>
-          </Show>
 
-          {/* Left Flank Wishes Stream */}
-          <div class="space-y-1.5 w-full">
-            <For each={leftMessages()}>{(msg) => <WishBubble msg={msg} onLike={toggleLike} />}</For>
+            <div
+              class="flex flex-col gap-0.5 w-full transition-all"
+              classList={{ "opacity-40 grayscale pointer-events-none": left() <= 0 }}
+            >
+              <For each={FLOWERS}>
+                {(flower) => {
+                  const capped = () => isFlowerCapped(flower.id);
+                  return (
+                    <button
+                      type="button"
+                      disabled={capped()}
+                      title={
+                        capped()
+                          ? `${flower.name} (Max 20% reached)`
+                          : `${flower.name} (${flower.english})`
+                      }
+                      onClick={() => setPicked(flower)}
+                      class="flex items-center justify-between gap-1.5 px-2 py-1 rounded transition-all text-left w-full"
+                      classList={{
+                        "opacity-35 grayscale cursor-not-allowed": capped(),
+                        "cursor-pointer": !capped(),
+                      }}
+                      style={{
+                        border: "1.5px solid var(--ink)",
+                        background:
+                          picked().id === flower.id && !capped()
+                            ? "var(--pop-yellow)"
+                            : "var(--paper-2)",
+                        transform:
+                          picked().id === flower.id && !capped() ? "translateX(2px)" : undefined,
+                      }}
+                    >
+                      <div class="flex items-center gap-1.5 min-w-0">
+                        <div class="w-5 h-5 shrink-0 flex items-center justify-center">
+                          <FlowerSwatch flower={flower} size={20} />
+                        </div>
+                        <span class="text-[9px] font-black uppercase tracking-tight text-[var(--ink)] leading-tight whitespace-nowrap truncate">
+                          {flower.name}
+                        </span>
+                      </div>
+                      <Show when={capped()}>
+                        <span class="text-[7px] font-black px-1 py-0.2 rounded bg-[var(--paper-3)] text-[var(--pop-red)] shrink-0">
+                          20%
+                        </span>
+                      </Show>
+                    </button>
+                  );
+                }}
+              </For>
+            </div>
+
+            {/* Eraser Tool */}
+            <button
+              type="button"
+              title="Eraser (Remove flower / clear square)"
+              onClick={() => setPicked(EMPTY_BRUSH)}
+              class="flex items-center gap-2 px-2 py-1 rounded transition-all cursor-pointer text-left w-full mt-0.5"
+              style={{
+                border: "1.5px dashed var(--ink)",
+                background: picked().id === EMPTY_BRUSH.id ? "var(--pop-yellow)" : "var(--paper-2)",
+                transform: picked().id === EMPTY_BRUSH.id ? "translateX(2px)" : undefined,
+              }}
+            >
+              <div class="w-5 h-5 shrink-0 flex items-center justify-center rounded bg-[#2B2733] border border-[var(--ink)] text-[var(--pop-red)] font-black text-xs">
+                ✕
+              </div>
+              <span class="text-[9px] font-black uppercase tracking-tight text-[var(--ink)] leading-tight whitespace-nowrap">
+                Eraser (Empty)
+              </span>
+            </button>
+
+            <Show when={left() <= 0}>
+              <div class="text-[9px] font-bold text-center text-[var(--ink-soft)] pt-1 m-0 border-t border-[var(--ink)]/15 space-y-0.5">
+                <Show
+                  when={isWindowCapped()}
+                  fallback={
+                    <p class="m-0">Daily max ({dailyLimit()}) reached — resets at midnight!</p>
+                  }
+                >
+                  <p class="m-0 flex items-center justify-center gap-1 text-[var(--pop-teal)] font-black">
+                    <Clock size={10} strokeWidth={2.5} />
+                    <span>
+                      Next +{windowLimit()} drop in {nextDropIn() ?? "soon"}
+                    </span>
+                  </p>
+                </Show>
+              </div>
+            </Show>
           </div>
-        </div>
+        </Show>
 
         {/* Center: Large Centered Canvas & Community Wish Box */}
         <div class="flex flex-col items-center justify-center shrink-0 max-w-full space-y-2">
@@ -1050,8 +1059,8 @@ export function CollabPookalam() {
           </Show>
         </div>
 
-        {/* Right Flank: Desktop Action & Status Controls + Floating Wishes */}
-        <div class="hidden lg:flex flex-col space-y-2 shrink-0 w-40 self-start">
+        {/* Right Toolbar: Desktop Action & Status Controls */}
+        <div class="hidden lg:flex flex-col space-y-1.5 shrink-0 w-40 self-center">
           {/* Status Card */}
           <Show when={canPlace()}>
             <div
@@ -1151,37 +1160,15 @@ export function CollabPookalam() {
               <span>Refresh</span>
             </button>
           </div>
+        </div>
 
-          {/* Right Flank Wishes Stream */}
-          <div class="space-y-1.5 w-full">
-            <For each={rightMessages()}>
-              {(msg) => <WishBubble msg={msg} onLike={toggleLike} />}
-            </For>
-          </div>
+        {/* Far Right Margin: Outer Floating Tilted Wishes (Desktop Only) */}
+        <div class="hidden xl:flex flex-col gap-3 shrink-0 w-36 self-center pointer-events-auto">
+          <For each={rightOuterMessages()}>
+            {(msg, idx) => <WishBubble msg={msg} onLike={toggleLike} index={idx() * 2 + 1} />}
+          </For>
         </div>
       </div>
-
-      {/* Mobile Live Wishes Ticker Stream */}
-      <Show when={displayedMessages().length > 0}>
-        <div class="lg:hidden w-full max-w-md mx-auto space-y-1 px-1">
-          <div class="flex items-center justify-between text-[10px] font-black text-[var(--ink)] px-1">
-            <span class="flex items-center gap-1 uppercase tracking-wider">
-              <Sparkles size={11} class="text-[var(--pop-yellow)]" />
-              <span>Community Wishes</span>
-            </span>
-            <span class="text-[9px] text-[var(--ink-soft)]">Tap ♥ to like</span>
-          </div>
-          <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none snap-x">
-            <For each={displayedMessages()}>
-              {(msg) => (
-                <div class="min-w-[190px] max-w-[230px] shrink-0 snap-start">
-                  <WishBubble msg={msg} onLike={toggleLike} />
-                </div>
-              )}
-            </For>
-          </div>
-        </div>
-      </Show>
 
       {/* Mobile Poov Palette (< 1024px) - Clean 2-row layout */}
       <Show when={canPlace()}>
@@ -1375,22 +1362,45 @@ export function CollabPookalam() {
   );
 }
 
-/** Individual Floating Wish Card */
-function WishBubble(props: { msg: CollabMessageItem; onLike: (id: string) => void }) {
+const TILT_ANGLES = ["-2.5deg", "2.5deg", "-1.5deg", "3deg", "-2deg", "1.5deg"];
+const WISH_POPS = [
+  "var(--pop-yellow)",
+  "var(--pop-pink)",
+  "var(--pop-teal)",
+  "var(--paper)",
+  "var(--pop-purple)",
+];
+
+/** Individual Tilted Wish Sticker (No hover scale zoom, pure risograph sticker aesthetic) */
+function WishBubble(props: {
+  msg: CollabMessageItem;
+  onLike: (id: string) => void;
+  index?: number;
+  compact?: boolean;
+}) {
+  const tilt = () => TILT_ANGLES[(props.index ?? 0) % TILT_ANGLES.length];
+  const bg = () =>
+    props.msg.isMine ? "var(--pop-yellow)" : WISH_POPS[(props.index ?? 0) % WISH_POPS.length];
+
   return (
     <div
-      class="card card-plain p-2 rounded-lg text-left space-y-1 shadow-sm transition-transform hover:scale-[1.02]"
+      class="card card-plain text-left relative select-none shrink-0"
+      classList={{
+        "p-1.5 sm:p-2 rounded-md max-w-[145px] text-[9.5px]": !props.compact,
+        "p-1 rounded text-[8px] max-w-[125px]": props.compact,
+      }}
       style={{
         border: "1.5px solid var(--ink)",
-        background: props.msg.isMine ? "var(--pop-yellow)" : "var(--paper)",
+        background: bg(),
+        transform: `rotate(${tilt()})`,
       }}
     >
-      <div class="flex items-center justify-between gap-1.5">
-        <div class="flex items-center gap-1.5 min-w-0">
+      <div class="flex items-center justify-between gap-1 pb-0.5 border-b border-[var(--ink)]/15">
+        <div class="flex items-center gap-1 min-w-0">
           <Show
             when={props.msg.userAvatar}
             fallback={
-              <div class="w-4 h-4 rounded-full bg-[var(--paper-3)] border border-[var(--ink)] text-[8px] font-black flex items-center justify-center text-[var(--ink)] shrink-0">
+              <div class="w-3.5 h-3.5 rounded-full bg-[var(--paper-3)] border border-[var(--ink)] text-[7.5px] font-black flex items-center justify-center text-[var(--ink)] shrink-0">
                 {props.msg.userName.charAt(0).toUpperCase()}
               </div>
             }
@@ -1398,32 +1408,32 @@ function WishBubble(props: { msg: CollabMessageItem; onLike: (id: string) => voi
             <img
               src={props.msg.userAvatar!}
               alt=""
-              class="w-4 h-4 rounded-full border border-[var(--ink)] object-cover shrink-0"
+              class="w-3.5 h-3.5 rounded-full border border-[var(--ink)] object-cover shrink-0"
             />
           </Show>
-          <span class="text-[9.5px] font-black text-[var(--ink)] truncate leading-none">
+          <span class="text-[8.5px] font-black text-[var(--ink)] truncate leading-none">
             {props.msg.userName}
           </span>
         </div>
         <button
           type="button"
           onClick={() => props.onLike(props.msg.id)}
-          class="flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-black cursor-pointer transition-colors"
+          class="flex items-center gap-0.5 text-[8px] font-black cursor-pointer leading-none shrink-0"
           classList={{
             "text-[var(--pop-red)]": props.msg.hasLiked,
-            "text-[var(--ink-soft)] hover:text-[var(--pop-red)]": !props.msg.hasLiked,
+            "text-[var(--ink-soft)]": !props.msg.hasLiked,
           }}
           title={props.msg.hasLiked ? "Unlike wish" : "Like wish"}
         >
           <Heart
-            size={10}
+            size={8.5}
             fill={props.msg.hasLiked ? "var(--pop-red)" : "none"}
             strokeWidth={2.5}
           />
           <span>{props.msg.likesCount}</span>
         </button>
       </div>
-      <p class="text-[10px] font-semibold text-[var(--ink)] m-0 leading-tight line-clamp-3">
+      <p class="font-bold text-[8.5px] sm:text-[9px] text-[var(--ink)] m-0 pt-0.5 leading-tight line-clamp-2">
         "{props.msg.message}"
       </p>
     </div>
