@@ -1,5 +1,4 @@
 import {
-  CheckCircle2,
   Clock,
   Heart,
   HelpCircle,
@@ -7,24 +6,18 @@ import {
   RefreshCw,
   Send,
   Sparkles,
+  Trash2,
   X,
   ZoomIn,
   ZoomOut,
 } from "lucide-solid";
 import { For, Show, batch, createEffect, createSignal, onCleanup, onMount } from "solid-js";
-import { MAX_MESSAGE_CHARS } from "~/lib/pookalam-censor";
 import { EMPTY_BRUSH, FLOWERS, type Flower, drawFlower, flowerById } from "~/lib/pookalam-flowers";
 import { CELL_COUNT, fromBase64, readCell, writeCell } from "~/lib/pookalam-grid";
 import { PADDING_SCALE, SLOTS, slotAt } from "~/lib/pookalam-layout";
 import type { CollabMessageItem } from "~/server/pookalam/comments";
 
-/**
- * The pookalam the whole room draws together.
- *
- * A 50x50 grid with 4-hour rolling window allowances (3 drops of 10 flowers = 30/day),
- * 20% species cap, continuous layered collaboration, and playful tilted community wishes.
- */
-
+const MAX_MESSAGE_CHARS = 100;
 const MAX_CANVAS_PX_DESKTOP = 540;
 const MAX_CANVAS_PX_MOBILE = 420;
 const MIN_CANVAS_PX = 260;
@@ -61,6 +54,7 @@ export function CollabPookalam() {
   const [placed, setPlaced] = createSignal(0);
   const [open, setOpen] = createSignal(true);
   const [canPlace, setCanPlace] = createSignal(false);
+  const [isAdmin, setIsAdmin] = createSignal(false);
   const [allowance, setAllowance] = createSignal(30);
   const [timestamps, setTimestamps] = createSignal<number[]>([]);
   const [now, setNow] = createSignal(Date.now());
@@ -177,7 +171,6 @@ export function CollabPookalam() {
   const left = () => Math.min(dailyRemaining(), windowRemaining());
 
   const isWindowCapped = () => windowRemaining() <= 0 && dailyRemaining() > 0;
-  const isDailyCapped = () => dailyRemaining() <= 0;
 
   // Formatted countdown until next 4-hour window drop
   const nextDropIn = () => {
@@ -238,6 +231,7 @@ export function CollabPookalam() {
       if (data && Array.isArray(data.messages)) {
         setMessagePool(data.messages);
         setMyMessage(data.myMessage || null);
+        setIsAdmin(data.isAdmin || false);
         setDisplayedMessages(sampleMessages(data.messages, data.myMessage || null));
       }
     } catch {
@@ -295,6 +289,21 @@ export function CollabPookalam() {
     try {
       await fetch("/api/pookalam/like", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId }),
+      });
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const deleteWish = async (messageId: string) => {
+    setMessagePool((prev) => prev.filter((m) => m.id !== messageId));
+    setDisplayedMessages((prev) => prev.filter((m) => m.id !== messageId));
+    if (myMessage()?.id === messageId) setMyMessage(null);
+    try {
+      await fetch("/api/pookalam/messages", {
+        method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messageId }),
       });
@@ -802,17 +811,34 @@ export function CollabPookalam() {
       <Show when={mobileWishes().length > 0}>
         <div class="lg:hidden w-full flex items-center justify-center gap-2 py-0.5 px-1 overflow-x-auto scrollbar-none">
           <For each={mobileWishes()}>
-            {(msg, idx) => <WishBubble msg={msg} onLike={toggleLike} index={idx()} compact />}
+            {(msg, idx) => (
+              <WishBubble
+                msg={msg}
+                onLike={toggleLike}
+                onDelete={deleteWish}
+                isAdmin={isAdmin()}
+                index={idx()}
+                compact
+              />
+            )}
           </For>
         </div>
       </Show>
 
       {/* ---------------- Main Drawing Arena: Centered Canvas with Flank Toolbars & Outer Floating Wishes ---------------- */}
       <div class="flex items-center justify-center gap-2.5 lg:gap-3.5 w-full max-w-full relative">
-        {/* Far Left Margin: Outer Floating Tilted Wishes (Desktop Only) */}
-        <div class="hidden xl:flex flex-col gap-3 shrink-0 w-36 self-center pointer-events-auto">
+        {/* Far Left Margin: Outer Floating Tilted Speech Bubbles (Desktop Only) */}
+        <div class="hidden xl:flex flex-col gap-3.5 shrink-0 w-44 self-center pointer-events-auto">
           <For each={leftOuterMessages()}>
-            {(msg, idx) => <WishBubble msg={msg} onLike={toggleLike} index={idx() * 2} />}
+            {(msg, idx) => (
+              <WishBubble
+                msg={msg}
+                onLike={toggleLike}
+                onDelete={deleteWish}
+                isAdmin={isAdmin()}
+                index={idx() * 2}
+              />
+            )}
           </For>
         </div>
 
@@ -989,8 +1015,8 @@ export function CollabPookalam() {
             </p>
           </Show>
 
-          {/* ---------------- User Wish Composer / Status (Visible when window limit reached) ---------------- */}
-          <Show when={canPlace() && left() <= 0}>
+          {/* ---------------- User Wish Composer / Status (Visible when window limit reached or for Admins) ---------------- */}
+          <Show when={canPlace() && (left() <= 0 || isAdmin())}>
             <div
               class="card card-plain p-2.5 rounded w-full max-w-[480px] space-y-1.5 transition-all text-left"
               style={{
@@ -999,20 +1025,28 @@ export function CollabPookalam() {
               }}
             >
               <Show
-                when={!myMessage()}
+                when={!myMessage() || isAdmin()}
                 fallback={
                   <div class="flex items-center justify-between gap-2">
-                    <div class="flex items-center gap-1.5 text-xs font-black text-[var(--ink)]">
-                      <Sparkles size={13} class="text-[var(--pop-yellow)]" />
-                      <span>Your Onam Wish today:</span>
-                      <span class="italic font-semibold truncate max-w-[240px]">
-                        "{myMessage()!.message}"
-                      </span>
+                    <div class="flex items-center gap-1.5 text-xs font-black text-[var(--ink)] min-w-0">
+                      <Sparkles size={13} class="text-[var(--pop-yellow)] shrink-0" />
+                      <span class="shrink-0">Your Wish:</span>
+                      <span class="italic font-bold truncate">"{myMessage()!.message}"</span>
                     </div>
-                    <span class="text-[10px] font-black text-[var(--pop-red)] shrink-0 flex items-center gap-1">
-                      <Heart size={11} fill="var(--pop-red)" strokeWidth={2.5} />
-                      {myMessage()!.likesCount} likes
-                    </span>
+                    <div class="flex items-center gap-2 shrink-0">
+                      <span class="text-[10px] font-black text-[var(--pop-red)] flex items-center gap-1">
+                        <Heart size={11} fill="var(--pop-red)" strokeWidth={2.5} />
+                        {myMessage()!.likesCount}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => deleteWish(myMessage()!.id)}
+                        class="text-[var(--ink-soft)] hover:text-[var(--pop-red)] transition-colors p-0.5 cursor-pointer"
+                        title="Delete your wish"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
                   </div>
                 }
               >
@@ -1020,7 +1054,7 @@ export function CollabPookalam() {
                   <div class="flex items-center justify-between">
                     <span class="text-[10.5px] font-black uppercase tracking-wider text-[var(--ink)] flex items-center gap-1">
                       <MessageSquare size={12} class="text-[var(--pop-teal)]" />
-                      <span>Leave an Onam Wish (1 per day)</span>
+                      <span>Leave an Onam Wish {isAdmin() ? "(Admin Mode)" : "(1 per day)"}</span>
                     </span>
                     <span class="text-[9px] font-black text-[var(--ink-soft)]">
                       {MAX_MESSAGE_CHARS - wishInput().length} chars left
@@ -1162,10 +1196,18 @@ export function CollabPookalam() {
           </div>
         </div>
 
-        {/* Far Right Margin: Outer Floating Tilted Wishes (Desktop Only) */}
-        <div class="hidden xl:flex flex-col gap-3 shrink-0 w-36 self-center pointer-events-auto">
+        {/* Far Right Margin: Outer Floating Tilted Speech Bubbles (Desktop Only) */}
+        <div class="hidden xl:flex flex-col gap-3.5 shrink-0 w-44 self-center pointer-events-auto">
           <For each={rightOuterMessages()}>
-            {(msg, idx) => <WishBubble msg={msg} onLike={toggleLike} index={idx() * 2 + 1} />}
+            {(msg, idx) => (
+              <WishBubble
+                msg={msg}
+                onLike={toggleLike}
+                onDelete={deleteWish}
+                isAdmin={isAdmin()}
+                index={idx() * 2 + 1}
+              />
+            )}
           </For>
         </div>
       </div>
@@ -1371,71 +1413,135 @@ const WISH_POPS = [
   "var(--pop-purple)",
 ];
 
-/** Individual Tilted Wish Sticker (No hover scale zoom, pure risograph sticker aesthetic) */
+/**
+ * Organic Speech Bubble Component:
+ * - Circular avatar profile with name badge on hover/click.
+ * - Connected speech bubble pill containing clearly legible message text.
+ * - Like counter and admin delete button.
+ */
 function WishBubble(props: {
   msg: CollabMessageItem;
   onLike: (id: string) => void;
+  onDelete?: (id: string) => void;
+  isAdmin?: boolean;
   index?: number;
   compact?: boolean;
 }) {
+  const [showAuthor, setShowAuthor] = createSignal(false);
   const tilt = () => TILT_ANGLES[(props.index ?? 0) % TILT_ANGLES.length];
   const bg = () =>
     props.msg.isMine ? "var(--pop-yellow)" : WISH_POPS[(props.index ?? 0) % WISH_POPS.length];
 
   return (
     <div
-      class="card card-plain text-left relative select-none shrink-0"
-      classList={{
-        "p-1.5 sm:p-2 rounded-md max-w-[145px] text-[9.5px]": !props.compact,
-        "p-1 rounded text-[8px] max-w-[125px]": props.compact,
-      }}
+      class="flex items-start gap-1.5 select-none relative"
       style={{
-        border: "1.5px solid var(--ink)",
-        background: bg(),
         transform: `rotate(${tilt()})`,
       }}
     >
-      <div class="flex items-center justify-between gap-1 pb-0.5 border-b border-[var(--ink)]/15">
-        <div class="flex items-center gap-1 min-w-0">
-          <Show
-            when={props.msg.userAvatar}
-            fallback={
-              <div class="w-3.5 h-3.5 rounded-full bg-[var(--paper-3)] border border-[var(--ink)] text-[7.5px] font-black flex items-center justify-center text-[var(--ink)] shrink-0">
-                {props.msg.userName.charAt(0).toUpperCase()}
-              </div>
-            }
-          >
-            <img
-              src={props.msg.userAvatar!}
-              alt=""
-              class="w-3.5 h-3.5 rounded-full border border-[var(--ink)] object-cover shrink-0"
-            />
-          </Show>
-          <span class="text-[8.5px] font-black text-[var(--ink)] truncate leading-none">
-            {props.msg.userName}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={() => props.onLike(props.msg.id)}
-          class="flex items-center gap-0.5 text-[8px] font-black cursor-pointer leading-none shrink-0"
-          classList={{
-            "text-[var(--pop-red)]": props.msg.hasLiked,
-            "text-[var(--ink-soft)]": !props.msg.hasLiked,
-          }}
-          title={props.msg.hasLiked ? "Unlike wish" : "Like wish"}
+      {/* 1. Circular Avatar Icon (Click/Hover reveals author name) */}
+      <div
+        class="relative shrink-0 cursor-pointer group"
+        onClick={() => setShowAuthor((v) => !v)}
+        onMouseEnter={() => setShowAuthor(true)}
+        onMouseLeave={() => setShowAuthor(false)}
+        title={props.msg.userName}
+      >
+        <Show
+          when={props.msg.userAvatar}
+          fallback={
+            <div
+              class="rounded-full flex items-center justify-center font-black text-[var(--ink)] border-2 border-[var(--ink)] shadow-xs"
+              classList={{
+                "w-7 h-7 text-[11px] bg-[var(--paper-3)]": !props.compact,
+                "w-5 h-5 text-[8.5px] bg-[var(--paper-3)]": props.compact,
+              }}
+            >
+              {props.msg.userName.charAt(0).toUpperCase()}
+            </div>
+          }
         >
-          <Heart
-            size={8.5}
-            fill={props.msg.hasLiked ? "var(--pop-red)" : "none"}
-            strokeWidth={2.5}
+          <img
+            src={props.msg.userAvatar!}
+            alt={props.msg.userName}
+            class="rounded-full border-2 border-[var(--ink)] object-cover shadow-xs"
+            classList={{
+              "w-7 h-7": !props.compact,
+              "w-5 h-5": props.compact,
+            }}
           />
-          <span>{props.msg.likesCount}</span>
-        </button>
+        </Show>
+
+        {/* Hover / Active Author Name Pill Badge */}
+        <Show when={showAuthor()}>
+          <div
+            class="absolute bottom-full left-0 mb-1 z-30 px-1.5 py-0.5 rounded shadow-sm text-[9px] font-black text-[var(--ink)] whitespace-nowrap pointer-events-none"
+            style={{
+              background: "var(--paper)",
+              border: "1.5px solid var(--ink)",
+            }}
+          >
+            {props.msg.userName}
+          </div>
+        </Show>
       </div>
-      <p class="font-bold text-[8.5px] sm:text-[9px] text-[var(--ink)] m-0 pt-0.5 leading-tight line-clamp-2">
-        "{props.msg.message}"
-      </p>
+
+      {/* 2. Connected Speech Bubble Pill */}
+      <div
+        class="card card-plain flex flex-col justify-between relative text-left"
+        classList={{
+          "p-2 rounded-xl rounded-tl-xs min-w-[120px] max-w-[160px]": !props.compact,
+          "p-1.5 rounded-lg rounded-tl-xs max-w-[125px]": props.compact,
+        }}
+        style={{
+          border: "1.5px solid var(--ink)",
+          background: bg(),
+        }}
+      >
+        <p
+          class="font-extrabold text-[var(--ink)] m-0 leading-snug break-words"
+          classList={{
+            "text-xs sm:text-[12.5px]": !props.compact,
+            "text-[9px]": props.compact,
+          }}
+        >
+          "{props.msg.message}"
+        </p>
+
+        {/* Bubble Footer: Like count + Admin / Author Delete button */}
+        <div class="flex items-center justify-between gap-1 mt-1 pt-0.5 border-t border-[var(--ink)]/15">
+          <button
+            type="button"
+            onClick={() => props.onLike(props.msg.id)}
+            class="flex items-center gap-0.5 font-black cursor-pointer leading-none shrink-0"
+            classList={{
+              "text-xs text-[var(--pop-red)]": props.msg.hasLiked && !props.compact,
+              "text-xs text-[var(--ink-soft)]": !props.msg.hasLiked && !props.compact,
+              "text-[9px] text-[var(--pop-red)]": props.msg.hasLiked && props.compact,
+              "text-[9px] text-[var(--ink-soft)]": !props.msg.hasLiked && props.compact,
+            }}
+            title={props.msg.hasLiked ? "Unlike" : "Like"}
+          >
+            <Heart
+              size={props.compact ? 9 : 11}
+              fill={props.msg.hasLiked ? "var(--pop-red)" : "none"}
+              strokeWidth={2.5}
+            />
+            <span>{props.msg.likesCount}</span>
+          </button>
+
+          <Show when={(props.isAdmin || props.msg.isMine) && props.onDelete}>
+            <button
+              type="button"
+              onClick={() => props.onDelete!(props.msg.id)}
+              class="text-[var(--ink-soft)] hover:text-[var(--pop-red)] transition-colors p-0.5 cursor-pointer leading-none shrink-0"
+              title="Delete wish"
+            >
+              <Trash2 size={props.compact ? 9 : 11} />
+            </button>
+          </Show>
+        </div>
+      </div>
     </div>
   );
 }

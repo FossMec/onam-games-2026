@@ -1,8 +1,8 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { MAX_MESSAGE_CHARS, censorMessage } from "~/lib/pookalam-censor";
 import { getCurrentUser } from "~/server/auth/service";
 import { getDb } from "~/server/db/client";
 import { collabMessageLikes, collabMessages } from "~/server/db/schema";
+import { censorMessageServer, MAX_MESSAGE_CHARS } from "./censor";
 import { istDayKey } from "./collab";
 
 export interface CollabMessageItem {
@@ -34,8 +34,7 @@ export async function ensureMessageTables(): Promise<void> {
           user_avatar TEXT,
           message TEXT NOT NULL,
           likes_count INTEGER NOT NULL DEFAULT 0,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          CONSTRAINT collab_messages_user_day_uniq UNIQUE(day_key, user_id)
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
         CREATE INDEX IF NOT EXISTS collab_messages_day_key_idx ON collab_messages(day_key);
 
@@ -63,10 +62,12 @@ export async function getCollabMessages(dayKey: string = istDayKey()): Promise<{
   myMessage: CollabMessageItem | null;
   canPost: boolean;
   signedIn: boolean;
+  isAdmin: boolean;
 }> {
   await ensureMessageTables();
   const user = await getCurrentUser();
   const db = getDb();
+  const isAdmin = user?.role === "admin";
 
   const allRows = await db
     .select()
@@ -81,6 +82,7 @@ export async function getCollabMessages(dayKey: string = istDayKey()): Promise<{
       myMessage: null,
       canPost: !!user,
       signedIn: !!user,
+      isAdmin,
     };
   }
 
@@ -120,14 +122,15 @@ export async function getCollabMessages(dayKey: string = istDayKey()): Promise<{
   return {
     messages: allRows.map(formatItem),
     myMessage: myRow ? formatItem(myRow) : null,
-    canPost: !!user && !myRow,
+    canPost: !!user && (isAdmin || !myRow),
     signedIn: !!user,
+    isAdmin,
   };
 }
 
 /**
- * Post an Onam wish / comment on today's collaborative pookalam.
- * Enforces 1 message per user per calendar day & max 100 characters.
+ * Post an Onam wish.
+ * Enforces 1 message per user per calendar day (bypassed for admins) & max 100 characters.
  */
 export async function postCollabMessage(
   rawText: string,
@@ -138,6 +141,7 @@ export async function postCollabMessage(
     return { ok: false, reason: "Please sign in to share your Onam wish." };
   }
 
+  const isAdmin = user.role === "admin";
   const trimmed = (rawText || "").trim();
   if (trimmed.length < 2) {
     return { ok: false, reason: "Your wish is too short (min 2 characters)." };
@@ -146,19 +150,21 @@ export async function postCollabMessage(
     return { ok: false, reason: `Your wish must be at most ${MAX_MESSAGE_CHARS} characters.` };
   }
 
-  const { clean } = censorMessage(trimmed);
+  const { clean } = censorMessageServer(trimmed);
   const dayKey = istDayKey();
   const db = getDb();
 
-  // Check if user already posted today
-  const [existing] = await db
-    .select({ id: collabMessages.id })
-    .from(collabMessages)
-    .where(and(eq(collabMessages.dayKey, dayKey), eq(collabMessages.userId, user.id)))
-    .limit(1);
+  // Check if user already posted today (only for non-admins)
+  if (!isAdmin) {
+    const [existing] = await db
+      .select({ id: collabMessages.id })
+      .from(collabMessages)
+      .where(and(eq(collabMessages.dayKey, dayKey), eq(collabMessages.userId, user.id)))
+      .limit(1);
 
-  if (existing) {
-    return { ok: false, reason: "You have already shared a wish today! Come back tomorrow." };
+    if (existing) {
+      return { ok: false, reason: "You have already shared a wish today! Come back tomorrow." };
+    }
   }
 
   const [inserted] = await db
@@ -188,6 +194,38 @@ export async function postCollabMessage(
       createdAt: inserted.createdAt.toISOString(),
     },
   };
+}
+
+/**
+ * Delete a collaborative message (allowed for Admins or the author).
+ */
+export async function deleteCollabMessage(
+  messageId: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  await ensureMessageTables();
+  const user = await getCurrentUser();
+  if (!user) {
+    return { ok: false, reason: "Unauthorized" };
+  }
+
+  const isAdmin = user.role === "admin";
+  const db = getDb();
+
+  if (isAdmin) {
+    await db.delete(collabMessages).where(eq(collabMessages.id, messageId));
+    return { ok: true };
+  }
+
+  const deleted = await db
+    .delete(collabMessages)
+    .where(and(eq(collabMessages.id, messageId), eq(collabMessages.userId, user.id)))
+    .returning({ id: collabMessages.id });
+
+  if (deleted.length === 0) {
+    return { ok: false, reason: "You can only delete your own message." };
+  }
+
+  return { ok: true };
 }
 
 /**
