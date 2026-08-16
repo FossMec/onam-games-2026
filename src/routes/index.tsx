@@ -4,6 +4,7 @@ import { BookOpen, ChevronLeft, ChevronRight, Clock, HelpCircle, Lock, Zap } fro
 import { For, Show, createEffect, createSignal } from "solid-js";
 
 import { Countdown } from "~/components/Countdown";
+import { LoadingScreen } from "~/components/LoadingScreen";
 import { MaveliLetter } from "~/components/MaveliLetter";
 import { CollabPookalam } from "~/components/pookalam/CollabPookalam";
 import { Bubble, Burst, Halftone } from "~/components/art/Burst";
@@ -796,7 +797,7 @@ export default function Home() {
         confettiCount={5}
       >
         <Show when={scheduleLoading()}>
-          <p class="font-semibold text-center py-6">Loading the schedule…</p>
+          <LoadingScreen compact message="Inking festival games schedule…" />
         </Show>
 
         <Show when={scheduleMissing()}>

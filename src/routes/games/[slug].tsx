@@ -19,6 +19,7 @@ const GAME_IMAGES: Record<string, string> = {
 import { ShoutBurst } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
+import { LoadingScreen } from "~/components/LoadingScreen";
 import { HowToPlayModal, HowToPlayPanel } from "~/components/games/HowToPlay";
 import {
   JigsawGame,
@@ -599,7 +600,11 @@ export default function GamePage() {
     <main class="container space-y-6 py-6">
       <Title>{game()?.title ?? "Game"} - FOSS Onam Games</Title>
 
-      <Show when={!game()}>
+      <Show when={game() === undefined}>
+        <LoadingScreen compact message="Inking daily challenge…" />
+      </Show>
+
+      <Show when={game() === null}>
         <div class="card pop-red space-y-2 text-center">
           <p class="font-extrabold">There is no game at this address.</p>
           <a href="/#games-arena" class="btn-ghost mt-2 inline-block">

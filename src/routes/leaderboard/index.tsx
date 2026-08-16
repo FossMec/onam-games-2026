@@ -25,6 +25,7 @@ import {
 } from "solid-js";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
+import { LoadingScreen } from "~/components/LoadingScreen";
 import { ShareCardModal } from "~/components/games/ShareCard";
 import { PookalamBoards } from "~/components/pookalam/PookalamBoards";
 import { collegeLabel } from "~/lib/profile";
@@ -509,8 +510,15 @@ export default function Leaderboard() {
           })()}
         </Show>
 
+        {/* ---------------------------------------------------- Loading State */}
+        <Show when={!isLockedForPlayer() && daily() === undefined}>
+          <div class="card card-plain bg-[var(--paper-2)] border-2 border-[var(--ink)]">
+            <LoadingScreen compact message={`Inking Day ${selectedDay()} leaderboard…`} />
+          </div>
+        </Show>
+
         {/* ---------------------------------------------------- Empty State */}
-        <Show when={!isLockedForPlayer() && isEmpty()}>
+        <Show when={!isLockedForPlayer() && daily() !== undefined && isEmpty()}>
           <div class="card card-plain pop-yellow text-center p-8 space-y-2">
             <SpriteIcon name="octocat-garland" size={44} animate="wobble" class="mx-auto" />
             <p class="font-black text-lg">No submissions yet for Day {selectedDay()}.</p>

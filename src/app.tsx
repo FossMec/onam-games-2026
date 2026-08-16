@@ -8,6 +8,7 @@ import { BetaGate } from "./components/BetaGate";
 import { Footer } from "./components/Footer";
 import { Nav } from "./components/Nav";
 import { ShortlistNotice } from "./components/pookalam/ShortlistNotice";
+import { LoadingScreen } from "./components/LoadingScreen";
 import { InkFilter } from "./components/art/InkFilter";
 import "./app.css";
 
@@ -107,7 +108,7 @@ export default function App() {
             </ErrorBoundary>
             <div class="flex-1">
               <ErrorBoundary fallback={(error, reset) => <AppError error={error} reset={reset} />}>
-                <Suspense>
+                <Suspense fallback={<LoadingScreen />}>
                   {/* Closed beta: testers only, until `access.closed_beta` is off. */}
                   <BetaGate>{props.children}</BetaGate>
                 </Suspense>

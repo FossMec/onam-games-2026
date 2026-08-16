@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-solid";
 import { Show, createEffect, createSignal, on, onCleanup, onMount } from "solid-js";
+import { Portal } from "solid-js/web";
 import { fileToWebpDataUrl } from "~/lib/avatar";
 import { canvasToBlob, captionFor, renderShareCard, type ShareCardData } from "~/lib/share-card";
 import { shareFileName } from "~/lib/share-copy";
@@ -508,131 +509,146 @@ export function ShareCard(props: ShareCardProps) {
         </p>
       </Show>
 
-      {/* ---------------- FULL-SIZED CARD LIVE CAMERA VIEWFINDER MODAL ---------------- */}
+      {/* ---------------- FULL-SIZED CARD LIVE CAMERA VIEWFINDER MODAL (PORTALED TO BODY) ---------------- */}
       <Show when={cameraActive()}>
-        <div
-          class="fixed inset-0 z-[70] flex flex-col items-center justify-between p-3 sm:p-4 bg-black/92 backdrop-blur-md animate-in fade-in duration-150"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Frame your selfie inside the full share card"
-        >
-          {/* Top Header */}
-          <div class="w-full max-w-md flex items-center justify-between z-10 pt-1 px-2">
-            <span class="text-white font-extrabold text-sm sm:text-base tracking-wide flex items-center gap-2">
-              <Camera size={18} class="text-[var(--pop-yellow)]" />
-              Frame Your Selfie Inside Card
-            </span>
-            <button
-              type="button"
-              class="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white grid place-items-center cursor-pointer transition-colors"
-              onClick={stopCamera}
-              aria-label="Close camera"
-            >
-              <X size={20} strokeWidth={2.5} />
-            </button>
-          </div>
-
-          {/* Full-Sized Card with Live Video inside the Exact Photo Slot */}
+        <Portal>
           <div
-            class="relative w-auto h-[min(68vh,540px)] aspect-[9/16] rounded-xl overflow-hidden shadow-2xl my-auto bg-[var(--paper-3)]"
+            class="fixed inset-0 z-[100] flex flex-col items-center justify-between p-2 sm:p-3 bg-black/95 backdrop-blur-md select-none"
             style={{
-              border: "var(--ink-w-bold) solid var(--ink)",
+              height: "100dvh",
+              width: "100dvw",
+              "max-height": "100dvh",
+              "max-width": "100dvw",
+              overflow: "hidden",
+              "touch-action": "none",
             }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Frame your selfie inside the full share card"
           >
-            {/* The Actual Share Card Canvas Rendered in Background */}
-            <Show when={url()}>
-              <img
-                src={url()}
-                alt="Score Card Preview"
-                class="w-full h-full object-cover pointer-events-none"
-              />
-            </Show>
+            {/* Top Header */}
+            <div class="w-full max-w-md flex items-center justify-between z-10 py-1 px-3 shrink-0 h-10">
+              <span class="text-white font-extrabold text-xs sm:text-base tracking-wide flex items-center gap-2">
+                <Camera size={18} class="text-[var(--pop-yellow)]" />
+                Frame Your Selfie Inside Card
+              </span>
+              <button
+                type="button"
+                class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white grid place-items-center cursor-pointer transition-colors"
+                onClick={stopCamera}
+                aria-label="Close camera"
+              >
+                <X size={18} strokeWidth={2.5} />
+              </button>
+            </div>
 
-            {/* Live Camera Stream directly inside the Card's Artwork/Photo Box */}
-            <div
-              class="absolute overflow-hidden z-20 flex items-center justify-center bg-black"
-              style={{
-                top: "42.92%",
-                left: "9.81%",
-                width: "80.37%",
-                height: "18.23%",
-                "border-radius": "10px",
-                border: "2.5px solid var(--ink)",
-              }}
-            >
-              <video
-                ref={(el) => {
-                  videoRef = el;
-                  if (streamRef && el) {
-                    el.srcObject = streamRef;
-                    void el.play().catch(() => {});
-                  }
+            {/* Center Area: Holds strict 9:16 aspect ratio share card */}
+            <div class="flex-1 min-h-0 min-w-0 w-full flex items-center justify-center p-1 overflow-hidden">
+              <div
+                class="relative rounded-xl overflow-hidden shadow-2xl bg-[var(--paper-3)] border-2 sm:border-3 border-[var(--ink)]"
+                style={{
+                  "aspect-ratio": "9 / 16",
+                  height: "100%",
+                  "max-height": "100%",
+                  width: "auto",
+                  "max-width": "calc((100dvh - 110px) * 9 / 16)",
                 }}
-                autoplay
-                playsinline
-                muted
-                class="w-full h-full object-cover"
-                classList={{
-                  "scale-x-[-1]": facingMode() === "user",
-                }}
-              />
+              >
+                {/* The Actual Share Card Canvas Rendered in Background */}
+                <Show when={url()}>
+                  <img
+                    src={url()}
+                    alt="Score Card Preview"
+                    class="w-full h-full object-fill pointer-events-none"
+                  />
+                </Show>
 
-              <Show when={cameraLoading()}>
-                <div class="absolute inset-0 bg-black/70 grid place-items-center text-white p-2 text-center">
-                  <span class="text-xs font-extrabold animate-pulse">Starting camera…</span>
-                </div>
-              </Show>
+                {/* Live Camera Stream directly inside the Card's Artwork/Photo Box */}
+                <div
+                  class="absolute overflow-hidden z-20 flex items-center justify-center bg-black"
+                  style={{
+                    top: "42.92%",
+                    left: "9.81%",
+                    width: "80.37%",
+                    height: "18.23%",
+                    "border-radius": "10px",
+                    border: "2px solid var(--ink)",
+                  }}
+                >
+                  <video
+                    ref={(el) => {
+                      videoRef = el;
+                      if (streamRef && el) {
+                        el.srcObject = streamRef;
+                        void el.play().catch(() => {});
+                      }
+                    }}
+                    autoplay
+                    playsinline
+                    muted
+                    class="w-full h-full object-cover"
+                    classList={{
+                      "scale-x-[-1]": facingMode() === "user",
+                    }}
+                  />
 
-              <Show when={cameraError()}>
-                <div class="absolute inset-0 bg-black/85 p-2 text-center flex flex-col items-center justify-center text-white gap-2">
-                  <span class="text-xs font-bold text-[var(--pop-red)]">{cameraError()}</span>
-                  <label
-                    for="card-photo-input"
-                    class="btn-brand py-1 px-2.5 text-xs font-black cursor-pointer bg-[var(--pop-yellow)]"
-                    onClick={stopCamera}
-                  >
-                    Upload Photo Instead
-                  </label>
+                  <Show when={cameraLoading()}>
+                    <div class="absolute inset-0 bg-black/70 grid place-items-center text-white p-2 text-center">
+                      <span class="text-xs font-extrabold animate-pulse">Starting camera…</span>
+                    </div>
+                  </Show>
+
+                  <Show when={cameraError()}>
+                    <div class="absolute inset-0 bg-black/85 p-2 text-center flex flex-col items-center justify-center text-white gap-2">
+                      <span class="text-xs font-bold text-[var(--pop-red)]">{cameraError()}</span>
+                      <label
+                        for="card-photo-input"
+                        class="btn-brand py-1 px-2.5 text-xs font-black cursor-pointer bg-[var(--pop-yellow)]"
+                        onClick={stopCamera}
+                      >
+                        Upload Photo Instead
+                      </label>
+                    </div>
+                  </Show>
                 </div>
-              </Show>
+              </div>
+            </div>
+
+            {/* Bottom Controls Bar - Fixed height, always visible without scroll */}
+            <div class="w-full max-w-sm flex items-center justify-around z-10 shrink-0 h-14 pb-1">
+              <button
+                type="button"
+                class="w-11 h-11 rounded-full bg-white/20 text-white grid place-items-center cursor-pointer hover:bg-white/30 active:scale-95 transition-all"
+                onClick={flipCamera}
+                title="Flip camera"
+                aria-label="Flip camera"
+              >
+                <RefreshCw size={18} />
+              </button>
+
+              <button
+                type="button"
+                class="px-6 py-2.5 rounded-full border-2 border-white bg-[var(--pop-yellow)] active:scale-95 hover:scale-105 transition-all flex items-center gap-2 shadow-xl cursor-pointer text-[var(--ink)] font-black text-xs sm:text-sm"
+                onClick={snapPhoto}
+                disabled={cameraLoading() || !!cameraError()}
+                title="Snap Selfie"
+                aria-label="Snap photo"
+              >
+                <Camera size={18} strokeWidth={2.5} />
+                <span>Take Photo</span>
+              </button>
+
+              <button
+                type="button"
+                class="w-11 h-11 rounded-full bg-white/20 text-white grid place-items-center cursor-pointer hover:bg-white/30 active:scale-95 transition-all"
+                onClick={stopCamera}
+                title="Cancel"
+              >
+                <X size={18} />
+              </button>
             </div>
           </div>
-
-          {/* Bottom Controls Bar */}
-          <div class="w-full max-w-sm flex items-center justify-around py-2 z-10">
-            <button
-              type="button"
-              class="w-12 h-12 rounded-full bg-white/20 text-white grid place-items-center cursor-pointer hover:bg-white/30 active:scale-95 transition-all"
-              onClick={flipCamera}
-              title="Flip camera"
-              aria-label="Flip camera"
-            >
-              <RefreshCw size={20} />
-            </button>
-
-            {/* Big Shutter Button */}
-            <button
-              type="button"
-              class="px-6 py-3 rounded-full border-3 border-white bg-[var(--pop-yellow)] active:scale-95 hover:scale-105 transition-all flex items-center gap-2 shadow-xl cursor-pointer text-[var(--ink)] font-black text-sm"
-              onClick={snapPhoto}
-              disabled={cameraLoading() || !!cameraError()}
-              title="Snap Selfie"
-              aria-label="Snap photo"
-            >
-              <Camera size={20} strokeWidth={2.5} />
-              <span>Take Photo</span>
-            </button>
-
-            <button
-              type="button"
-              class="w-12 h-12 rounded-full bg-white/20 text-white grid place-items-center cursor-pointer hover:bg-white/30 active:scale-95 transition-all"
-              onClick={stopCamera}
-              title="Cancel"
-            >
-              <X size={20} />
-            </button>
-          </div>
-        </div>
+        </Portal>
       </Show>
 
       {/* Full screen view */}
