@@ -502,7 +502,16 @@ export default function ComicsPage() {
         */}
         <div
           ref={(el) => (stageRef = el)}
-          class="fixed inset-0 z-50 h-dvh w-screen overscroll-contain px-2 py-2 flex flex-col justify-between overflow-hidden select-none sm:static sm:z-auto sm:h-[calc(100dvh-4.25rem)] sm:w-full sm:max-w-5xl sm:mx-auto sm:px-4"
+          /*
+            The `sm` height leaves more slack than the nav strictly needs.
+            Subtracting only the nav pinned the reader's bottom edge to the
+            exact bottom of the viewport, so anything else in the shell — the
+            ban notice, a wrapper's padding, a nav a few pixels taller than the
+            guess — pushed its footer, and therefore the page controls, below
+            the fold. Losing a couple of rems of comic beats losing the
+            "Next issue" button.
+          */
+          class="fixed inset-0 z-50 h-dvh w-screen overscroll-contain px-2 py-2 flex flex-col justify-between overflow-hidden select-none sm:static sm:z-auto sm:mb-6 sm:h-[calc(100dvh-6.5rem)] sm:w-full sm:max-w-5xl sm:mx-auto sm:px-4"
           style={{ background: "var(--paper)", "touch-action": "pan-y" }}
         >
           {/* Top Header */}

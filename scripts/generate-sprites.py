@@ -5,12 +5,36 @@ from collections import deque
 
 os.makedirs('public/sprites/icons', exist_ok=True)
 
-# Clean up removed sprites
-for obsolete in ['terminal-pill.png', 'check-badge.png']:
+# Shipped sprite format. 192px covers the largest on-screen use (68 CSS px on a
+# 3x screen) and the biggest share-card draw (156px), at about an eighth of the
+# bytes the 256px PNGs cost. SpriteIcon loads `.webp` and nothing loads `.png`,
+# so writing PNGs here would just leave dead files in the tree.
+SPRITE_PX = 192
+SPRITE_QUALITY = 92
+
+
+def save_sprite(img, name):
+    """Write one sprite in the format the site actually serves."""
+    out = img.resize((SPRITE_PX, SPRITE_PX), Image.Resampling.LANCZOS)
+    out.save(
+        f'public/sprites/icons/{name}.webp',
+        'WEBP',
+        quality=SPRITE_QUALITY,
+        method=6,
+    )
+
+
+# Clean up removed sprites, and any PNG left over from before the WebP switch.
+for obsolete in ['terminal-pill.webp', 'check-badge.webp']:
     p = os.path.join('public/sprites/icons', obsolete)
     if os.path.exists(p):
         os.remove(p)
         print(f"Removed watermark image: {obsolete}")
+
+for stale in os.listdir('public/sprites/icons'):
+    if stale.endswith('.png'):
+        os.remove(os.path.join('public/sprites/icons', stale))
+        print(f"Removed stale PNG: {stale}")
 
 def remove_outer_bg(img_rgb, threshold=238, mean_threshold=242):
     """
@@ -67,8 +91,8 @@ def process_foss_logo():
     
     r_ch, g_ch, b_ch, _ = img.split()
     badge_trans = Image.merge('RGBA', (r_ch, g_ch, b_ch, mask))
-    badge_trans.save('public/sprites/icons/foss-mec-badge.png')
-    print("Saved clean circular public/sprites/icons/foss-mec-badge.png")
+    save_sprite(badge_trans, 'foss-mec-badge')
+    print("Saved clean circular public/sprites/icons/foss-mec-badge.webp")
 
 def process_sheets():
     # 15 icons per sheet (excluding 16th which has watermark)
@@ -100,7 +124,7 @@ def process_sheets():
         cell = im1.crop(box)
         cell_trans = remove_outer_bg(cell, threshold=240, mean_threshold=245)
         
-        cell_trans.save(f'public/sprites/icons/{name}.png')
+        save_sprite(cell_trans, name)
         out_sheet1.paste(cell_trans, box)
         print(f"Sheet 1: saved {name}")
 
@@ -118,7 +142,7 @@ def process_sheets():
         cell = im2.crop(box)
         cell_trans = remove_outer_bg(cell, threshold=238, mean_threshold=242)
         
-        cell_trans.save(f'public/sprites/icons/{name}.png')
+        save_sprite(cell_trans, name)
         out_sheet2.paste(cell_trans, box)
         print(f"Sheet 2: saved {name}")
 

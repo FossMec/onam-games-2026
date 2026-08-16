@@ -24,7 +24,14 @@ export interface SpriteIconProps {
   class?: string;
   /** Accessible alt text */
   alt?: string;
-  /** Loading attribute for img */
+  /**
+   * Loading attribute for img. Defaults to `eager`.
+   *
+   * The whole sprite set is ~255KB of 192px WebP, so lazy-loading them bought
+   * nothing and cost a visible pop-in: the box is already reserved at the right
+   * size, but it sat empty until the sprite scrolled into view. Pass `lazy`
+   * explicitly for anything genuinely far down a long page.
+   */
   loading?: "lazy" | "eager";
   /** Optional inline style override */
   style?: Record<string, string | number | undefined>;
@@ -69,11 +76,11 @@ export function SpriteIcon(props: SpriteIconProps) {
       aria-hidden={props.alt ? undefined : "true"}
     >
       <img
-        src={`/sprites/icons/${props.name}.png`}
+        src={`/sprites/icons/${props.name}.webp`}
         alt={props.alt ?? meta().label}
         width={size()}
         height={size()}
-        loading={props.loading ?? "lazy"}
+        loading={props.loading ?? "eager"}
         decoding="async"
         class="h-full w-full object-contain pointer-events-none"
       />

@@ -68,8 +68,12 @@ export function Footer() {
             }}
           >
             <img
-              src="/foss-logo-original.png"
+              src="/foss-logo-original.webp"
               alt="FOSS MEC Official Logo"
+              // Intrinsic size so the row reserves the right width before the
+              // image lands — `h-7 w-auto` alone leaves it zero until then.
+              width={289}
+              height={232}
               class="h-7 w-auto object-contain"
             />
             <span
@@ -83,7 +87,7 @@ export function Footer() {
 
         <div class="space-y-1">
           <p class="text-sm sm:text-base font-extrabold leading-relaxed text-[var(--ink)]">
-            Seven days of games. One week of Onam. Designed for fossmec by Dijith Dinesh
+            Seven days of games. One week of Onam. Designed at fossmec by Dijith Dinesh
           </p>
           <p class="text-xs sm:text-sm font-bold">
             <a

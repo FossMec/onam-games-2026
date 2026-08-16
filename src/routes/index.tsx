@@ -16,6 +16,9 @@ import { getMe } from "~/server/auth/actions";
 import { getGames } from "~/server/games/actions";
 import { getPookalamState } from "~/server/pookalam/actions";
 
+/** Underline colours for the hero stat chips, in order. */
+const STAT_POP = ["var(--pop-red)", "var(--pop-teal)", "var(--pop-yellow)", "var(--pop-purple)"];
+
 /** Each day gets its own pop colour so the week reads as a strip of panels. */
 const DAY_POPS = [
   "pop-yellow",
@@ -348,7 +351,7 @@ export default function Home() {
 
       {/* ------------------------------------------------------------- hero */}
       <section
-        class="relative overflow-hidden rounded-lg px-5 py-10 text-center"
+        class="relative overflow-hidden rounded-lg px-4 py-8 text-center sm:px-6 sm:py-12"
         style={{
           border: "var(--ink-w-bold) solid var(--ink)",
           background: "var(--paper-2)",
@@ -374,55 +377,146 @@ export default function Home() {
           opacity={0.9}
           animate
         />
-        <div class="art-over space-y-4 max-w-3xl mx-auto">
-          <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-5">
-            <div class="flex justify-end">
-              <SpriteIcon name="maveli-laptop" size={48} animate="float" interactive />
-            </div>
+        <div class="art-over space-y-4 sm:space-y-5 max-w-3xl mx-auto">
+          {/*
+            Flex, not a 3-column grid.
+
+            The grid gave the wordmark a column that could be squeezed below
+            its own width, and a squeezed `.wordmark` breaks in a specific ugly
+            way: the black text wraps while the yellow `::before` shadow layer
+            stays on one line, so the two read as different words. Sizing it
+            off the viewport with `clamp` means it simply cannot get there, and
+            the sprites shrink with it rather than stealing its room.
+          */}
+          <div class="flex items-center justify-center gap-2 sm:gap-5">
+            {/*
+              One sprite each side, one size.
+
+              Do NOT try to swap sizes with `hidden` / `sm:inline-flex` here.
+              SpriteIcon's own wrapper already sets `inline-flex`, and which of
+              the two display utilities wins depends on their order in the
+              generated stylesheet rather than in this attribute — so both
+              copies render, four sprites crowd the row, and the wordmark gets
+              squeezed until it wraps.
+            */}
+            <SpriteIcon name="maveli-laptop" size={40} animate="float" interactive />
             <div class="inline-flex flex-col items-end">
-              <h1 class="wordmark text-4xl sm:text-6xl tracking-wider" data-text="FOSS ONAM">
+              <h1
+                class="wordmark tracking-wider"
+                data-text="FOSS ONAM"
+                style={{ "font-size": "clamp(1.6rem, 8vw, 3.75rem)" }}
+              >
                 FOSS ONAM
               </h1>
               <span
-                class="text-[0.68rem] sm:text-xs font-black tracking-widest uppercase text-muted pr-1 -mt-1 sm:-mt-2 select-none"
+                class="text-[0.6rem] sm:text-xs font-black tracking-widest uppercase text-muted pr-1 -mt-1 sm:-mt-2 select-none"
                 style={{ "font-family": "var(--font-stack-display)", opacity: "0.85" }}
               >
                 by fossmec
               </span>
             </div>
-            <div class="flex justify-start">
-              <SpriteIcon name="tux-king" size={48} animate="float" delay={1.2} interactive />
-            </div>
+            <SpriteIcon name="tux-king" size={40} animate="float" delay={1.2} interactive />
           </div>
-          <p
-            class="mx-auto max-w-lg text-lg font-extrabold"
-            style={{ "font-family": "var(--font-stack-display)" }}
-          >
-            {EVENT.tagline}
-          </p>
           {/*
-            Kept in the document for search engines and screen readers, hidden
-            on a phone. It and the blurb below cover the same ground, and two
-            paragraphs of it is most of a mobile screen before anyone reaches a
-            button. `hidden` still renders the text into the HTML, so nothing
-            is lost to a crawler.
-          */}
-          <p class="mx-auto hidden max-w-2xl text-sm font-bold leading-relaxed sm:block sm:text-base">
-            FOSS Onam Games is a free, open-source online festival by FOSS MEC featuring daily
-            browser games, fair-play leaderboards, and the Code-a-Pookalam community art contest.
-          </p>
-          <div class="mx-auto max-w-2xl">
-            <ReadMore text={EVENT.blurb} class="font-semibold leading-relaxed" />
-          </div>
+            The four numbers, as chips.
 
-          {/* Linus Sadya Meme Sticker in Hero (Clicking scrolls to games section) */}
-          <div class="flex justify-center py-1">
-            <a href="#games-arena" class="cursor-pointer inline-block" title="Jump to Daily Games">
-              <img
-                src="/images/memes/talk-is-cheap-sadya.webp"
-                alt="Talk is cheap. Give me Sadya."
-                class="w-36 xs:w-44 sm:w-52 h-auto object-contain select-none"
-              />
+            This replaces the old tagline sentence and the search-engine
+            paragraph that used to sit under it. Between them they said the
+            same thing twice in small bold type, which on a phone was most of a
+            screen of grey before anyone reached a button. Numerals are read at
+            a glance; the sentence was not being read at all.
+          */}
+          {/* All four on one row at every width — two rows of two ate a third
+              of a phone screen for four short words. */}
+          <ul class="grid grid-cols-4 gap-1.5 sm:gap-3 list-none p-0 m-0 max-w-lg mx-auto">
+            <For each={EVENT.stats}>
+              {(stat, i) => (
+                <li
+                  class="rounded px-1 py-1.5 sm:px-3 sm:py-2 leading-none"
+                  style={{
+                    border: "var(--ink-w) solid var(--ink)",
+                    background: "var(--paper)",
+                    "border-bottom": `5px solid ${STAT_POP[i() % STAT_POP.length]}`,
+                  }}
+                >
+                  <span
+                    class="block text-xl sm:text-3xl font-black tabular-nums"
+                    style={{ "font-family": "var(--font-stack-display)" }}
+                  >
+                    {stat.value}
+                  </span>
+                  <span
+                    class="block text-[0.53rem] sm:text-[0.68rem] font-extrabold uppercase tracking-wide pt-1"
+                    style={{ opacity: 0.75 }}
+                  >
+                    {stat.label}
+                  </span>
+                </li>
+              )}
+            </For>
+          </ul>
+
+          {/* Extra top padding: the chips have a heavy 5px underline, and butted
+              straight against the paragraph it read as one block. */}
+          <p class="mx-auto max-w-xl pt-1 text-sm sm:pt-2 sm:text-base font-semibold leading-relaxed text-pretty">
+            {EVENT.blurb}
+          </p>
+
+          {/*
+            Linus, closing the argument.
+
+            "Talk is cheap" is the pivot out of the copy and into the buttons,
+            so it sits immediately above them. Tapping it scrolls to the games,
+            which is the joke taken literally.
+          */}
+          {/*
+            Panel · meme · panel on a wide screen, filling the space either
+            side of Linus. On a phone the meme takes the full width and the two
+            panels sit under it as a pair, because at 360px a three-up row
+            would leave each panel too narrow for its own animation.
+          */}
+          <div class="grid grid-cols-2 items-center gap-2.5 sm:grid-cols-[1fr_auto_1fr] sm:gap-4">
+            <div class="order-1 col-span-2 flex justify-center sm:order-2 sm:col-span-1">
+              <a
+                href="#games-arena"
+                class="cursor-pointer inline-block"
+                title="Jump to Daily Games"
+              >
+                <img
+                  src="/images/memes/talk-is-cheap-sadya.webp"
+                  alt="Talk is cheap. Give me Sadya."
+                  width={512}
+                  height={503}
+                  loading="eager"
+                  class="w-32 xs:w-36 sm:w-44 h-auto object-contain select-none"
+                />
+              </a>
+            </div>
+
+            {/*
+              The two things you can actually do, leaning away from each other
+              so the pair frames the meme rather than competing with it.
+            */}
+            {/*
+              Desktop only. These exist to fill the space either side of the
+              meme, and a phone has no such space — stacked under it they were
+              just two more lines of text repeating the buttons a few pixels
+              further down. Same two pops as those buttons, so the pair reads
+              as labels for them rather than a third colour scheme.
+            */}
+            <a
+              href="#games-arena"
+              class="order-2 hidden justify-center no-underline sm:order-1 sm:flex"
+            >
+              <span class="pop-label" style={{ "--pop": "var(--pop-teal)", "--tilt": "-5deg" }}>
+                Play games
+              </span>
+            </a>
+
+            <a href="/code-a-pookalam" class="order-3 hidden justify-center no-underline sm:flex">
+              <span class="pop-label" style={{ "--pop": "var(--pop-yellow)", "--tilt": "5deg" }}>
+                Code a Pookalam
+              </span>
             </a>
           </div>
 
@@ -846,7 +940,7 @@ export default function Home() {
                     is obvious there is more to the right, while the cards still
                     line up with the text above them.
                   */}
-                  <div class="-mx-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-7 sm:overflow-visible sm:px-0">
+                  <div class="scrollbar-none -mx-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-7 sm:overflow-visible sm:px-0">
                     <For each={fullSchedule()}>
                       {(item) => {
                         const isSelected = item.day === selectedDay();
@@ -1000,7 +1094,8 @@ export default function Home() {
 
       {/* ---------------------------------------------------- how it works (8 items) */}
       <Section title="How it works" id="how-it-works" confettiSeed="how-sec" confettiCount={5}>
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Swipeable row on a phone, grid from `sm` — see `.swipe-rail`. */}
+        <div class="swipe-rail">
           <For each={EVENT.howItWorks}>
             {(step, index) => (
               <div class="card card-plain flex flex-col gap-2.5 justify-between">

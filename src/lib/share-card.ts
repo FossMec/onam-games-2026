@@ -753,9 +753,9 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   const [memeImg, badgeImg, spriteImg, secondSpriteImg, avatarImg, customPhotoImg, gameImg] =
     await Promise.all([
       loadImage(memeFor(seed)),
-      loadImage("/sprites/icons/foss-mec-badge.png"),
-      loadImage(`/sprites/icons/${spriteName}.png`),
-      loadImage("/sprites/icons/pookalam-flower.png"),
+      loadImage("/sprites/icons/foss-mec-badge.webp"),
+      loadImage(`/sprites/icons/${spriteName}.webp`),
+      loadImage("/sprites/icons/pookalam-flower.webp"),
       avatarUrl ? loadImage(avatarUrl).catch(() => null) : Promise.resolve(null),
       customPhotoUrl ? loadImage(customPhotoUrl).catch(() => null) : Promise.resolve(null),
       loadImage(`/images/games/${data.gameSlug}.webp`).catch(() => null),

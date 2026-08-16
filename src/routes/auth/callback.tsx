@@ -1,22 +1,143 @@
-import { AlertTriangle, ArrowLeft, RefreshCw } from "lucide-solid";
+import { ArrowLeft, RefreshCw, TriangleAlert } from "lucide-solid";
 import { Show, createSignal, onMount } from "solid-js";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
+import { SignInScene } from "~/components/auth/SignInScene";
 import { collectFingerprint, type FingerprintResult } from "~/lib/fingerprint";
 import { getBrowserSupabase } from "~/lib/supabase-client";
-import { completeSignIn } from "~/server/auth/actions";
+import { completeDirectSignIn, completeSignIn } from "~/server/auth/actions";
 
 function leave(to: string): void {
   window.location.replace(to);
 }
 
+interface Explained {
+  title: string;
+  message: string;
+  /** What the player can actually do about it. */
+  hint?: string;
+  /** Whether a stack trace is worth offering. */
+  technical: boolean;
+  sprite: "papad-face" | "muthukuda";
+}
+
+/**
+ * Turns a thrown error into something a player can act on.
+ *
+ * The default card dumped the raw message and a stack trace, which is right for
+ * a bug and wrong for a rule. "This device is already linked to another
+ * account" is not a failure — it is the one-account-per-device rule doing
+ * exactly its job — and showing it under a red "Sign-In Failed" heading with a
+ * stack trace tells someone their sign-in broke when it did not.
+ *
+ * So the cases we deliberately enforce get an explanation and a way forward;
+ * anything unrecognised keeps the technical card, because that one really is a
+ * bug and the trace is what gets it fixed.
+ */
+function explain(error: unknown): Explained {
+  const raw = error instanceof Error ? error.message : String(error);
+
+  if (/already linked to another account/i.test(raw)) {
+    return {
+      title: "This device is already taken",
+      message:
+        "Somebody has already signed in on this phone or laptop with a different account. It's one account per device — that's how the leaderboard stays honest.",
+      hint: "Sign in with that first account, or use your own device. If you think this is a mistake, talk to the organisers.",
+      technical: false,
+      sprite: "muthukuda",
+    };
+  }
+
+  if (/expired|took too long/i.test(raw)) {
+    return {
+      title: "That took a bit too long",
+      message: "Your sign-in window closed before it finished.",
+      hint: "Tap try again — it only takes a second the second time.",
+      technical: false,
+      sprite: "papad-face",
+    };
+  }
+
+  if (/could not be verified|start again from this site/i.test(raw)) {
+    return {
+      title: "Couldn't verify that sign-in",
+      message: "The sign-in didn't start from this site, so we stopped it.",
+      hint: "Head back and start from the sign-in page.",
+      technical: false,
+      sprite: "muthukuda",
+    };
+  }
+
+  if (/canceled|denied/i.test(raw)) {
+    return {
+      title: "Sign-in was cancelled",
+      message: "Google didn't hand us an account — you may have closed the window or hit cancel.",
+      hint: "No harm done. Try again whenever you're ready.",
+      technical: false,
+      sprite: "papad-face",
+    };
+  }
+
+  return {
+    title: "Sign-in failed",
+    message: raw || "Something went wrong while completing your sign in.",
+    technical: true,
+    sprite: "papad-face",
+  };
+}
+
+/**
+ * Device signals, or nothing if they take too long.
+ *
+ * Never allowed to block sign-in: a browser that stalls on canvas or audio
+ * probing must still get the player in. Missing signals mean weaker device
+ * binding for that account, which the anti-cheat side already handles.
+ */
+async function fingerprint(): Promise<{
+  signals?: FingerprintResult["signals"];
+  visitorId: string | null;
+}> {
+  try {
+    const result = await Promise.race([
+      collectFingerprint(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Fingerprint timeout")), 2500),
+      ),
+    ]);
+    return { signals: result.signals, visitorId: result.visitorId };
+  } catch (err) {
+    console.warn("[AuthCallback] Fingerprint collection timed out or failed:", err);
+    return { visitorId: null };
+  }
+}
+
 export default function AuthCallback() {
   const [status, setStatus] = createSignal<"loading" | "error">("loading");
-  const [errorMessage, setErrorMessage] = createSignal<string>("");
+  const [problem, setProblem] = createSignal<Explained | null>(null);
   const [details, setDetails] = createSignal<string>("");
+
+  const fail = (error: unknown, trace?: string) => {
+    setStatus("error");
+    setProblem(explain(error));
+    setDetails(trace ?? "");
+  };
 
   onMount(async () => {
     try {
       const url = new URL(window.location.href);
+
+      /*
+       * Direct flow: `/api/auth/google/callback` already redeemed the code and
+       * parked the Supabase session in a sealed cookie, so there is nothing to
+       * find in this URL and nothing for the browser Supabase client to do.
+       * All that is left is the fingerprint, which only the browser can take.
+       */
+      if (url.searchParams.get("direct")) {
+        console.info("[AuthCallback] Direct Google flow — claiming parked session…");
+        const fp = await fingerprint();
+        const result = await completeDirectSignIn(fp.signals ?? ({} as never), fp.visitorId);
+        leave(result.onboardingCompleted ? "/" : "/onboarding");
+        return;
+      }
 
       // Check for OAuth error in query params or hash
       const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
@@ -28,9 +149,7 @@ export default function AuthCallback() {
 
       if (errorParam) {
         console.error("[AuthCallback] OAuth provider returned error:", errorParam);
-        setStatus("error");
-        setErrorMessage("Authentication was canceled or denied by Google.");
-        setDetails(errorParam);
+        fail(new Error("Authentication was canceled or denied by Google."), errorParam);
         return;
       }
 
@@ -107,11 +226,8 @@ export default function AuthCallback() {
 
       if (!session || !session.access_token || !session.refresh_token) {
         console.error("[AuthCallback] No active session could be established.");
-        setStatus("error");
-        setErrorMessage(
-          "Could not obtain your authentication tokens. Please try signing in again.",
-        );
-        setDetails(
+        fail(
+          new Error("Could not obtain your authentication tokens. Please try signing in again."),
           `URL: ${window.location.pathname}${window.location.search}${window.location.hash ? " [hash present]" : ""}`,
         );
         return;
@@ -120,19 +236,7 @@ export default function AuthCallback() {
       console.info("[AuthCallback] Valid session acquired. Collecting fingerprint...");
 
       // Collect device fingerprint with safe fallback timeout
-      let fpSignals: FingerprintResult["signals"] | undefined;
-      let fpVisitorId: string | null = null;
-      try {
-        const fpPromise = collectFingerprint();
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Fingerprint timeout")), 2500),
-        );
-        const fpResult = await Promise.race([fpPromise, timeoutPromise]);
-        fpSignals = fpResult.signals;
-        fpVisitorId = fpResult.visitorId;
-      } catch (fpErr) {
-        console.warn("[AuthCallback] Fingerprint collection timed out or failed:", fpErr);
-      }
+      const fp = await fingerprint();
 
       // Complete backend sign-in, session creation, and device binding
       console.info("[AuthCallback] Calling backend completeSignIn...");
@@ -142,86 +246,74 @@ export default function AuthCallback() {
           refresh_token: session.refresh_token,
           expires_at: session.expires_at ?? undefined,
         },
-        fpSignals ?? ({} as never),
-        fpVisitorId,
+        fp.signals ?? ({} as never),
+        fp.visitorId,
       );
 
       console.info("[AuthCallback] Sign-in complete! Redirecting to destination...");
       leave(result.onboardingCompleted ? "/" : "/onboarding");
     } catch (err: unknown) {
-      const errObj = err as Error;
       console.error("[AuthCallback] Uncaught error during sign-in:", err);
-      setStatus("error");
-      setErrorMessage(
-        errObj?.message || "An unexpected error occurred while completing your sign in.",
-      );
-      setDetails(errObj?.stack || String(err));
+      fail(err, err instanceof Error ? (err.stack ?? "") : String(err));
     }
   });
 
   return (
-    <main class="container flex min-h-[70vh] items-center justify-center py-8">
-      <Show
-        when={status() === "error"}
-        fallback={
-          <div
-            class="w-full max-w-sm rounded-lg p-8 text-center"
-            style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--paper-2)" }}
-          >
-            <div class="flex justify-center mb-3">
-              <SpriteIcon name="tux-king" size={48} animate="wobble" />
-            </div>
-            <p
-              class="text-2xl"
-              style={{ "font-family": "var(--font-stack-display)", "font-weight": 800 }}
-            >
-              Signing you in…
-            </p>
-            <p class="comment mt-2">checking you're not four people in a trench coat</p>
-          </div>
-        }
-      >
+    <Show when={status() === "error"} fallback={<SignInScene />}>
+      <main class="container flex min-h-[70vh] items-center justify-center py-8">
         <div
-          class="card pop-red w-full max-w-md p-6 text-center space-y-4 shadow-lg border-2 border-[var(--ink)]"
-          style={{ background: "var(--paper-2)" }}
+          class="card w-full max-w-md text-center space-y-3"
+          style={{ "--pop": problem()!.technical ? "var(--pop-red)" : "var(--pop-yellow)" }}
         >
-          <div class="flex justify-center text-[var(--pop-red)]">
-            <AlertTriangle size={48} strokeWidth={2.5} />
+          {/*
+            A rule we chose to enforce is not a crash, and it should not wear a
+            crash's clothes. Enforcement gets a mascot and an explanation; only
+            an actual bug gets the red triangle.
+          */}
+          <div class="flex justify-center">
+            <Show
+              when={problem()!.technical}
+              fallback={<SpriteIcon name={problem()!.sprite} size={56} animate="float" />}
+            >
+              <span style={{ color: "var(--pop-red)" }}>
+                <TriangleAlert size={48} strokeWidth={2.5} />
+              </span>
+            </Show>
           </div>
 
-          <h1 class="text-2xl font-black text-[var(--ink)]">Sign-In Failed</h1>
+          <h1 class="text-2xl font-black m-0">{problem()!.title}</h1>
 
-          <p class="font-bold text-sm text-[var(--pop-red)] leading-relaxed">{errorMessage()}</p>
+          <p class="font-bold text-sm leading-relaxed m-0">{problem()!.message}</p>
 
-          <Show when={details()}>
-            <details class="text-left bg-[var(--paper)] p-2.5 rounded-md border border-[var(--ink-soft)]/40 text-xs font-mono">
-              <summary class="cursor-pointer font-bold text-[var(--ink-soft)] select-none">
-                Technical Details
-              </summary>
+          <Show when={problem()!.hint}>
+            <p class="comment text-xs">{problem()!.hint}</p>
+          </Show>
+
+          {/* Offered only when the trace could actually help someone. */}
+          <Show when={problem()!.technical && details()}>
+            <details
+              class="text-left p-2.5 rounded-md text-xs font-mono"
+              style={{ background: "var(--paper)", border: "2px solid var(--ink)" }}
+            >
+              <summary class="cursor-pointer font-bold select-none">Technical details</summary>
               <pre class="mt-2 whitespace-pre-wrap break-all text-[11px] opacity-80 max-h-32 overflow-y-auto">
                 {details()}
               </pre>
             </details>
           </Show>
 
-          <div class="flex flex-wrap gap-2 justify-center pt-2">
-            <a
-              href="/auth/signin"
-              class="btn-brand flex items-center justify-center gap-1.5 py-2 px-4 text-sm cursor-pointer"
-            >
+          <div class="flex flex-wrap gap-2 justify-center pt-1">
+            <a href="/auth/signin" class="btn-brand inline-flex items-center gap-1.5 text-sm">
               <RefreshCw size={15} />
-              <span>Try Again</span>
+              <span>Try again</span>
             </a>
-            <a
-              href="/"
-              class="btn-ghost flex items-center justify-center gap-1.5 py-2 px-4 text-sm cursor-pointer"
-            >
+            <a href="/" class="btn-ghost inline-flex items-center gap-1.5 text-sm">
               <ArrowLeft size={15} />
-              <span>Back to Home</span>
+              <span>Back to home</span>
             </a>
           </div>
         </div>
-      </Show>
-    </main>
+      </main>
+    </Show>
   );
 }

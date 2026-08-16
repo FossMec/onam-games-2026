@@ -3,6 +3,7 @@
 import { ZodError } from "zod";
 import type { FingerprintSignals } from "~/lib/fingerprint";
 import { completeOAuthSignIn, getCurrentUser, signOut, type OAuthSession } from "./service";
+import { isDirectGoogleEnabled, takePendingSession } from "./google";
 import { completeOnboarding, uploadAvatar, type OnboardingInput } from "./onboarding";
 import { acknowledgeWarning, banMessage, describeBan } from "./bans";
 import { readSetting } from "~/server/settings/service";
@@ -117,6 +118,44 @@ export async function completeSignIn(
     return await completeOAuthSignIn(session, fingerprint, fpVisitorId);
   } catch (error) {
     console.error("[server] completeSignIn failed:", error);
+    throw error;
+  }
+}
+
+/**
+ * Which sign-in path the button should take.
+ *
+ * Asked of the server rather than read from a `VITE_` flag so the two can never
+ * disagree: a build-time flag that says "direct" against a deploy whose Google
+ * credentials are missing is a sign-in page that cannot sign anybody in. The
+ * page defaults to the Supabase redirect until this resolves, so the slow case
+ * degrades to the flow that has always worked.
+ */
+export async function getAuthMode() {
+  return { direct: isDirectGoogleEnabled() };
+}
+
+/**
+ * Finishes a sign-in started at `/api/auth/google/start`.
+ *
+ * Same work as `completeSignIn`, except the Supabase session comes from the
+ * sealed cookie the callback route parked rather than from the browser, so no
+ * token is ever exposed to page JavaScript. The fingerprint still has to come
+ * from the client — that is the whole reason this step exists as a round trip
+ * instead of finishing inside the redirect.
+ */
+export async function completeDirectSignIn(
+  fingerprint: FingerprintSignals,
+  fpVisitorId?: string | null,
+) {
+  const session = await takePendingSession();
+  if (!session) {
+    throw new Error("Your sign-in expired before it finished. Please try again.");
+  }
+  try {
+    return await completeOAuthSignIn(session, fingerprint, fpVisitorId);
+  } catch (error) {
+    console.error("[server] completeDirectSignIn failed:", error);
     throw error;
   }
 }

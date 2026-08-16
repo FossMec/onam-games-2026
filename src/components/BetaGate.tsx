@@ -52,7 +52,7 @@ function Denied(props: { signedIn: boolean }) {
 
       <div class="card pop-red relative mx-auto max-w-lg space-y-4 text-center">
         <ShoutBurst
-          text={props.signedIn ? "AYYO!" : "POYI!"}
+          text={props.signedIn ? "Sorry!" : "Sign in"}
           color="var(--pop-red)"
           seed="beta-gate"
         />
@@ -76,10 +76,12 @@ function Denied(props: { signedIn: boolean }) {
                 The games are open to testers only right now. Sign in to see whether you are on the
                 list.
               </p>
-              <p class="comment">the door is locked, not welded.</p>
-              <a href="/auth/signin" class="btn-brand inline-block">
-                Sign in with Google
-              </a>
+              <div class="flex flex-col space-y-4">
+                <a href="/auth/signin" class="btn-brand inline-block">
+                  Sign in with Google
+                </a>
+                <p class="comment">the door is locked, not welded.</p>
+              </div>
             </>
           }
         >

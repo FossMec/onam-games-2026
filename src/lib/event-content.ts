@@ -12,7 +12,33 @@
 
 export const EVENT = {
   name: "FOSS Onam Games",
-  tagline: "Seven days. Six mini-games. One pookalam. Zero dignity.",
+
+  /**
+   * The hero's numbers, as chips rather than a sentence.
+   *
+   * A row of big numerals is read at a glance where a line of small bold text
+   * just adds to the wall.
+   *
+   * The old tagline's "zero dignity" is not among them. It worked as the
+   * punchline of a sentence and meant nothing stranded in a chip of its own —
+   * a reader gets "0 DIGNITY" with no setup and no idea what it refers to. The
+   * prize is the fact worth the fourth slot anyway.
+   */
+  stats: [
+    { value: "7", label: "days" },
+    { value: "6", label: "mini-games" },
+    { value: "1", label: "pookalam" },
+    { value: "~₹5K", label: "prize pool" },
+  ],
+
+  /**
+   * The one paragraph, doing the work two used to.
+   *
+   * The hero previously ran a search-engine sentence and this blurb back to
+   * back, which said the same thing twice in small type and pushed the buttons
+   * off a phone screen. The fix was deleting the duplicate, not trimming this —
+   * an intermediate draft cut it to a terse list and lost all of the warmth.
+   */
   blurb:
     "A celebration of Onam and open source, run by fossmec. Create an intricate flower carpet purely with code in Code-a-Pookalam (open all week), and play a fun new mini-game every evening to climb the leaderboard and win daily cash prizes!",
   // TODO: confirm before launch.
