@@ -331,9 +331,13 @@ export function CollabPookalam() {
     if (stroke.length >= allowanceLeftInStroke()) return false;
 
     const flower = picked();
+    const existing = readCell(grid, index);
+
+    // Prevent placing the same flower or erasing an already empty cell
+    if (existing === flower.id) return false;
 
     // Check if square is already occupied and overwriting is not yet unlocked
-    if (readCell(grid, index) !== 0 && !canOverwrite() && flower.id !== 0) {
+    if (existing !== 0 && !canOverwrite() && flower.id !== 0) {
       setNote(
         `Square taken! Overwriting unlocks when the pookalam is 80% filled (${placed()}/${OVERWRITE_THRESHOLD}).`,
       );
