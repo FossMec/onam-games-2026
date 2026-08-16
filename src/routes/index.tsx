@@ -669,7 +669,7 @@ export default function Home() {
           pookalam sections read as siblings without reading as duplicates.
         */}
         <div
-          class="relative overflow-hidden rounded-lg p-3 sm:p-5"
+          class="relative overflow-hidden rounded-lg p-2 sm:p-3 md:p-3.5"
           style={{
             border: "var(--ink-w-bold) solid var(--ink)",
             background: "var(--pop-blue)",
@@ -741,21 +741,20 @@ export default function Home() {
               the picture is only good if enough people show up. That is worth
               saying out loud, in the voice the rest of the site uses.
             */}
-            <div class="text-center space-y-1.5 pb-1">
-              <p
-                class="m-0 font-black leading-[0.95] text-[1.6rem] sm:text-4xl"
+            <div class="text-center space-y-1 pb-1 max-w-4xl mx-auto">
+              <h2
+                class="m-0 font-black leading-[0.95] text-2xl sm:text-3xl md:text-4xl"
                 style={{ "font-family": "var(--font-stack-display)" }}
               >
-                Everyone gets a handful.
+                Open source is all about collaboration.
                 <br />
-                <span style={{ color: "var(--paper)" }}>Nobody gets the whole thing.</span>
+                <span style={{ color: "var(--paper)" }}>Build the pookalam together.</span>
+              </h2>
+              <p class="m-0 font-bold text-xs sm:text-sm text-[var(--ink)]">
+                Celebrate with FOSS MEC by creating a communal flower carpet — contribute petals,
+                build around each other, and create art together.
               </p>
-              <p class="m-0 mx-auto max-w-xl font-bold text-sm sm:text-base">
-                2,500 squares. You get few. You are not finishing this — nobody is. Lay a few and
-                let the next person work around them, because painting over anyone is the one thing
-                you can't do.
-              </p>
-              <p class="comment text-xs sm:text-sm">
+              <p class="comment text-[11px] sm:text-xs m-0">
                 at midnight it's buried under tomorrow's. plan accordingly, or don't.
               </p>
             </div>

@@ -1,75 +1,21 @@
-import { RefreshCw, ZoomIn, ZoomOut } from "lucide-solid";
-import { For, Show, createEffect, createSignal, onCleanup, onMount } from "solid-js";
+import { HelpCircle, RefreshCw, X, ZoomIn, ZoomOut } from "lucide-solid";
+import { For, Show, batch, createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { FLOWERS, type Flower, drawFlower, flowerById } from "~/lib/pookalam-flowers";
 import { CELL_COUNT, fromBase64, readCell, writeCell } from "~/lib/pookalam-grid";
 import { SLOTS, slotAt } from "~/lib/pookalam-layout";
-import { getCollabPookalam, placeCollabStroke } from "~/server/pookalam/collab-actions";
+import { getCollabPookalam } from "~/server/pookalam/collab-actions";
 
 /**
  * The pookalam the whole room draws together.
  *
- * A 50x50 grid, one flower per square, first come first served. Nobody is going
- * to fill 2500 squares alone — that is the design, not a shortfall. What one
- * person leaves is an arc or a ring or a rude word in marigold, and the picture
- * is whatever the day's arrivals make of each other's leftovers.
- *
- * WHY IT STACKS
- *
- * Each day gets its own grid and the previous ones are painted underneath,
- * older layers fainter and smaller. Today's flowers cover yesterday's where
- * they overlap and leave them showing where they do not, so by day three you
- * are looking at three pookalams sandwiched — which is exactly what happens on
- * a doorstep, where the new one goes down over the remains of the old.
- *
- * WHY THE DAILY LIMIT IS A LIE THE BROWSER TELLS
- *
- * The allowance is counted in `localStorage`. Enforcing it server-side would
- * mean a row per placement — thousands a day — to defend against someone
- * clearing their storage in order to place *more flowers on a communal
- * drawing*. The server guards the things that actually matter: the square is
- * free, the flower exists, and you are signed in.
+ * A 50x50 grid, one flower per square, first come first served.
  */
 
-/**
- * Ceiling at 1x. Past this the flowers get large without getting clearer.
- *
- * Kept well under what a desktop could give it. On a wide screen the limit is
- * never the width — it is that the canvas plus its heading, palette and how-to
- * have to land inside one viewport together, and a 660px square pushed the
- * palette off the bottom of a 1080p display.
- */
-const MAX_CANVAS_PX = 540;
-
-/**
- * Roughly what the heading, palette, how-to and section title need around it.
- *
- * Subtracted from the viewport rather than taking a fixed fraction of it: the
- * chrome is a roughly constant number of pixels, so a fraction over-allocates
- * on a tall screen and under-allocates on a short one.
- */
-const CHROME_PX = 400;
-
-/** Never shrink below this, or a 50-wide grid stops being tappable at all. */
-const MIN_CANVAS_PX = 280;
-
-/** Fit, then two useful magnifications. Beyond 3x the grid is bigger than help. */
+const MAX_CANVAS_PX_DESKTOP = 540;
+const MAX_CANVAS_PX_MOBILE = 420;
+const MIN_CANVAS_PX = 260;
 const ZOOM_STEPS = [1, 1.6, 2.4, 3.2];
-
-/**
- * The ground the flowers are laid on.
- *
- * Not the cream the rest of the site uses. Two of the ten flowers are white —
- * thumba and mulla — and on cream they simply disappeared, while the yellows
- * washed out beside them. A dark floor is the only background that every one of
- * the ten reads against: whites and yellows blaze, reds and purples hold their
- * edge, green stays green.
- *
- * It is also just true. A pookalam goes down on swept, watered ground, not on
- * paper — so the one surface with the contrast we need is also the one the
- * flowers actually sit on.
- */
 const GROUND = "#2b2733";
-
 const STORAGE_PREFIX = "collab-pookalam:";
 
 interface DayLayer {
@@ -80,6 +26,7 @@ interface DayLayer {
 export function CollabPookalam() {
   let canvas: HTMLCanvasElement | undefined;
   let shell: HTMLDivElement | undefined;
+  let rootRef: HTMLDivElement | undefined;
 
   const [today, setToday] = createSignal<Uint8Array | null>(null);
   const [history, setHistory] = createSignal<DayLayer[]>([]);
@@ -91,11 +38,12 @@ export function CollabPookalam() {
   const [used, setUsed] = createSignal(0);
   const [picked, setPicked] = createSignal<Flower>(FLOWERS[0]);
   const [zoom, setZoom] = createSignal(1);
-  const [fit, setFit] = createSignal(MAX_CANVAS_PX);
+  const [fit, setFit] = createSignal(480);
   const [busy, setBusy] = createSignal(false);
   const [note, setNote] = createSignal("");
   const [loaded, setLoaded] = createSignal(false);
   const [drawing, setDrawing] = createSignal(false);
+  const [showHowTo, setShowHowTo] = createSignal(false);
 
   const left = () => Math.max(0, allowance() - used());
 
@@ -109,8 +57,6 @@ export function CollabPookalam() {
     try {
       return Number(localStorage.getItem(STORAGE_PREFIX + key)) || 0;
     } catch {
-      // Private mode, storage disabled, quota — none of which should cost
-      // someone the feature. They get the full allowance every reload.
       return 0;
     }
   };
@@ -121,7 +67,7 @@ export function CollabPookalam() {
     try {
       localStorage.setItem(STORAGE_PREFIX + key, String(next));
     } catch {
-      /* see readUsed */
+      /* storage disabled fallback */
     }
   };
 
@@ -147,42 +93,39 @@ export function CollabPookalam() {
     }
   };
 
-  /*
-   * The square is the smaller of "as wide as the column" and "as tall as the
-   * screen can spare" — so it fits on a 360px phone and on a 27" monitor
-   * without either scrolling or ballooning, and a rotation re-runs it.
-   */
   const measure = () => {
-    const available = shell?.clientWidth ?? MAX_CANVAS_PX;
-    const vertical = window.innerHeight - CHROME_PX;
-    setFit(
-      Math.max(MIN_CANVAS_PX, Math.min(MAX_CANVAS_PX, Math.floor(available), Math.floor(vertical))),
-    );
+    if (typeof window === "undefined") return;
+    const isDesktop = window.innerWidth >= 1024;
+    const containerW =
+      rootRef?.clientWidth ?? (isDesktop ? window.innerWidth - 64 : window.innerWidth - 24);
+    const sideOverheadW = isDesktop ? 390 : 16;
+    const availableW = Math.max(MIN_CANVAS_PX, containerW - sideOverheadW);
+    const verticalOverhead = isDesktop ? 165 : 220;
+    const availableH = window.innerHeight - verticalOverhead;
+    const maxPx = isDesktop ? MAX_CANVAS_PX_DESKTOP : MAX_CANVAS_PX_MOBILE;
+    const size = Math.min(maxPx, Math.max(MIN_CANVAS_PX, Math.min(availableW, availableH)));
+    setFit(Math.floor(size));
   };
 
   onMount(() => {
     void load();
     measure();
     const observer = new ResizeObserver(measure);
-    if (shell) observer.observe(shell);
-    // A phone rotating changes the height without changing the element's width,
-    // which a ResizeObserver on the shell never sees.
+    if (rootRef) observer.observe(rootRef);
     window.addEventListener("resize", measure);
     onCleanup(() => {
       observer.disconnect();
       window.removeEventListener("resize", measure);
-      // A debounce still pending when the page navigates away would otherwise
-      // drop flowers the player has already seen land.
       void flush();
     });
   });
 
-  /** Repaints everything: history underneath, oldest first, today on top. */
+  /** Repaints canvas with crisp DPR */
   const paint = () => {
     const grid = today();
     if (!canvas || !grid) return;
     const css = fit() * zoom();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.max(window.devicePixelRatio || 1, 2);
     canvas.width = Math.floor(css * dpr);
     canvas.height = Math.floor(css * dpr);
     canvas.style.width = `${css}px`;
@@ -193,26 +136,21 @@ export function CollabPookalam() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, css, css);
 
-    /*
-     * The floor is a disc, not the square the canvas element is.
-     *
-     * Everything below draws in rings, so a square ground would put four dark
-     * corners around a round drawing. Filling the circle instead means the
-     * panel's own colour is what surrounds it.
-     */
+    // 1. Ground circular disc
     ctx.beginPath();
     ctx.arc(css / 2, css / 2, css / 2, 0, Math.PI * 2);
     ctx.fillStyle = GROUND;
     ctx.fill();
 
+    // 2. Very subtle guideline outline (very faint opacity)
+    ctx.beginPath();
+    ctx.arc(css / 2, css / 2, css / 2 - 1, 0, Math.PI * 2);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(251, 243, 228, 0.08)";
+    ctx.stroke();
+
     const layers = history();
     layers.forEach((layer, i) => {
-      /*
-       * Older days are fainter and smaller. Drawing them at full strength made
-       * the stack unreadable by day three — and shrinking them is what lets a
-       * buried flower peek out from behind a newer one rather than being
-       * perfectly eclipsed by it.
-       */
       const depth = layers.length - i;
       ctx.globalAlpha = Math.max(0.18, 0.62 - depth * 0.08);
       paintLayer(ctx, layer.cells, css, 0.94 - depth * 0.04);
@@ -224,39 +162,24 @@ export function CollabPookalam() {
 
   createEffect(paint);
 
-  /** Which ring slot a pointer is over. Null outside the disc. */
-  const cellFromEvent = (event: PointerEvent): number | null => {
-    if (!canvas) return null;
-    const rect = canvas.getBoundingClientRect();
-    return slotAt(
-      (event.clientX - rect.left) / rect.width,
-      (event.clientY - rect.top) / rect.height,
-    );
-  };
+  // Auto-center scroll when zoom level changes
+  createEffect(() => {
+    const z = zoom();
+    const f = fit();
+    if (shell && z > 1) {
+      setTimeout(() => {
+        if (!shell) return;
+        const targetScroll = (f * z - f) / 2;
+        shell.scrollLeft = targetScroll;
+        shell.scrollTop = targetScroll;
+      }, 0);
+    }
+  });
 
-  /*
-   * A drag goes to the server in batches, not per cell and not all at the end.
-   *
-   * Per cell would trip the rate limiter halfway across the canvas and leave a
-   * line stopping in mid-air. Holding the whole drag until release is worse the
-   * other way: a long sweep is a hundred unsent flowers riding on the tab not
-   * being closed, and nobody else sees any of it until you let go.
-   *
-   * So the canvas is painted locally the instant you touch it and the server
-   * hears about it on a debounce — a quiet moment after you stop moving, rather
-   * than on any particular gesture boundary. A drag, a scribble and forty
-   * separate taps all collapse into the same handful of requests, and nothing
-   * has to know when a "stroke" began or ended.
-   *
-   * `MAX_WAIT` is the safety valve: a debounce alone would never fire during a
-   * genuinely continuous drag, leaving a minute of work sitting unsent.
-   */
   const DEBOUNCE_MS = 350;
   const MAX_WAIT_MS = 1500;
 
-  /** Painted but not yet sent. */
   let stroke: number[] = [];
-  /** Sent and awaiting a reply — kept so a flush cannot overtake itself. */
   let inFlight: Promise<void> = Promise.resolve();
   let debounce: ReturnType<typeof setTimeout> | undefined;
   let maxWait: ReturnType<typeof setTimeout> | undefined;
@@ -271,32 +194,52 @@ export function CollabPookalam() {
   const scheduleFlush = () => {
     if (debounce) clearTimeout(debounce);
     debounce = setTimeout(() => void flush(), DEBOUNCE_MS);
-    // Started once per batch, not restarted per cell — that is what makes it a
-    // ceiling on how long anything can sit unsent rather than a second debounce.
     if (!maxWait) maxWait = setTimeout(() => void flush(), MAX_WAIT_MS);
+  };
+
+  const allowanceLeftInStroke = () => left();
+
+  /** Direct instant paint for 0ms latency during drawing */
+  const drawCellDirect = (index: number, flower: Flower) => {
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const css = fit() * zoom();
+    const dpr = Math.max(window.devicePixelRatio || 1, 2);
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const slot = SLOTS[index];
+    const jitter = ((((index * 2654435761) >>> 0) % 1000) / 1000 - 0.5) * 0.12;
+    const wobble = 0.98 + (((index * 40503) >>> 0) % 100) / 2500;
+    drawFlower(
+      ctx,
+      slot.x * css,
+      slot.y * css,
+      slot.cellRadius * css * wobble,
+      flower,
+      slot.angle + jitter,
+    );
+    ctx.restore();
   };
 
   const paintCell = (index: number): boolean => {
     const grid = today();
     if (!grid) return false;
     const full = placed() >= CELL_COUNT;
-    // Once every square is taken the canvas becomes a fresh surface and
-    // painting over is the point; until then a taken square is somebody else's.
     if (!full && readCell(grid, index) !== 0) return false;
     if (stroke.length >= allowanceLeftInStroke()) return false;
 
-    setToday(writeCell(new Uint8Array(grid), index, picked().id));
+    const flower = picked();
+    // 1. Instant optimistic direct canvas draw (0ms lag!)
+    drawCellDirect(index, flower);
+
+    // 2. Update state in memory
+    writeCell(grid, index, flower.id);
     stroke.push(index);
     scheduleFlush();
     return true;
   };
 
-  /**
-   * Ships whatever has been painted but not sent.
-   *
-   * Chained on `inFlight` so two flushes never race — the second would report a
-   * stale `placed` and could roll back cells the first had already confirmed.
-   */
   const flush = (): Promise<void> => {
     clearTimers();
     const cells = stroke;
@@ -305,201 +248,551 @@ export function CollabPookalam() {
 
     const flowerId = picked().id;
     inFlight = inFlight.then(async () => {
-      const result = await placeCollabStroke(cells.map((index) => ({ index, flowerId })));
+      try {
+        const res = await fetch("/api/pookalam/stroke", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            cells: cells.map((index) => ({ index, flowerId })),
+          }),
+        });
+        const result = (await res.json()) as {
+          written: number[];
+          placed: number;
+          cells: string;
+          reason?: string;
+        };
+        if (result && result.cells) {
+          setToday(fromBase64(result.cells));
+          setPlaced(result.placed);
+        }
 
-      /*
-       * Adopt the server's grid wholesale.
-       *
-       * The reply is the truth, so there is nothing to reconcile by hand: cells
-       * somebody else claimed revert on their own, their flowers appear on the
-       * same tick, and any drift in the optimistic copy is corrected for free.
-       * Reverting only the rejected cells — the earlier approach — kept the
-       * local guess authoritative for everything it had not been told about.
-       */
-      setToday(fromBase64(result.cells));
-      setPlaced(result.placed);
-
-      const kept = result.written.length;
-      if (kept < cells.length) {
-        if (result.reason) setNote(result.reason);
-        else if (kept === 0) setNote("Someone got there first.");
+        const kept = result?.written?.length ?? 0;
+        if (kept < cells.length) {
+          if (result?.reason) setNote(result.reason);
+          else if (kept === 0) setNote("Someone got there first.");
+        }
+        for (let i = 0; i < kept; i++) bumpUsed(dayKey());
+      } catch {
+        /* network error fallback */
       }
-      for (let i = 0; i < kept; i++) bumpUsed(dayKey());
     });
     return inFlight;
   };
 
-  const allowanceLeftInStroke = () => left();
+  // Multi-touch pinch-to-zoom and stroke tracking
+  const activePointers = new Map<number, { x: number; y: number }>();
+  let initialPinchDist: number | null = null;
+  let initialPinchZoom = 1;
+  let lastPointerPos: { x: number; y: number } | null = null;
+  let lastPlacedIndex: number | null = null;
 
-  const beginStroke = (event: PointerEvent) => {
-    if (!canPlace() || busy()) return;
+  const handlePointerDown = (event: PointerEvent) => {
+    activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (activePointers.size >= 2) {
+      if (drawing()) endStroke();
+      const pts = Array.from(activePointers.values());
+      const p1 = pts[0];
+      const p2 = pts[1];
+      if (p1 && p2) {
+        initialPinchDist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+        initialPinchZoom = zoom();
+      }
+      return;
+    }
+
+    if (!canPlace() || busy() || !canvas) return;
     if (left() <= 0) {
       setNote("That's your flowers for today. Come back tomorrow.");
       return;
     }
-    const index = cellFromEvent(event);
+    const rect = canvas.getBoundingClientRect();
+    const nx = (event.clientX - rect.left) / rect.width;
+    const ny = (event.clientY - rect.top) / rect.height;
+    const index = slotAt(nx, ny);
     if (index === null) return;
+
     setNote("");
     stroke = [];
     setDrawing(true);
-    // Capture keeps the stroke alive when the finger leaves the canvas mid-drag,
-    // so a line that runs off the edge still ends cleanly instead of hanging.
+    lastPointerPos = { x: nx, y: ny };
+    lastPlacedIndex = index;
+
     if (event.currentTarget instanceof HTMLElement) {
       event.currentTarget.setPointerCapture?.(event.pointerId);
     }
     paintCell(index);
   };
 
-  const extendStroke = (event: PointerEvent) => {
-    if (!drawing()) return;
-    const index = cellFromEvent(event);
-    if (index === null) return;
-    // The pointer reports many events inside one square; only the first counts.
-    if (stroke[stroke.length - 1] === index) return;
-    paintCell(index);
+  const handlePointerMove = (event: PointerEvent) => {
+    if (activePointers.has(event.pointerId)) {
+      activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+
+    // 2-finger pinch zoom
+    if (activePointers.size >= 2 && initialPinchDist) {
+      const pts = Array.from(activePointers.values());
+      const p1 = pts[0];
+      const p2 = pts[1];
+      if (p1 && p2) {
+        const currentDist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+        const factor = currentDist / initialPinchDist;
+        const nextZoom = Math.min(
+          3.5,
+          Math.max(1, Math.round(initialPinchZoom * factor * 10) / 10),
+        );
+        setZoom(nextZoom);
+      }
+      return;
+    }
+
+    // 1-finger / mouse drawing with optimistic line interpolation
+    if (!drawing() || !canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const rawEvents = (event as any).getCoalescedEvents
+      ? ((event as any).getCoalescedEvents() as PointerEvent[])
+      : [event];
+
+    batch(() => {
+      for (const ev of rawEvents) {
+        const nx = (ev.clientX - rect.left) / rect.width;
+        const ny = (ev.clientY - rect.top) / rect.height;
+
+        if (lastPointerPos) {
+          const dx = nx - lastPointerPos.x;
+          const dy = ny - lastPointerPos.y;
+          const dist = Math.hypot(dx, dy);
+          const steps = Math.max(1, Math.ceil(dist / 0.0035));
+
+          for (let s = 1; s <= steps; s++) {
+            const px = lastPointerPos.x + dx * (s / steps);
+            const py = lastPointerPos.y + dy * (s / steps);
+            const cellIndex = slotAt(px, py);
+            if (cellIndex !== null && cellIndex !== lastPlacedIndex) {
+              const painted = paintCell(cellIndex);
+              if (painted) {
+                lastPlacedIndex = cellIndex;
+              }
+            }
+          }
+        } else {
+          const cellIndex = slotAt(nx, ny);
+          if (cellIndex !== null && cellIndex !== lastPlacedIndex) {
+            const painted = paintCell(cellIndex);
+            if (painted) lastPlacedIndex = cellIndex;
+          }
+        }
+        lastPointerPos = { x: nx, y: ny };
+      }
+    });
   };
 
-  /*
-   * Lifting the finger is not a send.
-   *
-   * The debounce already fires shortly after any pause, and a pause is exactly
-   * what lifting a finger produces — so tying a request to `pointerup` would
-   * just mean somebody tapping forty squares one at a time sends forty
-   * requests. All this has to do is stop tracking the drag.
-   */
+  const handlePointerUp = (event: PointerEvent) => {
+    activePointers.delete(event.pointerId);
+    if (activePointers.size < 2) {
+      initialPinchDist = null;
+    }
+    if (activePointers.size === 0) {
+      endStroke();
+    }
+  };
+
   const endStroke = () => {
     if (!drawing()) return;
     setDrawing(false);
+    lastPointerPos = null;
+    lastPlacedIndex = null;
+  };
+
+  const handleWheel = (e: WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.2 : 0.2;
+      setZoom((z) => Math.min(3.5, Math.max(1, Math.round((z + delta) * 10) / 10)));
+    }
   };
 
   return (
-    <div class="space-y-3">
-      <div class="flex flex-wrap items-center justify-end gap-2">
-        {/* − · Fit · + — a step each way, and one press back to the whole thing. */}
-        <div class="flex items-center gap-1">
+    <div
+      ref={(el) => (rootRef = el)}
+      class="w-full flex flex-col items-center justify-center space-y-1.5"
+    >
+      {/* ---------------- Mobile Only Top Utility Bar (Single Compact Line) ---------------- */}
+      <div class="lg:hidden w-full flex items-center justify-between gap-1 px-1">
+        <Show when={canPlace()}>
+          <span
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-black shrink-0"
+            style={{
+              background: "var(--paper)",
+              border: "var(--ink-w) solid var(--ink)",
+              color: "var(--ink)",
+            }}
+          >
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-[var(--pop-teal)]" />
+            {left()} left
+          </span>
+        </Show>
+
+        <div class="flex items-center gap-1 shrink-0 ml-auto">
           <button
             type="button"
-            class="btn-ghost text-xs px-2.5"
-            disabled={zoom() <= ZOOM_STEPS[0]}
-            title="Zoom out"
-            aria-label="Zoom out"
-            onClick={() => stepZoom(-1)}
+            class="btn-ghost text-[10.5px] px-1.5 py-0.5 inline-flex items-center gap-1 font-extrabold cursor-pointer"
+            onClick={() => setShowHowTo(true)}
+            title="How to draw"
           >
-            <ZoomOut size={14} strokeWidth={2.5} />
+            <HelpCircle size={12} strokeWidth={2.5} />
+            <span class="hidden xs:inline">How to draw</span>
           </button>
+
+          <div class="flex items-center gap-0.5">
+            <button
+              type="button"
+              class="btn-ghost text-xs p-1 cursor-pointer"
+              disabled={zoom() <= ZOOM_STEPS[0]}
+              title="Zoom out"
+              aria-label="Zoom out"
+              onClick={() => stepZoom(-1)}
+            >
+              <ZoomOut size={12} strokeWidth={2.5} />
+            </button>
+            <button
+              type="button"
+              class="btn-ghost text-[10.5px] px-1.5 py-0.5 cursor-pointer font-bold"
+              disabled={zoom() === 1}
+              title="Fit"
+              onClick={() => setZoom(1)}
+            >
+              Fit
+            </button>
+            <button
+              type="button"
+              class="btn-ghost text-xs p-1 cursor-pointer"
+              disabled={zoom() >= ZOOM_STEPS[ZOOM_STEPS.length - 1]}
+              title="Zoom in"
+              aria-label="Zoom in"
+              onClick={() => stepZoom(1)}
+            >
+              <ZoomIn size={12} strokeWidth={2.5} />
+            </button>
+          </div>
+
           <button
             type="button"
-            class="btn-ghost text-xs px-2.5"
-            disabled={zoom() === 1}
-            title="Fit the whole pookalam"
-            onClick={() => setZoom(1)}
+            class="btn-ghost text-xs p-1 inline-flex items-center justify-center cursor-pointer"
+            disabled={busy()}
+            onClick={() => void load()}
+            title="Refresh"
+            aria-label="Refresh"
           >
-            Fit
-          </button>
-          <button
-            type="button"
-            class="btn-ghost text-xs px-2.5"
-            disabled={zoom() >= ZOOM_STEPS[ZOOM_STEPS.length - 1]}
-            title="Zoom in"
-            aria-label="Zoom in"
-            onClick={() => stepZoom(1)}
-          >
-            <ZoomIn size={14} strokeWidth={2.5} />
+            <RefreshCw size={12} strokeWidth={2.5} />
           </button>
         </div>
-        <button
-          type="button"
-          class="btn-ghost text-xs inline-flex items-center gap-1.5"
-          disabled={busy()}
-          onClick={() => void load()}
-        >
-          <RefreshCw size={13} strokeWidth={2.5} />
-          <span>Refresh</span>
-        </button>
       </div>
 
-      {/* ------------------------------------------------------- the canvas */}
-      {/*
-        At 1x the square already fits, so the container never scrolls and a
-        swipe scrolls the page as normal. At 2x it becomes a pannable window —
-        `touch-action` has to say so explicitly or the browser keeps the
-        gesture for the page and the canvas cannot be dragged.
-      */}
-      <div
-        ref={(el) => (shell = el)}
-        class="w-full scrollbar-none"
-        classList={{ "overflow-auto": zoom() > 1 }}
-        style={{
-          "max-height": zoom() > 1 ? `${fit()}px` : undefined,
-          "touch-action": zoom() > 1 ? "pan-x pan-y" : "auto",
-        }}
-      >
-        <canvas
-          ref={(el) => (canvas = el)}
-          onPointerDown={beginStroke}
-          onPointerMove={extendStroke}
-          onPointerUp={endStroke}
-          onPointerCancel={endStroke}
-          class="block mx-auto rounded"
+      {/* ---------------- Main Drawing Arena: 3-Column Best-Effort Layout ---------------- */}
+      <div class="flex items-center justify-center gap-3 lg:gap-4 w-full max-w-full">
+        {/* Left Flank: Desktop Vertical Poov Brushes */}
+        <Show when={canPlace()}>
+          <div
+            class="hidden lg:flex flex-col card card-plain p-1.5 space-y-1 shrink-0 w-44 self-center"
+            style={{
+              border: "var(--ink-w) solid var(--ink)",
+              background: "var(--paper)",
+            }}
+          >
+            <p class="font-black text-[10px] uppercase tracking-wider text-center m-0 text-[var(--ink)]">
+              Pick Poov
+            </p>
+            <div class="flex flex-col gap-0.5 w-full">
+              <For each={FLOWERS}>
+                {(flower) => (
+                  <button
+                    type="button"
+                    title={`${flower.name} (${flower.english})`}
+                    onClick={() => setPicked(flower)}
+                    class="flex items-center gap-2 px-2 py-1 rounded transition-all cursor-pointer text-left w-full"
+                    style={{
+                      border: "1.5px solid var(--ink)",
+                      background:
+                        picked().id === flower.id ? "var(--pop-yellow)" : "var(--paper-2)",
+                      transform: picked().id === flower.id ? "translateX(2px)" : undefined,
+                    }}
+                  >
+                    <div class="w-5 h-5 shrink-0 flex items-center justify-center">
+                      <FlowerSwatch flower={flower} size={20} />
+                    </div>
+                    <span class="text-[9px] font-black uppercase tracking-tight text-[var(--ink)] leading-tight whitespace-nowrap">
+                      {flower.name}
+                    </span>
+                  </button>
+                )}
+              </For>
+            </div>
+          </div>
+        </Show>
+
+        {/* Center: Large Centered Canvas */}
+        <div class="flex flex-col items-center justify-center shrink-0 max-w-full">
+          {/* Center Canvas Viewport (Fixed dimensions, never overflows surrounding layout) */}
+          <div
+            ref={(el) => (shell = el)}
+            class="scrollbar-none relative rounded"
+            classList={{
+              "overflow-auto": zoom() > 1,
+              "overflow-hidden flex items-center justify-center": zoom() <= 1,
+            }}
+            style={{
+              width: `${fit()}px`,
+              height: `${fit()}px`,
+              "max-width": "100%",
+              "max-height": `${fit()}px`,
+              border: "var(--ink-w-bold) solid var(--ink)",
+              background: GROUND,
+              "touch-action": zoom() > 1 ? "pan-x pan-y" : "none",
+            }}
+          >
+            <canvas
+              ref={(el) => (canvas = el)}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              onWheel={handleWheel}
+              class="block select-none"
+              style={{
+                "touch-action": "none",
+                cursor: canPlace()
+                  ? 'url("/cursors/muthukuda-point.png") 6 2, crosshair'
+                  : 'url("/cursors/muthukuda.png") 6 2, default',
+              }}
+            />
+          </div>
+
+          <Show when={loaded() && !open()}>
+            <p class="font-extrabold text-xs mt-1 text-center" style={{ color: "var(--pop-red)" }}>
+              The shared pookalam is closed right now.
+            </p>
+          </Show>
+          <Show when={loaded() && open() && !canPlace()}>
+            <p class="font-semibold text-xs mt-1 text-center">
+              <a
+                href="/auth/signin"
+                class="underline decoration-2 underline-offset-4 font-extrabold"
+              >
+                Sign in
+              </a>{" "}
+              to add your flowers.
+            </p>
+          </Show>
+          <Show when={note()}>
+            <p
+              class="font-extrabold text-xs mt-1 text-center m-0"
+              style={{ color: "var(--pop-red)" }}
+            >
+              {note()}
+            </p>
+          </Show>
+        </div>
+
+        {/* Right Flank: Desktop Action & Status Controls */}
+        <div class="hidden lg:flex flex-col space-y-1.5 shrink-0 w-40 self-center">
+          {/* Status Card */}
+          <Show when={canPlace()}>
+            <div
+              class="card card-plain p-2 space-y-0.5 text-center"
+              style={{
+                border: "var(--ink-w) solid var(--ink)",
+                background: "var(--paper)",
+              }}
+            >
+              <span class="inline-flex items-center gap-1.5 text-[10.5px] font-black uppercase tracking-wider text-[var(--ink)]">
+                <span class="inline-block w-2 h-2 rounded-full bg-[var(--pop-teal)]" />
+                {left()} left today
+              </span>
+              <p class="text-[9.5px] font-extrabold m-0" style={{ color: "var(--ink-soft)" }}>
+                {placed()} / {CELL_COUNT} filled
+              </p>
+            </div>
+          </Show>
+
+          {/* Action Tools Card */}
+          <div
+            class="card card-plain p-1.5 space-y-1"
+            style={{
+              border: "var(--ink-w) solid var(--ink)",
+              background: "var(--paper)",
+            }}
+          >
+            <button
+              type="button"
+              class="btn-ghost text-[11px] px-2 py-1 w-full inline-flex items-center justify-center gap-1 font-black cursor-pointer"
+              onClick={() => setShowHowTo(true)}
+              title="How to draw"
+            >
+              <HelpCircle size={13} strokeWidth={2.5} />
+              <span>How to draw</span>
+            </button>
+
+            <div class="flex items-center justify-between gap-1 pt-1 border-t border-[var(--ink)]/20">
+              <button
+                type="button"
+                class="btn-ghost text-xs p-1 flex-1 inline-flex items-center justify-center cursor-pointer"
+                disabled={zoom() <= ZOOM_STEPS[0]}
+                title="Zoom out"
+                aria-label="Zoom out"
+                onClick={() => stepZoom(-1)}
+              >
+                <ZoomOut size={13} strokeWidth={2.5} />
+              </button>
+              <button
+                type="button"
+                class="btn-ghost text-[11px] px-1.5 py-1 flex-1 inline-flex items-center justify-center font-bold cursor-pointer"
+                disabled={zoom() === 1}
+                title="Fit whole pookalam"
+                onClick={() => setZoom(1)}
+              >
+                Fit
+              </button>
+              <button
+                type="button"
+                class="btn-ghost text-xs p-1 flex-1 inline-flex items-center justify-center cursor-pointer"
+                disabled={zoom() >= ZOOM_STEPS[ZOOM_STEPS.length - 1]}
+                title="Zoom in"
+                aria-label="Zoom in"
+                onClick={() => stepZoom(1)}
+              >
+                <ZoomIn size={13} strokeWidth={2.5} />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              class="btn-ghost text-[11px] px-2 py-1 w-full inline-flex items-center justify-center gap-1 font-extrabold cursor-pointer"
+              disabled={busy()}
+              onClick={() => void load()}
+            >
+              <RefreshCw size={12} strokeWidth={2.5} />
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Poov Palette (< 1024px) - Clean 2-row layout */}
+      <Show when={canPlace()}>
+        <div
+          class="lg:hidden card card-plain space-y-1 p-1.5 sm:p-2 w-full max-w-md mx-auto"
           style={{
             border: "var(--ink-w) solid var(--ink)",
-            background: GROUND,
-            cursor: canPlace() ? "crosshair" : "default",
+            background: "var(--paper)",
           }}
-        />
-      </div>
-
-      <Show when={loaded() && !open()}>
-        <p class="font-extrabold text-sm" style={{ color: "var(--pop-red)" }}>
-          The shared pookalam is closed right now.
-        </p>
-      </Show>
-      <Show when={loaded() && open() && !canPlace()}>
-        <p class="font-semibold text-sm">
-          <a href="/auth/signin" class="underline decoration-2 underline-offset-4">
-            Sign in
-          </a>{" "}
-          to add your flowers.
-        </p>
-      </Show>
-      <Show when={note()}>
-        <p class="font-extrabold text-sm m-0" style={{ color: "var(--pop-red)" }}>
-          {note()}
-        </p>
-      </Show>
-
-      <HowToDraw />
-
-      {/* ------------------------------------------------------- the palette */}
-      <Show when={canPlace()}>
-        <div class="card card-plain space-y-2">
-          <div class="flex flex-wrap items-baseline justify-between gap-2">
-            <p class="font-black text-sm m-0">Pick your poov</p>
-            <p class="text-xs font-extrabold m-0" style={{ color: "var(--ink-soft)" }}>
-              {left()} left today · {placed()} of {CELL_COUNT} squares filled
-            </p>
+        >
+          <div class="space-y-0.5">
+            <div class="grid grid-cols-5 gap-1 sm:gap-1.5">
+              <For each={FLOWERS.slice(0, 5)}>
+                {(flower) => (
+                  <button
+                    type="button"
+                    title={`${flower.name} (${flower.english})`}
+                    onClick={() => setPicked(flower)}
+                    class="flex flex-col items-center justify-center p-0.5 rounded transition-all cursor-pointer min-w-0"
+                    style={{
+                      border: "var(--ink-w) solid var(--ink)",
+                      background:
+                        picked().id === flower.id ? "var(--pop-yellow)" : "var(--paper-2)",
+                      transform: picked().id === flower.id ? "translateY(-1px)" : undefined,
+                    }}
+                  >
+                    <FlowerSwatch flower={flower} size={18} />
+                    <span class="block text-[7px] sm:text-[8px] font-black uppercase tracking-tight text-center pt-0.5 text-[var(--ink)] leading-none truncate w-full">
+                      {flower.name}
+                    </span>
+                  </button>
+                )}
+              </For>
+            </div>
+            <div class="grid grid-cols-4 gap-1 sm:gap-1.5 max-w-[80%] mx-auto">
+              <For each={FLOWERS.slice(5)}>
+                {(flower) => (
+                  <button
+                    type="button"
+                    title={`${flower.name} (${flower.english})`}
+                    onClick={() => setPicked(flower)}
+                    class="flex flex-col items-center justify-center p-0.5 rounded transition-all cursor-pointer min-w-0"
+                    style={{
+                      border: "var(--ink-w) solid var(--ink)",
+                      background:
+                        picked().id === flower.id ? "var(--pop-yellow)" : "var(--paper-2)",
+                      transform: picked().id === flower.id ? "translateY(-1px)" : undefined,
+                    }}
+                  >
+                    <FlowerSwatch flower={flower} size={18} />
+                    <span class="block text-[7px] sm:text-[8px] font-black uppercase tracking-tight text-center pt-0.5 text-[var(--ink)] leading-none truncate w-full">
+                      {flower.name}
+                    </span>
+                  </button>
+                )}
+              </For>
+            </div>
           </div>
-          <div class="flex flex-wrap gap-2">
-            <For each={FLOWERS}>
-              {(flower) => (
-                <button
-                  type="button"
-                  title={`${flower.name} — ${flower.english}`}
-                  onClick={() => setPicked(flower)}
-                  class="rounded p-1 leading-none transition-transform"
-                  style={{
-                    border: "var(--ink-w) solid var(--ink)",
-                    background: picked().id === flower.id ? "var(--pop-yellow)" : "var(--paper)",
-                    transform: picked().id === flower.id ? "translateY(-2px)" : undefined,
-                  }}
-                >
-                  <FlowerSwatch flower={flower} />
-                  <span class="block text-[9px] font-extrabold uppercase tracking-wide pt-0.5">
-                    {flower.name}
-                  </span>
-                </button>
-              )}
-            </For>
+        </div>
+      </Show>
+
+      {/* ---------------- How To Draw Dialog Popup Modal */}
+      <Show when={showHowTo()}>
+        <div
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowHowTo(false);
+          }}
+        >
+          <div
+            class="card card-plain max-w-lg w-full p-4 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto relative animate-in fade-in zoom-in-95 duration-150"
+            style={{
+              background: "var(--paper)",
+              border: "var(--ink-w-bold) solid var(--ink)",
+            }}
+          >
+            <div class="flex items-center justify-between gap-3 border-b-2 border-[var(--ink)] pb-3">
+              <h3
+                class="text-xl font-black m-0"
+                style={{ "font-family": "var(--font-stack-display)" }}
+              >
+                How to draw
+              </h3>
+              <button
+                type="button"
+                class="grid h-8 w-8 place-items-center rounded-full border-2 border-[var(--ink)] bg-[var(--paper-3)] font-black text-sm hover:bg-[var(--pop-red)] hover:text-white transition-colors cursor-pointer"
+                onClick={() => setShowHowTo(false)}
+                title="Close"
+              >
+                <X size={16} strokeWidth={3} />
+              </button>
+            </div>
+
+            <StrokeDemo />
+
+            <ol class="space-y-2.5 m-0 p-0 list-none">
+              <For each={HOW_TO}>
+                {(step, i) => (
+                  <li class="flex items-start gap-3">
+                    <span
+                      class="grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-black tabular-nums"
+                      style={{
+                        background: "var(--pop-yellow)",
+                        border: "2px solid var(--ink)",
+                        "font-family": "var(--font-stack-display)",
+                      }}
+                    >
+                      {i() + 1}
+                    </span>
+                    <span class="text-xs sm:text-sm font-semibold leading-snug text-[var(--ink)]">
+                      {step}
+                    </span>
+                  </li>
+                )}
+              </For>
+            </ol>
           </div>
         </div>
       </Show>
@@ -508,80 +801,13 @@ export function CollabPookalam() {
 }
 
 const HOW_TO: string[] = [
-  "Pick a poov from the row under the canvas — ten real ones, the same flowers people actually carry to a pookalam.",
-  "Tap a bare square to place it, or press and drag to lay a whole line of them at once.",
-  "You can't paint over somebody else's flower. Work around it — that's the game.",
-  "You get a set number a day. Spend them on one dense patch or scatter them; both are legitimate.",
-  "At midnight it's kept and tomorrow's flowers land on top, so today's work shows through the gaps forever.",
+  "Pick a poov from the catalogue — nine authentic Kerala flowers under their real Malayalam names.",
+  "Tap a bare square to place it, or press and drag to lay a smooth line of petals at once.",
+  "You can't paint over somebody else's flower. Work around it and build together — that's the magic.",
+  "You get a set number of flowers a day. Spend them on one dense patch or scatter them across rings.",
+  "At midnight today's canvas is preserved, and tomorrow's flowers land on top.",
 ];
 
-/**
- * The how-to, in the shape every mini-game here uses.
- *
- * Collapsed by default so it never pushes the canvas off screen, and the demo
- * above the steps is a real loop rather than a diagram — the one thing that is
- * genuinely hard to convey in a sentence is that you can *drag*, and a picture
- * of flowers appearing one after another along an arc says it instantly.
- */
-function HowToDraw() {
-  const [open, setOpen] = createSignal(false);
-  return (
-    <section class="card card-plain space-y-3">
-      <button
-        type="button"
-        class="flex w-full items-center justify-between gap-3 text-left"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open()}
-      >
-        <span class="rule flex-1">How to draw</span>
-        <span
-          class="grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm"
-          style={{
-            background: "var(--paper-3)",
-            border: "2px solid var(--ink)",
-            "font-family": "var(--font-stack-display)",
-            "font-weight": 800,
-          }}
-        >
-          {open() ? "−" : "+"}
-        </span>
-      </button>
-
-      <Show when={open()}>
-        <div class="space-y-3">
-          <StrokeDemo />
-          <ol class="space-y-2.5">
-            <For each={HOW_TO}>
-              {(step, i) => (
-                <li class="flex gap-3">
-                  <span
-                    class="grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs tabular-nums"
-                    style={{
-                      background: "var(--pop-yellow)",
-                      border: "2px solid var(--ink)",
-                      "font-family": "var(--font-stack-display)",
-                      "font-weight": 800,
-                    }}
-                  >
-                    {i() + 1}
-                  </span>
-                  <span class="text-sm font-semibold leading-snug">{step}</span>
-                </li>
-              )}
-            </For>
-          </ol>
-        </div>
-      </Show>
-    </section>
-  );
-}
-
-/**
- * A hand laying an arc of flowers, on a loop.
- *
- * Drawn with the same `drawFlower` the real canvas uses, so the demo can never
- * end up showing a flower that does not exist or a style that has drifted.
- */
 function StrokeDemo() {
   let el: HTMLCanvasElement | undefined;
   const [step, setStep] = createSignal(0);
@@ -595,9 +821,9 @@ function StrokeDemo() {
   createEffect(() => {
     const drawn = Math.min(step(), TOTAL);
     if (!el) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.max(window.devicePixelRatio || 1, 2);
     const w = el.clientWidth || 280;
-    const h = 120;
+    const h = 110;
     el.width = Math.floor(w * dpr);
     el.height = Math.floor(h * dpr);
     const ctx = el.getContext("2d");
@@ -605,10 +831,9 @@ function StrokeDemo() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
 
-    const r = 11;
+    const r = 10;
     for (let i = 0; i < drawn; i++) {
       const t = i / (TOTAL - 1);
-      // A shallow arc, so it reads as a swept finger rather than a straight rule.
       const x = w * 0.12 + t * w * 0.76;
       const y = h * 0.58 - Math.sin(t * Math.PI) * h * 0.24;
       drawFlower(ctx, x, y, r, FLOWERS[i % FLOWERS.length]);
@@ -619,41 +844,19 @@ function StrokeDemo() {
     <div
       class="relative w-full overflow-hidden rounded"
       style={{
-        height: "120px",
+        height: "110px",
         border: "var(--ink-w) solid var(--ink)",
         background: "var(--paper-3)",
       }}
     >
-      <canvas ref={(node) => (el = node)} class="block w-full" style={{ height: "120px" }} />
-      <p class="absolute inset-x-0 bottom-1 text-center text-[0.65rem] font-extrabold uppercase tracking-wider text-muted">
+      <canvas ref={(node) => (el = node)} class="block w-full" style={{ height: "110px" }} />
+      <p class="absolute inset-x-0 bottom-1 text-center text-[0.65rem] font-extrabold uppercase tracking-wider text-muted m-0">
         press and drag to lay a line
       </p>
     </div>
   );
 }
 
-/*
- * No guide rings under the flowers.
- *
- * A chalked-out ground — concentric rings and sixteen spokes, the way a
- * pookalam is actually laid — was tried here and looked like a dartboard
- * somebody had dropped flowers on. Bare paper is the better floor: it reads as
- * a surface waiting to be used rather than a diagram to be filled in, and it
- * puts nothing behind the artwork to argue with it.
- */
-
-/**
- * Paints one day's flowers onto the disc.
- *
- * Position, size and facing all come from the slot, so the arrangement is the
- * pookalam's and not the storage array's. Each flower is turned to face out
- * along its own radius — which is what a real one does and what stops a filled
- * ring reading as a row of identical stamps bent round a curve.
- *
- * The jitter and size wobble are hashed from the cell index: deterministic, so
- * every person looking at this pookalam sees exactly the same one, and every
- * reload redraws it identically.
- */
 function paintLayer(
   ctx: CanvasRenderingContext2D,
   cells: Uint8Array,
@@ -667,8 +870,8 @@ function paintLayer(
     if (!flower) continue;
 
     const slot = SLOTS[i];
-    const jitter = ((((i * 2654435761) >>> 0) % 1000) / 1000 - 0.5) * 0.38;
-    const wobble = 0.94 + (((i * 40503) >>> 0) % 100) / 800;
+    const jitter = ((((i * 2654435761) >>> 0) % 1000) / 1000 - 0.5) * 0.12;
+    const wobble = 0.98 + (((i * 40503) >>> 0) % 100) / 2500;
 
     drawFlower(
       ctx,
@@ -681,21 +884,28 @@ function paintLayer(
   }
 }
 
-/** One flower on its own tiny canvas, so the palette and the grid never drift. */
-function FlowerSwatch(props: { flower: Flower }) {
+/** One flower on its own tiny canvas, centered with crisp DPR. */
+function FlowerSwatch(props: { flower: Flower; size?: number }) {
   let el: HTMLCanvasElement | undefined;
+  const size = props.size || 26;
   const paint = () => {
     if (!el) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const size = 26;
-    el.width = size * dpr;
-    el.height = size * dpr;
+    const dpr = Math.max(window.devicePixelRatio || 1, 2);
+    el.width = Math.floor(size * dpr);
+    el.height = Math.floor(size * dpr);
     const ctx = el.getContext("2d");
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, size, size);
-    drawFlower(ctx, size / 2, size / 2, size / 2 - 1, props.flower);
+    drawFlower(ctx, size / 2, size / 2, size * 0.44, props.flower);
   };
+  createEffect(paint);
   onMount(paint);
-  return <canvas ref={(node) => (el = node)} style={{ width: "26px", height: "26px" }} />;
+  return (
+    <canvas
+      ref={(node) => (el = node)}
+      style={{ width: `${size}px`, height: `${size}px` }}
+      class="block shrink-0"
+    />
+  );
 }
