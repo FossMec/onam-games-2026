@@ -725,30 +725,44 @@ export function CollabPookalam() {
       ref={(el) => (rootRef = el)}
       class="w-full flex flex-col items-center justify-center space-y-2 relative"
     >
-      {/* ---------------- Mobile Only Top Utility Bar (Single Compact Line) ---------------- */}
+      {/* ---------------- Mobile Only Top Utility Bar (Shows 4h Period & Daily Limits) ---------------- */}
       <div class="lg:hidden w-full flex items-center justify-between gap-1 px-1">
         <Show when={canPlace()}>
-          <span
-            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-black shrink-0"
-            style={{
-              background: left() <= 0 ? "var(--paper-2)" : "var(--paper)",
-              border: "var(--ink-w) solid var(--ink)",
-              color: left() <= 0 ? "var(--ink-soft)" : "var(--ink)",
-            }}
-          >
+          <div class="flex items-center gap-1 shrink-0">
             <span
-              class="inline-block w-1.5 h-1.5 rounded-full"
-              classList={{
-                "bg-[var(--pop-teal)]": left() > 0,
-                "bg-[var(--ink-soft)]": left() <= 0,
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black"
+              style={{
+                background: windowRemaining() <= 0 ? "var(--paper-3)" : "var(--paper)",
+                border: "var(--ink-w) solid var(--ink)",
+                color: "var(--ink)",
               }}
-            />
-            {left() > 0
-              ? `${left()} left`
-              : isWindowCapped()
-                ? `+${windowLimit()} ${nextDropIn() ?? "soon"}`
-                : "Daily max"}
-          </span>
+              title="4-Hour Rolling Window Limit"
+            >
+              <span
+                class="inline-block w-1.5 h-1.5 rounded-full"
+                classList={{
+                  "bg-[var(--pop-teal)]": windowRemaining() > 0,
+                  "bg-[var(--pop-red)]": windowRemaining() <= 0,
+                }}
+              />
+              4h Drop:{" "}
+              <strong>
+                {windowRemaining()}/{windowLimit()}
+              </strong>
+            </span>
+
+            <span
+              class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9.5px] font-bold"
+              style={{
+                background: "var(--paper-2)",
+                border: "1px solid var(--ink)",
+                color: "var(--ink-soft)",
+              }}
+              title="Daily Total Allowance (24 Hours)"
+            >
+              Today: {dailyRemaining()}/{dailyLimit()}
+            </span>
+          </div>
         </Show>
 
         <div class="flex items-center gap-1 shrink-0 ml-auto">
@@ -1098,25 +1112,24 @@ export function CollabPookalam() {
           {/* Status Card */}
           <Show when={canPlace()}>
             <div
-              class="card card-plain p-2 space-y-0.5 text-center w-full"
+              class="card card-plain p-2 space-y-1 text-center w-full"
               style={{
                 border: "var(--ink-w) solid var(--ink)",
                 background: "var(--paper)",
               }}
             >
-              <span class="inline-flex items-center gap-1.5 text-[10.5px] font-black uppercase tracking-wider text-[var(--ink)]">
-                <span
-                  class="inline-block w-2 h-2 rounded-full"
-                  classList={{
-                    "bg-[var(--pop-teal)]": left() > 0,
-                    "bg-[var(--ink-soft)]": left() <= 0,
-                  }}
-                />
-                {left() > 0 ? `${left()} left now` : "Window max"}
-              </span>
-              <p class="text-[9px] font-bold m-0" style={{ color: "var(--ink-soft)" }}>
-                {dailyRemaining()}/{dailyLimit()} left today
-              </p>
+              <div class="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-[var(--ink)]">
+                <span>4h Drop:</span>
+                <span class="text-[var(--pop-teal)] font-extrabold">
+                  {windowRemaining()} / {windowLimit()}
+                </span>
+              </div>
+              <div class="flex items-center justify-between text-[9.5px] font-bold text-[var(--ink-soft)]">
+                <span>Today:</span>
+                <span>
+                  {dailyRemaining()} / {dailyLimit()}
+                </span>
+              </div>
               <Show when={isWindowCapped()}>
                 <p class="text-[8.5px] font-black text-[var(--pop-teal)] m-0 pt-0.5 flex items-center justify-center gap-1">
                   <Clock size={9} strokeWidth={2.5} />

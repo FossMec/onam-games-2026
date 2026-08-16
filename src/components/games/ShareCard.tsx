@@ -1,4 +1,14 @@
-import { Camera, Download, Eye, EyeOff, Maximize2, Share2, Trash2, X } from "lucide-solid";
+import {
+  Camera,
+  Download,
+  Eye,
+  EyeOff,
+  Maximize2,
+  RefreshCw,
+  Share2,
+  Trash2,
+  X,
+} from "lucide-solid";
 import { Show, createEffect, createSignal, on, onCleanup, onMount } from "solid-js";
 import { fileToWebpDataUrl } from "~/lib/avatar";
 import { canvasToBlob, captionFor, renderShareCard, type ShareCardData } from "~/lib/share-card";
@@ -18,6 +28,14 @@ export function ShareCard(props: ShareCardProps) {
   const [file, setFile] = createSignal<File | null>(null);
   const [zoomed, setZoomed] = createSignal(false);
   const [note, setNote] = createSignal("");
+
+  // Live Camera Viewfinder State
+  const [cameraActive, setCameraActive] = createSignal(false);
+  const [facingMode, setFacingMode] = createSignal<"user" | "environment">("user");
+  const [cameraLoading, setCameraLoading] = createSignal(false);
+  const [cameraError, setCameraError] = createSignal("");
+  let videoRef: HTMLVideoElement | undefined;
+  let streamRef: MediaStream | null = null;
 
   // Customization signals
   const [hideAvatar, setHideAvatar] = createSignal(false);
@@ -111,6 +129,89 @@ export function ShareCard(props: ShareCardProps) {
     onCleanup(() => window.removeEventListener("keydown", onKey, { capture: true }));
   });
 
+  const stopCamera = () => {
+    if (streamRef) {
+      streamRef.getTracks().forEach((track) => track.stop());
+      streamRef = null;
+    }
+    setCameraActive(false);
+    setCameraLoading(false);
+    setCameraError("");
+  };
+
+  const startCamera = async (mode: "user" | "environment" = facingMode()) => {
+    if (typeof navigator === "undefined" || !navigator?.mediaDevices?.getUserMedia) {
+      document.getElementById("card-photo-input")?.click();
+      return;
+    }
+    stopCamera();
+    setCameraActive(true);
+    setCameraLoading(true);
+    setCameraError("");
+    setFacingMode(mode);
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: mode,
+          width: { ideal: 1080 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      });
+      streamRef = stream;
+      setCameraLoading(false);
+      // Wait for next tick so videoRef is bound
+      setTimeout(() => {
+        if (videoRef) {
+          videoRef.srcObject = stream;
+          void videoRef.play().catch(() => {});
+        }
+      }, 50);
+    } catch (err) {
+      console.error("[camera] access error:", err);
+      setCameraError("Camera permission denied or unavailable.");
+      setCameraLoading(false);
+    }
+  };
+
+  const flipCamera = async () => {
+    const nextMode = facingMode() === "user" ? "environment" : "user";
+    await startCamera(nextMode);
+  };
+
+  const snapPhoto = () => {
+    if (!videoRef) return;
+    const vWidth = videoRef.videoWidth || 640;
+    const vHeight = videoRef.videoHeight || 480;
+    const dim = Math.min(vWidth, vHeight);
+    const sx = Math.max(0, (vWidth - dim) / 2);
+    const sy = Math.max(0, (vHeight - dim) / 2);
+
+    const canvas = document.createElement("canvas");
+    const targetDim = Math.min(640, dim);
+    canvas.width = targetDim;
+    canvas.height = targetDim;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    if (facingMode() === "user") {
+      // Mirror horizontally so the selfie matches what the player saw on screen
+      ctx.translate(targetDim, 0);
+      ctx.scale(-1, 1);
+    }
+
+    ctx.drawImage(videoRef, sx, sy, dim, dim, 0, 0, targetDim, targetDim);
+    const dataUrl = canvas.toDataURL("image/webp", 0.9);
+    setCustomPhoto(dataUrl);
+    setHideAvatar(false);
+    stopCamera();
+  };
+
+  onCleanup(() => {
+    stopCamera();
+  });
+
   const onPhotoSelect = async (file: File | undefined) => {
     if (!file) return;
     try {
@@ -156,23 +257,11 @@ export function ShareCard(props: ShareCardProps) {
 
   const preview = () => (
     <div
-      class="relative shrink-0 overflow-hidden rounded"
-      classList={{
-        "cursor-zoom-in": phase() === "ready",
-        "mx-auto": !props.compact,
-      }}
+      class="relative shrink-0 overflow-hidden rounded transition-all cursor-zoom-in"
       style={{
-        /*
-         * Width is capped by the height it implies, so the card can never make
-         * its dialog scroll.
-         *
-         * A 9:16 box given only a width is 1.78× as tall as it is wide, and at
-         * 280px that is ~498px of card before the title and three buttons are
-         * counted. On a short phone the modal overflowed and had to be
-         * scrolled to reach "Share". The third term keeps the rendered height
-         * inside whatever the viewport has left, and the card shrinks instead.
-         */
-        width: props.compact ? "118px" : "min(280px, 68vw, calc((100dvh - 21rem) * 9 / 16))",
+        width: props.compact
+          ? "min(220px, 62vw, calc((100dvh - 23rem) * 9 / 16))"
+          : "min(280px, 68vw, calc((100dvh - 21rem) * 9 / 16))",
         "aspect-ratio": "9 / 16",
         border: "var(--ink-w) solid var(--ink)",
         background: "var(--paper-3)",
@@ -315,13 +404,14 @@ export function ShareCard(props: ShareCardProps) {
 
         {/* Selfie camera attachment controls */}
         <div class="flex items-center gap-2 pt-1 border-t border-[var(--ink-soft)]">
-          <label
-            for="card-photo-input"
+          <button
+            type="button"
+            onClick={() => void startCamera()}
             class="btn-ghost py-1 px-2.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
           >
             <Camera size={14} />
             <span>{customPhoto() ? "Retake selfie" : "Take a selfie"}</span>
-          </label>
+          </button>
           <input
             id="card-photo-input"
             type="file"
@@ -335,7 +425,7 @@ export function ShareCard(props: ShareCardProps) {
             <button
               type="button"
               onClick={() => setCustomPhoto(null)}
-              class="btn-ghost py-1 px-2 text-xs font-bold text-[var(--pop-red)] flex items-center gap-1"
+              class="btn-ghost py-1 px-2 text-xs font-bold text-[var(--pop-red)] flex items-center gap-1 cursor-pointer"
               title="Remove selfie"
             >
               <Trash2 size={13} />
@@ -349,10 +439,10 @@ export function ShareCard(props: ShareCardProps) {
 
   const actions = () => (
     <Show when={phase() !== "failed"}>
-      <div class="flex flex-1 flex-col justify-center gap-2">
+      <div class="flex flex-1 flex-col justify-center gap-2 w-full">
         <button
           type="button"
-          class="btn-ghost flex items-center justify-center gap-1.5 text-xs py-1.5"
+          class="btn-ghost flex items-center justify-center gap-1.5 text-xs py-1.5 cursor-pointer"
           onClick={() => setShowOptions((v) => !v)}
         >
           <span>{showOptions() ? "Hide options ▲" : "Customize card ▼"}</span>
@@ -362,7 +452,7 @@ export function ShareCard(props: ShareCardProps) {
 
         <button
           type="button"
-          class="btn-brand flex items-center justify-center gap-2"
+          class="btn-brand flex items-center justify-center gap-2 cursor-pointer"
           classList={{ "text-lg": !props.compact }}
           disabled={phase() !== "ready"}
           onClick={() => void share()}
@@ -372,7 +462,7 @@ export function ShareCard(props: ShareCardProps) {
         </button>
         <button
           type="button"
-          class="btn-ghost flex items-center justify-center gap-2 text-sm"
+          class="btn-ghost flex items-center justify-center gap-2 text-sm cursor-pointer"
           disabled={phase() !== "ready"}
           onClick={download}
         >
@@ -384,16 +474,130 @@ export function ShareCard(props: ShareCardProps) {
   );
 
   return (
-    <div class="space-y-3">
+    <div class="space-y-3 w-full">
+      {/* Responsive layout: Top-stacked on mobile, side-by-side on desktop */}
       <div
+        class="flex flex-col items-center sm:flex-row sm:items-start gap-4 text-center sm:text-left w-full"
         classList={{
-          "flex items-stretch gap-3 text-left": props.compact,
-          "space-y-3": !props.compact,
+          "sm:items-center": !props.compact,
         }}
       >
-        {preview()}
-        {actions()}
+        <div class="shrink-0 flex justify-center w-full sm:w-auto">{preview()}</div>
+        <div class="flex-1 w-full max-w-sm sm:max-w-none">{actions()}</div>
       </div>
+
+      <Show when={note()}>
+        <p class="text-center font-mono text-xs text-muted">{note()}</p>
+      </Show>
+      <Show when={phase() === "failed"}>
+        <p class="text-center text-sm font-semibold text-muted">
+          Your browser would not draw the card. A screenshot works just as well.
+        </p>
+      </Show>
+
+      {/* ---------------- Live Camera Selfie Viewfinder Modal ---------------- */}
+      <Show when={cameraActive()}>
+        <div
+          class="fixed inset-0 z-[70] flex flex-col items-center justify-between p-4 bg-black/90 backdrop-blur-sm animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Take a selfie for your score card"
+        >
+          {/* Header */}
+          <div class="w-full max-w-md flex items-center justify-between z-10 pt-2 px-2">
+            <span class="text-white font-extrabold text-sm sm:text-base tracking-wide flex items-center gap-2">
+              <Camera size={18} class="text-[var(--pop-yellow)]" />
+              Frame Your Selfie
+            </span>
+            <button
+              type="button"
+              class="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white grid place-items-center cursor-pointer transition-colors"
+              onClick={stopCamera}
+              aria-label="Close camera"
+            >
+              <X size={20} strokeWidth={2.5} />
+            </button>
+          </div>
+
+          {/* Viewfinder Card Frame (Aspect Ratio Matched) */}
+          <div class="relative w-full max-w-xs aspect-square rounded-2xl overflow-hidden border-3 border-[var(--pop-yellow)] shadow-2xl bg-neutral-900 flex items-center justify-center my-auto">
+            <video
+              ref={(el) => {
+                videoRef = el;
+                if (streamRef && el) {
+                  el.srcObject = streamRef;
+                  void el.play().catch(() => {});
+                }
+              }}
+              autoplay
+              playsinline
+              muted
+              class="w-full h-full object-cover"
+              classList={{
+                "scale-x-[-1]": facingMode() === "user",
+              }}
+            />
+
+            {/* Viewfinder Guidelines */}
+            <div class="absolute inset-0 pointer-events-none border-2 border-white/20 rounded-2xl flex items-center justify-center">
+              <div class="w-3/4 h-3/4 rounded-full border border-dashed border-white/40" />
+            </div>
+
+            <Show when={cameraLoading()}>
+              <div class="absolute inset-0 bg-black/70 grid place-items-center text-white">
+                <p class="font-extrabold text-sm animate-pulse">Starting camera…</p>
+              </div>
+            </Show>
+
+            <Show when={cameraError()}>
+              <div class="absolute inset-0 bg-black/85 p-4 flex flex-col items-center justify-center text-center gap-3 text-white">
+                <p class="font-bold text-sm text-[var(--pop-red)]">{cameraError()}</p>
+                <label
+                  for="card-photo-input"
+                  class="btn-brand py-1.5 px-3 text-xs font-black cursor-pointer"
+                  onClick={stopCamera}
+                >
+                  Upload Photo Instead
+                </label>
+              </div>
+            </Show>
+          </div>
+
+          {/* Bottom Shutter & Controls */}
+          <div class="w-full max-w-md flex items-center justify-around py-4 z-10">
+            <button
+              type="button"
+              class="w-12 h-12 rounded-full bg-white/15 text-white grid place-items-center cursor-pointer hover:bg-white/25 active:scale-95 transition-all"
+              onClick={flipCamera}
+              title="Flip camera"
+              aria-label="Flip camera"
+            >
+              <RefreshCw size={20} />
+            </button>
+
+            {/* Shutter Button */}
+            <button
+              type="button"
+              class="w-18 h-18 rounded-full border-4 border-white bg-[var(--pop-yellow)] active:scale-90 hover:scale-105 transition-all grid place-items-center shadow-lg cursor-pointer"
+              onClick={snapPhoto}
+              disabled={cameraLoading() || !!cameraError()}
+              title="Snap Selfie"
+              aria-label="Snap photo"
+            >
+              <div class="w-14 h-14 rounded-full border-2 border-[var(--ink)] bg-[var(--pop-yellow)]" />
+            </button>
+
+            <button
+              type="button"
+              class="w-12 h-12 rounded-full bg-white/15 text-white grid place-items-center cursor-pointer hover:bg-white/25 active:scale-95 transition-all"
+              onClick={stopCamera}
+              title="Cancel"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+      </Show>
 
       <Show when={note()}>
         <p class="text-center font-mono text-xs text-muted">{note()}</p>

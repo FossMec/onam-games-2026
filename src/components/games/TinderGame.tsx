@@ -145,7 +145,12 @@ export function TinderGame(props: TinderGameProps) {
   const [dragX, setDragX] = createSignal(0);
   const [dragging, setDragging] = createSignal(false);
   /** The card currently flying off, so it can animate out rather than vanish. */
-  const [flying, setFlying] = createSignal<{ id: string; dir: 1 | -1 } | null>(null);
+  const [flying, setFlying] = createSignal<{
+    id: string;
+    dir: 1 | -1;
+    startX?: number;
+    startRot?: number;
+  } | null>(null);
 
   const top = () => queue()[0];
   const remaining = () => queue().length;
@@ -335,7 +340,7 @@ export function TinderGame(props: TinderGameProps) {
     void settlePass();
   });
 
-  const commit = (open: boolean) => {
+  const commit = (open: boolean, startX = 0, startRot = 0) => {
     if (frozen()) return;
     const id = top();
     if (!id) return;
@@ -343,7 +348,7 @@ export function TinderGame(props: TinderGameProps) {
     const decision = { id, open };
     const nextDecisions = [...decisions(), decision];
     setDecisions(nextDecisions);
-    setFlying({ id, dir: open ? 1 : -1 });
+    setFlying({ id, dir: open ? 1 : -1, startX, startRot });
     setDragX(0);
     setDragging(false);
 
@@ -377,7 +382,7 @@ export function TinderGame(props: TinderGameProps) {
     if (e.pointerId !== pointerId) return;
     pointerId = null;
     const x = dragX();
-    if (Math.abs(x) >= SWIPE_THRESHOLD) commit(x > 0);
+    if (Math.abs(x) >= SWIPE_THRESHOLD) commit(x > 0, x, tilt());
     else {
       setDragX(0);
       setDragging(false);
@@ -535,6 +540,8 @@ export function TinderGame(props: TinderGameProps) {
                 background: "var(--paper-2)",
                 border: "var(--ink-w-bold) solid var(--ink)",
                 "--dir": card.dir,
+                "--startX": `${card.startX ?? 0}px`,
+                "--startRot": `${card.startRot ?? 0}deg`,
                 animation: `card-fly-out ${FLY_MS}ms cubic-bezier(0.4, 0, 0.9, 0.4) forwards`,
                 "z-index": 20,
               }}
