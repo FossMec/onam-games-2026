@@ -332,6 +332,45 @@ export default function CodeAPookalam() {
         <PookalamTutorials />
       </Section>
 
+      {/* ---------------------------------- NOT INTERESTED IN CODING? BUILD THE SHARED POOKALAM */}
+      <section
+        class="card card-plain p-5 sm:p-6 relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-4"
+        style={{
+          border: "var(--ink-w-bold) solid var(--ink)",
+          background: "var(--pop-blue)",
+        }}
+      >
+        <div class="space-y-1.5 text-center sm:text-left">
+          <div class="flex items-center justify-center sm:justify-start gap-2">
+            <span class="badge" style={{ "--pop": "var(--pop-yellow)" }}>
+              No Code Needed
+            </span>
+          </div>
+          <h2
+            class="text-xl sm:text-2xl font-black m-0 text-[var(--ink)]"
+            style={{ "font-family": "var(--font-stack-display)" }}
+          >
+            Not interested in participating with code?
+          </h2>
+          <p class="m-0 text-xs sm:text-sm font-bold text-[var(--ink)] max-w-xl">
+            Build the community pookalam with us! Drop petals, collaborate on the live shared
+            canvas, and create art together throughout Onam.
+          </p>
+        </div>
+
+        <a
+          href="/#shared-pookalam"
+          class="btn-brand shrink-0 inline-flex items-center gap-2 text-xs sm:text-sm font-black whitespace-nowrap"
+          style={{
+            background: "var(--pop-yellow)",
+            color: "var(--ink)",
+          }}
+        >
+          <SpriteIcon name="pookalam-flower" size={20} />
+          <span>Draw on Community Pookalam →</span>
+        </a>
+      </section>
+
       {/* ---------------------------------------------------- BOTTOM CTA */}
       <section class="card pop-yellow p-6 sm:p-8 relative overflow-hidden">
         <Confetti seed="pookalam-footer" count={8} animate opacity={0.5} />

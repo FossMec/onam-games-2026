@@ -126,6 +126,16 @@ export function CollabPookalam() {
     return `${mins}m`;
   };
 
+  const howToSteps = () => [
+    "Pick a poov from the catalogue — nine authentic Kerala flowers under their real Malayalam names.",
+    "Tap a square to place it, or press and drag to lay a smooth line of petals at once.",
+    `Your daily flower quota is delivered in rolling 4-hour drops of ${windowLimit()} flowers each so collaboration stays active all day.`,
+    "Each flower species can occupy up to 20% of the pookalam to ensure a colorful, diverse carpet.",
+    "Drawing on top of existing flowers unlocks once the canvas is 80% filled (less than 20% empty).",
+    "Use the Eraser tool anytime if you want to clear a spot or adjust a section.",
+    "The communal canvas lives forever — come back throughout the festival to create art together!",
+  ];
+
   // Count occurrences of each flower on today's pookalam
   const flowerCounts = () => {
     const grid = today();
@@ -426,10 +436,10 @@ export function CollabPookalam() {
     if (left() <= 0) {
       if (isWindowCapped()) {
         setNote(
-          `4-hour window limit reached (10 flowers). Next drop unlocks ${nextDropIn() ?? "soon"}!`,
+          `4-hour window limit reached (${windowLimit()} flowers). Next drop unlocks ${nextDropIn() ?? "soon"}!`,
         );
       } else {
-        setNote("Daily limit reached (30 flowers). Come back tomorrow for more!");
+        setNote(`Daily limit reached (${dailyLimit()} flowers). Come back tomorrow for more!`);
       }
       return;
     }
@@ -627,7 +637,7 @@ export function CollabPookalam() {
       </div>
 
       {/* ---------------- Main Drawing Arena: 3-Column Best-Effort Layout ---------------- */}
-      <div class="flex items-center justify-center gap-3 lg:gap-4 w-full max-w-full">
+      <div class="flex items-center justify-center  lg:gap-4 w-full max-w-full">
         {/* Left Flank: Desktop Vertical Poov Brushes */}
         <Show when={canPlace()}>
           <div
@@ -723,7 +733,9 @@ export function CollabPookalam() {
               <div class="text-[9px] font-bold text-center text-[var(--ink-soft)] pt-1 m-0 border-t border-[var(--ink)]/15 space-y-0.5">
                 <Show
                   when={isWindowCapped()}
-                  fallback={<p class="m-0">Daily max (30) reached — resets at midnight!</p>}
+                  fallback={
+                    <p class="m-0">Daily max ({dailyLimit()}) reached — resets at midnight!</p>
+                  }
                 >
                   <p class="m-0 flex items-center justify-center gap-1 text-[var(--pop-teal)] font-black">
                     <Clock size={10} strokeWidth={2.5} />
@@ -1017,7 +1029,9 @@ export function CollabPookalam() {
               <div class="text-[9px] font-bold text-center text-[var(--ink-soft)] pt-1 m-0 border-t border-[var(--ink)]/15">
                 <Show
                   when={isWindowCapped()}
-                  fallback={<p class="m-0">Daily max (30) reached — resets at midnight!</p>}
+                  fallback={
+                    <p class="m-0">Daily max ({dailyLimit()}) reached — resets at midnight!</p>
+                  }
                 >
                   <p class="m-0 flex items-center justify-center gap-1 text-[var(--pop-teal)] font-black">
                     <Clock size={11} strokeWidth={2.5} />
@@ -1067,7 +1081,7 @@ export function CollabPookalam() {
             <StrokeDemo />
 
             <ol class="space-y-2.5 m-0 p-0 list-none">
-              <For each={HOW_TO}>
+              <For each={howToSteps()}>
                 {(step, i) => (
                   <li class="flex items-start gap-3">
                     <span
@@ -1094,17 +1108,7 @@ export function CollabPookalam() {
   );
 }
 
-const HOW_TO: string[] = [
-  "Pick a poov from the catalogue — nine authentic Kerala flowers under their real Malayalam names.",
-  "Tap a square to place it, or press and drag to lay a smooth line of petals at once.",
-  "You get 30 flowers daily, delivered in rolling 4-hour drops of 10 flowers each so collaboration stays active all day.",
-  "Each flower species can occupy up to 20% of the pookalam to ensure a colorful, diverse carpet.",
-  "Drawing on top of existing flowers unlocks once the canvas is 80% filled (less than 20% empty).",
-  "Use the Eraser tool anytime if you want to clear a spot or adjust a section.",
-  "The communal canvas lives forever — come back throughout the festival to create art together!",
-];
-
-function StrokeDemo() {
+const StrokeDemo = () => {
   let el: HTMLCanvasElement | undefined;
   const [step, setStep] = createSignal(0);
   const TOTAL = 14;
@@ -1151,7 +1155,7 @@ function StrokeDemo() {
       </p>
     </div>
   );
-}
+};
 
 function paintLayer(
   ctx: CanvasRenderingContext2D,
