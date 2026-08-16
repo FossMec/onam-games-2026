@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: foss-onam-games
+    runtime: node
+    plan: free
+    region: singapore
+    branch: feat/scoring-design-games
+    buildCommand: pnpm install && pnpm build
+    startCommand: node .output/server/index.mjs
+    envVars:
+      - key: NODE_VERSION
+        value: 24.0.0
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: AUTH_ORIGIN
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: DEVICE_PEPPER
+        sync: false
+      - key: VITE_UMAMI_WEBSITE_ID
+        sync: false
+      - key: VITE_UMAMI_SCRIPT_URL
+        value: https://cloud.umami.is/script.js
