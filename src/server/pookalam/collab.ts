@@ -1,4 +1,4 @@
-import { asc, desc, eq, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, lt, sql } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
 import { collabPookalam } from "~/server/db/schema";
 import { getSettings } from "~/server/settings/service";
@@ -144,7 +144,13 @@ async function writeCell(dayKey: string, index: number, flowerId: number): Promi
       end`,
       updatedAt: new Date(),
     })
-    .where(eq(collabPookalam.dayKey, dayKey))
+    .where(
+      and(
+        eq(collabPookalam.dayKey, dayKey),
+        // Bare cell, OR eraser, OR canvas is >= 80% filled (<= 20% empty)
+        sql`(${flowerId} = 0 or (get_byte(${collabPookalam.cells}, ${byteIndex}) & ${mask}) = 0 or ${collabPookalam.placed} >= 2000)`,
+      ),
+    )
     .returning({ placed: collabPookalam.placed });
 
   return updated.length === 0 ? null : updated[0].placed;

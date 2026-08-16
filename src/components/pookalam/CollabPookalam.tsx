@@ -1,4 +1,4 @@
-import { CheckCircle2, HelpCircle, RefreshCw, X, ZoomIn, ZoomOut } from "lucide-solid";
+import { CheckCircle2, Clock, HelpCircle, RefreshCw, X, ZoomIn, ZoomOut } from "lucide-solid";
 import { For, Show, batch, createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { EMPTY_BRUSH, FLOWERS, type Flower, drawFlower, flowerById } from "~/lib/pookalam-flowers";
 import { CELL_COUNT, fromBase64, readCell, writeCell } from "~/lib/pookalam-grid";
@@ -7,7 +7,8 @@ import { PADDING_SCALE, SLOTS, slotAt } from "~/lib/pookalam-layout";
 /**
  * The pookalam the whole room draws together.
  *
- * A 50x50 grid, one flower per square, continuous collaboration throughout Onam.
+ * A 50x50 grid with 4-hour rolling window allowances (3 drops of 10 flowers = 30/day),
+ * 20% species cap, and continuous layered collaboration.
  */
 
 const MAX_CANVAS_PX_DESKTOP = 540;
@@ -16,10 +17,19 @@ const MIN_CANVAS_PX = 260;
 const ZOOM_STEPS = [1, 1.6, 2.4, 3.2];
 const GROUND = "#2b2733";
 const STORAGE_PREFIX = "collab-pookalam:";
+const TIMESTAMPS_KEY = STORAGE_PREFIX + "placements";
+
+// Overwriting on top unlocks when <= 20% empty (i.e. >= 80% filled = 2000 cells)
+const OVERWRITE_THRESHOLD = Math.floor(CELL_COUNT * 0.8);
 
 // Client-side 20% limit per flower species across the whole pookalam
 const MAX_FLOWER_PERCENT = 0.2;
 const MAX_FLOWER_CELLS = Math.floor(CELL_COUNT * MAX_FLOWER_PERCENT); // 500 cells
+
+// Rolling 4-hour window
+const WINDOW_HOURS = 4;
+const WINDOW_MS = WINDOW_HOURS * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface DayLayer {
   dayKey: string;
@@ -38,7 +48,8 @@ export function CollabPookalam() {
   const [open, setOpen] = createSignal(true);
   const [canPlace, setCanPlace] = createSignal(false);
   const [allowance, setAllowance] = createSignal(30);
-  const [used, setUsed] = createSignal(0);
+  const [timestamps, setTimestamps] = createSignal<number[]>([]);
+  const [now, setNow] = createSignal(Date.now());
   const [picked, setPicked] = createSignal<Flower>(FLOWERS[0]);
   const [zoom, setZoom] = createSignal(1);
   const [fit, setFit] = createSignal(480);
@@ -48,7 +59,72 @@ export function CollabPookalam() {
   const [drawing, setDrawing] = createSignal(false);
   const [showHowTo, setShowHowTo] = createSignal(false);
 
-  const left = () => Math.max(0, allowance() - used());
+  // Read clean timestamps within last 24h
+  const readStoredTimestamps = (): number[] => {
+    try {
+      const raw = localStorage.getItem(TIMESTAMPS_KEY);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return [];
+      const curr = Date.now();
+      return arr.filter((t) => typeof t === "number" && curr - t < DAY_MS);
+    } catch {
+      return [];
+    }
+  };
+
+  const saveTimestamps = (ts: number[]) => {
+    setTimestamps(ts);
+    try {
+      localStorage.setItem(TIMESTAMPS_KEY, JSON.stringify(ts));
+    } catch {
+      /* storage disabled fallback */
+    }
+  };
+
+  const recordPlacement = (count = 1) => {
+    const curr = Date.now();
+    const existing = readStoredTimestamps();
+    const next = [...existing, ...Array(count).fill(curr)];
+    saveTimestamps(next);
+  };
+
+  // 4-Hour Rolling Window Calculations
+  const windowLimit = () => Math.max(1, Math.ceil(allowance() / 3)); // 10 flowers per 4-hour window
+  const dailyLimit = () => allowance(); // 30 flowers per 24 hours
+
+  const dailyUsed = () => {
+    const curr = now();
+    return timestamps().filter((t) => curr - t < DAY_MS).length;
+  };
+
+  const windowUsed = () => {
+    const curr = now();
+    return timestamps().filter((t) => curr - t < WINDOW_MS).length;
+  };
+
+  const dailyRemaining = () => Math.max(0, dailyLimit() - dailyUsed());
+  const windowRemaining = () => Math.max(0, windowLimit() - windowUsed());
+  const left = () => Math.min(dailyRemaining(), windowRemaining());
+
+  const isWindowCapped = () => windowRemaining() <= 0 && dailyRemaining() > 0;
+  const isDailyCapped = () => dailyRemaining() <= 0;
+
+  // Formatted countdown until next 4-hour window drop
+  const nextDropIn = () => {
+    const curr = now();
+    const inWindow = timestamps()
+      .filter((t) => curr - t < WINDOW_MS)
+      .sort((a, b) => a - b);
+    if (inWindow.length === 0) return null;
+    const oldest = inWindow[0];
+    const dropTime = oldest + WINDOW_MS;
+    const diffMs = Math.max(0, dropTime - curr);
+    const hours = Math.floor(diffMs / (60 * 60 * 1000));
+    const mins = Math.ceil((diffMs % (60 * 60 * 1000)) / (60 * 1000));
+    if (hours > 0) return `${hours}h ${mins}m`;
+    return `${mins}m`;
+  };
 
   // Count occurrences of each flower on today's pookalam
   const flowerCounts = () => {
@@ -67,28 +143,12 @@ export function CollabPookalam() {
     return (flowerCounts()[flowerId] || 0) >= MAX_FLOWER_CELLS;
   };
 
+  const canOverwrite = () => placed() >= OVERWRITE_THRESHOLD;
+
   const stepZoom = (direction: 1 | -1) => {
     const i = ZOOM_STEPS.indexOf(zoom());
     const next = ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, Math.max(0, i + direction))];
     setZoom(next ?? 1);
-  };
-
-  const readUsed = (key: string) => {
-    try {
-      return Number(localStorage.getItem(STORAGE_PREFIX + key)) || 0;
-    } catch {
-      return 0;
-    }
-  };
-
-  const bumpUsed = (key: string) => {
-    const next = readUsed(key) + 1;
-    setUsed(next);
-    try {
-      localStorage.setItem(STORAGE_PREFIX + key, String(next));
-    } catch {
-      /* storage disabled fallback */
-    }
   };
 
   const load = async () => {
@@ -105,7 +165,7 @@ export function CollabPookalam() {
       setOpen(state.open);
       setCanPlace(state.canPlace);
       setAllowance(state.dailyFlowers);
-      setUsed(readUsed(state.today.dayKey));
+      setTimestamps(readStoredTimestamps());
 
       // If default picked flower is already capped, select first available
       if (isFlowerCapped(picked().id)) {
@@ -140,9 +200,17 @@ export function CollabPookalam() {
     const observer = new ResizeObserver(measure);
     if (rootRef) observer.observe(rootRef);
     window.addEventListener("resize", measure);
+
+    // Periodic live timer tick (every 5 seconds) to update countdowns and window unlocks
+    const timer = setInterval(() => {
+      setNow(Date.now());
+      setTimestamps(readStoredTimestamps());
+    }, 5000);
+
     onCleanup(() => {
       observer.disconnect();
       window.removeEventListener("resize", measure);
+      clearInterval(timer);
       void flush();
     });
   });
@@ -236,6 +304,14 @@ export function CollabPookalam() {
     ctx.save();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const slot = SLOTS[index];
+    if (flower.id === 0) {
+      ctx.beginPath();
+      ctx.arc(slot.x * css, slot.y * css, slot.cellRadius * css * 1.12, 0, Math.PI * 2);
+      ctx.fillStyle = GROUND;
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
     const jitter = ((((index * 2654435761) >>> 0) % 1000) / 1000 - 0.5) * 0.12;
     const wobble = 0.98 + (((index * 40503) >>> 0) % 100) / 2500;
     drawFlower(
@@ -255,7 +331,16 @@ export function CollabPookalam() {
     if (stroke.length >= allowanceLeftInStroke()) return false;
 
     const flower = picked();
-    if (isFlowerCapped(flower.id)) {
+
+    // Check if square is already occupied and overwriting is not yet unlocked
+    if (readCell(grid, index) !== 0 && !canOverwrite() && flower.id !== 0) {
+      setNote(
+        `Square taken! Overwriting unlocks when the pookalam is 80% filled (${placed()}/${OVERWRITE_THRESHOLD}).`,
+      );
+      return false;
+    }
+
+    if (flower.id !== 0 && isFlowerCapped(flower.id)) {
       setNote(`${flower.name} reached the 20% limit. Pick another flower!`);
       const next = FLOWERS.find((f) => !isFlowerCapped(f.id));
       if (next) setPicked(next);
@@ -302,7 +387,9 @@ export function CollabPookalam() {
         if (kept < cells.length) {
           if (result?.reason) setNote(result.reason);
         }
-        for (let i = 0; i < kept; i++) bumpUsed(dayKey());
+        if (kept > 0) {
+          recordPlacement(kept);
+        }
       } catch {
         /* network error fallback */
       }
@@ -333,7 +420,13 @@ export function CollabPookalam() {
 
     if (!canPlace() || busy() || !canvas) return;
     if (left() <= 0) {
-      setNote("You've placed all your flowers today! Come back tomorrow to lay more petals.");
+      if (isWindowCapped()) {
+        setNote(
+          `4-hour window limit reached (10 flowers). Next drop unlocks ${nextDropIn() ?? "soon"}!`,
+        );
+      } else {
+        setNote("Daily limit reached (30 flowers). Come back tomorrow for more!");
+      }
       return;
     }
     const rect = canvas.getBoundingClientRect();
@@ -465,7 +558,11 @@ export function CollabPookalam() {
                 "bg-[var(--ink-soft)]": left() <= 0,
               }}
             />
-            {left() > 0 ? `${left()} left` : "Done today"}
+            {left() > 0
+              ? `${left()} left`
+              : isWindowCapped()
+                ? `+${windowLimit()} ${nextDropIn() ?? "soon"}`
+                : "Daily max"}
           </span>
         </Show>
 
@@ -542,7 +639,7 @@ export function CollabPookalam() {
               </p>
               <Show when={left() <= 0}>
                 <span class="text-[8.5px] font-black px-1 rounded bg-[var(--paper-3)] text-[var(--ink-soft)]">
-                  Limit reached
+                  {isWindowCapped() ? "Window limit" : "Daily limit"}
                 </span>
               </Show>
             </div>
@@ -619,9 +716,19 @@ export function CollabPookalam() {
             </button>
 
             <Show when={left() <= 0}>
-              <p class="text-[9px] font-bold text-center text-[var(--ink-soft)] pt-1 m-0 border-t border-[var(--ink)]/15">
-                Come back and lay more flowers tomorrow!
-              </p>
+              <div class="text-[9px] font-bold text-center text-[var(--ink-soft)] pt-1 m-0 border-t border-[var(--ink)]/15 space-y-0.5">
+                <Show
+                  when={isWindowCapped()}
+                  fallback={<p class="m-0">Daily max (30) reached — resets at midnight!</p>}
+                >
+                  <p class="m-0 flex items-center justify-center gap-1 text-[var(--pop-teal)] font-black">
+                    <Clock size={10} strokeWidth={2.5} />
+                    <span>
+                      Next +{windowLimit()} drop in {nextDropIn() ?? "soon"}
+                    </span>
+                  </p>
+                </Show>
+              </div>
             </Show>
           </div>
         </Show>
@@ -708,9 +815,23 @@ export function CollabPookalam() {
                     "bg-[var(--ink-soft)]": left() <= 0,
                   }}
                 />
-                {left() > 0 ? `${left()} left today` : "Done for today"}
+                {left() > 0 ? `${left()} left now` : "Window max"}
               </span>
-              <p class="text-[9.5px] font-extrabold m-0" style={{ color: "var(--ink-soft)" }}>
+              <p class="text-[9px] font-bold m-0" style={{ color: "var(--ink-soft)" }}>
+                {dailyRemaining()}/{dailyLimit()} left today
+              </p>
+              <Show when={isWindowCapped()}>
+                <p class="text-[8.5px] font-black text-[var(--pop-teal)] m-0 pt-0.5 flex items-center justify-center gap-1">
+                  <Clock size={9} strokeWidth={2.5} />
+                  <span>
+                    +{windowLimit()} in {nextDropIn() ?? "soon"}
+                  </span>
+                </p>
+              </Show>
+              <p
+                class="text-[9.5px] font-extrabold m-0 pt-0.5 border-t border-[var(--ink)]/15"
+                style={{ color: "var(--ink)" }}
+              >
                 {placed()} / {CELL_COUNT} filled
               </p>
             </div>
@@ -889,10 +1010,19 @@ export function CollabPookalam() {
             </div>
 
             <Show when={left() <= 0}>
-              <p class="text-[9px] font-bold text-center text-[var(--ink-soft)] pt-1 m-0 border-t border-[var(--ink)]/15 flex items-center justify-center gap-1">
-                <CheckCircle2 size={11} class="text-[var(--pop-teal)]" />
-                <span>Come back and lay more flowers tomorrow!</span>
-              </p>
+              <div class="text-[9px] font-bold text-center text-[var(--ink-soft)] pt-1 m-0 border-t border-[var(--ink)]/15">
+                <Show
+                  when={isWindowCapped()}
+                  fallback={<p class="m-0">Daily max (30) reached — resets at midnight!</p>}
+                >
+                  <p class="m-0 flex items-center justify-center gap-1 text-[var(--pop-teal)] font-black">
+                    <Clock size={11} strokeWidth={2.5} />
+                    <span>
+                      4-hour limit reached · Next +{windowLimit()} in {nextDropIn() ?? "soon"}
+                    </span>
+                  </p>
+                </Show>
+              </div>
             </Show>
           </div>
         </div>
@@ -963,10 +1093,11 @@ export function CollabPookalam() {
 const HOW_TO: string[] = [
   "Pick a poov from the catalogue — nine authentic Kerala flowers under their real Malayalam names.",
   "Tap a square to place it, or press and drag to lay a smooth line of petals at once.",
-  "Build around each other and layer flowers across the canvas to create art together.",
+  "You get 30 flowers daily, delivered in rolling 4-hour drops of 10 flowers each so collaboration stays active all day.",
   "Each flower species can occupy up to 20% of the pookalam to ensure a colorful, diverse carpet.",
+  "Drawing on top of existing flowers unlocks once the canvas is 80% filled (less than 20% empty).",
   "Use the Eraser tool anytime if you want to clear a spot or adjust a section.",
-  "The communal canvas lives forever — come back each day as your daily allowance replenishes!",
+  "The communal canvas lives forever — come back throughout the festival to create art together!",
 ];
 
 function StrokeDemo() {
