@@ -4,6 +4,7 @@ services:
     runtime: node
     plan: free
     region: singapore
+    repo: https://github.com/dijith-481/foss-onam-games
     branch: feat/scoring-design-games
     buildCommand: pnpm install && pnpm build
     startCommand: node .output/server/index.mjs
