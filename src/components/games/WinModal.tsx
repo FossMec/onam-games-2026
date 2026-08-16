@@ -69,7 +69,7 @@ export function WinModal(props: WinModalProps) {
       }}
     >
       <div
-        class={`card anim-sheet-in my-auto w-full max-w-sm space-y-4 text-center ${
+        class={`card anim-sheet-in my-auto w-full max-w-sm sm:max-w-xl md:max-w-2xl space-y-4 text-center ${
           props.valid ? "pop-yellow" : "pop-red"
         }`}
       >

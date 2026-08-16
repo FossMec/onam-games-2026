@@ -271,8 +271,8 @@ export function ShareCard(props: ShareCardProps) {
       class="relative shrink-0 overflow-hidden rounded transition-all cursor-zoom-in"
       style={{
         width: props.compact
-          ? "min(220px, 62vw, calc((100dvh - 23rem) * 9 / 16))"
-          : "min(280px, 68vw, calc((100dvh - 21rem) * 9 / 16))",
+          ? "min(240px, 80vw, calc((100dvh - 22rem) * 9 / 16))"
+          : "min(280px, 85vw, calc((100dvh - 20rem) * 9 / 16))",
         "aspect-ratio": "9 / 16",
         border: "var(--ink-w) solid var(--ink)",
         background: "var(--paper-3)",
