@@ -755,7 +755,8 @@ export default function Home() {
                 build around each other, and create art together.
               </p>
               <p class="comment text-[11px] sm:text-xs m-0">
-                at midnight it's buried under tomorrow's. plan accordingly, or don't.
+                Flowers reset daily at midnight — collaborate throughout the festival to create art
+                together.
               </p>
             </div>
             <CollabPookalam />

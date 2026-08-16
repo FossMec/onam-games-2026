@@ -107,6 +107,8 @@ function buildRings(): Ring[] {
 
 export const RINGS: readonly Ring[] = buildRings();
 
+export const PADDING_SCALE = 0.94;
+
 function buildSlots(): Slot[] {
   const dr = 0.5 / RING_COUNT;
   const slots: Slot[] = [];
@@ -115,16 +117,17 @@ function buildSlots(): Slot[] {
     // Distance to the next flower along the ring. Compared against the ring
     // thickness so the larger of the two decides how big the flower has to be.
     const arc = (2 * Math.PI * ring.radius) / ring.count;
-    const cellRadius = (Math.max(dr, arc) / 2) * OVERLAP;
+    const cellRadius = (Math.max(dr, arc) / 2) * OVERLAP * PADDING_SCALE;
+    const ringRadius = ring.radius * PADDING_SCALE;
 
     for (let j = 0; j < ring.count; j++) {
       const angle = (2 * Math.PI * (j + ring.offset)) / ring.count;
       slots.push({
         ring: RINGS.indexOf(ring),
         angle,
-        radius: ring.radius,
-        x: 0.5 + Math.cos(angle) * ring.radius,
-        y: 0.5 + Math.sin(angle) * ring.radius,
+        radius: ringRadius,
+        x: 0.5 + Math.cos(angle) * ringRadius,
+        y: 0.5 + Math.sin(angle) * ringRadius,
         cellRadius,
       });
     }
@@ -144,8 +147,8 @@ export const SLOTS: readonly Slot[] = buildSlots();
  * runs on every pointer-move of a drag.
  */
 export function slotAt(nx: number, ny: number): number | null {
-  const dx = nx - 0.5;
-  const dy = ny - 0.5;
+  const dx = (nx - 0.5) / PADDING_SCALE;
+  const dy = (ny - 0.5) / PADDING_SCALE;
   const distance = Math.hypot(dx, dy);
   if (distance > 0.5) return null;
 

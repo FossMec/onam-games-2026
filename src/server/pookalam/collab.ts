@@ -1,4 +1,4 @@
-import { and, asc, eq, lt, sql } from "drizzle-orm";
+import { asc, eq, lt, sql } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
 import { collabPookalam } from "~/server/db/schema";
 import { getSettings } from "~/server/settings/service";
@@ -138,36 +138,20 @@ export type PlaceResult =
 async function writeCell(dayKey: string, index: number, flowerId: number): Promise<number | null> {
   const { byteIndex, shift, mask } = cellAddress(index);
   const shifted = flowerId << shift;
-  // Clears the nibble before setting it, which is a no-op on an empty cell and
-  // is what makes overwriting a full grid work with the same statement.
   const clearMask = 0xff - mask;
 
   const updated = await getDb()
     .update(collabPookalam)
     .set({
       cells: sql`set_byte(${collabPookalam.cells}, ${byteIndex}, (get_byte(${collabPookalam.cells}, ${byteIndex}) & ${clearMask}) | ${shifted})`,
-      /*
-       * Only an empty cell adds to the count. Every SET expression is evaluated
-       * against the row as it was *before* this statement, so this reads the
-       * old nibble even though `cells` is being rewritten beside it.
-       */
-      placed: sql`${collabPookalam.placed} + (case when (get_byte(${collabPookalam.cells}, ${byteIndex}) & ${mask}) = 0 then 1 else 0 end)`,
+      placed: sql`case
+        when ${flowerId} = 0 and (get_byte(${collabPookalam.cells}, ${byteIndex}) & ${mask}) != 0 then greatest(0, ${collabPookalam.placed} - 1)
+        when ${flowerId} != 0 and (get_byte(${collabPookalam.cells}, ${byteIndex}) & ${mask}) = 0 then ${collabPookalam.placed} + 1
+        else ${collabPookalam.placed}
+      end`,
       updatedAt: new Date(),
     })
-    .where(
-      and(
-        eq(collabPookalam.dayKey, dayKey),
-        /*
-         * Bare square, OR the grid is completely full.
-         *
-         * Once all 2500 squares are taken the rule has done its job — it exists
-         * to stop people painting over each other while there is still room,
-         * not to freeze the picture forever. A full canvas becomes a fresh
-         * surface, and the day keeps going.
-         */
-        sql`((get_byte(${collabPookalam.cells}, ${byteIndex}) & ${mask}) = 0 or ${collabPookalam.placed} >= ${CELL_COUNT})`,
-      ),
-    )
+    .where(eq(collabPookalam.dayKey, dayKey))
     .returning({ placed: collabPookalam.placed });
 
   return updated.length === 0 ? null : updated[0].placed;

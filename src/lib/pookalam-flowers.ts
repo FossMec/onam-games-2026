@@ -15,7 +15,8 @@ export type FlowerShape =
   | "thulasi"
   | "thumba"
   | "jamanthi-yellow"
-  | "jamanthi-white";
+  | "jamanthi-white"
+  | "eraser";
 
 export interface Flower {
   /** Nibble value in the packed grid (1–15; 0 = empty). */
@@ -124,8 +125,21 @@ export const FLOWERS: readonly Flower[] = [
   },
 ];
 
+export const EMPTY_BRUSH: Flower = {
+  id: 0,
+  key: "eraser",
+  name: "Eraser (Empty)",
+  english: "Remove flower / clear square",
+  petal: "#2B2733",
+  petalAlt: "#383344",
+  centre: "#F2695C",
+  shape: "eraser",
+};
+
+export const ALL_TOOLS: readonly Flower[] = [...FLOWERS, EMPTY_BRUSH];
+
 const BY_ID = new Map<number, Flower>();
-for (const f of FLOWERS) {
+for (const f of ALL_TOOLS) {
   BY_ID.set(f.id, f);
 }
 
@@ -133,7 +147,7 @@ for (const f of FLOWERS) {
 BY_ID.set(7, FLOWERS[3]); // Arali fallback
 
 export function flowerById(id: number): Flower | undefined {
-  return BY_ID.get(id) ?? FLOWERS[0];
+  return BY_ID.get(id);
 }
 
 const INK_OUTLINE = "rgba(34, 32, 43, 0.4)";
@@ -150,6 +164,25 @@ export function drawFlower(
   flower: Flower,
   rotation = 0,
 ): void {
+  if (!flower || flower.id === 0 || flower.shape === "eraser") {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.85, 0, Math.PI * 2);
+    ctx.fillStyle = "#2B2733";
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(242, 105, 92, 0.7)";
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.3, -r * 0.3);
+    ctx.lineTo(r * 0.3, r * 0.3);
+    ctx.moveTo(r * 0.3, -r * 0.3);
+    ctx.lineTo(-r * 0.3, r * 0.3);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
   ctx.save();
   ctx.translate(cx, cy);
   if (rotation !== 0) ctx.rotate(rotation);

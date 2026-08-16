@@ -1,14 +1,13 @@
-import { HelpCircle, RefreshCw, X, ZoomIn, ZoomOut } from "lucide-solid";
+import { CheckCircle2, HelpCircle, RefreshCw, X, ZoomIn, ZoomOut } from "lucide-solid";
 import { For, Show, batch, createEffect, createSignal, onCleanup, onMount } from "solid-js";
-import { FLOWERS, type Flower, drawFlower, flowerById } from "~/lib/pookalam-flowers";
+import { EMPTY_BRUSH, FLOWERS, type Flower, drawFlower, flowerById } from "~/lib/pookalam-flowers";
 import { CELL_COUNT, fromBase64, readCell, writeCell } from "~/lib/pookalam-grid";
-import { SLOTS, slotAt } from "~/lib/pookalam-layout";
-import { getCollabPookalam } from "~/server/pookalam/collab-actions";
+import { PADDING_SCALE, SLOTS, slotAt } from "~/lib/pookalam-layout";
 
 /**
  * The pookalam the whole room draws together.
  *
- * A 50x50 grid, one flower per square, first come first served.
+ * A 50x50 grid, one flower per square, continuous collaboration throughout Onam.
  */
 
 const MAX_CANVAS_PX_DESKTOP = 540;
@@ -17,6 +16,10 @@ const MIN_CANVAS_PX = 260;
 const ZOOM_STEPS = [1, 1.6, 2.4, 3.2];
 const GROUND = "#2b2733";
 const STORAGE_PREFIX = "collab-pookalam:";
+
+// Client-side 20% limit per flower species across the whole pookalam
+const MAX_FLOWER_PERCENT = 0.2;
+const MAX_FLOWER_CELLS = Math.floor(CELL_COUNT * MAX_FLOWER_PERCENT); // 500 cells
 
 interface DayLayer {
   dayKey: string;
@@ -47,6 +50,23 @@ export function CollabPookalam() {
 
   const left = () => Math.max(0, allowance() - used());
 
+  // Count occurrences of each flower on today's pookalam
+  const flowerCounts = () => {
+    const grid = today();
+    const counts: Record<number, number> = {};
+    for (const f of FLOWERS) counts[f.id] = 0;
+    if (!grid) return counts;
+    for (let i = 0; i < CELL_COUNT; i++) {
+      const fid = readCell(grid, i);
+      if (fid !== 0) counts[fid] = (counts[fid] || 0) + 1;
+    }
+    return counts;
+  };
+
+  const isFlowerCapped = (flowerId: number) => {
+    return (flowerCounts()[flowerId] || 0) >= MAX_FLOWER_CELLS;
+  };
+
   const stepZoom = (direction: 1 | -1) => {
     const i = ZOOM_STEPS.indexOf(zoom());
     const next = ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, Math.max(0, i + direction))];
@@ -74,10 +94,11 @@ export function CollabPookalam() {
   const load = async () => {
     setBusy(true);
     try {
-      const state = await getCollabPookalam();
+      const res = await fetch("/api/pookalam/state");
+      const state = await res.json();
       setToday(fromBase64(state.today.cells));
       setHistory(
-        state.history.map((day) => ({ dayKey: day.dayKey, cells: fromBase64(day.cells) })),
+        state.history.map((day: any) => ({ dayKey: day.dayKey, cells: fromBase64(day.cells) })),
       );
       setDayKey(state.today.dayKey);
       setPlaced(state.today.placed);
@@ -85,6 +106,12 @@ export function CollabPookalam() {
       setCanPlace(state.canPlace);
       setAllowance(state.dailyFlowers);
       setUsed(readUsed(state.today.dayKey));
+
+      // If default picked flower is already capped, select first available
+      if (isFlowerCapped(picked().id)) {
+        const next = FLOWERS.find((f) => !isFlowerCapped(f.id));
+        if (next) setPicked(next);
+      }
     } catch {
       setNote("Could not reach the pookalam. Try refresh.");
     } finally {
@@ -138,13 +165,13 @@ export function CollabPookalam() {
 
     // 1. Ground circular disc
     ctx.beginPath();
-    ctx.arc(css / 2, css / 2, css / 2, 0, Math.PI * 2);
+    ctx.arc(css / 2, css / 2, (css / 2) * PADDING_SCALE, 0, Math.PI * 2);
     ctx.fillStyle = GROUND;
     ctx.fill();
 
-    // 2. Very subtle guideline outline (very faint opacity)
+    // 2. Very subtle guideline outline with safe padding
     ctx.beginPath();
-    ctx.arc(css / 2, css / 2, css / 2 - 1, 0, Math.PI * 2);
+    ctx.arc(css / 2, css / 2, (css / 2) * PADDING_SCALE - 1, 0, Math.PI * 2);
     ctx.lineWidth = 1;
     ctx.strokeStyle = "rgba(251, 243, 228, 0.08)";
     ctx.stroke();
@@ -225,11 +252,16 @@ export function CollabPookalam() {
   const paintCell = (index: number): boolean => {
     const grid = today();
     if (!grid) return false;
-    const full = placed() >= CELL_COUNT;
-    if (!full && readCell(grid, index) !== 0) return false;
     if (stroke.length >= allowanceLeftInStroke()) return false;
 
     const flower = picked();
+    if (isFlowerCapped(flower.id)) {
+      setNote(`${flower.name} reached the 20% limit. Pick another flower!`);
+      const next = FLOWERS.find((f) => !isFlowerCapped(f.id));
+      if (next) setPicked(next);
+      return false;
+    }
+
     // 1. Instant optimistic direct canvas draw (0ms lag!)
     drawCellDirect(index, flower);
 
@@ -262,15 +294,13 @@ export function CollabPookalam() {
           cells: string;
           reason?: string;
         };
-        if (result && result.cells) {
-          setToday(fromBase64(result.cells));
+        if (result && typeof result.placed === "number") {
           setPlaced(result.placed);
         }
 
         const kept = result?.written?.length ?? 0;
         if (kept < cells.length) {
           if (result?.reason) setNote(result.reason);
-          else if (kept === 0) setNote("Someone got there first.");
         }
         for (let i = 0; i < kept; i++) bumpUsed(dayKey());
       } catch {
@@ -303,7 +333,7 @@ export function CollabPookalam() {
 
     if (!canPlace() || busy() || !canvas) return;
     if (left() <= 0) {
-      setNote("That's your flowers for today. Come back tomorrow.");
+      setNote("You've placed all your flowers today! Come back tomorrow to lay more petals.");
       return;
     }
     const rect = canvas.getBoundingClientRect();
@@ -423,13 +453,19 @@ export function CollabPookalam() {
           <span
             class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-black shrink-0"
             style={{
-              background: "var(--paper)",
+              background: left() <= 0 ? "var(--paper-2)" : "var(--paper)",
               border: "var(--ink-w) solid var(--ink)",
-              color: "var(--ink)",
+              color: left() <= 0 ? "var(--ink-soft)" : "var(--ink)",
             }}
           >
-            <span class="inline-block w-1.5 h-1.5 rounded-full bg-[var(--pop-teal)]" />
-            {left()} left
+            <span
+              class="inline-block w-1.5 h-1.5 rounded-full"
+              classList={{
+                "bg-[var(--pop-teal)]": left() > 0,
+                "bg-[var(--ink-soft)]": left() <= 0,
+              }}
+            />
+            {left() > 0 ? `${left()} left` : "Done today"}
           </span>
         </Show>
 
@@ -494,40 +530,99 @@ export function CollabPookalam() {
         {/* Left Flank: Desktop Vertical Poov Brushes */}
         <Show when={canPlace()}>
           <div
-            class="hidden lg:flex flex-col card card-plain p-1.5 space-y-1 shrink-0 w-44 self-center"
+            class="hidden lg:flex flex-col card card-plain p-1.5 space-y-1 shrink-0 w-44 self-center transition-opacity"
             style={{
               border: "var(--ink-w) solid var(--ink)",
               background: "var(--paper)",
             }}
           >
-            <p class="font-black text-[10px] uppercase tracking-wider text-center m-0 text-[var(--ink)]">
-              Pick Poov
-            </p>
-            <div class="flex flex-col gap-0.5 w-full">
+            <div class="flex items-center justify-between px-0.5">
+              <p class="font-black text-[10px] uppercase tracking-wider m-0 text-[var(--ink)]">
+                Pick Poov
+              </p>
+              <Show when={left() <= 0}>
+                <span class="text-[8.5px] font-black px-1 rounded bg-[var(--paper-3)] text-[var(--ink-soft)]">
+                  Limit reached
+                </span>
+              </Show>
+            </div>
+
+            <div
+              class="flex flex-col gap-0.5 w-full transition-all"
+              classList={{ "opacity-40 grayscale pointer-events-none": left() <= 0 }}
+            >
               <For each={FLOWERS}>
-                {(flower) => (
-                  <button
-                    type="button"
-                    title={`${flower.name} (${flower.english})`}
-                    onClick={() => setPicked(flower)}
-                    class="flex items-center gap-2 px-2 py-1 rounded transition-all cursor-pointer text-left w-full"
-                    style={{
-                      border: "1.5px solid var(--ink)",
-                      background:
-                        picked().id === flower.id ? "var(--pop-yellow)" : "var(--paper-2)",
-                      transform: picked().id === flower.id ? "translateX(2px)" : undefined,
-                    }}
-                  >
-                    <div class="w-5 h-5 shrink-0 flex items-center justify-center">
-                      <FlowerSwatch flower={flower} size={20} />
-                    </div>
-                    <span class="text-[9px] font-black uppercase tracking-tight text-[var(--ink)] leading-tight whitespace-nowrap">
-                      {flower.name}
-                    </span>
-                  </button>
-                )}
+                {(flower) => {
+                  const capped = () => isFlowerCapped(flower.id);
+                  return (
+                    <button
+                      type="button"
+                      disabled={capped()}
+                      title={
+                        capped()
+                          ? `${flower.name} (Max 20% reached)`
+                          : `${flower.name} (${flower.english})`
+                      }
+                      onClick={() => setPicked(flower)}
+                      class="flex items-center justify-between gap-1.5 px-2 py-1 rounded transition-all text-left w-full"
+                      classList={{
+                        "opacity-35 grayscale cursor-not-allowed": capped(),
+                        "cursor-pointer": !capped(),
+                      }}
+                      style={{
+                        border: "1.5px solid var(--ink)",
+                        background:
+                          picked().id === flower.id && !capped()
+                            ? "var(--pop-yellow)"
+                            : "var(--paper-2)",
+                        transform:
+                          picked().id === flower.id && !capped() ? "translateX(2px)" : undefined,
+                      }}
+                    >
+                      <div class="flex items-center gap-1.5 min-w-0">
+                        <div class="w-5 h-5 shrink-0 flex items-center justify-center">
+                          <FlowerSwatch flower={flower} size={20} />
+                        </div>
+                        <span class="text-[9px] font-black uppercase tracking-tight text-[var(--ink)] leading-tight whitespace-nowrap truncate">
+                          {flower.name}
+                        </span>
+                      </div>
+                      <Show when={capped()}>
+                        <span class="text-[7px] font-black px-1 py-0.2 rounded bg-[var(--paper-3)] text-[var(--pop-red)] shrink-0">
+                          20%
+                        </span>
+                      </Show>
+                    </button>
+                  );
+                }}
               </For>
             </div>
+
+            {/* Eraser Tool */}
+            <button
+              type="button"
+              title="Eraser (Remove flower / clear square)"
+              onClick={() => setPicked(EMPTY_BRUSH)}
+              class="flex items-center gap-2 px-2 py-1 rounded transition-all cursor-pointer text-left w-full mt-0.5"
+              style={{
+                border: "1.5px dashed var(--ink)",
+                background: picked().id === EMPTY_BRUSH.id ? "var(--pop-yellow)" : "var(--paper-2)",
+                transform: picked().id === EMPTY_BRUSH.id ? "translateX(2px)" : undefined,
+              }}
+            >
+              <div class="w-5 h-5 shrink-0 flex items-center justify-center rounded bg-[#2B2733] border border-[var(--ink)] text-[var(--pop-red)] font-black text-xs">
+                ✕
+              </div>
+              <span class="text-[9px] font-black uppercase tracking-tight text-[var(--ink)] leading-tight whitespace-nowrap">
+                Eraser (Empty)
+              </span>
+            </button>
+
+            <Show when={left() <= 0}>
+              <p class="text-[9px] font-bold text-center text-[var(--ink-soft)] pt-1 m-0 border-t border-[var(--ink)]/15">
+                Come back and lay more flowers tomorrow!
+              </p>
+            </Show>
           </div>
         </Show>
 
@@ -606,8 +701,14 @@ export function CollabPookalam() {
               }}
             >
               <span class="inline-flex items-center gap-1.5 text-[10.5px] font-black uppercase tracking-wider text-[var(--ink)]">
-                <span class="inline-block w-2 h-2 rounded-full bg-[var(--pop-teal)]" />
-                {left()} left today
+                <span
+                  class="inline-block w-2 h-2 rounded-full"
+                  classList={{
+                    "bg-[var(--pop-teal)]": left() > 0,
+                    "bg-[var(--ink-soft)]": left() <= 0,
+                  }}
+                />
+                {left() > 0 ? `${left()} left today` : "Done for today"}
               </span>
               <p class="text-[9.5px] font-extrabold m-0" style={{ color: "var(--ink-soft)" }}>
                 {placed()} / {CELL_COUNT} filled
@@ -688,52 +789,111 @@ export function CollabPookalam() {
           }}
         >
           <div class="space-y-0.5">
-            <div class="grid grid-cols-5 gap-1 sm:gap-1.5">
+            <div
+              class="grid grid-cols-5 gap-1 sm:gap-1.5 transition-all"
+              classList={{ "opacity-40 grayscale pointer-events-none": left() <= 0 }}
+            >
               <For each={FLOWERS.slice(0, 5)}>
-                {(flower) => (
-                  <button
-                    type="button"
-                    title={`${flower.name} (${flower.english})`}
-                    onClick={() => setPicked(flower)}
-                    class="flex flex-col items-center justify-center p-0.5 rounded transition-all cursor-pointer min-w-0"
-                    style={{
-                      border: "var(--ink-w) solid var(--ink)",
-                      background:
-                        picked().id === flower.id ? "var(--pop-yellow)" : "var(--paper-2)",
-                      transform: picked().id === flower.id ? "translateY(-1px)" : undefined,
-                    }}
-                  >
-                    <FlowerSwatch flower={flower} size={18} />
-                    <span class="block text-[7px] sm:text-[8px] font-black uppercase tracking-tight text-center pt-0.5 text-[var(--ink)] leading-none truncate w-full">
-                      {flower.name}
-                    </span>
-                  </button>
-                )}
+                {(flower) => {
+                  const capped = () => isFlowerCapped(flower.id);
+                  return (
+                    <button
+                      type="button"
+                      disabled={capped()}
+                      title={
+                        capped()
+                          ? `${flower.name} (Max 20% reached)`
+                          : `${flower.name} (${flower.english})`
+                      }
+                      onClick={() => setPicked(flower)}
+                      class="flex flex-col items-center justify-center p-0.5 rounded transition-all min-w-0 relative"
+                      classList={{
+                        "opacity-35 grayscale cursor-not-allowed": capped(),
+                        "cursor-pointer": !capped(),
+                      }}
+                      style={{
+                        border: "var(--ink-w) solid var(--ink)",
+                        background:
+                          picked().id === flower.id && !capped()
+                            ? "var(--pop-yellow)"
+                            : "var(--paper-2)",
+                        transform:
+                          picked().id === flower.id && !capped() ? "translateY(-1px)" : undefined,
+                      }}
+                    >
+                      <FlowerSwatch flower={flower} size={18} />
+                      <span class="block text-[7px] sm:text-[8px] font-black uppercase tracking-tight text-center pt-0.5 text-[var(--ink)] leading-none truncate w-full">
+                        {flower.name}
+                      </span>
+                    </button>
+                  );
+                }}
               </For>
             </div>
-            <div class="grid grid-cols-4 gap-1 sm:gap-1.5 max-w-[80%] mx-auto">
-              <For each={FLOWERS.slice(5)}>
-                {(flower) => (
-                  <button
-                    type="button"
-                    title={`${flower.name} (${flower.english})`}
-                    onClick={() => setPicked(flower)}
-                    class="flex flex-col items-center justify-center p-0.5 rounded transition-all cursor-pointer min-w-0"
-                    style={{
-                      border: "var(--ink-w) solid var(--ink)",
-                      background:
-                        picked().id === flower.id ? "var(--pop-yellow)" : "var(--paper-2)",
-                      transform: picked().id === flower.id ? "translateY(-1px)" : undefined,
-                    }}
-                  >
-                    <FlowerSwatch flower={flower} size={18} />
-                    <span class="block text-[7px] sm:text-[8px] font-black uppercase tracking-tight text-center pt-0.5 text-[var(--ink)] leading-none truncate w-full">
-                      {flower.name}
-                    </span>
-                  </button>
-                )}
+            <div
+              class="grid grid-cols-5 gap-1 sm:gap-1.5 transition-all"
+              classList={{ "opacity-40 grayscale pointer-events-none": left() <= 0 }}
+            >
+              <For each={[...FLOWERS.slice(5), EMPTY_BRUSH]}>
+                {(flower) => {
+                  const isEraser = flower.id === 0;
+                  const capped = () => !isEraser && isFlowerCapped(flower.id);
+                  return (
+                    <button
+                      type="button"
+                      disabled={capped()}
+                      title={
+                        capped()
+                          ? `${flower.name} (Max 20% reached)`
+                          : isEraser
+                            ? "Eraser (Clear square)"
+                            : `${flower.name} (${flower.english})`
+                      }
+                      onClick={() => setPicked(flower)}
+                      class="flex flex-col items-center justify-center p-0.5 rounded transition-all min-w-0 relative"
+                      classList={{
+                        "opacity-35 grayscale cursor-not-allowed": capped(),
+                        "cursor-pointer": !capped(),
+                      }}
+                      style={{
+                        border: isEraser
+                          ? "1.5px dashed var(--ink)"
+                          : "var(--ink-w) solid var(--ink)",
+                        background:
+                          picked().id === flower.id && !capped()
+                            ? isEraser
+                              ? "var(--paper-3)"
+                              : "var(--pop-yellow)"
+                            : "var(--paper-2)",
+                        transform:
+                          picked().id === flower.id && !capped() ? "translateY(-1px)" : undefined,
+                      }}
+                    >
+                      <Show
+                        when={!isEraser}
+                        fallback={
+                          <div class="w-[18px] h-[18px] shrink-0 flex items-center justify-center rounded bg-[#2B2733] border border-[var(--ink)] text-[var(--pop-red)] font-black text-[9px] leading-none">
+                            ✕
+                          </div>
+                        }
+                      >
+                        <FlowerSwatch flower={flower} size={18} />
+                      </Show>
+                      <span class="block text-[7px] sm:text-[8px] font-black uppercase tracking-tight text-center pt-0.5 text-[var(--ink)] leading-none truncate w-full">
+                        {isEraser ? "Eraser" : flower.name}
+                      </span>
+                    </button>
+                  );
+                }}
               </For>
             </div>
+
+            <Show when={left() <= 0}>
+              <p class="text-[9px] font-bold text-center text-[var(--ink-soft)] pt-1 m-0 border-t border-[var(--ink)]/15 flex items-center justify-center gap-1">
+                <CheckCircle2 size={11} class="text-[var(--pop-teal)]" />
+                <span>Come back and lay more flowers tomorrow!</span>
+              </p>
+            </Show>
           </div>
         </div>
       </Show>
@@ -802,10 +962,10 @@ export function CollabPookalam() {
 
 const HOW_TO: string[] = [
   "Pick a poov from the catalogue — nine authentic Kerala flowers under their real Malayalam names.",
-  "Tap a bare square to place it, or press and drag to lay a smooth line of petals at once.",
-  "You can't paint over somebody else's flower. Work around it and build together — that's the magic.",
-  "You get a set number of flowers a day. Spend them on one dense patch or scatter them across rings.",
-  "At midnight today's canvas is preserved, and tomorrow's flowers land on top.",
+  "Tap a square to place it, or press and drag to lay a smooth line of petals at once.",
+  "Build around each other and layer flowers across the canvas to create art together.",
+  "Each flower species can occupy up to 20% of the pookalam to ensure a colorful, diverse carpet.",
+  "Your flower limit resets daily at midnight — come back every day of the festival to add more!",
 ];
 
 function StrokeDemo() {
