@@ -2,6 +2,7 @@ import { For, createSignal, onCleanup, onMount } from "solid-js";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import type { SpriteName } from "~/lib/sprites";
+import { memeImage } from "~/lib/img";
 
 /**
  * The screen a player watches while their sign-in completes.
@@ -40,13 +41,13 @@ import type { SpriteName } from "~/lib/sprites";
  * first pass through.
  */
 const MEMES: { src: string; alt: string }[] = [
-  { src: "/images/memes/need-more-tokens.webp", alt: "Maveli out of tokens" },
-  { src: "/images/memes/sudo-mkdir-pookalam.webp", alt: "sudo mkdir pookalam" },
-  { src: "/images/memes/talk-is-cheap-sadya.webp", alt: "Talk is cheap, show me the sadya" },
-  { src: "/images/memes/failure-is-not-an-option.webp", alt: "Failure is not an Option" },
-  { src: "/images/memes/meme-deploy.webp", alt: "Deploy day" },
-  { src: "/images/memes/meme-celebrate.webp", alt: "Celebrating" },
-  { src: "/images/memes/meme-footer.webp", alt: "Onam celebration" },
+  { src: memeImage("need-more-tokens.webp"), alt: "Maveli out of tokens" },
+  { src: memeImage("sudo-mkdir-pookalam.webp"), alt: "sudo mkdir pookalam" },
+  { src: memeImage("talk-is-cheap-sadya.webp"), alt: "Talk is cheap, show me the sadya" },
+  { src: memeImage("failure-is-not-an-option.webp"), alt: "Failure is not an Option" },
+  { src: memeImage("meme-deploy.webp"), alt: "Deploy day" },
+  { src: memeImage("meme-celebrate.webp"), alt: "Celebrating" },
+  { src: memeImage("meme-footer.webp"), alt: "Onam celebration" },
 ];
 
 const MEME_MS = 850;

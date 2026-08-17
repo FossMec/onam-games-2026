@@ -23,10 +23,11 @@ import {
   listTesters,
   listUsers,
 } from "~/server/admin/actions";
-import { getMe } from "~/server/auth/actions";
+import { shell } from "~/lib/queries";
 
 export default function Admin() {
-  const me = createAsync(() => getMe());
+  const shellData = createAsync(() => shell());
+  const me = () => shellData()?.me ?? undefined;
   const [activeTab, setActiveTab] = createSignal<AdminTabId>("overview");
   const [page, setPage] = createSignal(0);
   const [version, setVersion] = createSignal(0);

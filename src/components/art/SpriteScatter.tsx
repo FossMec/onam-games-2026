@@ -1,6 +1,7 @@
 import { For } from "solid-js";
 import { AMBIENT_SPRITES, type SpriteName } from "~/lib/sprites";
 import { SpriteIcon } from "./SpriteIcon";
+import { useDeferredArt } from "./defer";
 
 /** Deterministic PRNG to avoid SSR hydration mismatches */
 function rng(seed: string) {
@@ -70,13 +71,18 @@ export function SpriteScatter(props: SpriteScatterProps) {
     });
   };
 
+  // Decoration only: rendered after hydration, never into the SSR HTML.
+  // Also keeps its sprite <img> tags out of the server's markup, which is
+  // where a good chunk of the eager image requests were coming from.
+  const ready = useDeferredArt();
+
   return (
     <div
       class={`art-layer ${props.class ?? ""}`}
       style={{ opacity: props.opacity ?? 0.85 }}
       aria-hidden="true"
     >
-      <For each={items()}>
+      <For each={ready() ? items() : []}>
         {(item) => (
           <div
             style={{

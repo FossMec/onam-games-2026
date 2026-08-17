@@ -2,7 +2,8 @@ import { A, createAsync, useLocation } from "@solidjs/router";
 import { ChevronDown, GraduationCap, LogOut, Mail, Send, User } from "lucide-solid";
 import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
 import { signOutAndReload } from "~/lib/sign-out";
-import { getMe } from "~/server/auth/actions";
+import type { getMe } from "~/server/auth/actions";
+import { shell } from "~/lib/queries";
 import { SpriteIcon } from "./art/SpriteIcon";
 
 /**
@@ -169,7 +170,8 @@ function ProfileMenu(props: {
 
 export function Nav() {
   const loc = useLocation();
-  const me = createAsync(() => getMe());
+  const data = createAsync(() => shell());
+  const me = () => data()?.me ?? undefined;
 
   const isActive = (href: string) => {
     if (href === "/") return loc.pathname === "/";

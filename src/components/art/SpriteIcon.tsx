@@ -1,5 +1,41 @@
 import { SPRITE_REGISTRY, type SpriteName } from "~/lib/sprites";
 
+/**
+ * Every sprite, emitted at build time in three widths.
+ *
+ * `size` is a runtime prop, so no single import width can be right: the call
+ * sites are overwhelmingly tiny - 38 of them at 13px, 32 at 14px, 25 at 12px -
+ * with only a handful reaching 36-68. One budget sized for the largest would
+ * ship a 136px image to fill a 13px box, which is a hundred times the pixels
+ * anybody sees. The sources were a flat 192px, sized for nothing at all.
+ *
+ * So the browser decides. Three candidates cover the whole range at 2x
+ * (16px, 32px, 68px), `sizes` below tells it the CSS box, and it fetches the
+ * smallest one that will do.
+ *
+ * Eager because the map must exist before first render - the values are just
+ * URL strings, so the images themselves still load on demand.
+ */
+const SPRITE_SRCSETS = import.meta.glob<string>("~/assets/sprites/icons/*.webp", {
+  query: { w: "32;64;136", format: "webp", quality: 82, as: "srcset" },
+  import: "default",
+  eager: true,
+});
+
+/** The largest candidate, for browsers that ignore `srcset`. */
+const SPRITE_FALLBACK = import.meta.glob<string>("~/assets/sprites/icons/*.webp", {
+  query: { w: 136, format: "webp", quality: 82 },
+  import: "default",
+  eager: true,
+});
+
+function pick(map: Record<string, string>, name: SpriteName): string {
+  for (const [path, url] of Object.entries(map)) {
+    if (path.endsWith(`/${name}.webp`)) return url;
+  }
+  return "";
+}
+
 export interface SpriteIconProps {
   name: SpriteName;
   /** Size in pixels (width and height). Defaults to 32 */
@@ -76,7 +112,11 @@ export function SpriteIcon(props: SpriteIconProps) {
       aria-hidden={props.alt ? undefined : "true"}
     >
       <img
-        src={`/sprites/icons/${props.name}.webp`}
+        src={pick(SPRITE_FALLBACK, props.name)}
+        srcset={pick(SPRITE_SRCSETS, props.name)}
+        // The box is square and known, so the browser can resolve the right
+        // candidate before layout rather than guessing at 100vw.
+        sizes={`${size()}px`}
         alt={props.alt ?? meta().label}
         width={size()}
         height={size()}

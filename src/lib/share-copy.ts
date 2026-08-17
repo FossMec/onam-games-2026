@@ -1,3 +1,4 @@
+import { memeImage } from "~/lib/img";
 /**
  * Every word that can end up printed on a share card.
  *
@@ -134,13 +135,13 @@ const ASIDES: readonly string[] = [
  * - no other wiring needed.
  */
 export const SHARE_MEMES = [
-  "/images/memes/sudo-mkdir-pookalam.webp",
-  "/images/memes/talk-is-cheap-sadya.webp",
-  "/images/memes/need-more-tokens.webp",
-  "/images/memes/failure-is-not-an-option.webp",
-  "/images/memes/meme-celebrate.webp",
-  "/images/memes/meme-deploy.webp",
-  "/images/memes/meme-footer.webp",
+  memeImage("sudo-mkdir-pookalam.webp"),
+  memeImage("talk-is-cheap-sadya.webp"),
+  memeImage("need-more-tokens.webp"),
+  memeImage("failure-is-not-an-option.webp"),
+  memeImage("meme-celebrate.webp"),
+  memeImage("meme-deploy.webp"),
+  memeImage("meme-footer.webp"),
 ] as const;
 
 /**

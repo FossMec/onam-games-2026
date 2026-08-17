@@ -5,15 +5,15 @@ import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-j
 import { Countdown } from "~/components/Countdown";
 
 const GAME_IMAGES: Record<string, string> = {
-  "open-source-tinder": "/images/games/open-source-tinder.webp",
-  "pookalam-jigsaw": "/images/games/pookalam-jigsaw.webp",
-  wend: "/images/games/wend.webp",
-  "escape-the-vallam": "/images/games/escape-the-vallam.webp",
-  "maveli-jump": "/images/games/maveli-jump.webp",
-  "treasure-hunt": "/images/games/treasure-hunt.webp",
-  "the-hunt": "/images/games/treasure-hunt.webp",
-  "code-a-pookalam": "/images/games/code-a-pookalam.webp",
-  "code-a-pookalam-vote": "/images/games/code-a-pookalam.webp",
+  "open-source-tinder": gameImage("open-source-tinder.webp"),
+  "pookalam-jigsaw": gameImage("pookalam-jigsaw.webp"),
+  wend: gameImage("wend.webp"),
+  "escape-the-vallam": gameImage("escape-the-vallam.webp"),
+  "maveli-jump": gameImage("maveli-jump.webp"),
+  "treasure-hunt": gameImage("treasure-hunt.webp"),
+  "the-hunt": gameImage("treasure-hunt.webp"),
+  "code-a-pookalam": gameImage("code-a-pookalam.webp"),
+  "code-a-pookalam-vote": gameImage("code-a-pookalam.webp"),
 };
 
 import { ShoutBurst } from "~/components/art/Burst";
@@ -38,8 +38,13 @@ import { ShareCard, ShareCardModal } from "~/components/games/ShareCard";
 import { WinModal } from "~/components/games/WinModal";
 import { VallamGame, type VallamMove, type VallamViewData } from "~/components/games/VallamGame";
 import { WendGame, type Cell as WendCell, type WendViewData } from "~/components/games/WendGame";
-import { getMe, getMyBanState } from "~/server/auth/actions";
-import { getGame, getMyAttempt, getMyRecap } from "~/server/games/actions";
+import { getMyRecap } from "~/server/games/actions";
+import {
+  gameBySlug,
+  myAttempt as myAttemptQuery,
+  viewer,
+  banState as banStateQuery,
+} from "~/lib/queries";
 import { getMyStanding, type MyStanding } from "~/server/leaderboard/actions";
 import { collegeLabel } from "~/lib/profile";
 import type { ShareCardData } from "~/lib/share-card";
@@ -54,6 +59,7 @@ import {
   storeAttempt,
 } from "~/lib/game-session";
 import { SHOUT_COLOR, moodForResult, shout } from "~/lib/shouts";
+import { gameImage } from "~/lib/img";
 
 /**
  * The client-visible half of a generated instance. Discriminated by `kind` so
@@ -117,10 +123,10 @@ export default function GamePage() {
   const params = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const slug = () => params.slug ?? "";
-  const game = createAsync(() => getGame(slug()));
-  const me = createAsync(() => getMe());
-  const myAttempt = createAsync(() => getMyAttempt(slug()));
-  const banState = createAsync(() => getMyBanState());
+  const game = createAsync(() => gameBySlug(slug()));
+  const me = createAsync(() => viewer());
+  const myAttempt = createAsync(() => myAttemptQuery(slug()));
+  const banState = createAsync(() => banStateQuery());
 
   const [attemptToken, setAttemptToken] = createSignal<string | null>(null);
   const [startedAt, setStartedAt] = createSignal<number | null>(null);
@@ -615,9 +621,9 @@ export default function GamePage() {
   });
 
   const startLabel = () =>
-    attempt()?.status === "in_progress"
+    attemptToken() !== null
       ? "Resume run"
-      : (attempt()?.attemptsUsed ?? 0) > 0
+      : (attempt()?.attemptsUsed ?? 0) > 0 || result() !== null
         ? "Go again"
         : "Start the clock";
 
@@ -677,7 +683,7 @@ export default function GamePage() {
               }}
             >
               <img
-                src={GAME_IMAGES[slug()] ?? `/images/games/${slug()}.webp`}
+                src={GAME_IMAGES[slug()] ?? gameImage(`slug().webp`)}
                 alt="Classified preview"
                 class="aspect-square w-full object-cover blur-md opacity-40 grayscale"
               />
@@ -1325,7 +1331,7 @@ function StartPanel(props: {
         ? `${props.attemptsLeft} run${props.attemptsLeft === 1 ? "" : "s"} left today`
         : "One attempt";
 
-  const imageSrc = () => GAME_IMAGES[props.slug] ?? `/images/games/${props.slug}.webp`;
+  const imageSrc = () => GAME_IMAGES[props.slug] ?? gameImage(`${props.slug}.webp`);
 
   return (
     <section

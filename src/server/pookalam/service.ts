@@ -9,6 +9,7 @@ import {
   users,
 } from "~/server/db/schema";
 import { getSettings } from "~/server/settings/service";
+import { requestMemo } from "~/server/cache";
 import { applyResult, pairKey } from "./elo";
 import { decodeSubmissionImage, deleteStoredImage, storeSubmissionImage } from "./image";
 import { candidatePairs, type PoolEntry, samplePair } from "./pairing";
@@ -188,22 +189,35 @@ function normalizeSourceUrl(raw: string): string {
   return url.toString();
 }
 
-export async function getMySubmission(userId: string): Promise<MySubmission | null> {
-  const [row] = await getDb()
-    .select({
-      id: pookalamSubmissions.id,
-      title: pookalamSubmissions.title,
-      sourceUrl: pookalamSubmissions.sourceUrl,
-      imageUrl: pookalamSubmissions.imageUrl,
-      notes: pookalamSubmissions.notes,
-      status: pookalamSubmissions.status,
-      shortlisted: pookalamSubmissions.shortlisted,
-      reviewNote: pookalamSubmissions.reviewNote,
-    })
-    .from(pookalamSubmissions)
-    .where(eq(pookalamSubmissions.userId, userId))
-    .limit(1);
-  return row ?? null;
+/**
+ * The caller's own entry, once per request.
+ *
+ * Two unrelated readers want this on the same page - `getPookalamState` for
+ * the entry card, and `getMyPookalamNotice` for the shortlist popup that lives
+ * in the app shell - and neither knows about the other, so every render of the
+ * landing page, `/games` and `/code-a-pookalam` was two identical selects.
+ *
+ * Memoised on the request rather than the instance: this is one specific
+ * person's row, and a process-level cache would hand it to the next visitor.
+ */
+export function getMySubmission(userId: string): Promise<MySubmission | null> {
+  return requestMemo(`pookalam:mine:${userId}`, async () => {
+    const [row] = await getDb()
+      .select({
+        id: pookalamSubmissions.id,
+        title: pookalamSubmissions.title,
+        sourceUrl: pookalamSubmissions.sourceUrl,
+        imageUrl: pookalamSubmissions.imageUrl,
+        notes: pookalamSubmissions.notes,
+        status: pookalamSubmissions.status,
+        shortlisted: pookalamSubmissions.shortlisted,
+        reviewNote: pookalamSubmissions.reviewNote,
+      })
+      .from(pookalamSubmissions)
+      .where(eq(pookalamSubmissions.userId, userId))
+      .limit(1);
+    return row ?? null;
+  });
 }
 
 /**

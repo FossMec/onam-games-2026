@@ -35,7 +35,8 @@ import {
   writeRoadProgress,
 } from "~/lib/pookalam-road";
 import type { SpriteName } from "~/lib/sprites";
-import { getMe } from "~/server/auth/actions";
+import { shell } from "~/lib/queries";
+import { memeImage } from "~/lib/img";
 
 /**
  * The road: nine stops from "what is this" to a submitted entry, drawn as one
@@ -1140,7 +1141,8 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
    * from one that says "Nice one" - and signed-out visitors simply get the
    * shorter sentence, never a placeholder.
    */
-  const me = createAsync(() => getMe());
+  const shellData = createAsync(() => shell());
+  const me = () => shellData()?.me ?? undefined;
   const firstName = () => me()?.name?.trim().split(/\s+/)[0] || undefined;
 
   // Empty on the server and on first paint, filled in on mount: reading
@@ -1341,9 +1343,11 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
 
         <div class="art-over flex flex-col items-center gap-4 md:flex-row">
           <img
-            src="/images/memes/meme-deploy.webp"
+            src={memeImage("meme-deploy.webp")}
             alt="Deploy Flower Carpet Meme"
             class="block w-36 shrink-0 select-none rounded-xl border-2 border-[var(--ink)] object-contain sm:w-40"
+            loading="lazy"
+            decoding="async"
           />
 
           <div class="flex-1 space-y-2.5 text-center md:text-left">

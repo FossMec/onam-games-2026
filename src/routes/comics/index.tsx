@@ -4,6 +4,7 @@ import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
 import { Halftone } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
+import { comicImage } from "~/lib/img";
 
 interface ComicBook {
   id: number;
@@ -19,41 +20,41 @@ const COMIC_BOOKS: ComicBook[] = [
     id: 1,
     tag: "Issue #1",
     tagColor: "var(--pop-yellow)",
-    leftImage: "/images/comics/comic-1-left.webp",
-    rightImage: "/images/comics/comic-1-right.webp",
-    fullImage: "/images/comics/comic-1.webp",
+    leftImage: comicImage("comic-1-left.webp"),
+    rightImage: comicImage("comic-1-right.webp"),
+    fullImage: comicImage("comic-1.webp"),
   },
   {
     id: 2,
     tag: "Issue #2",
     tagColor: "var(--pop-teal)",
-    leftImage: "/images/comics/comic-2-left.webp",
-    rightImage: "/images/comics/comic-2-right.webp",
-    fullImage: "/images/comics/comic-2.webp",
+    leftImage: comicImage("comic-2-left.webp"),
+    rightImage: comicImage("comic-2-right.webp"),
+    fullImage: comicImage("comic-2.webp"),
   },
   {
     id: 3,
     tag: "Issue #3",
     tagColor: "var(--pop-pink)",
-    leftImage: "/images/comics/comic-3-left.webp",
-    rightImage: "/images/comics/comic-3-right.webp",
-    fullImage: "/images/comics/comic-3.webp",
+    leftImage: comicImage("comic-3-left.webp"),
+    rightImage: comicImage("comic-3-right.webp"),
+    fullImage: comicImage("comic-3.webp"),
   },
   {
     id: 4,
     tag: "Issue #4",
     tagColor: "var(--pop-purple)",
-    leftImage: "/images/comics/comic-4-left.webp",
-    rightImage: "/images/comics/comic-4-right.webp",
-    fullImage: "/images/comics/comic-4.webp",
+    leftImage: comicImage("comic-4-left.webp"),
+    rightImage: comicImage("comic-4-right.webp"),
+    fullImage: comicImage("comic-4.webp"),
   },
   {
     id: 5,
     tag: "Issue #5",
     tagColor: "var(--pop-red)",
-    leftImage: "/images/comics/comic-5-left.webp",
-    rightImage: "/images/comics/comic-5-right.webp",
-    fullImage: "/images/comics/comic-5.webp",
+    leftImage: comicImage("comic-5-left.webp"),
+    rightImage: comicImage("comic-5-right.webp"),
+    fullImage: comicImage("comic-5.webp"),
   },
 ];
 

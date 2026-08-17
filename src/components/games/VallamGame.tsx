@@ -1,6 +1,7 @@
 import { For, Show, createMemo, createSignal } from "solid-js";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import type { SpriteName } from "~/lib/sprites";
+import { vallamSprite } from "~/lib/img";
 
 const ENEMY_PASSENGERS: SpriteName[] = [
   "tux-king",
@@ -66,11 +67,11 @@ export interface VallamGameProps {
 }
 
 const BOAT_SPRITES = {
-  hero: "/sprites/vallam/hero-vallam.webp",
-  canoe: "/sprites/vallam/boat-canoe.webp",
-  canoe3: "/sprites/vallam/boat-canoe-3.webp",
-  wood: "/sprites/vallam/boat-wood.webp",
-  small: "/sprites/vallam/boat-small-h.webp",
+  hero: vallamSprite("hero-vallam.webp"),
+  canoe: vallamSprite("boat-canoe.webp"),
+  canoe3: vallamSprite("boat-canoe-3.webp"),
+  wood: vallamSprite("boat-wood.webp"),
+  small: vallamSprite("boat-small-h.webp"),
 };
 
 /** Pop color palette variations for enemy blocker boats */

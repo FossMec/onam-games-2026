@@ -327,7 +327,7 @@ function VallamDemo() {
           {/* The blocker, moving up its own column to clear the lane. */}
           <g style={{ animation: "demo-blocker-up 4s ease-in-out infinite" }}>
             <image
-              href="/sprites/vallam/boat-canoe.webp"
+              href={vallamSprite("boat-canoe.webp")}
               x="93"
               y="37"
               width="44"
@@ -343,7 +343,7 @@ function VallamDemo() {
           <g style={{ "--slide": "120px", animation: "demo-slide-out 4s ease-in-out infinite" }}>
             <g transform="translate(30, 52)">
               <image
-                href="/sprites/vallam/hero-vallam.webp"
+                href={vallamSprite("hero-vallam.webp")}
                 x="-68"
                 y="0"
                 width="68"
@@ -368,7 +368,7 @@ function JumpDemo() {
     px: 42,
     py: 110,
     moveX: 110,
-    sprite: "/sprites/jump/maveli-jump.webp",
+    sprite: jumpSprite("maveli-jump.webp"),
     balloonVisible: true,
     showUmbrellaBurst: false,
     flip: false,
@@ -385,7 +385,7 @@ function JumpDemo() {
 
       let px = 42;
       let py = 110;
-      let sprite = "/sprites/jump/maveli-jump.webp";
+      let sprite = jumpSprite("maveli-jump.webp");
       let balloonVisible = true;
       let showUmbrellaBurst = false;
       let flip = false;
@@ -395,7 +395,7 @@ function JumpDemo() {
         const p = t / 0.32;
         px = 42 + p * (moveX + 10 - 42);
         py = 110 - Math.sin(p * Math.PI) * 44;
-        sprite = p > 0.55 ? "/sprites/jump/maveli-fall.webp" : "/sprites/jump/maveli-jump.webp";
+        sprite = p > 0.55 ? jumpSprite("maveli-fall.webp") : jumpSprite("maveli-jump.webp");
       } else if (t < 0.65) {
         // 2. Hop: Middle Cyan -> Grab Balloon (x: 135, y: 55)
         const p = (t - 0.32) / 0.33;
@@ -403,9 +403,9 @@ function JumpDemo() {
         py = 72 - Math.sin(p * Math.PI) * 36;
         if (p > 0.45) {
           balloonVisible = false;
-          sprite = "/sprites/jump/maveli-balloon.webp";
+          sprite = jumpSprite("maveli-balloon.webp");
         } else {
-          sprite = "/sprites/jump/maveli-jump.webp";
+          sprite = jumpSprite("maveli-jump.webp");
         }
       } else if (t < 0.82) {
         // 3. Float down gently onto Top Coral Spring Platform (x: 172, y: 36)
@@ -413,7 +413,7 @@ function JumpDemo() {
         balloonVisible = false;
         px = 135 + p * (172 - 135);
         py = 46 + p * (36 - 46);
-        sprite = "/sprites/jump/maveli-balloon.webp";
+        sprite = jumpSprite("maveli-balloon.webp");
       } else {
         // 4. BOING! Super-Launch off Spring Platform with Olakuda Umbrella!
         const p = (t - 0.82) / 0.18;
@@ -422,7 +422,7 @@ function JumpDemo() {
         flip = true;
         px = 172 - p * 130;
         py = 36 - Math.sin(p * Math.PI) * 65;
-        sprite = "/sprites/jump/maveli-umbrella.webp";
+        sprite = jumpSprite("maveli-umbrella.webp");
       }
 
       setAnim({
@@ -528,7 +528,7 @@ function JumpDemo() {
           {/* Floating Collectible Balloon */}
           <Show when={anim().balloonVisible}>
             <g transform="translate(135, 48)">
-              <image href="/sprites/jump/item-balloon.webp" width="16" height="16" />
+              <image href={jumpSprite("item-balloon.webp")} width="16" height="16" />
             </g>
           </Show>
 
@@ -652,6 +652,7 @@ function Steps(props: { steps: string[] }) {
 }
 
 import { InteractiveTrial } from "./PracticeTrial";
+import { jumpSprite, vallamSprite } from "~/lib/img";
 
 /* ------------------------------------------------------------------ panel */
 

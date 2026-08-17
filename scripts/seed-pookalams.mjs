@@ -1,11 +1,15 @@
 // Seeds fake Code-a-Pookalam entries so the day-7 arena can be exercised
 // before anyone has actually submitted anything.
 //
-// The artwork is the existing game key art in public/images/games - already
-// square, already served by the site, and unmistakably not a real entry, so
-// there is no chance of a seeded row being mistaken for a contestant's work.
-// They point at local paths rather than the storage bucket, which also means
-// this script needs no Supabase credentials.
+// The artwork is the jigsaw pookalam - square, unmistakably not a real entry,
+// and pointing at a local path rather than the storage bucket, so this script
+// needs no Supabase credentials.
+//
+// It has to be a file that is still served from `public/`, and there is now
+// exactly one: the rest of the game key art moved into `src/assets` to go
+// through the build-time image pipeline, which rewrites *code* references and
+// cannot rewrite a URL living in a database row. Seeding `/images/games/wend
+// .webp` here would write a 404 into the table.
 //
 // Entries are attached to placeholder users on an @invalid domain (RFC 2606
 // reserves it, so these addresses can never collide with a real sign-in) and
@@ -66,7 +70,7 @@ for (const [index, [title, slug, notes]] of ENTRIES.entries()) {
       ${user.id},
       ${title},
       ${`https://github.com/fossmec/seed-pookalam-${slug}`},
-      ${`/images/games/${slug}.webp`},
+      ${"/images/games/pookalam.webp"},
       ${notes},
       'approved',
       true,

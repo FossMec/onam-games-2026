@@ -1,6 +1,7 @@
 import { getRequestEvent } from "solid-js/web";
 import { getDb } from "~/server/db/client";
 import { appSettings } from "~/server/db/schema";
+import { invalidateShared, sharedRead } from "~/server/cache";
 
 /**
  * Every setting, once per request.
@@ -57,12 +58,23 @@ async function loadSettings(): Promise<Map<string, unknown>> {
   return new Map(rows.map((row) => [row.key, unwrapDoubleEncoded(row.value)]));
 }
 
+/**
+ * Sixteen rows that every single page render needs and no visitor can change.
+ *
+ * The per-request memo below stops one page asking twice; it does nothing
+ * about the next page, so this table was costing one Supabase round trip per
+ * page view site-wide. `sharedRead` collapses that to one read per instance
+ * per TTL, and `setSetting` invalidates it - which is what makes a
+ * process-level cache safe here where a bare one would not be.
+ */
 export function snapshotSettings(): Promise<Map<string, unknown>> {
   const event = getRequestEvent();
-  if (!event) return loadSettings();
-  event.locals.settingsPromise ??= loadSettings();
+  if (!event) return sharedRead(SETTINGS_KEY, loadSettings);
+  event.locals.settingsPromise ??= sharedRead(SETTINGS_KEY, loadSettings);
   return event.locals.settingsPromise;
 }
+
+const SETTINGS_KEY = "settings:all";
 
 /**
  * Several settings at once. Missing keys are simply absent from the map;
@@ -131,4 +143,16 @@ export async function setSetting(
    */
   const event = getRequestEvent();
   if (event) event.locals.settingsPromise = undefined;
+  /*
+   * And drop it for everyone else. A setting is the one thing on this site
+   * that is edited precisely because it must take effect *now* - opening the
+   * beta door, moving the release time - so it never waits out the TTL.
+   *
+   * On a single instance this is exact. Across several, each one still expires
+   * on its own within `SHARED_TTL_MS`, which is the deliberate ceiling on how
+   * wrong any of this can get.
+   */
+  invalidateShared(SETTINGS_KEY);
+  invalidateShared("games:");
+  invalidateShared("pookalam:config");
 }

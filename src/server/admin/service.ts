@@ -13,6 +13,7 @@ import {
   userDevices,
   users,
 } from "~/server/db/client";
+import { invalidateShared } from "~/server/cache";
 import { requireAdmin } from "~/server/auth/service";
 import type { BanLevel } from "~/server/auth/bans";
 import { setBanLevel } from "~/server/auth/bans";
@@ -204,6 +205,7 @@ export async function adminCreateGame(input: {
       testerEarlyHours: input.testerEarlyHours ?? 24,
       published: input.published ?? false,
     });
+  invalidateShared("games:");
 }
 
 export async function adminUpdateGame(
@@ -240,11 +242,13 @@ export async function adminUpdateGame(
           : undefined,
     })
     .where(eq(games.id, id));
+  invalidateShared("games:");
 }
 
 export async function adminDeleteGame(id: string) {
   await requireAdmin();
   await getDb().delete(games).where(eq(games.id, id));
+  invalidateShared("games:");
 }
 
 export async function adminGetMetrics() {

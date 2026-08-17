@@ -28,11 +28,13 @@ import {
   type Div,
   type Occupation,
 } from "~/lib/profile";
-import { getMe, submitOnboarding, uploadAvatarAction } from "~/server/auth/actions";
+import { submitOnboarding, uploadAvatarAction } from "~/server/auth/actions";
+import { shell } from "~/lib/queries";
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const me = createAsync(() => getMe());
+  const shellData = createAsync(() => shell());
+  const me = () => shellData()?.me ?? undefined;
 
   const [occupation, setOccupation] = createSignal<Occupation>("student");
   const [college, setCollege] = createSignal<string>("mec");

@@ -4,7 +4,7 @@ import { ShoutBurst } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { signOutAndReload } from "~/lib/sign-out";
-import { getAccessState } from "~/server/auth/actions";
+import { shell } from "~/lib/queries";
 
 /**
  * The closed-beta door.
@@ -24,7 +24,8 @@ import { getAccessState } from "~/server/auth/actions";
  * already have.
  */
 export function BetaGate(props: { children: JSX.Element }) {
-  const access = createAsync(() => getAccessState());
+  const data = createAsync(() => shell());
+  const access = () => data()?.access;
   const location = useLocation();
 
   const isAuthRoute = () => location.pathname.startsWith("/auth");

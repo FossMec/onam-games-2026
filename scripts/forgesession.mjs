@@ -32,9 +32,14 @@ await sql`
   on conflict (user_id, device_id) do nothing
 `;
 
+// `expires_at` must be set and far out. Left null, `isRefreshDue` is true on
+// the very first request, the app tries to refresh "forge-refresh" against
+// Supabase, fails, and revokes the session - so the forged cookie works
+// exactly once and then silently stops.
 const [sess] = await sql`
-  insert into auth_sessions (user_id, device_id, refresh_token, access_token, ip)
-  values (${userId}, ${dev.id}, ${"forge-refresh"}, ${"forge-access"}, ${"127.0.0.1"})
+  insert into auth_sessions (user_id, device_id, refresh_token, access_token, ip, expires_at)
+  values (${userId}, ${dev.id}, ${"forge-refresh"}, ${"forge-access"}, ${"127.0.0.1"},
+          now() + interval '30 days')
   returning id
 `;
 
@@ -59,7 +64,14 @@ const options = {
   },
 };
 
-const sealed = await seal({ sid: sess.id, deviceId: dev.id }, secret, options);
+// h3 v2 seals the whole session envelope, not just the payload: `data` is
+// where `readAuthCookie` looks, and a missing `id` makes h3 treat the cookie as
+// a fresh anonymous session and silently discard it.
+const sealed = await seal(
+  { id: crypto.randomUUID(), createdAt: Date.now(), data: { sid: sess.id, deviceId: dev.id } },
+  secret,
+  { ...options, encode: JSON.stringify },
+);
 console.log(`og_session=${sealed}`);
 console.log(`USER_ID=${userId}`);
 await sql.end();

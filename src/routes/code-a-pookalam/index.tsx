@@ -1,5 +1,6 @@
 import { Title } from "@solidjs/meta";
 import { createAsync } from "@solidjs/router";
+import type { RouteDefinition } from "@solidjs/router";
 import { Pencil } from "lucide-solid";
 import { Show, type JSX } from "solid-js";
 
@@ -11,7 +12,7 @@ import { PookalamHeroInvite } from "~/components/pookalam/PookalamHeroInvite";
 import { PookalamInteractiveCanvas } from "~/components/pookalam/PookalamInteractiveCanvas";
 import { PookalamRoad } from "~/components/pookalam/PookalamRoad";
 import { POOKALAM } from "~/lib/event-content";
-import { getPookalamState } from "~/server/pookalam/actions";
+import { pookalamState } from "~/lib/queries";
 
 const STATUS_COLOR: Record<string, string> = {
   pending: "var(--pop-yellow)",
@@ -45,8 +46,20 @@ function Section(props: {
   );
 }
 
+/**
+ * Start the page's reads the moment the router knows we are heading here,
+ * rather than after this chunk has downloaded and mounted. `query` dedupes
+ * against the `createAsync` below, so this costs nothing when it is early and
+ * saves a full round trip when it is not.
+ */
+export const route = {
+  preload() {
+    void pookalamState();
+  },
+} satisfies RouteDefinition;
+
 export default function CodeAPookalam() {
-  const state = createAsync(() => getPookalamState());
+  const state = createAsync(() => pookalamState());
   const mine = () => state()?.mine ?? null;
 
   return (

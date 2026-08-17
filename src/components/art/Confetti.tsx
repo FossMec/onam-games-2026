@@ -1,4 +1,5 @@
 import { For } from "solid-js";
+import { useDeferredArt } from "./defer";
 
 /**
  * Memphis confetti that is secretly Onam iconography.
@@ -172,9 +173,13 @@ export function Confetti(props: ConfettiProps) {
     }));
   };
 
+  // Decoration only: rendered after hydration, never into the SSR HTML.
+  // See `useDeferredArt`.
+  const ready = useDeferredArt();
+
   return (
     <div class={`art-layer ${props.class ?? ""}`} aria-hidden="true">
-      <For each={pieces()}>
+      <For each={ready() ? pieces() : []}>
         {(piece) => (
           <div
             class={props.animate ? "anim-drift" : undefined}

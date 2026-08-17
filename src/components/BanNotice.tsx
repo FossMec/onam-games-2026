@@ -3,7 +3,8 @@ import { AlertTriangle, Clock, ShieldAlert } from "lucide-solid";
 import { Show, createSignal } from "solid-js";
 import { ShoutBurst } from "~/components/art/Burst";
 import { SHOUT_COLOR } from "~/lib/shouts";
-import { ackWarningAction, getMyBanState } from "~/server/auth/actions";
+import { ackWarningAction } from "~/server/auth/actions";
+import { shell } from "~/lib/queries";
 
 /**
  * Ban and warning state, mounted across the entire application.
@@ -14,7 +15,10 @@ import { ackWarningAction, getMyBanState } from "~/server/auth/actions";
  * 2. An interrupt modal for Level 1 warnings that the player must acknowledge.
  */
 export function BanNotice() {
-  const state = createAsync(() => getMyBanState());
+  // Shares the shell's single round trip with Nav and BetaGate rather than
+  // making a fourth request of its own on every navigation.
+  const data = createAsync(() => shell());
+  const state = () => data()?.ban ?? null;
   const [modalDismissed, setModalDismissed] = createSignal(false);
 
   const isLevel1 = () => state()?.level === 1;

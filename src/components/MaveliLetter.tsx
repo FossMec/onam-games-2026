@@ -2,11 +2,13 @@ import { createAsync } from "@solidjs/router";
 import { ChevronDown, ChevronUp, Key, ShieldCheck } from "lucide-solid";
 import { Show, createSignal } from "solid-js";
 
-import { getMe } from "~/server/auth/actions";
 import { SpriteIcon } from "./art/SpriteIcon";
+import { shell } from "~/lib/queries";
+import { looseImage } from "~/lib/img";
 
 export function MaveliLetter() {
-  const me = createAsync(() => getMe());
+  const shellData = createAsync(() => shell());
+  const me = () => shellData()?.me ?? undefined;
   const [isExpanded, setIsExpanded] = createSignal(false);
 
   const recipientName = () => me()?.name || "Prajakale & Fellow Hacker";
@@ -91,7 +93,7 @@ export function MaveliLetter() {
               }}
             >
               <img
-                src="/images/maveli-typing.webp"
+                src={looseImage("maveli-typing.webp")}
                 alt="King Mahabali typing on laptop"
                 class="w-full h-full object-cover aspect-square"
                 loading="lazy"

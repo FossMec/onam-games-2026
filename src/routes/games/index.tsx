@@ -1,5 +1,6 @@
 import { Title } from "@solidjs/meta";
 import { A, createAsync, useSearchParams } from "@solidjs/router";
+import type { RouteDefinition } from "@solidjs/router";
 import { ChevronLeft, ChevronRight, HelpCircle, Lock } from "lucide-solid";
 import { For, Show } from "solid-js";
 
@@ -9,9 +10,8 @@ import { SpriteScatter } from "~/components/art/SpriteScatter";
 import { Countdown } from "~/components/Countdown";
 import { LoadingScreen } from "~/components/LoadingScreen";
 import { type SpriteName } from "~/lib/sprites";
-import { getMe } from "~/server/auth/actions";
-import { getGames } from "~/server/games/actions";
-import { getPookalamState } from "~/server/pookalam/actions";
+import { gamesList, pookalamState as pookalamStateQuery, viewer } from "~/lib/queries";
+import { gameImage } from "~/lib/img";
 
 const DAY_POPS = [
   "pop-yellow",
@@ -24,13 +24,13 @@ const DAY_POPS = [
 ];
 
 const GAME_IMAGES: Record<string, string> = {
-  "open-source-tinder": "/images/games/open-source-tinder.webp",
-  "pookalam-jigsaw": "/images/games/pookalam-jigsaw.webp",
-  wend: "/images/games/wend.webp",
-  "escape-the-vallam": "/images/games/escape-the-vallam.webp",
-  "maveli-jump": "/images/games/maveli-jump.webp",
-  "treasure-hunt": "/images/games/treasure-hunt.webp",
-  "code-a-pookalam-vote": "/images/games/code-a-pookalam.webp",
+  "open-source-tinder": gameImage("open-source-tinder.webp"),
+  "pookalam-jigsaw": gameImage("pookalam-jigsaw.webp"),
+  wend: gameImage("wend.webp"),
+  "escape-the-vallam": gameImage("escape-the-vallam.webp"),
+  "maveli-jump": gameImage("maveli-jump.webp"),
+  "treasure-hunt": gameImage("treasure-hunt.webp"),
+  "code-a-pookalam-vote": gameImage("code-a-pookalam.webp"),
 };
 
 const GAME_TEASERS: Record<number, { hint: string; icon: SpriteName }> = {
@@ -99,11 +99,25 @@ const statusSticker: Record<string, { label: string; pop: string }> = {
   closed: { label: "Catch up", pop: "var(--pop-blue)" },
 };
 
+/**
+ * Start the page's reads the moment the router knows we are heading here,
+ * rather than after this chunk has downloaded and mounted. `query` dedupes
+ * against the `createAsync` below, so this costs nothing when it is early and
+ * saves a full round trip when it is not.
+ */
+export const route = {
+  preload() {
+    void viewer();
+    void gamesList();
+    void pookalamStateQuery();
+  },
+} satisfies RouteDefinition;
+
 export default function GamesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const games = createAsync(() => getGames());
-  const pookalamState = createAsync(() => getPookalamState());
-  const me = createAsync(() => getMe());
+  const games = createAsync(() => gamesList());
+  const pookalamState = createAsync(() => pookalamStateQuery());
+  const me = createAsync(() => viewer());
 
   const fullSchedule = () => {
     const list = games();
@@ -282,7 +296,7 @@ export default function GamesPage() {
                           <div class="relative h-full w-full overflow-hidden flex flex-col items-center justify-center text-center p-4 bg-[var(--paper-3)]">
                             <img
                               src={
-                                GAME_IMAGES[current.slug] ?? "/images/games/open-source-tinder.webp"
+                                GAME_IMAGES[current.slug] ?? gameImage("open-source-tinder.webp")
                               }
                               alt="Classified preview"
                               class="absolute inset-0 h-full w-full object-cover blur-xl opacity-40 grayscale"
@@ -309,7 +323,7 @@ export default function GamesPage() {
                         }
                       >
                         <img
-                          src={GAME_IMAGES[current.slug] ?? "/images/games/open-source-tinder.webp"}
+                          src={GAME_IMAGES[current.slug] ?? gameImage("open-source-tinder.webp")}
                           alt={current.title}
                           loading="eager"
                           class="h-full w-full object-cover aspect-square"
@@ -506,7 +520,7 @@ export default function GamesPage() {
                                     <img
                                       src={
                                         GAME_IMAGES[item.slug] ??
-                                        "/images/games/open-source-tinder.webp"
+                                        gameImage("open-source-tinder.webp")
                                       }
                                       alt="Locked preview"
                                       class="absolute inset-0 w-full h-full object-cover blur-sm opacity-40 grayscale"
@@ -519,8 +533,7 @@ export default function GamesPage() {
                               >
                                 <img
                                   src={
-                                    GAME_IMAGES[item.slug] ??
-                                    "/images/games/open-source-tinder.webp"
+                                    GAME_IMAGES[item.slug] ?? gameImage("open-source-tinder.webp")
                                   }
                                   alt={item.title}
                                   loading="lazy"

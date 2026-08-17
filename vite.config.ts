@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 
 import { solidStart } from "@solidjs/start/config";
 import { lazyPlugins } from "vite-plus";
+import { imagetools } from "vite-imagetools";
 
 /**
  * Refuses to produce a production bundle with no Supabase in it.
@@ -62,6 +63,27 @@ export default defineConfig({
   },
   plugins: lazyPlugins(() => [
     guardPublicEnv(),
+    /*
+     * Build-time image transforms, per import site.
+     *
+     * `import icon from "~/assets/x.webp?w=136&format=webp"` emits exactly a
+     * 136px WebP - so each usage gets the size it actually draws at instead of
+     * whatever the source happened to be. The sprite sheet alone was 31 files
+     * at 192px for something never drawn above 68.
+     *
+     * Only reaches *imported* assets, which is why `src/assets` exists at all.
+     * Anything addressed by a runtime string - the jigsaw artwork chosen in
+     * `games.assets_json`, the og:image other servers fetch by absolute URL -
+     * has no import site and stays in `public/` untouched.
+     */
+    imagetools({
+      defaultDirectives: (url) =>
+        // Everything is WebP unless a call site says otherwise; without a
+        // default, an import with no query passes through untransformed.
+        url.searchParams.has("format")
+          ? url.searchParams
+          : new URLSearchParams({ format: "webp", ...Object.fromEntries(url.searchParams) }),
+    }),
     tailwindcss(),
     solidStart({ middleware: "./src/middleware/index.ts" }),
     nitro({

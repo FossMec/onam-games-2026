@@ -5,6 +5,7 @@ import { Show, createSignal } from "solid-js";
 import { Confetti } from "~/components/art/Confetti";
 import { getBrowserSupabase } from "~/lib/supabase-client";
 import { getAuthMode } from "~/server/auth/actions";
+import { memeImage } from "~/lib/img";
 
 export default function SignIn() {
   const [searchParams] = useSearchParams();
@@ -62,7 +63,7 @@ export default function SignIn() {
       <Title>Sign in - FOSS Onam Games</Title>
 
       <img
-        src="/images/memes/need-more-tokens.webp"
+        src={memeImage("need-more-tokens.webp")}
         alt="Need More Tokens Meme"
         // Intrinsic size, so the browser reserves the box from the aspect ratio
         // instead of collapsing to zero height and shoving the card down when

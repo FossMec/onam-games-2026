@@ -1,5 +1,6 @@
 import { Title } from "@solidjs/meta";
 import { A, createAsync, useSearchParams } from "@solidjs/router";
+import type { RouteDefinition } from "@solidjs/router";
 import {
   ChevronDown,
   ChevronLeft,
@@ -30,10 +31,9 @@ import { ShareCardModal } from "~/components/games/ShareCard";
 import { PookalamBoards } from "~/components/pookalam/PookalamBoards";
 import { collegeLabel } from "~/lib/profile";
 import type { ShareCardData } from "~/lib/share-card";
-import { getMe } from "~/server/auth/actions";
-import { getGames } from "~/server/games/actions";
-import { getDaily } from "~/server/leaderboard/actions";
+import { dailyBoard, gamesList, viewer } from "~/lib/queries";
 import type { DailyBoard, DailyEntry } from "~/server/leaderboard/service";
+import { memeImage } from "~/lib/img";
 
 const POLL_MS = 120_000;
 const REFRESH_COOLDOWN_MS = 10_000;
@@ -74,9 +74,22 @@ const rankPop = (rank: number): string =>
         ? "var(--pop-red)"
         : "transparent";
 
+/**
+ * Start the page's reads the moment the router knows we are heading here,
+ * rather than after this chunk has downloaded and mounted. `query` dedupes
+ * against the `createAsync` below, so this costs nothing when it is early and
+ * saves a full round trip when it is not.
+ */
+export const route = {
+  preload() {
+    void viewer();
+    void gamesList();
+  },
+} satisfies RouteDefinition;
+
 export default function Leaderboard() {
-  const me = createAsync(() => getMe());
-  const games = createAsync(() => getGames());
+  const me = createAsync(() => viewer());
+  const games = createAsync(() => gamesList());
   const [searchParams, setSearchParams] = useSearchParams();
 
   const parseQueryDay = () => {
@@ -177,7 +190,7 @@ export default function Leaderboard() {
     void version();
     const g = selectedGame();
     const mode = isTesterOrAdmin() ? viewMode() : "main";
-    return g ? getDaily(g.id, mode, page(), 50) : Promise.resolve(null);
+    return g ? dailyBoard(g.id, mode, page(), 50) : Promise.resolve(null);
   });
 
   /**
@@ -294,9 +307,11 @@ export default function Leaderboard() {
       <aside class="hidden 2xl:flex flex-col gap-3 absolute left-[calc(100%+2rem)] top-6 w-68 pointer-events-auto">
         <div>
           <img
-            src="/images/memes/failure-is-not-an-option.webp"
+            src={memeImage("failure-is-not-an-option.webp")}
             alt="Leaderboard Festival Meme"
             class="w-full h-auto object-contain rounded-xl border-2 border-[var(--ink)] block"
+            loading="lazy"
+            decoding="async"
           />
           <p class="text-xs font-black text-center mt-2 text-[var(--ink)] uppercase tracking-wider">
             ₹200 Daily Prize · FOSS Onam
@@ -732,9 +747,11 @@ export default function Leaderboard() {
       {/* Mobile Bottom Meme Sticker */}
       <div class="2xl:hidden flex justify-center py-4">
         <img
-          src="/images/memes/failure-is-not-an-option.webp"
+          src={memeImage("failure-is-not-an-option.webp")}
           alt="Leaderboard Festival Meme"
           class="max-w-xs sm:max-w-sm w-full h-auto object-contain select-none rounded-xl border-2 border-[var(--ink)] block"
+          loading="lazy"
+          decoding="async"
         />
       </div>
 

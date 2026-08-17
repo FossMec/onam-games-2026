@@ -7,8 +7,8 @@ import { Countdown } from "~/components/Countdown";
 import { POOKALAM } from "~/lib/event-content";
 import { ImageRejected, preparePookalamImage } from "~/lib/pookalam-image";
 import { RoadRecap, RoadSendOff, shouldShowRecap } from "~/components/pookalam/RoadRecap";
-import { getMe } from "~/server/auth/actions";
-import { getPookalamState, submitPookalam } from "~/server/pookalam/actions";
+import { submitPookalam } from "~/server/pookalam/actions";
+import { pookalamState, shell } from "~/lib/queries";
 
 /**
  * The Code-a-Pookalam entry form.
@@ -51,8 +51,9 @@ const IMAGE_RULES = [
 ];
 
 export default function SubmitPookalam() {
-  const state = createAsync(() => getPookalamState());
-  const me = createAsync(() => getMe());
+  const state = createAsync(() => pookalamState());
+  const shellData = createAsync(() => shell());
+  const me = () => shellData()?.me ?? undefined;
   const firstName = () => me()?.name?.trim().split(/\s+/)[0] || undefined;
 
   const [sourceUrl, setSourceUrl] = createSignal("");

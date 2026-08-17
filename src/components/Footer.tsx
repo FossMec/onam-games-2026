@@ -2,6 +2,7 @@ import { A } from "@solidjs/router";
 import { Confetti } from "./art/Confetti";
 import { SpriteIcon } from "./art/SpriteIcon";
 import { SpriteScatter } from "./art/SpriteScatter";
+import { memeImage } from "~/lib/img";
 
 /**
  * Closes the page and carries the club credit.
@@ -41,9 +42,11 @@ export function Footer() {
       {/* Desktop / Large Screen: Floating Comic Meme Sticker in Side Area */}
       <div class="hidden lg:block absolute right-6 xl:right-16 top-1/2 -translate-y-1/2 w-44 xl:w-52 pointer-events-none select-none z-10">
         <img
-          src="/images/memes/meme-footer.webp"
+          src={memeImage("meme-footer.webp")}
           alt="FOSS Onam Festival Meme"
           class="w-full h-auto object-contain rounded-xl border-2 border-[var(--ink)] block"
+          loading="lazy"
+          decoding="async"
         />
       </div>
 
@@ -115,9 +118,11 @@ export function Footer() {
         {/* Mobile: Centered Meme */}
         <div class="flex justify-center py-2 lg:hidden">
           <img
-            src="/images/memes/meme-footer.webp"
+            src={memeImage("meme-footer.webp")}
             alt="FOSS Onam Festival Meme"
             class="max-w-xs sm:max-w-sm w-full h-auto object-contain select-none rounded-xl border-2 border-[var(--ink)] block"
+            loading="lazy"
+            decoding="async"
           />
         </div>
 

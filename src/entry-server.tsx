@@ -21,7 +21,7 @@ export default createHandler(() => {
             <link rel="icon" type="image/svg+xml" href="/logo.svg" />
             <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
             <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-            <link rel="apple-touch-icon" href="/favicon.png" />
+            <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
             {/*
             Only the two faces that carry every page are preloaded. The other
             four (wordmark, shouts, mono, marker hand) load lazily - preloading

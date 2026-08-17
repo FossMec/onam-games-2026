@@ -6,6 +6,7 @@ import { JumpGame } from "./JumpGame";
 import { TinderGame } from "./TinderGame";
 import { VallamGame } from "./VallamGame";
 import { WendGame } from "./WendGame";
+import { memeImage } from "~/lib/img";
 
 export interface InteractiveTrialProps {
   gameType: string;
@@ -128,7 +129,7 @@ export function InteractiveTrial(props: InteractiveTrialProps) {
                   kind: "jigsaw",
                   cols: 2,
                   rows: 2,
-                  imageUrl: "/images/memes/sudo-mkdir-pookalam.webp",
+                  imageUrl: memeImage("sudo-mkdir-pookalam.webp"),
                   hEdges: [
                     [
                       { dir: 1, offset: 0.5, neck: 0.12, head: 0.2, skew: 0 },

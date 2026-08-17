@@ -26,15 +26,14 @@ export const PLATFORM_H = 2.5;
 export const FPS = 60;
 export const MAX_FRAMES = 6 * 60 * FPS;
 
-const GRAVITY = 1 / 15;
-/** Normal jump: apex = JUMP_V^2 / (2 * GRAVITY) = ~46.9 units (clears missed middle platform) */
-const JUMP_V = 2.5;
-/** Special Umbrella/Spring floor: max jump reaches ~150 units */
+export const GRAVITY = 1 / 20;
+/** Normal jump: apex = JUMP_V^2 / (2 * GRAVITY) = ~47 units (clears missed middle platform) */
+const JUMP_V = 2.11;
+/** Special Umbrella/Spring floor: max jump reaches ~188 units */
 const SPRING_MULT = 2.0;
-const BALLOON_VY = 2.4;
+const BALLOON_VY = 2.1;
 const BALLOON_DURATION = 150; // 2.5 seconds of auto-climb glide
-const MAX_VX = 1.6;
-const VX_EASE = 0.25;
+const MAX_VX = 1.5;
 
 const CAMERA_ANCHOR = VIEW_H * 0.55;
 
@@ -245,19 +244,25 @@ export interface JumpInput {
 }
 
 export const MAX_INPUTS = 12_000;
+export const INPUT_RESOLUTION = 15;
+export const INPUT_LEVELS = INPUT_RESOLUTION * 2 + 1;
 
-export const packInput = (deltaFrames: number, direction: number): number =>
-  deltaFrames * 3 + (direction + 1);
+export const packInput = (deltaFrames: number, direction: number): number => {
+  const clamped = Math.max(-INPUT_RESOLUTION, Math.min(INPUT_RESOLUTION, Math.round(direction)));
+  return deltaFrames * INPUT_LEVELS + (clamped + INPUT_RESOLUTION);
+};
 
 export function unpackInputs(packed: unknown): JumpInput[] | null {
   if (!Array.isArray(packed) || packed.length > MAX_INPUTS) return null;
   const inputs: JumpInput[] = [];
   let frame = -1;
-  for (const value of packed) {
-    if (typeof value !== "number" || !Number.isInteger(value) || value < 3) return null;
-    frame += Math.floor(value / 3);
+  for (let i = 0; i < packed.length; i += 1) {
+    const value = packed[i];
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 0) return null;
+    if (i > 0 && value < INPUT_LEVELS) return null;
+    frame += Math.floor(value / INPUT_LEVELS);
     if (frame > MAX_FRAMES) return null;
-    inputs.push({ f: frame, d: (value % 3) - 1 });
+    inputs.push({ f: frame, d: (value % INPUT_LEVELS) - INPUT_RESOLUTION });
   }
   return inputs;
 }
@@ -324,8 +329,9 @@ export function step(state: SimState, dir: number): void {
   if (!state.alive) return;
   state.dir = dir;
 
-  // Horizontal motion with wrapping
-  state.vx += (dir * MAX_VX - state.vx) * VX_EASE;
+  // Doodle Jump pattern: tilt angle maps directly to horizontal velocity
+  // No easing here — smoothing is done once at the sensor level
+  state.vx = (dir / INPUT_RESOLUTION) * MAX_VX;
   state.px += state.vx;
   if (state.px < 0) state.px += WORLD_W;
   else if (state.px >= WORLD_W) state.px -= WORLD_W;
@@ -475,7 +481,14 @@ export function simulate(seed: string, packed: unknown): SimResult | null {
   const inputs = unpackInputs(packed);
   if (!inputs) return null;
   for (const input of inputs) {
-    if (input.d !== -1 && input.d !== 0 && input.d !== 1) return null;
+    if (
+      typeof input.d !== "number" ||
+      !Number.isInteger(input.d) ||
+      input.d < -INPUT_RESOLUTION ||
+      input.d > INPUT_RESOLUTION
+    ) {
+      return null;
+    }
   }
 
   const state = initialState(seed);
@@ -490,5 +503,9 @@ export function simulate(seed: string, packed: unknown): SimResult | null {
     step(state, dir);
   }
 
-  return { score: Math.floor(state.maxY), frames: state.frame, died: !state.alive };
+  return {
+    score: Math.floor(state.maxY),
+    frames: state.frame,
+    died: !state.alive,
+  };
 }

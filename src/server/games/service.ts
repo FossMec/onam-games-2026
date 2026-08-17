@@ -1,9 +1,10 @@
-import { and, asc, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
 import { games } from "~/server/db/schema";
 import type { GameMetric } from "./registry";
 import { getGameDefByType } from "./registry";
 import { getSettings } from "~/server/settings/service";
+import { sharedRead } from "~/server/cache";
 
 /**
  * Where a game sits in its day.
@@ -251,14 +252,26 @@ function maskCard(card: GameCard): GameCard {
   };
 }
 
+/**
+ * The published rows, cached per instance.
+ *
+ * Deliberately the *rows* and not the finished cards. A card carries a status
+ * computed against the current clock, and a game going live is the one moment
+ * of the day when being thirty seconds behind is unforgivable - a player
+ * staring at a countdown that hit zero. The rows themselves only change when
+ * an admin edits them, so caching those is free of that problem, and the
+ * status is still recomputed on every single request.
+ */
+function publishedGameRows() {
+  return sharedRead("games:rows", () =>
+    getDb().select().from(games).where(eq(games.published, true)).orderBy(asc(games.day)),
+  );
+}
+
 export async function getGamesList(viewerRole: ViewerRole): Promise<GameCard[]> {
-  const db = getDb();
   // The schedule settings do not depend on the rows, so the two go out
   // together rather than one after the other.
-  const [rows, settings] = await Promise.all([
-    db.select().from(games).where(eq(games.published, true)).orderBy(asc(games.day)),
-    getScheduleSettings(),
-  ]);
+  const [rows, settings] = await Promise.all([publishedGameRows(), getScheduleSettings()]);
   const cards = await Promise.all(
     rows.map(async (game) => toCard(game, await resolveSchedule(game, viewerRole, settings))),
   );
@@ -269,16 +282,11 @@ export async function getGameBySlug(
   slug: string,
   viewerRole: ViewerRole,
 ): Promise<GameCard | null> {
-  const db = getDb();
   // Same as the list: the row and the schedule settings are independent reads.
-  const [[game], settings] = await Promise.all([
-    db
-      .select()
-      .from(games)
-      .where(and(eq(games.slug, slug), eq(games.published, true)))
-      .limit(1),
-    getScheduleSettings(),
-  ]);
+  // The row comes out of the same cached set the list uses, so a game page and
+  // the schedule behind it cost one query between them rather than two.
+  const [rows, settings] = await Promise.all([publishedGameRows(), getScheduleSettings()]);
+  const game = rows.find((row) => row.slug === slug);
   if (!game) return null;
   const card = toCard(game, await resolveSchedule(game, viewerRole, settings));
   /*

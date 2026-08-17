@@ -7,7 +7,8 @@ import { ShoutBurst } from "~/components/art/Burst";
 import { Countdown } from "~/components/Countdown";
 import { POOKALAM } from "~/lib/event-content";
 import { SHOUT_COLOR, shout } from "~/lib/shouts";
-import { getNextPair, getPookalamState, votePookalam } from "~/server/pookalam/actions";
+import { getNextPair, votePookalam } from "~/server/pookalam/actions";
+import { pookalamState } from "~/lib/queries";
 
 /**
  * Day 7 - head-to-head pookalam voting.
@@ -91,7 +92,7 @@ export default function VotePookalam() {
   };
 
   onMount(async () => {
-    const state = await getPookalamState();
+    const state = await pookalamState();
     setSignedIn(state.signedIn);
     setGateOpen(state.phases.voting.open);
     setOpensAt(state.phases.voting.opensAt ? new Date(state.phases.voting.opensAt) : null);

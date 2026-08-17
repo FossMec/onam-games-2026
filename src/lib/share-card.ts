@@ -23,6 +23,7 @@
  */
 
 import { SPRITE_REGISTRY, type SpriteName } from "~/lib/sprites";
+import { gameImage, spriteImage } from "~/lib/img";
 import {
   aside,
   brag,
@@ -753,12 +754,12 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   const [memeImg, badgeImg, spriteImg, secondSpriteImg, avatarImg, customPhotoImg, gameImg] =
     await Promise.all([
       loadImage(memeFor(seed)),
-      loadImage("/sprites/icons/foss-mec-badge.webp"),
-      loadImage(`/sprites/icons/${spriteName}.webp`),
-      loadImage("/sprites/icons/pookalam-flower.webp"),
+      loadImage(spriteImage("foss-mec-badge.webp")),
+      loadImage(spriteImage(`${spriteName}.webp`)),
+      loadImage(spriteImage("pookalam-flower.webp")),
       avatarUrl ? loadImage(avatarUrl).catch(() => null) : Promise.resolve(null),
       customPhotoUrl ? loadImage(customPhotoUrl).catch(() => null) : Promise.resolve(null),
-      loadImage(`/images/games/${data.gameSlug}.webp`).catch(() => null),
+      loadImage(gameImage(`${data.gameSlug}.webp`)).catch(() => null),
     ]);
 
   const canvas = document.createElement("canvas");

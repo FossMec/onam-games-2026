@@ -6,7 +6,7 @@ import { Bubble } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { POOKALAM } from "~/lib/event-content";
-import { getFinalResults } from "~/server/pookalam/actions";
+import { pookalamResults } from "~/lib/queries";
 
 /**
  * Final standings, and the only place a pookalam is ever shown next to its
@@ -24,7 +24,7 @@ const MEDAL = ["var(--pop-yellow)", "var(--paper-3)", "var(--pop-red)"];
 const PLACE = ["Winner", "Runner-up", "Third"];
 
 export default function PookalamResults() {
-  const data = createAsync(() => getFinalResults());
+  const data = createAsync(() => pookalamResults());
   const winner = () => data()?.results[0] ?? null;
   const rest = () => data()?.results.slice(1) ?? [];
 

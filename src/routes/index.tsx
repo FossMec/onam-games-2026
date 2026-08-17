@@ -1,5 +1,6 @@
 import { Title } from "@solidjs/meta";
 import { A, createAsync, useSearchParams } from "@solidjs/router";
+import type { RouteDefinition } from "@solidjs/router";
 import { BookOpen, Clock, Lock, Zap } from "lucide-solid";
 import { For, Show, createEffect, createSignal } from "solid-js";
 
@@ -14,9 +15,8 @@ import { SpriteScatter } from "~/components/art/SpriteScatter";
 import { EVENT, POOKALAM } from "~/lib/event-content";
 
 import { type SpriteName } from "~/lib/sprites";
-import { getMe } from "~/server/auth/actions";
-import { getGames } from "~/server/games/actions";
-import { getPookalamState } from "~/server/pookalam/actions";
+import { gamesList, pookalamState, shell } from "~/lib/queries";
+import { comicImage, gameImage, memeImage } from "~/lib/img";
 
 /** Underline colours for the hero stat chips, in order. */
 const STAT_POP = ["var(--pop-red)", "var(--pop-teal)", "var(--pop-yellow)", "var(--pop-purple)"];
@@ -33,13 +33,13 @@ const DAY_POPS = [
 ];
 
 const GAME_IMAGES: Record<string, string> = {
-  "open-source-tinder": "/images/games/open-source-tinder.webp",
-  "pookalam-jigsaw": "/images/games/pookalam-jigsaw.webp",
-  wend: "/images/games/wend.webp",
-  "escape-the-vallam": "/images/games/escape-the-vallam.webp",
-  "maveli-jump": "/images/games/maveli-jump.webp",
-  "treasure-hunt": "/images/games/treasure-hunt.webp",
-  "code-a-pookalam-vote": "/images/games/code-a-pookalam.webp",
+  "open-source-tinder": gameImage("open-source-tinder.webp"),
+  "pookalam-jigsaw": gameImage("pookalam-jigsaw.webp"),
+  wend: gameImage("wend.webp"),
+  "escape-the-vallam": gameImage("escape-the-vallam.webp"),
+  "maveli-jump": gameImage("maveli-jump.webp"),
+  "treasure-hunt": gameImage("treasure-hunt.webp"),
+  "code-a-pookalam-vote": gameImage("code-a-pookalam.webp"),
 };
 
 const GAME_TEASERS: Record<number, { hint: string; icon: SpriteName }> = {
@@ -226,15 +226,30 @@ function ScheduleUnavailable() {
   );
 }
 
+/**
+ * Start the page's reads the moment the router knows we are heading here,
+ * rather than after this chunk has downloaded and mounted. `query` dedupes
+ * against the `createAsync` below, so this costs nothing when it is early and
+ * saves a full round trip when it is not.
+ */
+export const route = {
+  preload() {
+    void shell();
+    void gamesList();
+    void pookalamState();
+  },
+} satisfies RouteDefinition;
+
 export default function Home() {
-  const games = createAsync(() => getGames());
-  const me = createAsync(() => getMe());
+  const games = createAsync(() => gamesList());
+  const shellData = createAsync(() => shell());
+  const me = () => shellData()?.me ?? undefined;
   /*
    * Day 7 is Code-a-Pookalam, which is not a row in `games` - so its status
    * cannot come from the schedule resolver like every other day. The arena's
    * own phase window is the authority on whether it is open.
    */
-  const pookalam = createAsync(() => getPookalamState());
+  const pookalam = createAsync(() => pookalamState());
 
   /*
    * Three states, not two. `createAsync` is `undefined` until the schedule
@@ -496,7 +511,7 @@ export default function Home() {
             <div class="order-1 col-span-2 flex justify-center sm:order-2 sm:col-span-1">
               <A href="/games" class="cursor-pointer inline-block" title="Explore Daily Games">
                 <img
-                  src="/images/memes/talk-is-cheap-sadya.webp"
+                  src={memeImage("talk-is-cheap-sadya.webp")}
                   alt="Talk is cheap. Give me Sadya."
                   width={512}
                   height={503}
@@ -586,7 +601,7 @@ export default function Home() {
               }}
             >
               <img
-                src="/images/games/code-a-pookalam.webp"
+                src={gameImage("code-a-pookalam.webp")}
                 alt="Code-a-Pookalam Artwork"
                 loading="lazy"
                 class="h-full w-full object-cover aspect-square"
@@ -663,9 +678,11 @@ export default function Home() {
 
             {/* Tux Kasavu Meme Sticker visible on mobile & desktop */}
             <img
-              src="/images/memes/sudo-mkdir-pookalam.webp"
+              src={memeImage("sudo-mkdir-pookalam.webp")}
               alt="Sudo mkdir pookalam meme"
               class="w-28 xs:w-32 sm:w-36 md:w-40 h-auto object-contain select-none shrink-0 self-center block"
+              loading="lazy"
+              decoding="async"
             />
           </div>
         </div>
@@ -820,7 +837,7 @@ export default function Home() {
                           <div class="relative h-full w-full overflow-hidden flex flex-col items-center justify-center text-center p-4 bg-[var(--paper-3)]">
                             <img
                               src={
-                                GAME_IMAGES[current.slug] ?? "/images/games/open-source-tinder.webp"
+                                GAME_IMAGES[current.slug] ?? gameImage("open-source-tinder.webp")
                               }
                               alt="Classified preview"
                               class="absolute inset-0 h-full w-full object-cover blur-xl opacity-40 grayscale"
@@ -847,7 +864,7 @@ export default function Home() {
                         }
                       >
                         <img
-                          src={GAME_IMAGES[current.slug] ?? "/images/games/open-source-tinder.webp"}
+                          src={GAME_IMAGES[current.slug] ?? gameImage("open-source-tinder.webp")}
                           alt={current.title}
                           loading="lazy"
                           class="h-full w-full object-cover aspect-square"
@@ -991,7 +1008,7 @@ export default function Home() {
                                     <img
                                       src={
                                         GAME_IMAGES[item.slug] ??
-                                        "/images/games/open-source-tinder.webp"
+                                        gameImage("open-source-tinder.webp")
                                       }
                                       alt="Locked preview"
                                       class="absolute inset-0 w-full h-full object-cover blur-sm opacity-40 grayscale"
@@ -1004,8 +1021,7 @@ export default function Home() {
                               >
                                 <img
                                   src={
-                                    GAME_IMAGES[item.slug] ??
-                                    "/images/games/open-source-tinder.webp"
+                                    GAME_IMAGES[item.slug] ?? gameImage("open-source-tinder.webp")
                                   }
                                   alt={item.title}
                                   loading="lazy"
@@ -1053,9 +1069,11 @@ export default function Home() {
             </p>
           </div>
           <img
-            src="/images/memes/meme-celebrate.webp"
+            src={memeImage("meme-celebrate.webp")}
             alt="Celebrate Onam with FOSS MEC Meme"
             class="w-28 sm:w-36 h-auto object-contain select-none shrink-0"
+            loading="lazy"
+            decoding="async"
           />
         </div>
 
@@ -1305,7 +1323,7 @@ export default function Home() {
                 style={{ border: "2.5px solid var(--ink)", background: "var(--paper)" }}
               >
                 <img
-                  src="/images/comics/comic-1.webp"
+                  src={comicImage("comic-1.webp")}
                   alt="Comic Issue 1"
                   class="w-full h-full object-cover select-none"
                   loading="lazy"
@@ -1323,7 +1341,7 @@ export default function Home() {
                 style={{ border: "2.5px solid var(--ink)", background: "var(--paper)" }}
               >
                 <img
-                  src="/images/comics/comic-2.webp"
+                  src={comicImage("comic-2.webp")}
                   alt="Comic Issue 2"
                   class="w-full h-full object-cover select-none"
                   loading="lazy"

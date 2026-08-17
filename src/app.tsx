@@ -55,8 +55,14 @@ export default function App() {
           />
           <Link rel="canonical" href="https://foss-onam.onrender.com/" />
           <Link rel="icon" type="image/svg+xml" href="/logo.svg" />
-          <Link rel="icon" type="image/png" sizes="512x512" href="/favicon.png" />
-          <Link rel="apple-touch-icon" href="/favicon.png" />
+          {/*
+            No 512x512 `rel="icon"` here. Browsers were fetching the 34 KB
+            favicon.png on every single page load to satisfy it, on top of the
+            SVG they actually use. The manifest still declares it, which is
+            where a 512px icon is genuinely wanted - and that is fetched once,
+            at install, rather than on every visit.
+          */}
+          <Link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
           <Link rel="manifest" href="/site.webmanifest" />
 
           {/* Privacy-Friendly Web Analytics (Umami / Cloudflare / Vercel) */}

@@ -3,7 +3,8 @@ import { PartyPopper, X } from "lucide-solid";
 import { Show, createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { ShoutBurst } from "~/components/art/Burst";
 import { SHOUT_COLOR, shout } from "~/lib/shouts";
-import { getMyPookalamNotice } from "~/server/pookalam/actions";
+import type { getMyPookalamNotice } from "~/server/pookalam/actions";
+import { pookalamNotice } from "~/lib/queries";
 
 /**
  * The once-per-browser "your pookalam made the shortlist" announcement.
@@ -44,13 +45,30 @@ function markSeen(): void {
 }
 
 export function ShortlistNotice() {
-  const data = createAsync(() => getMyPookalamNotice());
+  /*
+   * The fetch is gated on the dismissal check, not just the render.
+   *
+   * This component is mounted on every route, so asking first and checking
+   * `hasSeen()` afterwards meant a `pookalam_submissions` select on every page
+   * load - including `/leaderboard` and `/admin` - for every entrant who
+   * dismissed the popup days ago. The answer was thrown away every time.
+   *
+   * `hasSeen` reads localStorage, which does not exist during SSR, so the ask
+   * is deferred to mount. Nothing is lost: the popup is client-only anyway,
+   * and it costs one request from the few browsers that might actually show
+   * it instead of one from every browser on every page.
+   */
+  const [wanted, setWanted] = createSignal(false);
+  const data = createAsync(() => (wanted() ? pookalamNotice() : Promise.resolve(null)));
   const [dismissed, setDismissed] = createSignal(false);
 
   const notice = (): Notice | null => data() ?? null;
 
-  const show = () =>
-    notice()?.shortlisted && notice()!.status === "approved" && !dismissed() && !hasSeen();
+  const show = () => notice()?.shortlisted && notice()!.status === "approved" && !dismissed();
+
+  onMount(() => {
+    if (!hasSeen()) setWanted(true);
+  });
 
   onMount(() => {
     const onKey = (e: KeyboardEvent) => {

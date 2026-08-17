@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   FPS,
+  GRAVITY,
   Level,
   MAX_FRAMES,
   MAX_INPUTS,
@@ -8,6 +9,7 @@ import {
   PLATFORM_W,
   WORLD_W,
   type JumpInput,
+  INPUT_RESOLUTION,
   initialState,
   packInput,
   packInputs,
@@ -39,7 +41,7 @@ function autoplay(seed: string, frames: number): number[] {
   while (state.alive && state.frame < frames) {
     // Apex of the current arc: whatever upward velocity is left, converted to
     // height. `1/15` is the simulation's gravity.
-    const apex = state.py + (state.vy > 0 ? (state.vy * state.vy) / (2 * (1 / 15)) : 0);
+    const apex = state.py + (state.vy > 0 ? (state.vy * state.vy) / (2 * GRAVITY) : 0);
     state.level.ensure(apex + 60);
 
     let target = null;
@@ -65,7 +67,7 @@ function autoplay(seed: string, frames: number): number[] {
       // Aim through the wrap seam when that is the shorter way round.
       if (dx > WORLD_W / 2) dx -= WORLD_W;
       if (dx < -WORLD_W / 2) dx += WORLD_W;
-      wanted = dx > 1.2 ? 1 : dx < -1.2 ? -1 : 0;
+      wanted = dx > 1.2 ? INPUT_RESOLUTION : dx < -1.2 ? -INPUT_RESOLUTION : 0;
     }
     if (wanted !== dir) {
       dir = wanted;
