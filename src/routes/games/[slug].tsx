@@ -1141,11 +1141,11 @@ const METRIC_CHIP: Record<string, string> = {
  * already shouting it) and is just a way back.
  */
 const GAME_NAV_LIST = [
-  { day: 1, slug: "open-source-tinder", title: "Open Source Tinder" },
-  { day: 2, slug: "pookalam-jigsaw", title: "Pookalam Jigsaw" },
-  { day: 3, slug: "wend", title: "Word Wend" },
-  { day: 4, slug: "escape-the-vallam", title: "Escape the Vallam" },
-  { day: 5, slug: "maveli-jump", title: "Maveli Jump" },
+  { day: 1, slug: "escape-the-vallam", title: "Escape the Vallam" },
+  { day: 2, slug: "wend", title: "Word Wend" },
+  { day: 3, slug: "maveli-jump", title: "Maveli Jump" },
+  { day: 4, slug: "open-source-tinder", title: "Open Source Tinder" },
+  { day: 5, slug: "pookalam-jigsaw", title: "Pookalam Jigsaw" },
   { day: 6, slug: "treasure-hunt", title: "The Hunt" },
   { day: 7, slug: "code-a-pookalam", title: "Code-a-Pookalam" },
 ];
