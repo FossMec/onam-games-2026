@@ -1,4 +1,5 @@
 import { Title } from "@solidjs/meta";
+import { A } from "@solidjs/router";
 import { ChartColumnBig } from "lucide-solid";
 import { For, Show, createSignal, onMount } from "solid-js";
 import { Bubble } from "~/components/art/Burst";
@@ -125,16 +126,16 @@ export default function VotePookalam() {
       <Title>Vote - {POOKALAM.title}</Title>
 
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <a
+        <A
           href="/code-a-pookalam"
           class="text-sm font-extrabold underline decoration-2 underline-offset-4"
         >
           ← Back
-        </a>
-        <a href="/leaderboard" class="btn-ghost text-xs inline-flex items-center gap-1.5">
+        </A>
+        <A href="/leaderboard" class="btn-ghost text-xs inline-flex items-center gap-1.5">
           <ChartColumnBig size={14} />
           <span>Standings</span>
-        </a>
+        </A>
       </div>
 
       <header class="flex flex-wrap items-center justify-between gap-2">
@@ -183,9 +184,9 @@ export default function VotePookalam() {
           fallback={
             <div class="card pop-yellow space-y-3">
               <p class="font-extrabold">Sign in to vote.</p>
-              <a href="/auth/signin" class="btn-brand">
+              <A href="/auth/signin" class="btn-brand">
                 Sign in
-              </a>
+              </A>
             </div>
           }
         >
@@ -225,9 +226,9 @@ export default function VotePookalam() {
                     <p class="comment">
                       results go up once voting closes. no, we won't tell you who's winning.
                     </p>
-                    <a href="/leaderboard" class="btn-brand">
+                    <A href="/leaderboard" class="btn-brand">
                       See the standings
-                    </a>
+                    </A>
                   </div>
                 </Show>
               }

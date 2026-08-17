@@ -1,3 +1,4 @@
+import { A } from "@solidjs/router";
 import { X } from "lucide-solid";
 import { For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
@@ -188,9 +189,9 @@ export function RoadRecap(props: { name?: string; onClose: () => void }) {
               <button type="button" class="btn-brand" onClick={props.onClose}>
                 Nice
               </button>
-              <a href="/code-a-pookalam#road" class="btn-ghost">
+              <A href="/code-a-pookalam#road" class="btn-ghost">
                 Back to the road
-              </a>
+              </A>
             </div>
           </div>
         </div>

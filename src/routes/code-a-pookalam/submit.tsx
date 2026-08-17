@@ -1,5 +1,5 @@
 import { Title } from "@solidjs/meta";
-import { createAsync } from "@solidjs/router";
+import { A, createAsync } from "@solidjs/router";
 import { ImageUp, Lock, TriangleAlert } from "lucide-solid";
 import { For, Show, createEffect, createSignal } from "solid-js";
 import { Bubble } from "~/components/art/Burst";
@@ -179,9 +179,9 @@ export default function SubmitPookalam() {
           fallback={
             <div class="card pop-yellow space-y-3">
               <p class="font-extrabold">You need to sign in first.</p>
-              <a href="/auth/signin" class="btn-brand">
+              <A href="/auth/signin" class="btn-brand">
                 Sign in
-              </a>
+              </A>
             </div>
           }
         >

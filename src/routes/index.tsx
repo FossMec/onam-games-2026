@@ -1,5 +1,5 @@
 import { Title } from "@solidjs/meta";
-import { createAsync, useSearchParams } from "@solidjs/router";
+import { A, createAsync, useSearchParams } from "@solidjs/router";
 import { BookOpen, Clock, Lock, Zap } from "lucide-solid";
 import { For, Show, createEffect, createSignal } from "solid-js";
 
@@ -214,12 +214,12 @@ function ScheduleUnavailable() {
         <button type="button" class="btn-brand cursor-pointer" onClick={() => location.reload()}>
           Try again
         </button>
-        <a href="/code-a-pookalam" class="btn-accent">
+        <A href="/code-a-pookalam" class="btn-accent">
           Code-a-Pookalam
-        </a>
-        <a href="/comics" class="btn-ghost">
+        </A>
+        <A href="/comics" class="btn-ghost">
           Read the comics
-        </a>
+        </A>
       </div>
       <p class="comment">it is not you, it is our database. give it a moment.</p>
     </div>
@@ -494,7 +494,7 @@ export default function Home() {
           */}
           <div class="grid grid-cols-2 items-center gap-2.5 sm:grid-cols-[1fr_auto_1fr] sm:gap-4">
             <div class="order-1 col-span-2 flex justify-center sm:order-2 sm:col-span-1">
-              <a href="/games" class="cursor-pointer inline-block" title="Explore Daily Games">
+              <A href="/games" class="cursor-pointer inline-block" title="Explore Daily Games">
                 <img
                   src="/images/memes/talk-is-cheap-sadya.webp"
                   alt="Talk is cheap. Give me Sadya."
@@ -503,7 +503,7 @@ export default function Home() {
                   loading="eager"
                   class="w-32 xs:w-36 sm:w-44 h-auto object-contain select-none"
                 />
-              </a>
+              </A>
             </div>
 
             {/*
@@ -517,21 +517,21 @@ export default function Home() {
               further down. Same two pops as those buttons, so the pair reads
               as labels for them rather than a third colour scheme.
             */}
-            <a href="/games" class="order-2 hidden justify-center no-underline sm:order-1 sm:flex">
+            <A href="/games" class="order-2 hidden justify-center no-underline sm:order-1 sm:flex">
               <span class="pop-label" style={{ "--pop": "var(--pop-teal)", "--tilt": "-5deg" }}>
                 Play games
               </span>
-            </a>
+            </A>
 
-            <a href="/code-a-pookalam" class="order-3 hidden justify-center no-underline sm:flex">
+            <A href="/code-a-pookalam" class="order-3 hidden justify-center no-underline sm:flex">
               <span class="pop-label" style={{ "--pop": "var(--pop-yellow)", "--tilt": "5deg" }}>
                 Code a Pookalam
               </span>
-            </a>
+            </A>
           </div>
 
           <div class="flex flex-col items-center gap-2 pt-1 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3">
-            <a
+            <A
               href={
                 liveGame()
                   ? liveGame()!.day === 7
@@ -547,14 +547,14 @@ export default function Home() {
                   {liveGame()!.status === "live" ? "Live Now" : "Early Access"}) →
                 </span>
               </Show>
-            </a>
+            </A>
             <div class="flex items-center justify-center gap-2 w-full sm:w-auto">
-              <a href="/code-a-pookalam" class="btn-accent whitespace-nowrap">
+              <A href="/code-a-pookalam" class="btn-accent whitespace-nowrap">
                 Code-a-Pookalam
-              </a>
-              <a href="/leaderboard" class="btn-ghost whitespace-nowrap">
+              </A>
+              <A href="/leaderboard" class="btn-ghost whitespace-nowrap">
                 Leaderboard
-              </a>
+              </A>
             </div>
           </div>
 
@@ -876,9 +876,9 @@ export default function Home() {
 
                       <h3 class="text-2xl sm:text-3xl m-0">
                         <Show when={!locked} fallback={<span>Day {current.day}: ????????</span>}>
-                          <a href={playHref} class="underline decoration-2 underline-offset-4">
+                          <A href={playHref} class="underline decoration-2 underline-offset-4">
                             {current.title}
-                          </a>
+                          </A>
                         </Show>
                       </h3>
 
@@ -911,7 +911,7 @@ export default function Home() {
 
                       <div class="pt-2 flex flex-col sm:flex-row items-center gap-2">
                         <Show when={current.status === "live" || current.status === "tester"}>
-                          <a
+                          <A
                             href={playHref}
                             class="btn-brand w-full sm:w-auto text-center px-6 py-2.5 inline-block"
                           >
@@ -923,14 +923,14 @@ export default function Home() {
                             >
                               {isDay7 ? "Vote in ELO Showdown →" : `Play Day ${current.day} Now →`}
                             </Show>
-                          </a>
+                          </A>
                         </Show>
-                        <a
+                        <A
                           href="/games"
                           class="btn-ghost w-full sm:w-auto text-center px-5 py-2.5 inline-block"
                         >
                           Explore All 7 Games Arena →
-                        </a>
+                        </A>
                       </div>
                     </div>
                   </div>
@@ -945,13 +945,13 @@ export default function Home() {
                     >
                       All 7 Days at a Glance
                     </p>
-                    <a
+                    <A
                       href="/games"
                       class="text-xs font-extrabold underline decoration-2 underline-offset-4"
                       style={{ color: "var(--ink)" }}
                     >
                       Open Games Hub →
-                    </a>
+                    </A>
                   </div>
                   <div class="scrollbar-none -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-7 sm:overflow-visible sm:px-0">
                     <For each={fullSchedule()}>
@@ -960,7 +960,7 @@ export default function Home() {
                         const st = statusSticker[item.status] ?? statusSticker.upcoming;
 
                         return (
-                          <a
+                          <A
                             href={`/games?day=${item.day}`}
                             class={`card w-[6.8rem] shrink-0 snap-start sm:w-auto p-2 text-center flex flex-col items-center justify-between gap-1.5 transition-all no-underline ${
                               DAY_POPS[(item.day - 1) % DAY_POPS.length]
@@ -1026,7 +1026,7 @@ export default function Home() {
                             >
                               {st.label}
                             </span>
-                          </a>
+                          </A>
                         );
                       }}
                     </For>
@@ -1287,19 +1287,19 @@ export default function Home() {
             </p>
 
             <div class="pt-1 flex justify-center sm:justify-start">
-              <a
+              <A
                 href="/comics"
                 class="btn-brand text-sm sm:text-base px-5 py-2.5 inline-flex items-center gap-2 shadow-xs cursor-pointer"
               >
                 <BookOpen size={18} strokeWidth={2.5} />
                 <span>Read The Comics →</span>
-              </a>
+              </A>
             </div>
           </div>
 
           {/* Comic Preview Stack */}
           <div class="flex items-center justify-center gap-2 sm:gap-3 shrink-0">
-            <a href="/comics" class="relative block cursor-pointer" title="Read Comics Vault">
+            <A href="/comics" class="relative block cursor-pointer" title="Read Comics Vault">
               <div
                 class="w-28 sm:w-36 aspect-square rounded-lg overflow-hidden shadow-xs"
                 style={{ border: "2.5px solid var(--ink)", background: "var(--paper)" }}
@@ -1311,9 +1311,9 @@ export default function Home() {
                   loading="lazy"
                 />
               </div>
-            </a>
+            </A>
 
-            <a
+            <A
               href="/comics"
               class="relative block cursor-pointer hidden xs:block"
               title="Read Comics Vault"
@@ -1329,7 +1329,7 @@ export default function Home() {
                   loading="lazy"
                 />
               </div>
-            </a>
+            </A>
           </div>
         </div>
       </section>
@@ -1359,9 +1359,9 @@ export default function Home() {
             </div>
             <h2 class="text-3xl">Still reading?</h2>
             <p class="font-semibold">The leaderboard isn't going to lose to you on its own.</p>
-            <a href="/auth/signin" class="btn-ghost">
+            <A href="/auth/signin" class="btn-ghost">
               Sign in with Google
-            </a>
+            </A>
           </div>
         </section>
       </Show>

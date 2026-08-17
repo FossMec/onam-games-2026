@@ -1,5 +1,5 @@
 import { Title } from "@solidjs/meta";
-import { createAsync, useParams, useSearchParams } from "@solidjs/router";
+import { A, createAsync, useParams, useSearchParams } from "@solidjs/router";
 import { ChevronLeft, ChevronRight, Lock } from "lucide-solid";
 import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { Countdown } from "~/components/Countdown";
@@ -632,9 +632,9 @@ export default function GamePage() {
       <Show when={game() === null}>
         <div class="card pop-red space-y-2 text-center">
           <p class="font-extrabold">There is no game at this address.</p>
-          <a href="/games" class="btn-ghost mt-2 inline-block">
+          <A href="/games" class="btn-ghost mt-2 inline-block">
             Back to Games Hub
-          </a>
+          </A>
         </div>
       </Show>
 
@@ -662,9 +662,9 @@ export default function GamePage() {
         <Show when={banState()?.blocksPlay}>
           <div class="card pop-red space-y-2">
             <p class="font-extrabold">{banState()!.message}</p>
-            <a href="/leaderboard" class="btn-ghost inline-block">
+            <A href="/leaderboard" class="btn-ghost inline-block">
               View leaderboard
-            </a>
+            </A>
           </div>
         </Show>
 
@@ -993,9 +993,9 @@ export default function GamePage() {
                         Share my card
                       </button>
                     </Show>
-                    <a href="/leaderboard" class="btn-ghost">
+                    <A href="/leaderboard" class="btn-ghost">
                       View leaderboard
-                    </a>
+                    </A>
                   </div>
                 </div>
               </Show>
@@ -1027,9 +1027,9 @@ export default function GamePage() {
               <p class="text-muted">
                 Every run you had for this game has been used. The leaderboard has the rest.
               </p>
-              <a href="/leaderboard" class="btn-ghost mt-1 inline-block">
+              <A href="/leaderboard" class="btn-ghost mt-1 inline-block">
                 View leaderboard
-              </a>
+              </A>
             </div>
           </Show>
 
@@ -1171,7 +1171,7 @@ function GameBar(props: {
       <Show
         when={!playing()}
         fallback={
-          <a
+          <A
             href="/games"
             class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5"
             style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
@@ -1179,14 +1179,14 @@ function GameBar(props: {
             title="Back to games hub"
           >
             <ChevronLeft size={20} />
-          </a>
+          </A>
         }
       >
         {/* Previous Day Game Arrow */}
         <Show
           when={prevGame()}
           fallback={
-            <a
+            <A
               href="/games"
               class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5 hover:bg-paper-3"
               style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
@@ -1194,10 +1194,10 @@ function GameBar(props: {
               title="Games Hub"
             >
               <ChevronLeft size={20} />
-            </a>
+            </A>
           }
         >
-          <a
+          <A
             href={`/games/${prevGame()!.slug}`}
             class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5 hover:bg-paper-3"
             style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
@@ -1205,16 +1205,16 @@ function GameBar(props: {
             title={`Day ${prevGame()!.day}: ${prevGame()!.title}`}
           >
             <ChevronLeft size={20} />
-          </a>
+          </A>
         </Show>
       </Show>
 
       {/* Breadcrumb Title */}
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-1.5 text-[0.68rem] font-extrabold uppercase tracking-wider text-muted">
-          <a href="/games" class="hover:underline hover:text-[var(--ink)]">
+          <A href="/games" class="hover:underline hover:text-[var(--ink)]">
             Games Hub
-          </a>
+          </A>
           <span>/</span>
           <span>Day {props.day} of 7</span>
         </div>
@@ -1228,7 +1228,7 @@ function GameBar(props: {
 
       {/* Next Day Game Arrow (Only on main page when not playing) */}
       <Show when={!playing() && nextGame()}>
-        <a
+        <A
           href={`/games/${nextGame()!.slug}`}
           class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5 hover:bg-paper-3"
           style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
@@ -1236,7 +1236,7 @@ function GameBar(props: {
           title={`Day ${nextGame()!.day}: ${nextGame()!.title}`}
         >
           <ChevronRight size={20} />
-        </a>
+        </A>
       </Show>
 
       {/* Timer during play */}

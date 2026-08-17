@@ -1,5 +1,5 @@
 import { Title } from "@solidjs/meta";
-import { createAsync, useSearchParams } from "@solidjs/router";
+import { A, createAsync, useSearchParams } from "@solidjs/router";
 import {
   ChevronDown,
   ChevronLeft,
@@ -465,9 +465,9 @@ export default function Leaderboard() {
                 ? `Teaser: "${selectedGame()!.hint}"`
                 : "This daily challenge has not unlocked yet. Check back when the countdown hits zero!"}
             </p>
-            <a href="/" class="btn-brand inline-block text-xs px-4 py-2 font-bold">
+            <A href="/" class="btn-brand inline-block text-xs px-4 py-2 font-bold">
               Back to Festival Schedule
-            </a>
+            </A>
           </div>
         </Show>
 

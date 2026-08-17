@@ -1,3 +1,4 @@
+import { A } from "@solidjs/router";
 import { Gavel, RefreshCw, Timer, Trophy } from "lucide-solid";
 import { For, Show, createSignal, onMount } from "solid-js";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
@@ -90,9 +91,9 @@ export function PookalamBoards() {
           <Show when={boards()!.votingOpen}>
             <div class="card card-plain pop-teal flex flex-wrap items-center justify-between gap-3 p-3">
               <p class="font-black text-sm m-0">The arena is live - every vote counts.</p>
-              <a href="/code-a-pookalam/vote" class="btn-brand text-xs px-4 py-2">
+              <A href="/code-a-pookalam/vote" class="btn-brand text-xs px-4 py-2">
                 Go vote
-              </a>
+              </A>
             </div>
           </Show>
 

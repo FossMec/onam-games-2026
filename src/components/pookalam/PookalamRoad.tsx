@@ -8,7 +8,7 @@ import {
   Send,
   Sparkles,
 } from "lucide-solid";
-import { createAsync } from "@solidjs/router";
+import { A, createAsync } from "@solidjs/router";
 import { For, type JSX, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 
 import { Burst, Halftone } from "~/components/art/Burst";
@@ -689,10 +689,10 @@ function StopPayload(props: { stop: RoadStop; name?: string }) {
       <Show when={props.stop.payload === "submit"}>
         <div class="space-y-3">
           <PrizeCard name={props.name} />
-          <a href="/code-a-pookalam/submit" class="btn-brand inline-flex items-center gap-2">
+          <A href="/code-a-pookalam/submit" class="btn-brand inline-flex items-center gap-2">
             <Send size={18} />
             <span>Submit your pookalam</span>
-          </a>
+          </A>
         </div>
       </Show>
     </>
@@ -1357,10 +1357,10 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
             </h3>
             <p class="m-0 text-sm font-semibold leading-relaxed">{POOKALAM.votingBlurb}</p>
             <div class="flex flex-wrap items-center justify-center gap-3 pt-1 md:justify-start">
-              <a href="/code-a-pookalam/submit" class="btn-brand inline-flex items-center gap-2">
+              <A href="/code-a-pookalam/submit" class="btn-brand inline-flex items-center gap-2">
                 <Send size={18} />
                 <span>{props.hasEntry ? "Edit my entry" : "Submit my pookalam"}</span>
-              </a>
+              </A>
 
               {/* The clock again, where the decision to submit is actually
                   made. Nobody scrolls back up to check how long is left. */}

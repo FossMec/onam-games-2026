@@ -1,3 +1,4 @@
+import { A } from "@solidjs/router";
 import { Show, createEffect } from "solid-js";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 
@@ -64,9 +65,9 @@ export function AppError(props: { error?: unknown; reset: () => void }) {
           <button type="button" class="btn-brand cursor-pointer" onClick={() => props.reset()}>
             Try again
           </button>
-          <a href="/" class="btn-ghost">
+          <A href="/" class="btn-ghost">
             Back to the front page
-          </a>
+          </A>
         </div>
         <p class="comment text-xs">segfault in the sadya. reheating.</p>
       </div>

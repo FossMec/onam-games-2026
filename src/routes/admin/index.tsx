@@ -65,7 +65,7 @@ export default function Admin() {
 
   const data = createAsync(async () => {
     void version();
-    if (me()?.role !== "admin") return null;
+    if (me()?.role !== "admin" || activeTab() !== "overview") return null;
     return getAdminDashboard();
   });
 

@@ -1,4 +1,5 @@
 import { Title } from "@solidjs/meta";
+import { A } from "@solidjs/router";
 import { HttpStatusCode } from "@solidjs/start";
 import { ShoutBurst } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
@@ -36,9 +37,9 @@ export default function NotFound() {
             This page doesn't exist. If a clue sent you here, the clue was lying - or you're early.
           </p>
           <p class="comment">not every 404 is a treasure hunt stage. this one isn't.</p>
-          <a href="/" class="btn-brand">
+          <A href="/" class="btn-brand">
             Go home
-          </a>
+          </A>
         </div>
       </div>
     </main>

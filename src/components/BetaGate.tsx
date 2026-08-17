@@ -1,4 +1,4 @@
-import { createAsync, useLocation } from "@solidjs/router";
+import { A, createAsync, useLocation } from "@solidjs/router";
 import { Show, type JSX } from "solid-js";
 import { ShoutBurst } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
@@ -77,9 +77,9 @@ function Denied(props: { signedIn: boolean }) {
                 list.
               </p>
               <div class="flex flex-col space-y-4">
-                <a href="/auth/signin" class="btn-brand inline-block">
+                <A href="/auth/signin" class="btn-brand inline-block">
                   Sign in with Google
-                </a>
+                </A>
                 <p class="comment">the door is locked, not welded.</p>
               </div>
             </>

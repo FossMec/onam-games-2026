@@ -1,4 +1,4 @@
-import { createAsync, useLocation } from "@solidjs/router";
+import { A, createAsync, useLocation } from "@solidjs/router";
 import { ChevronDown, GraduationCap, LogOut, Mail, Send, User } from "lucide-solid";
 import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
 import { signOutAndReload } from "~/lib/sign-out";
@@ -136,21 +136,21 @@ function ProfileMenu(props: {
           </div>
 
           <div class="space-y-1 text-xs font-bold">
-            <a
+            <A
               href="/onboarding"
               class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-[var(--pop-yellow)] transition-colors"
             >
               <User size={13} strokeWidth={2.5} />
               <span>Edit Profile</span>
-            </a>
+            </A>
             <Show when={props.me.role === "admin"}>
-              <a
+              <A
                 href="/admin"
                 class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-[var(--pop-yellow)] transition-colors text-[var(--pop-purple-deep)] font-extrabold"
               >
                 <SpriteIcon name="arch-crown" size={13} />
                 <span>Admin Panel</span>
-              </a>
+              </A>
             </Show>
             <button
               type="button"
@@ -191,7 +191,7 @@ export function Nav() {
           <div class="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4">
             {/* Top row on mobile: Logo + Auth */}
             <div class="flex items-center justify-between w-full sm:w-auto">
-              <a href="/" class="flex items-center gap-2.5 transition-transform  select-none">
+              <A href="/" class="flex items-center gap-2.5 transition-transform  select-none">
                 <SpriteIcon
                   name="foss-mec-badge"
                   size={32}
@@ -214,20 +214,20 @@ export function Nav() {
                     by fossmec
                   </span>
                 </div>
-              </a>
+              </A>
 
               {/* Mobile-only User Profile */}
               <div class="sm:hidden flex items-center gap-2 shrink-0">
                 <Show
                   when={me()}
                   fallback={
-                    <a
+                    <A
                       href="/auth/signin"
                       class="btn-brand py-1 px-3 text-xs rounded-full font-extrabold cursor-pointer inline-flex items-center gap-1"
                     >
                       <User size={12} strokeWidth={2.5} />
                       <span>Sign In</span>
-                    </a>
+                    </A>
                   }
                 >
                   {(user) => <ProfileMenu me={user()} compact />}
@@ -240,7 +240,7 @@ export function Nav() {
               <nav class="flex items-center justify-center gap-1.5 sm:gap-2 w-full sm:w-auto">
                 <For each={LINKS}>
                   {(link) => (
-                    <a
+                    <A
                       href={link.href}
                       class="flex-1 sm:flex-initial text-center inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 text-xs sm:px-3.5 sm:py-1.5 sm:text-sm transition-transform active:translate-y-0.5"
                       style={{
@@ -251,13 +251,13 @@ export function Nav() {
                       }}
                     >
                       <span>{link.label}</span>
-                    </a>
+                    </A>
                   )}
                 </For>
 
                 {/* Submit button when on code-a-pookalam section */}
                 <Show when={isPookalamSection()}>
-                  <a
+                  <A
                     href="/code-a-pookalam/submit"
                     class="flex-1 sm:flex-initial text-center inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 text-xs sm:px-3.5 sm:py-1.5 sm:text-sm transition-transform active:translate-y-0.5 cursor-pointer"
                     style={{
@@ -273,7 +273,7 @@ export function Nav() {
                   >
                     <Send size={12} strokeWidth={2.5} />
                     <span>Submit</span>
-                  </a>
+                  </A>
                 </Show>
               </nav>
 
@@ -282,13 +282,13 @@ export function Nav() {
                 <Show
                   when={me()}
                   fallback={
-                    <a
+                    <A
                       href="/auth/signin"
                       class="btn-brand py-1.5 px-3.5 text-sm rounded-full font-extrabold cursor-pointer inline-flex items-center gap-1.5"
                     >
                       <User size={14} strokeWidth={2.5} />
                       <span>Sign In</span>
-                    </a>
+                    </A>
                   }
                 >
                   {(user) => <ProfileMenu me={user()} />}

@@ -1,3 +1,4 @@
+import { A } from "@solidjs/router";
 import { Confetti } from "./art/Confetti";
 import { SpriteIcon } from "./art/SpriteIcon";
 import { SpriteScatter } from "./art/SpriteScatter";
@@ -102,12 +103,12 @@ export function Footer() {
             </span>
           </p>
           <p class="text-xs sm:text-sm font-bold">
-            <a
+            <A
               href="/design"
               class="underline decoration-2 underline-offset-4 text-[var(--ink)] opacity-80 hover:opacity-100 hover:text-[var(--pop-teal-deep)] transition-colors"
             >
               Learn about the design language →
-            </a>
+            </A>
           </p>
         </div>
 
@@ -135,18 +136,18 @@ export function Footer() {
         </div>
 
         <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs font-bold">
-          <a
+          <A
             href="/privacy"
             class="underline decoration-2 underline-offset-4 text-[var(--ink)] opacity-80 hover:opacity-100 hover:text-[var(--pop-teal-deep)] transition-colors"
           >
             Privacy Policy
-          </a>
-          <a
+          </A>
+          <A
             href="/terms"
             class="underline decoration-2 underline-offset-4 text-[var(--ink)] opacity-80 hover:opacity-100 hover:text-[var(--pop-teal-deep)] transition-colors"
           >
             Terms of Service
-          </a>
+          </A>
         </div>
       </div>
     </footer>

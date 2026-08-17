@@ -1,3 +1,4 @@
+import { A } from "@solidjs/router";
 import { Show, onCleanup, onMount, type JSX } from "solid-js";
 import { ShoutBurst } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
@@ -131,9 +132,9 @@ export function WinModal(props: WinModalProps) {
             {/* Two ways onward, on one row. Short labels - at half width these
                 buttons are ~150px and anything longer wraps to two lines. */}
             <div class="grid grid-cols-2 gap-2">
-              <a href="/leaderboard" class="btn-accent">
+              <A href="/leaderboard" class="btn-accent">
                 Leaderboard
-              </a>
+              </A>
               <button type="button" class="btn-ghost" onClick={props.onClose}>
                 {props.valid ? "My board" : "Close"}
               </button>

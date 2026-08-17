@@ -1,5 +1,5 @@
 import { Title } from "@solidjs/meta";
-import { createAsync, useSearchParams } from "@solidjs/router";
+import { A, createAsync, useSearchParams } from "@solidjs/router";
 import { ChevronLeft, ChevronRight, HelpCircle, Lock } from "lucide-solid";
 import { For, Show } from "solid-js";
 
@@ -338,9 +338,9 @@ export default function GamesPage() {
 
                       <h2 class="text-2xl sm:text-3xl m-0">
                         <Show when={!locked} fallback={<span>Day {current.day}: ????????</span>}>
-                          <a href={playHref} class="underline decoration-2 underline-offset-4">
+                          <A href={playHref} class="underline decoration-2 underline-offset-4">
                             {current.title}
-                          </a>
+                          </A>
                         </Show>
                       </h2>
 
@@ -406,16 +406,16 @@ export default function GamesPage() {
                               <Countdown target={new Date(current.releaseAt!)} />
                             </Show>
                           </div>
-                          <a
+                          <A
                             href={playHref}
                             class="btn-ghost w-full text-center text-base py-2.5 block"
                           >
                             Take a look before it opens →
-                          </a>
+                          </A>
                         </Show>
 
                         <Show when={current.status === "live" || current.status === "tester"}>
-                          <a
+                          <A
                             href={playHref}
                             class="btn-brand w-full text-center text-lg py-3 block"
                           >
@@ -429,11 +429,11 @@ export default function GamesPage() {
                             >
                               {isDay7 ? "Vote in ELO Showdown →" : `Play Day ${current.day} Now →`}
                             </Show>
-                          </a>
+                          </A>
                         </Show>
 
                         <Show when={current.status === "closed"}>
-                          <a
+                          <A
                             href={playHref}
                             class="btn-ghost w-full text-center text-base py-2.5 block"
                           >
@@ -445,7 +445,7 @@ export default function GamesPage() {
                             >
                               {isDay7 ? "View Results →" : `Play Catch-up (Unranked) →`}
                             </Show>
-                          </a>
+                          </A>
                         </Show>
                       </div>
                     </div>

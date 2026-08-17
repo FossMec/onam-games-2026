@@ -1,3 +1,4 @@
+import { A } from "@solidjs/router";
 import { ArrowLeft, RefreshCw, TriangleAlert } from "lucide-solid";
 import { Show, createSignal, onMount } from "solid-js";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
@@ -303,14 +304,14 @@ export default function AuthCallback() {
           </Show>
 
           <div class="flex flex-wrap gap-2 justify-center pt-1">
-            <a href="/auth/signin" class="btn-brand inline-flex items-center gap-1.5 text-sm">
+            <A href="/auth/signin" class="btn-brand inline-flex items-center gap-1.5 text-sm">
               <RefreshCw size={15} />
               <span>Try again</span>
-            </a>
-            <a href="/" class="btn-ghost inline-flex items-center gap-1.5 text-sm">
+            </A>
+            <A href="/" class="btn-ghost inline-flex items-center gap-1.5 text-sm">
               <ArrowLeft size={15} />
               <span>Back to home</span>
-            </a>
+            </A>
           </div>
         </div>
       </main>

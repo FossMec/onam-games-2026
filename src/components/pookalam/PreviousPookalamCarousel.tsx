@@ -5,34 +5,160 @@ export interface PreviousPookalam {
   id: string;
   name: string;
   src: string;
+  thumb: string;
 }
 
 const PREVIOUS_GALLERY: PreviousPookalam[] = [
-  { id: "1", name: "Aditya Sailesh", src: "/previous-pookalam/Aditya-sailesh.webp" },
-  { id: "2", name: "Amith 1206", src: "/previous-pookalam/Amith1206.webp" },
-  { id: "3", name: "ElegantFalcon", src: "/previous-pookalam/ElegantFalcon.webp" },
-  { id: "4", name: "Rahul Roy", src: "/previous-pookalam/Rahul-Roy-Hub.webp" },
-  { id: "5", name: "Shimil S Abraham", src: "/previous-pookalam/ShimilSAbraham.webp" },
-  { id: "6", name: "Vishruth S", src: "/previous-pookalam/Vishruth-S.webp" },
-  { id: "7", name: "Adithyaa Anilkumar", src: "/previous-pookalam/adithyaaanilkumar.webp" },
-  { id: "8", name: "Aishwarya TS", src: "/previous-pookalam/aishwaryats.webp" },
-  { id: "9", name: "Alaka AJ", src: "/previous-pookalam/alaka03aj.webp" },
-  { id: "10", name: "Aldrin Jenson", src: "/previous-pookalam/aldrinjenson.webp" },
-  { id: "11", name: "Ananya Nair", src: "/previous-pookalam/ananyanair.webp" },
-  { id: "12", name: "Aswanth AB", src: "/previous-pookalam/aswanthabam.webp" },
-  { id: "13", name: "Code Lover", src: "/previous-pookalam/code-lover636.webp" },
-  { id: "14", name: "Denin Paul", src: "/previous-pookalam/deninpaul.webp" },
-  { id: "15", name: "Devan MEC", src: "/previous-pookalam/devan-MEC.webp" },
-  { id: "16", name: "Jahgath", src: "/previous-pookalam/jahgath.webp" },
-  { id: "17", name: "Jathulya", src: "/previous-pookalam/jathulya.webp" },
-  { id: "18", name: "Jemma MG", src: "/previous-pookalam/jemma-mg.webp" },
-  { id: "19", name: "Kuekuatsuuu", src: "/previous-pookalam/kuekuatsuuu.webp" },
-  { id: "20", name: "Lovebin", src: "/previous-pookalam/lovebin123.webp" },
-  { id: "21", name: "Malavika S Menon", src: "/previous-pookalam/malavikasmenon.webp" },
-  { id: "22", name: "Nikx Taco", src: "/previous-pookalam/nikxtaco.webp" },
-  { id: "23", name: "Raz", src: "/previous-pookalam/raz8153.webp" },
-  { id: "24", name: "Ritu Maria", src: "/previous-pookalam/ritumaria.webp" },
-  { id: "25", name: "Tom Thomas", src: "/previous-pookalam/tomthomasvempala.webp" },
+  {
+    id: "1",
+    name: "Aditya Sailesh",
+    src: "/previous-pookalam/Aditya-sailesh.webp",
+    thumb: "/previous-pookalam/thumbs/Aditya-sailesh.webp",
+  },
+  {
+    id: "2",
+    name: "Amith 1206",
+    src: "/previous-pookalam/Amith1206.webp",
+    thumb: "/previous-pookalam/thumbs/Amith1206.webp",
+  },
+  {
+    id: "3",
+    name: "ElegantFalcon",
+    src: "/previous-pookalam/ElegantFalcon.webp",
+    thumb: "/previous-pookalam/thumbs/ElegantFalcon.webp",
+  },
+  {
+    id: "4",
+    name: "Rahul Roy",
+    src: "/previous-pookalam/Rahul-Roy-Hub.webp",
+    thumb: "/previous-pookalam/thumbs/Rahul-Roy-Hub.webp",
+  },
+  {
+    id: "5",
+    name: "Shimil S Abraham",
+    src: "/previous-pookalam/ShimilSAbraham.webp",
+    thumb: "/previous-pookalam/thumbs/ShimilSAbraham.webp",
+  },
+  {
+    id: "6",
+    name: "Vishruth S",
+    src: "/previous-pookalam/Vishruth-S.webp",
+    thumb: "/previous-pookalam/thumbs/Vishruth-S.webp",
+  },
+  {
+    id: "7",
+    name: "Adithyaa Anilkumar",
+    src: "/previous-pookalam/adithyaaanilkumar.webp",
+    thumb: "/previous-pookalam/thumbs/adithyaaanilkumar.webp",
+  },
+  {
+    id: "8",
+    name: "Aishwarya TS",
+    src: "/previous-pookalam/aishwaryats.webp",
+    thumb: "/previous-pookalam/thumbs/aishwaryats.webp",
+  },
+  {
+    id: "9",
+    name: "Alaka AJ",
+    src: "/previous-pookalam/alaka03aj.webp",
+    thumb: "/previous-pookalam/thumbs/alaka03aj.webp",
+  },
+  {
+    id: "10",
+    name: "Aldrin Jenson",
+    src: "/previous-pookalam/aldrinjenson.webp",
+    thumb: "/previous-pookalam/thumbs/aldrinjenson.webp",
+  },
+  {
+    id: "11",
+    name: "Ananya Nair",
+    src: "/previous-pookalam/ananyanair.webp",
+    thumb: "/previous-pookalam/thumbs/ananyanair.webp",
+  },
+  {
+    id: "12",
+    name: "Aswanth AB",
+    src: "/previous-pookalam/aswanthabam.webp",
+    thumb: "/previous-pookalam/thumbs/aswanthabam.webp",
+  },
+  {
+    id: "13",
+    name: "Code Lover",
+    src: "/previous-pookalam/code-lover636.webp",
+    thumb: "/previous-pookalam/thumbs/code-lover636.webp",
+  },
+  {
+    id: "14",
+    name: "Denin Paul",
+    src: "/previous-pookalam/deninpaul.webp",
+    thumb: "/previous-pookalam/thumbs/deninpaul.webp",
+  },
+  {
+    id: "15",
+    name: "Devan MEC",
+    src: "/previous-pookalam/devan-MEC.webp",
+    thumb: "/previous-pookalam/thumbs/devan-MEC.webp",
+  },
+  {
+    id: "16",
+    name: "Jahgath",
+    src: "/previous-pookalam/jahgath.webp",
+    thumb: "/previous-pookalam/thumbs/jahgath.webp",
+  },
+  {
+    id: "17",
+    name: "Jathulya",
+    src: "/previous-pookalam/jathulya.webp",
+    thumb: "/previous-pookalam/thumbs/jathulya.webp",
+  },
+  {
+    id: "18",
+    name: "Jemma MG",
+    src: "/previous-pookalam/jemma-mg.webp",
+    thumb: "/previous-pookalam/thumbs/jemma-mg.webp",
+  },
+  {
+    id: "19",
+    name: "Kuekuatsuuu",
+    src: "/previous-pookalam/kuekuatsuuu.webp",
+    thumb: "/previous-pookalam/thumbs/kuekuatsuuu.webp",
+  },
+  {
+    id: "20",
+    name: "Lovebin",
+    src: "/previous-pookalam/lovebin123.webp",
+    thumb: "/previous-pookalam/thumbs/lovebin123.webp",
+  },
+  {
+    id: "21",
+    name: "Malavika S Menon",
+    src: "/previous-pookalam/malavikasmenon.webp",
+    thumb: "/previous-pookalam/thumbs/malavikasmenon.webp",
+  },
+  {
+    id: "22",
+    name: "Nikx Taco",
+    src: "/previous-pookalam/nikxtaco.webp",
+    thumb: "/previous-pookalam/thumbs/nikxtaco.webp",
+  },
+  {
+    id: "23",
+    name: "Raz",
+    src: "/previous-pookalam/raz8153.webp",
+    thumb: "/previous-pookalam/thumbs/raz8153.webp",
+  },
+  {
+    id: "24",
+    name: "Ritu Maria",
+    src: "/previous-pookalam/ritumaria.webp",
+    thumb: "/previous-pookalam/thumbs/ritumaria.webp",
+  },
+  {
+    id: "25",
+    name: "Tom Thomas",
+    src: "/previous-pookalam/tomthomasvempala.webp",
+    thumb: "/previous-pookalam/thumbs/tomthomasvempala.webp",
+  },
 ];
 
 export function PreviousPookalamCarousel() {
@@ -72,7 +198,7 @@ export function PreviousPookalamCarousel() {
                 {/* Image Frame */}
                 <div class="relative aspect-square w-full bg-[#1F2937] overflow-hidden flex items-center justify-center p-2">
                   <img
-                    src={item.src}
+                    src={item.thumb}
                     alt={`Coded Pookalam by ${item.name}`}
                     loading="lazy"
                     class="w-full h-full object-contain"

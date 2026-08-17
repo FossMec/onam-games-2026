@@ -67,6 +67,7 @@ export default defineConfig({
     nitro({
       compressPublicAssets: true,
       routeRules: {
+        "/_build/**": { headers: { "cache-control": "public, max-age=31536000, immutable" } },
         "/images/**": { headers: { "cache-control": "public, max-age=31536000, immutable" } },
         "/sprites/**": { headers: { "cache-control": "public, max-age=31536000, immutable" } },
         "/fonts/**": { headers: { "cache-control": "public, max-age=31536000, immutable" } },
