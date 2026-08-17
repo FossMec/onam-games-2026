@@ -653,59 +653,74 @@ export function ShareCard(props: ShareCardProps) {
 
       {/* Full screen view */}
       <Show when={zoomed() && url()}>
-        <div
-          class="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-3 p-4"
-          style={{ background: "rgb(34 32 43 / 0.94)" }}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Your score card"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setZoomed(false);
-          }}
-        >
-          <img
-            src={url()}
-            alt="Your FOSS Onam Games score card"
-            class="max-h-[78vh] w-auto max-w-full rounded object-contain"
-            style={{ border: "var(--ink-w) solid var(--ink)" }}
-          />
-          <button
-            type="button"
-            class="absolute grid place-items-center rounded-full cursor-pointer"
+        <Portal>
+          <div
+            class="fixed left-0 top-0 z-[110] flex flex-col items-center justify-center gap-3 overflow-hidden"
             style={{
-              top: "1rem",
-              right: "1rem",
-              width: "2.75rem",
-              height: "2.75rem",
-              background: "var(--paper-2)",
-              border: "var(--ink-w) solid var(--ink)",
-              color: "var(--ink)",
+              width: "100dvw",
+              height: "100dvh",
+              "max-width": "100dvw",
+              "max-height": "100dvh",
+              padding:
+                "max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left))",
+              background: "rgb(34 32 43 / 0.94)",
+              "box-sizing": "border-box",
             }}
-            aria-label="Close"
-            onClick={() => setZoomed(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Your score card"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setZoomed(false);
+            }}
           >
-            <X size={22} strokeWidth={2.5} />
-          </button>
+            <img
+              src={url()}
+              alt="Your FOSS Onam Games score card"
+              class="w-auto max-w-full rounded object-contain"
+              style={{
+                "max-height": "calc(100dvh - 8rem)",
+                "max-width": "calc(100dvw - 2rem)",
+                border: "var(--ink-w) solid var(--ink)",
+              }}
+            />
+            <button
+              type="button"
+              class="absolute grid place-items-center rounded-full cursor-pointer"
+              style={{
+                top: "1rem",
+                right: "1rem",
+                width: "2.75rem",
+                height: "2.75rem",
+                background: "var(--paper-2)",
+                border: "var(--ink-w) solid var(--ink)",
+                color: "var(--ink)",
+              }}
+              aria-label="Close"
+              onClick={() => setZoomed(false)}
+            >
+              <X size={22} strokeWidth={2.5} />
+            </button>
 
-          <div class="grid w-full max-w-xs grid-cols-2 gap-2">
-            <button
-              type="button"
-              class="btn-brand flex items-center justify-center gap-2 cursor-pointer"
-              onClick={() => void share()}
-            >
-              <Share2 size={18} />
-              Share
-            </button>
-            <button
-              type="button"
-              class="btn-ghost flex items-center justify-center gap-2 text-sm cursor-pointer"
-              onClick={download}
-            >
-              <Download size={16} />
-              Save
-            </button>
+            <div class="grid w-full max-w-xs grid-cols-2 gap-2">
+              <button
+                type="button"
+                class="btn-brand flex items-center justify-center gap-2 cursor-pointer"
+                onClick={() => void share()}
+              >
+                <Share2 size={18} />
+                Share
+              </button>
+              <button
+                type="button"
+                class="btn-ghost flex items-center justify-center gap-2 text-sm cursor-pointer"
+                onClick={download}
+              >
+                <Download size={16} />
+                Save
+              </button>
+            </div>
           </div>
-        </div>
+        </Portal>
       </Show>
     </div>
   );

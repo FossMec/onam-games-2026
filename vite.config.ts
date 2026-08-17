@@ -97,6 +97,30 @@ export default defineConfig({
         "/previous-pookalam/**": {
           headers: { "cache-control": "public, max-age=31536000, immutable" },
         },
+        // These filenames are stable public shell assets rather than hashed
+        // build output. Cache them for a week, but allow a background refresh
+        // so a deploy is not forced to wait on every visitor's cache expiry.
+        "/favicon.ico": {
+          headers: { "cache-control": "public, max-age=604800, stale-while-revalidate=86400" },
+        },
+        "/favicon-*.png": {
+          headers: { "cache-control": "public, max-age=604800, stale-while-revalidate=86400" },
+        },
+        "/icon-*.png": {
+          headers: { "cache-control": "public, max-age=604800, stale-while-revalidate=86400" },
+        },
+        "/apple-touch-icon.png": {
+          headers: { "cache-control": "public, max-age=604800, stale-while-revalidate=86400" },
+        },
+        "/logo.svg": {
+          headers: { "cache-control": "public, max-age=604800, stale-while-revalidate=86400" },
+        },
+        "/foss-logo-original.webp": {
+          headers: { "cache-control": "public, max-age=604800, stale-while-revalidate=86400" },
+        },
+        "/site.webmanifest": {
+          headers: { "cache-control": "public, max-age=3600, stale-while-revalidate=86400" },
+        },
       },
       vercel: {
         functions: {

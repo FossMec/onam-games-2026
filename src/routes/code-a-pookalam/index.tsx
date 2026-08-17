@@ -2,17 +2,51 @@ import { Title } from "@solidjs/meta";
 import { createAsync } from "@solidjs/router";
 import type { RouteDefinition } from "@solidjs/router";
 import { Pencil } from "lucide-solid";
-import { Show, type JSX } from "solid-js";
+import { Show, createSignal, lazy, onMount, type JSX } from "solid-js";
 
 import { Countdown } from "~/components/Countdown";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { SpriteScatter } from "~/components/art/SpriteScatter";
 import { PookalamHeroInvite } from "~/components/pookalam/PookalamHeroInvite";
-import { PookalamInteractiveCanvas } from "~/components/pookalam/PookalamInteractiveCanvas";
-import { PookalamRoad } from "~/components/pookalam/PookalamRoad";
 import { POOKALAM } from "~/lib/event-content";
 import { pookalamState } from "~/lib/queries";
+
+/**
+ * The studio is a canvas editor, and canvas editors cannot be server-rendered
+ * in any useful sense.
+ *
+ * It was contributing the bulk of a 451 KB HTML document: 208 colour-swatch
+ * buttons (16 colours x 13 layer slots), 78 shape buttons and the layer panels
+ * around them, every one of them carrying Tailwind classes and a Solid
+ * hydration key. None of that markup does anything until the JavaScript
+ * arrives, because the thing it controls is a `<canvas>` that does not exist
+ * until then either - so the server was writing out a third of a megabyte of
+ * controls for a tool nobody can use yet.
+ *
+ * Keeping it out of the HTML also matters for CPU: on a serverless runtime
+ * with a 10ms budget per request, building that string is not free.
+ *
+ * Deliberately `lazy` + a mount guard rather than `clientOnly`, which is the
+ * documented tool for this and is currently broken in this toolchain: it makes
+ * the bundler emit `export { ssr_exports as _ }` into the SSR chunk without
+ * ever declaring `ssr_exports`, so the route 500s with "Export 'ssr_exports'
+ * is not defined in module". Verified against a cleared nitro cache and both
+ * the default-export and remapped forms. Worth retrying on the next
+ * @solidjs/start release.
+ *
+ * The pair below is equivalent: `lazy` code-splits the chunk, and the guard
+ * keeps it out of the server render entirely - the signal is false throughout
+ * SSR and through hydration's first pass, so there is no markup to mismatch.
+ */
+const PookalamInteractiveCanvas = lazy(
+  () => import("~/components/pookalam/PookalamInteractiveCanvas"),
+);
+const PookalamRoad = lazy(() =>
+  import("~/components/pookalam/PookalamRoad").then((module) => ({
+    default: module.PookalamRoad,
+  })),
+);
 
 const STATUS_COLOR: Record<string, string> = {
   pending: "var(--pop-yellow)",
@@ -60,6 +94,9 @@ export const route = {
 
 export default function CodeAPookalam() {
   const state = createAsync(() => pookalamState());
+  // The studio only exists in the browser; see the note on the import.
+  const [studioReady, setStudioReady] = createSignal(false);
+  onMount(() => setStudioReady(true));
   const mine = () => state()?.mine ?? null;
 
   return (
@@ -146,7 +183,9 @@ export default function CodeAPookalam() {
 
           {/* Interactive Pookalam Canvas & Studio Centerpiece */}
           <div id="studio" class="scroll-mt-28 pt-1 text-left">
-            <PookalamInteractiveCanvas />
+            <Show when={studioReady()}>
+              <PookalamInteractiveCanvas />
+            </Show>
           </div>
 
           {/* The handoff: from playing with a pookalam to building one. */}
@@ -270,10 +309,56 @@ export default function CodeAPookalam() {
        * of parallel cards asked the reader to work out the order; the road
        * hands it to them.
        */}
-      <PookalamRoad
-        hasEntry={Boolean(mine())}
-        closesAt={state()?.phases.submissions.closesAt ?? null}
-      />
+      <Show
+        when={studioReady()}
+        fallback={
+          <section id="road" class="card pop-teal space-y-4 scroll-mt-28">
+            <div class="space-y-2">
+              <span class="sticker text-[10px]" style={{ "--pop": "var(--pop-yellow)" }}>
+                nine stops · one week · zero experience required
+              </span>
+              <h2 class="wordmark m-0 leading-tight" data-text="THE POOKALAM ROAD">
+                THE POOKALAM ROAD
+              </h2>
+              <p class="comment m-0">
+                A compact guide is shown first. The interactive road, examples, notes, and editors
+                load after the page becomes interactive.
+              </p>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-3">
+              <div class="card card-plain bg-surface">
+                <p class="m-0 text-xs font-black uppercase tracking-wide">Submit by</p>
+                <p class="m-0 font-display font-black">{POOKALAM.submitBy}</p>
+              </div>
+              <div class="card card-plain bg-surface">
+                <p class="m-0 text-xs font-black uppercase tracking-wide">Prize pool</p>
+                <p class="m-0 font-display font-black">₹3,000</p>
+              </div>
+              <div class="card card-plain bg-surface">
+                <p class="m-0 text-xs font-black uppercase tracking-wide">What you need</p>
+                <p class="m-0 font-semibold">
+                  Runnable source, square render, open-source license.
+                </p>
+              </div>
+            </div>
+            <details>
+              <summary class="cursor-pointer font-black">
+                Read the rules before the road loads
+              </summary>
+              <ul class="mt-3 space-y-2 pl-5 text-sm font-semibold">
+                {POOKALAM.rules.map((rule) => (
+                  <li>{rule}</li>
+                ))}
+              </ul>
+            </details>
+          </section>
+        }
+      >
+        <PookalamRoad
+          hasEntry={Boolean(mine())}
+          closesAt={state()?.phases.submissions.closesAt ?? null}
+        />
+      </Show>
 
       {/* ---------------------------------- NOT INTERESTED IN CODING? BUILD THE SHARED POOKALAM */}
       <section

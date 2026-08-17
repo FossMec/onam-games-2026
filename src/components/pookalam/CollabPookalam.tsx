@@ -437,7 +437,7 @@ export function CollabPookalam() {
   createEffect(() => {
     const z = zoom();
     const f = fit();
-    if (shell && z > 1) {
+    if (shell && z > 1 && !pinching()) {
       setTimeout(() => {
         if (!shell) return;
         const targetScroll = (f * z - f) / 2;
@@ -581,12 +581,14 @@ export function CollabPookalam() {
   const activePointers = new Map<number, { x: number; y: number }>();
   let initialPinchDist: number | null = null;
   let initialPinchZoom = 1;
+  const [pinching, setPinching] = createSignal(false);
   let lastPointerPos: { x: number; y: number } | null = null;
   let lastPlacedIndex: number | null = null;
 
   const handlePointerDown = (event: PointerEvent) => {
     activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (activePointers.size >= 2) {
+      setPinching(true);
       if (drawing()) endStroke();
       const pts = Array.from(activePointers.values());
       const p1 = pts[0];
@@ -694,6 +696,7 @@ export function CollabPookalam() {
     activePointers.delete(event.pointerId);
     if (activePointers.size < 2) {
       initialPinchDist = null;
+      setPinching(false);
     }
     if (activePointers.size === 0) {
       endStroke();
@@ -995,12 +998,12 @@ export function CollabPookalam() {
           >
             <div
               style={{
+                // The canvas is resized once; do not also transform this
+                // wrapper, or pinch zoom scales the artwork twice and causes
+                // scroll-position flicker on mobile.
                 width: `${fit() * zoom()}px`,
                 height: `${fit() * zoom()}px`,
                 position: "relative",
-                transform: `scale(${zoom()})`,
-                "transform-origin": "top left",
-                transition: "transform 150ms cubic-bezier(0.2, 0, 0, 1)",
               }}
             >
               <canvas
@@ -1012,8 +1015,8 @@ export function CollabPookalam() {
                 onWheel={handleWheel}
                 class="block select-none"
                 style={{
-                  width: `${fit()}px`,
-                  height: `${fit()}px`,
+                  width: `${fit() * zoom()}px`,
+                  height: `${fit() * zoom()}px`,
                   "touch-action": "none",
                   cursor: canPlace()
                     ? 'url("/cursors/muthukuda-point.png") 6 2, crosshair'

@@ -21,23 +21,23 @@
 type UrlMap = Record<string, string>;
 
 const GAME_SRCSET = import.meta.glob<string>("~/assets/images/games/*.webp", {
-  query: { w: "320;576", format: "webp", quality: 78, as: "srcset" },
+  query: { w: "320;576", format: "webp", quality: 95, as: "srcset" },
   import: "default",
   eager: true,
 });
 const GAME_SRC = import.meta.glob<string>("~/assets/images/games/*.webp", {
-  query: { w: 576, format: "webp", quality: 78 },
+  query: { w: 576, format: "webp", quality: 100 },
   import: "default",
   eager: true,
 });
 
 const MEME_SRCSET = import.meta.glob<string>("~/assets/images/memes/*.webp", {
-  query: { w: "320;480", format: "webp", quality: 76, as: "srcset" },
+  query: { w: "320;480", format: "webp", quality: 100, as: "srcset" },
   import: "default",
   eager: true,
 });
 const MEME_SRC = import.meta.glob<string>("~/assets/images/memes/*.webp", {
-  query: { w: 480, format: "webp", quality: 76 },
+  query: { w: 480, format: "webp", quality: 100 },
   import: "default",
   eager: true,
 });
@@ -48,24 +48,24 @@ const MEME_SRC = import.meta.glob<string>("~/assets/images/memes/*.webp", {
  * and the split halves are used: halves on a phone, full on desktop.
  */
 const COMIC_SRCSET = import.meta.glob<string>("~/assets/images/comics/*.webp", {
-  query: { w: "512;900", format: "webp", quality: 78, as: "srcset" },
+  query: { w: "512;900", format: "webp", quality: 100, as: "srcset" },
   import: "default",
   eager: true,
 });
 const COMIC_SRC = import.meta.glob<string>("~/assets/images/comics/*.webp", {
-  query: { w: 900, format: "webp", quality: 78 },
+  query: { w: 900, format: "webp", quality: 100 },
   import: "default",
   eager: true,
 });
 
 const LOOSE_SRC = import.meta.glob<string>("~/assets/images/*.webp", {
-  query: { w: 560, format: "webp", quality: 80 },
+  query: { w: 560, format: "webp", quality: 90 },
   import: "default",
   eager: true,
 });
 
 const MARK_SRC = import.meta.glob<string>("~/assets/images/marks/*.webp", {
-  query: { w: 296, format: "webp", quality: 82 },
+  query: { w: 296, format: "webp", quality: 88 },
   import: "default",
   eager: true,
 });
@@ -84,24 +84,24 @@ const SPRITE_FULL = import.meta.glob<string>("~/assets/sprites/icons/*.webp", {
 });
 
 const JUMP_SRC = import.meta.glob<string>("~/assets/sprites/jump/*.webp", {
-  query: { format: "webp", quality: 80 },
+  query: { format: "webp", quality: 90 },
   import: "default",
   eager: true,
 });
 const VALLAM_SRC = import.meta.glob<string>("~/assets/sprites/vallam/*.webp", {
-  query: { format: "webp", quality: 80 },
+  query: { format: "webp", quality: 90 },
   import: "default",
   eager: true,
 });
 
 /** Carousel of last year's entries: a 160px thumb, tapping opens the full art. */
 const POOKALAM_THUMB = import.meta.glob<string>("~/assets/previous-pookalam/thumbs/*.webp", {
-  query: { w: 280, format: "webp", quality: 78 },
+  query: { w: 280, format: "webp", quality: 95 },
   import: "default",
   eager: true,
 });
 const POOKALAM_FULL = import.meta.glob<string>("~/assets/previous-pookalam/*.webp", {
-  query: { w: 900, format: "webp", quality: 80 },
+  query: { w: 900, format: "webp", quality: 90 },
   import: "default",
   eager: true,
 });

@@ -1214,3 +1214,6 @@ export function PookalamInteractiveCanvas() {
     </div>
   );
 }
+
+/** Default export so `clientOnly()` can lazy-load this without a remap. */
+export default PookalamInteractiveCanvas;

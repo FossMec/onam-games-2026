@@ -9,15 +9,13 @@ import {
   Sparkles,
 } from "lucide-solid";
 import { A, createAsync } from "@solidjs/router";
-import { For, type JSX, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import { For, type JSX, Show, createMemo, createSignal, lazy, onCleanup, onMount } from "solid-js";
 
 import { Burst, Halftone } from "~/components/art/Burst";
 import { Countdown } from "~/components/Countdown";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
-import { PookalamSandbox } from "~/components/pookalam/PookalamSandbox";
 import { PookalamShowcase } from "~/components/pookalam/PookalamShowcase";
-import { PookalamTutorials } from "~/components/pookalam/PookalamTutorials";
 import { PreviousPookalamCarousel } from "~/components/pookalam/PreviousPookalamCarousel";
 import { POOKALAM } from "~/lib/event-content";
 import {
@@ -37,6 +35,20 @@ import {
 import type { SpriteName } from "~/lib/sprites";
 import { shell } from "~/lib/queries";
 import { memeImage } from "~/lib/img";
+
+// These controls are useful only after JavaScript is running. Keeping their
+// modules out of the SSR route also prevents every visitor from paying for
+// editor markup, iframe documents, and six closed tutorial panels up front.
+const PookalamSandbox = lazy(() =>
+  import("~/components/pookalam/PookalamSandbox").then((module) => ({
+    default: module.PookalamSandbox,
+  })),
+);
+const PookalamTutorials = lazy(() =>
+  import("~/components/pookalam/PookalamTutorials").then((module) => ({
+    default: module.PookalamTutorials,
+  })),
+);
 
 /**
  * The road: nine stops from "what is this" to a submitted entry, drawn as one
@@ -647,7 +659,9 @@ function PrizeCard(props: { name?: string }) {
 }
 
 /** The extras that hang off a stop, reusing what the page already had. */
-function StopPayload(props: { stop: RoadStop; name?: string }) {
+function StopPayload(props: { stop: RoadStop; name?: string; interactiveReady: boolean }) {
+  const [tutorialOpen, setTutorialOpen] = createSignal(false);
+
   return (
     <>
       <Show when={props.stop.payload === "past-work"}>
@@ -658,14 +672,23 @@ function StopPayload(props: { stop: RoadStop; name?: string }) {
           asked for yet. The stop's question is "which one", and the answer
           lives one tap away. */}
       <Show when={props.stop.payload === "tutorials"}>
-        <details class="group">
+        <details class="group" onToggle={(event) => setTutorialOpen(event.currentTarget.open)}>
           <summary class="btn-ghost inline-flex cursor-pointer list-none items-center gap-1.5 text-sm">
             <ChevronDown size={15} class="shrink-0 transition-transform group-open:rotate-180" />
             <span>Six examples with starter code (any language counts)</span>
           </summary>
-          <div class="pt-2.5">
-            <PookalamTutorials compact />
-          </div>
+          <Show
+            when={props.interactiveReady && tutorialOpen()}
+            fallback={
+              <p class="comment m-0 pt-2.5 text-sm">
+                Six starter examples load when you open this panel.
+              </p>
+            }
+          >
+            <div class="pt-2.5">
+              <PookalamTutorials compact />
+            </div>
+          </Show>
         </details>
       </Show>
 
@@ -874,11 +897,23 @@ function RulesPayload() {
 
 /* ---------------------------------------------------------------- a stop card */
 
+function CodePreview(props: { snippet: string }) {
+  return (
+    <pre
+      class="inked m-0 overflow-x-auto whitespace-pre-wrap break-words rounded bg-[#181511] p-3 font-mono text-[13px] leading-relaxed text-[#fbf3e4]"
+      style={{ "min-height": "12rem" }}
+    >
+      {props.snippet}
+    </pre>
+  );
+}
+
 function StopCard(props: {
   stop: RoadStop;
   index: number;
   side: Side;
   done: boolean;
+  interactiveReady: boolean;
   /** First name, when we know it. The road talks to a person, not a visitor. */
   name?: string;
   onToggle: () => void;
@@ -949,10 +984,23 @@ function StopCard(props: {
             anyone noticed. Everywhere else the steps stand alone. */}
         <Show when={props.stop.code?.sandbox} fallback={<Steps stop={props.stop} />}>
           <div class="art-over space-y-1.5">
-            <PookalamSandbox
-              snippet={props.stop.code!.snippet}
-              intro={<Steps stop={props.stop} />}
-            />
+            <Show
+              when={props.interactiveReady}
+              fallback={
+                <div class="space-y-3">
+                  <Steps stop={props.stop} />
+                  <CodePreview snippet={props.stop.code!.snippet} />
+                  <p class="comment m-0 text-xs">
+                    The editable runner loads after the page is interactive.
+                  </p>
+                </div>
+              }
+            >
+              <PookalamSandbox
+                snippet={props.stop.code!.snippet}
+                intro={<Steps stop={props.stop} />}
+              />
+            </Show>
           </div>
         </Show>
 
@@ -1024,7 +1072,11 @@ function StopCard(props: {
         </Show>
 
         <div class="art-over">
-          <StopPayload stop={props.stop} name={props.name} />
+          <StopPayload
+            stop={props.stop}
+            name={props.name}
+            interactiveReady={props.interactiveReady}
+          />
         </div>
 
         {/* The prose, folded away. Nobody reads three paragraphs on a
@@ -1133,6 +1185,11 @@ function StopCard(props: {
 /* ----------------------------------------------------------------- the road */
 
 export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | null }) {
+  // Starts false in SSR and during hydration, then mounts the interactive
+  // editors once the useful text has painted. This is intentionally not a
+  // viewport check: deep links and keyboard users must get the same content.
+  const [interactiveReady, setInteractiveReady] = createSignal(false);
+
   /**
    * The viewer's first name, when they are signed in.
    *
@@ -1150,7 +1207,10 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
   // that was sent, and Solid hydrates against that HTML.
   const [done, setDone] = createSignal<string[]>([]);
 
-  onMount(() => setDone(readRoadProgress()));
+  onMount(() => {
+    setDone(readRoadProgress());
+    setInteractiveReady(true);
+  });
 
   const isDone = (id: string) => done().includes(id);
 
@@ -1295,6 +1355,7 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
               index={index()}
               side={sideOf(index())}
               done={isDone(stop.id)}
+              interactiveReady={interactiveReady()}
               name={firstName()}
               onToggle={() => toggle(stop.id)}
             />

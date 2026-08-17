@@ -107,8 +107,6 @@ export function SpriteIcon(props: SpriteIconProps) {
         "flex-shrink": 0,
         ...props.style,
       }}
-      role={props.alt ? "img" : undefined}
-      aria-label={props.alt}
       aria-hidden={props.alt ? undefined : "true"}
     >
       <img
@@ -120,7 +118,9 @@ export function SpriteIcon(props: SpriteIconProps) {
         alt={props.alt ?? meta().label}
         width={size()}
         height={size()}
-        loading={props.loading ?? "eager"}
+        // Decorative sprites below the fold should not compete with the first screen.
+        // Callers can still opt into eager loading for genuinely above-the-fold art.
+        loading={props.loading ?? "lazy"}
         decoding="async"
         class="h-full w-full object-contain pointer-events-none"
       />
