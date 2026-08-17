@@ -2,46 +2,20 @@ import { Title } from "@solidjs/meta";
 import { createAsync } from "@solidjs/router";
 import type { RouteDefinition } from "@solidjs/router";
 import { Pencil } from "lucide-solid";
-import { Show, createSignal, lazy, onMount, type JSX } from "solid-js";
+import { Show, Suspense, createSignal, lazy, onMount, type JSX } from "solid-js";
 
 import { Countdown } from "~/components/Countdown";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { SpriteScatter } from "~/components/art/SpriteScatter";
 import { PookalamHeroInvite } from "~/components/pookalam/PookalamHeroInvite";
+import { PookalamInteractiveCanvas } from "~/components/pookalam/PookalamInteractiveCanvas";
 import { POOKALAM } from "~/lib/event-content";
 import { pookalamState } from "~/lib/queries";
 
-/**
- * The studio is a canvas editor, and canvas editors cannot be server-rendered
- * in any useful sense.
- *
- * It was contributing the bulk of a 451 KB HTML document: 208 colour-swatch
- * buttons (16 colours x 13 layer slots), 78 shape buttons and the layer panels
- * around them, every one of them carrying Tailwind classes and a Solid
- * hydration key. None of that markup does anything until the JavaScript
- * arrives, because the thing it controls is a `<canvas>` that does not exist
- * until then either - so the server was writing out a third of a megabyte of
- * controls for a tool nobody can use yet.
- *
- * Keeping it out of the HTML also matters for CPU: on a serverless runtime
- * with a 10ms budget per request, building that string is not free.
- *
- * Deliberately `lazy` + a mount guard rather than `clientOnly`, which is the
- * documented tool for this and is currently broken in this toolchain: it makes
- * the bundler emit `export { ssr_exports as _ }` into the SSR chunk without
- * ever declaring `ssr_exports`, so the route 500s with "Export 'ssr_exports'
- * is not defined in module". Verified against a cleared nitro cache and both
- * the default-export and remapped forms. Worth retrying on the next
- * @solidjs/start release.
- *
- * The pair below is equivalent: `lazy` code-splits the chunk, and the guard
- * keeps it out of the server render entirely - the signal is false throughout
- * SSR and through hydration's first pass, so there is no markup to mismatch.
- */
-const PookalamInteractiveCanvas = lazy(
-  () => import("~/components/pookalam/PookalamInteractiveCanvas"),
-);
+// The studio shell is SSR-rendered so the hero has its full height immediately.
+// Its canvas remains blank until the component's onMount callback starts the
+// browser-only drawing loop.
 const PookalamRoad = lazy(() =>
   import("~/components/pookalam/PookalamRoad").then((module) => ({
     default: module.PookalamRoad,
@@ -80,6 +54,47 @@ function Section(props: {
   );
 }
 
+function RoadPlaceholder() {
+  return (
+    <section id="road" class="card pop-teal space-y-4 scroll-mt-28">
+      <div class="space-y-2">
+        <span class="sticker text-[10px]" style={{ "--pop": "var(--pop-yellow)" }}>
+          nine stops · one week · zero experience required
+        </span>
+        <h2 class="wordmark m-0 leading-tight" data-text="THE POOKALAM ROAD">
+          THE POOKALAM ROAD
+        </h2>
+        <p class="comment m-0">
+          A compact guide is shown first. The interactive road, examples, notes, and editors load
+          after the page becomes interactive.
+        </p>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="card card-plain bg-surface">
+          <p class="m-0 text-xs font-black uppercase tracking-wide">Submit by</p>
+          <p class="m-0 font-display font-black">{POOKALAM.submitBy}</p>
+        </div>
+        <div class="card card-plain bg-surface">
+          <p class="m-0 text-xs font-black uppercase tracking-wide">Prize pool</p>
+          <p class="m-0 font-display font-black">₹3,000</p>
+        </div>
+        <div class="card card-plain bg-surface">
+          <p class="m-0 text-xs font-black uppercase tracking-wide">What you need</p>
+          <p class="m-0 font-semibold">Runnable source, square render, open-source license.</p>
+        </div>
+      </div>
+      <details>
+        <summary class="cursor-pointer font-black">Read the rules before the road loads</summary>
+        <ul class="mt-3 space-y-2 pl-5 text-sm font-semibold">
+          {POOKALAM.rules.map((rule) => (
+            <li>{rule}</li>
+          ))}
+        </ul>
+      </details>
+    </section>
+  );
+}
+
 /**
  * Start the page's reads the moment the router knows we are heading here,
  * rather than after this chunk has downloaded and mounted. `query` dedupes
@@ -97,9 +112,10 @@ export default function CodeAPookalam() {
   // viewer-specific state resolves. Without it, the route-level Suspense
   // fallback replaces the whole page with the loading animation.
   const state = createAsync(() => pookalamState(), { initialValue: null });
-  // The studio only exists in the browser; see the note on the import.
-  const [studioReady, setStudioReady] = createSignal(false);
-  onMount(() => setStudioReady(true));
+  // The road is intentionally client-only; unlike the hero studio, it is not
+  // part of the first SSR paint.
+  const [roadReady, setRoadReady] = createSignal(false);
+  onMount(() => setRoadReady(true));
   const mine = () => state()?.mine ?? null;
 
   return (
@@ -108,7 +124,7 @@ export default function CodeAPookalam() {
 
       {/* ------------------------------------------------------------- HERO */}
       <section
-        class="relative overflow-hidden rounded-lg px-4 sm:px-6 py-6 sm:py-8 text-center space-y-4"
+        class="relative overflow-hidden rounded-lg px-4 sm:px-6 py-4 sm:py-5 text-center space-y-2"
         style={{
           border: "var(--ink-w-bold) solid var(--ink)",
           background: "var(--paper-2)",
@@ -135,7 +151,7 @@ export default function CodeAPookalam() {
           animate
         />
 
-        <div class="art-over space-y-3 max-w-3xl mx-auto">
+        <div class="art-over space-y-2 max-w-3xl mx-auto">
           {/* Prize and deadline together, above everything else. "Day 6
               midnight" tells nobody whether there is still time; a clock that
               says three days does, and it has to be on the first screen to do
@@ -185,10 +201,8 @@ export default function CodeAPookalam() {
           </p>
 
           {/* Interactive Pookalam Canvas & Studio Centerpiece */}
-          <div id="studio" class="scroll-mt-28 pt-1 text-left">
-            <Show when={studioReady()}>
-              <PookalamInteractiveCanvas />
-            </Show>
+          <div id="studio" class="scroll-mt-28 text-left">
+            <PookalamInteractiveCanvas />
           </div>
 
           {/* The handoff: from playing with a pookalam to building one. */}
@@ -312,55 +326,13 @@ export default function CodeAPookalam() {
        * of parallel cards asked the reader to work out the order; the road
        * hands it to them.
        */}
-      <Show
-        when={studioReady()}
-        fallback={
-          <section id="road" class="card pop-teal space-y-4 scroll-mt-28">
-            <div class="space-y-2">
-              <span class="sticker text-[10px]" style={{ "--pop": "var(--pop-yellow)" }}>
-                nine stops · one week · zero experience required
-              </span>
-              <h2 class="wordmark m-0 leading-tight" data-text="THE POOKALAM ROAD">
-                THE POOKALAM ROAD
-              </h2>
-              <p class="comment m-0">
-                A compact guide is shown first. The interactive road, examples, notes, and editors
-                load after the page becomes interactive.
-              </p>
-            </div>
-            <div class="grid gap-3 sm:grid-cols-3">
-              <div class="card card-plain bg-surface">
-                <p class="m-0 text-xs font-black uppercase tracking-wide">Submit by</p>
-                <p class="m-0 font-display font-black">{POOKALAM.submitBy}</p>
-              </div>
-              <div class="card card-plain bg-surface">
-                <p class="m-0 text-xs font-black uppercase tracking-wide">Prize pool</p>
-                <p class="m-0 font-display font-black">₹3,000</p>
-              </div>
-              <div class="card card-plain bg-surface">
-                <p class="m-0 text-xs font-black uppercase tracking-wide">What you need</p>
-                <p class="m-0 font-semibold">
-                  Runnable source, square render, open-source license.
-                </p>
-              </div>
-            </div>
-            <details>
-              <summary class="cursor-pointer font-black">
-                Read the rules before the road loads
-              </summary>
-              <ul class="mt-3 space-y-2 pl-5 text-sm font-semibold">
-                {POOKALAM.rules.map((rule) => (
-                  <li>{rule}</li>
-                ))}
-              </ul>
-            </details>
-          </section>
-        }
-      >
-        <PookalamRoad
-          hasEntry={Boolean(mine())}
-          closesAt={state()?.phases.submissions.closesAt ?? null}
-        />
+      <Show when={roadReady()} fallback={<RoadPlaceholder />}>
+        <Suspense fallback={<RoadPlaceholder />}>
+          <PookalamRoad
+            hasEntry={Boolean(mine())}
+            closesAt={state()?.phases.submissions.closesAt ?? null}
+          />
+        </Suspense>
       </Show>
 
       {/* ---------------------------------- NOT INTERESTED IN CODING? BUILD THE SHARED POOKALAM */}

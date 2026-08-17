@@ -620,13 +620,6 @@ textarea {
     pointer-events: none;
   }
 
-  .btn-brand:active:not(:disabled),
-  .btn-accent:active:not(:disabled),
-  .btn-ghost:active:not(:disabled),
-  .btn-danger:active:not(:disabled) {
-    transform: translateY(2px);
-  }
-
   .btn-brand:active:not(:disabled)::after,
   .btn-accent:active:not(:disabled)::after,
   .btn-ghost:active:not(:disabled)::after,
@@ -1330,5 +1323,373 @@ textarea {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------------------------------------------------------------- game hype --
+ * The daily-game feature is a tiny comic cover: one useful card on the left,
+ * then the sticker pile and its deliberately over-sized call-to-action. The
+ * sign is CSS rather than a baked image so its link state, focus ring, and
+ * wording remain real UI at every breakpoint.
+ */
+.game-hype-current {
+  align-self: stretch;
+  color: var(--ink);
+  text-decoration: none;
+  background: var(--color-pop-red);
+  border: var(--ink-w) solid var(--ink);
+}
+
+.pookalam-cta-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.pookalam-cta-burst {
+  position: absolute;
+  z-index: 0;
+  top: calc(100% - 0.35rem);
+  left: 50%;
+  width: 8rem;
+  height: 4.5rem;
+  margin-left: -4rem;
+  pointer-events: none;
+  transform: rotate(-4deg);
+}
+
+.pookalam-cta-button {
+  background: var(--pop-yellow);
+  font-family: var(--font-stack-display);
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: 0.015em;
+}
+
+.game-hype-current-pops {
+  display: none;
+}
+
+.game-hype-stage {
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 3rem;
+}
+
+.game-hype-artframe {
+  min-height: 25rem;
+  margin-top: 0.7rem;
+  overflow: visible;
+  border: var(--ink-w) solid var(--ink);
+  border-radius: 0.55rem;
+  background: var(--paper-2);
+}
+
+.game-hype-stickers {
+  width: 96%;
+  max-width: none;
+  left: -1.5%;
+  top: -0.8rem;
+  transform: rotate(-1deg);
+}
+
+.game-hype-copy {
+  padding: 1rem 1.1rem 0;
+}
+
+.game-hype-copy .sticker {
+  display: none;
+}
+
+.game-hype-copy h3 {
+  max-width: 38rem;
+  margin: 0;
+  font-size: clamp(1.45rem, 3vw, 2.35rem);
+  line-height: 0.98;
+  text-align: left;
+  font-family: var(--font-stack-hand);
+}
+
+.game-hype-play {
+  position: absolute;
+  z-index: 30;
+  right: -1rem;
+  bottom: -2.6rem;
+  display: grid;
+  place-items: center;
+  width: clamp(9.5rem, 23vw, 13rem);
+  min-height: clamp(7.5rem, 18vw, 10rem);
+  padding: 0.25rem 0.2rem 0.25rem;
+  overflow: hidden;
+  border: var(--ink-w) solid var(--ink);
+  border-radius: 0.65rem;
+  background: var(--pop-yellow);
+  color: var(--ink);
+  font-family: var(--font-stack-comic);
+  font-size: clamp(2.35rem, 6.3vw, 4.3rem);
+  line-height: 0.78;
+  text-align: center;
+  text-decoration: none;
+  transform: rotate(-6deg);
+  -webkit-text-stroke: 1px var(--ink);
+  paint-order: stroke fill;
+}
+
+.game-hype-play::before,
+.game-hype-play::after {
+  position: absolute;
+  z-index: -1;
+  color: var(--pop-teal);
+  font-family: var(--font-stack-hand);
+  font-size: clamp(2rem, 6vw, 4rem);
+  font-weight: 800;
+  line-height: 1;
+  content: "〰";
+}
+
+.game-hype-play::before {
+  top: 0.7rem;
+  left: 0.7rem;
+  transform: rotate(83deg);
+}
+
+.game-hype-play::after {
+  right: 0.5rem;
+  bottom: 0.25rem;
+  transform: rotate(-82deg);
+}
+
+.game-hype-play-kicker {
+  position: absolute;
+  top: 0.62rem;
+  left: 50%;
+  color: var(--pop-red);
+  font-family: var(--font-stack-body);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-transform: uppercase;
+  transform: translateX(-40%);
+}
+
+.game-hype-squiggle,
+.game-hype-arrow {
+  position: absolute;
+  z-index: 20;
+  color: var(--pop-teal-deep);
+  font-family: var(--font-stack-hand);
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.game-hype-game-tokens {
+  position: absolute;
+  z-index: 15;
+  inset: 0;
+  pointer-events: none;
+}
+
+.game-hype-game-token {
+  position: absolute;
+  width: clamp(5.5rem, 11vw, 7.5rem);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: var(--ink-w) solid var(--ink);
+  border-radius: 0.35rem;
+  background: var(--paper-2);
+  padding: 0.18rem;
+}
+
+.game-hype-game-token img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: 1px solid var(--ink);
+}
+
+.game-hype-game-token:nth-child(1) {
+  left: -1.35rem;
+  bottom: -1rem;
+  transform: rotate(-7deg);
+}
+
+.game-hype-game-token:nth-child(2) {
+  right: -1.25rem;
+  top: -0.9rem;
+  transform: rotate(6deg);
+}
+
+.game-hype-game-token:nth-child(3) {
+  left: 34%;
+  bottom: -1.4rem;
+  transform: rotate(4deg);
+}
+
+.game-hype-squiggle {
+  font-size: 3rem;
+}
+
+.game-hype-squiggle-one {
+  right: 6%;
+  top: 14%;
+  transform: rotate(80deg);
+}
+
+.game-hype-squiggle-two {
+  left: 7%;
+  bottom: 7%;
+  transform: rotate(-48deg);
+}
+
+.game-hype-arrow {
+  right: 34%;
+  bottom: 4%;
+  font-size: 2rem;
+  transform: rotate(-22deg);
+}
+
+@media (max-width: 767px) {
+  .game-hype-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0.6rem;
+  }
+
+  .game-hype-stage {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 0;
+    padding-bottom: 8.5rem;
+  }
+
+  .game-hype-current {
+    grid-column: 1;
+    grid-row: 1;
+    z-index: 40;
+    align-self: end;
+    width: calc(100% - 2rem);
+    justify-self: center;
+    margin: 0 auto 0.85rem;
+    padding: 0.65rem !important;
+    border-top: var(--ink-w) solid var(--ink);
+    border-radius: 0.65rem;
+    overflow: visible;
+  }
+
+  .game-hype-current-pops {
+    position: absolute;
+    z-index: 60;
+    display: block;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .game-hype-current-pop {
+    position: absolute;
+    width: 4.25rem;
+    height: 4.25rem;
+    padding: 0.18rem;
+    overflow: hidden;
+    border: var(--ink-w) solid var(--ink);
+    border-radius: 0.45rem;
+    background: var(--paper-2);
+  }
+
+  .game-hype-current-pop img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border: var(--ink-w) solid var(--ink);
+  }
+
+  .game-hype-current-pop:first-child {
+    top: -2.2rem;
+    right: -0.8rem;
+    transform: rotate(7deg);
+  }
+
+  .game-hype-current-pop:nth-child(2) {
+    top: -1.65rem;
+    left: -0.85rem;
+    transform: rotate(-8deg);
+  }
+
+  .game-hype-current > .relative.z-10 {
+    display: grid;
+    grid-template-columns: 6rem minmax(0, 1fr);
+    align-items: center;
+    column-gap: 0.65rem;
+    gap: 0;
+  }
+
+  .game-hype-current-tagline,
+  .game-hype-current-badges,
+  .game-hype-play,
+  .game-hype-game-tokens {
+    display: none;
+  }
+
+  .game-hype-current-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .game-hype-current-info > :not(:first-child) {
+    margin-top: 0;
+  }
+
+  .game-hype-current-art {
+    display: block;
+    width: 6rem;
+    height: 6rem;
+    margin: 0;
+    aspect-ratio: 1;
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .game-hype-current-info h3 {
+    font-size: 1.45rem;
+  }
+
+  .game-hype-current-info {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .game-hype-current-info .btn-brand {
+    min-height: 2.4rem;
+    padding-block: 0.35rem;
+    font-size: 0.8rem;
+  }
+
+  .game-hype-artframe {
+    min-height: 15rem;
+    margin-top: 0.45rem;
+  }
+
+  .game-hype-copy {
+    padding-top: 0.85rem;
+  }
+
+  .game-hype-copy h3 {
+    max-width: 19rem;
+    font-size: 1.38rem;
+    font-family: var(--font-stack-hand);
+  }
+
+  .game-hype-stickers {
+    width: 100%;
+    left: 0;
+    top: 4%;
+  }
+
+  .game-hype-play {
+    right: 5%;
+    bottom: 6%;
   }
 }

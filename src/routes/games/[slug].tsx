@@ -697,7 +697,7 @@ export default function GamePage() {
                 </span>
               </div>
             </div>
-            <h1 class="text-3xl">{game()!.title}</h1>
+            <h1 class="mb-6 text-3xl">{game()!.title}</h1>
             <p class="text-muted">Hint: {game()!.hint ?? "A mystery awaits…"}</p>
             <Show when={game()!.releaseAt}>
               <p>
@@ -1364,7 +1364,7 @@ function StartPanel(props: {
         </div>
 
         <div class="w-full space-y-3">
-          <h1 class="text-3xl sm:text-4xl">{props.title}</h1>
+          <h1 class="mb-6 text-3xl sm:text-4xl">{props.title}</h1>
           <Show when={props.tagline}>
             <p class="mx-auto max-w-prose font-semibold text-muted">{props.tagline}</p>
           </Show>

@@ -485,12 +485,12 @@ export default function GamesPage() {
                           <button
                             type="button"
                             onClick={() => selectDay(item.day)}
-                            class={`card w-[7.5rem] shrink-0 snap-start sm:w-auto p-2 text-center flex flex-col items-center justify-between gap-1.5 transition-all cursor-pointer ${
+                            class={`card w-[7.5rem] shrink-0 snap-start sm:w-auto p-2 text-center flex flex-col items-center justify-between gap-1.5 cursor-pointer ${
                               DAY_POPS[(item.day - 1) % DAY_POPS.length]
                             } ${
                               isSelected
-                                ? "ring-4 ring-[var(--ink)] translate-y-[-2px] shadow-none font-bold"
-                                : "opacity-85 hover:opacity-100 hover:translate-y-[-1px]"
+                                ? "ring-4 ring-[var(--ink)] shadow-none font-bold"
+                                : "opacity-85 hover:opacity-100"
                             }`}
                             style={{
                               border: isSelected

@@ -870,7 +870,7 @@ export function PookalamInteractiveCanvas() {
       <div class="flex flex-col items-center gap-2 w-full max-w-[490px] shrink-0">
         <div
           ref={(el) => (containerRef = el)}
-          class="relative w-full h-[340px] sm:h-[420px] md:h-[445px] aspect-square mx-auto rounded p-2.5 bg-[#121b44] inked flex items-center justify-center shrink-0"
+          class="relative w-full max-w-[460px] aspect-square mx-auto rounded p-2.5 bg-[#121b44] inked flex items-center justify-center shrink-0"
         >
           <canvas
             ref={(el) => (canvasRef = el)}
@@ -897,7 +897,7 @@ export function PookalamInteractiveCanvas() {
           </div>
         }
       >
-        <div class="w-full md:w-[410px] h-[490px] rounded bg-surface-2 inked p-4 flex flex-col justify-between shrink-0">
+        <div class="w-full md:w-[410px] h-[460px] rounded bg-surface-2 inked p-4 flex flex-col justify-between shrink-0">
           <div class="flex-1 flex flex-col min-h-0">
             {/* Header, Tabs & Collapse Toggle */}
             <div class="flex items-center justify-between gap-2 border-b border-[var(--ink)]/20 pb-2.5 mb-2.5 shrink-0">

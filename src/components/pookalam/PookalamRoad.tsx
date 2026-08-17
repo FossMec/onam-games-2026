@@ -10,7 +10,7 @@ import {
   Send,
   Sparkles,
 } from "lucide-solid";
-import { A, createAsync } from "@solidjs/router";
+import { A, createAsync, useSearchParams } from "@solidjs/router";
 import { For, type JSX, Show, createMemo, createSignal, lazy, onCleanup, onMount } from "solid-js";
 
 import { Burst, Halftone } from "~/components/art/Burst";
@@ -38,9 +38,6 @@ import type { SpriteName } from "~/lib/sprites";
 import { shell } from "~/lib/queries";
 import { memeImage } from "~/lib/img";
 
-// These controls are useful only after JavaScript is running. Keeping their
-// modules out of the SSR route also prevents every visitor from paying for
-// editor markup, iframe documents, and six closed tutorial panels up front.
 const PookalamSandbox = lazy(() =>
   import("~/components/pookalam/PookalamSandbox").then((module) => ({
     default: module.PookalamSandbox,
@@ -152,7 +149,6 @@ function RoadLeg(props: {
   walked: boolean;
   label?: number;
   done?: boolean;
-  /** A signpost planted on the tarmac, halfway along. */
   detour?: JSX.Element;
 }) {
   const path = (x: Record<Side, number>) =>
@@ -165,7 +161,6 @@ function RoadLeg(props: {
       class="block h-full w-full"
       aria-hidden="true"
     >
-      {/* casing, tarmac, centre line - a road in three strokes */}
       <path
         d={path(curveProps.x)}
         fill="none"
@@ -196,8 +191,6 @@ function RoadLeg(props: {
 
   return (
     <div class="relative h-24 sm:h-32" aria-hidden={props.label === undefined ? "true" : undefined}>
-      {/* The two breakpoints want different curves: a full swing across the
-          page reads as a road on a laptop and as a zigzag on a phone. */}
       <div class="absolute inset-0 sm:hidden">
         <Curve x={X_MOBILE} />
       </div>
@@ -371,7 +364,10 @@ function StepsTerminal(props: { steps: string[] }) {
     <div class="inked overflow-hidden rounded" style={{ background: "#181511" }}>
       <div
         class="flex items-center gap-1.5 px-3 py-1.5"
-        style={{ "border-bottom": "var(--ink-w) solid var(--ink)", background: "#22202b" }}
+        style={{
+          "border-bottom": "var(--ink-w) solid var(--ink)",
+          background: "#22202b",
+        }}
       >
         <span class="h-2.5 w-2.5 rounded-full" style={{ background: "var(--pop-red)" }} />
         <span class="h-2.5 w-2.5 rounded-full" style={{ background: "var(--pop-yellow)" }} />
@@ -506,7 +502,10 @@ function AskAi(props: { prompt: string }) {
 
         <div
           class="rounded p-2.5 font-mono text-xs leading-relaxed"
-          style={{ border: "var(--ink-w) dashed var(--ink)", background: "var(--paper-3)" }}
+          style={{
+            border: "var(--ink-w) dashed var(--ink)",
+            background: "var(--paper-3)",
+          }}
         >
           {props.prompt}
         </div>
@@ -619,7 +618,6 @@ function StickyNote(props: { stopId: string; index: number }) {
 
 const RATING_WORDS = ["brutal", "hard", "fine", "easy", "too easy"];
 
-/** How that stop went, for you alone. A tiny bit of fun, saved locally. */
 function SelfRating(props: { stopId: string }) {
   const [score, setScore] = createSignal(0);
 
@@ -664,20 +662,26 @@ function SelfRating(props: { stopId: string }) {
   );
 }
 
-/* ------------------------------------------------------------------ payloads */
-
-/**
- * The prize money, said to a person rather than printed on a poster.
- *
- * By this stop somebody has drawn a pookalam and is one form away from
- * entering, which is the only moment the money is motivating rather than
- * intimidating - at the top of the page it reads as "professionals only".
- */
 function PrizeCard(props: { name?: string }) {
   const prizes = [
-    { place: "1st", amount: "₹1,500", sprite: "tux-king" as SpriteName, pop: "pop-yellow" },
-    { place: "2nd", amount: "₹1,000", sprite: "ferris-crab" as SpriteName, pop: "pop-teal" },
-    { place: "3rd", amount: "₹500", sprite: "gopher-king" as SpriteName, pop: "pop-pink" },
+    {
+      place: "1st",
+      amount: "₹1,500",
+      sprite: "tux-king" as SpriteName,
+      pop: "pop-yellow",
+    },
+    {
+      place: "2nd",
+      amount: "₹1,000",
+      sprite: "ferris-crab" as SpriteName,
+      pop: "pop-teal",
+    },
+    {
+      place: "3rd",
+      amount: "₹500",
+      sprite: "gopher-king" as SpriteName,
+      pop: "pop-pink",
+    },
   ];
 
   return (
@@ -714,7 +718,6 @@ function PrizeCard(props: { name?: string }) {
   );
 }
 
-/** The extras that hang off a stop, reusing what the page already had. */
 function StopPayload(props: { stop: RoadStop; name?: string; interactiveReady: boolean }) {
   const [tutorialOpen, setTutorialOpen] = createSignal(false);
 
@@ -724,9 +727,6 @@ function StopPayload(props: { stop: RoadStop; name?: string; interactiveReady: b
         <PreviousPookalamCarousel />
       </Show>
 
-      {/* Six tutorial tracks unfolded inside a stop is six code samples nobody
-          asked for yet. The stop's question is "which one", and the answer
-          lives one tap away. */}
       <Show when={props.stop.payload === "tutorials"}>
         <details class="group" onToggle={(event) => setTutorialOpen(event.currentTarget.open)}>
           <summary class="btn-ghost inline-flex cursor-pointer list-none items-center gap-1.5 text-sm">
@@ -779,13 +779,6 @@ function StopPayload(props: { stop: RoadStop; name?: string; interactiveReady: b
   );
 }
 
-/**
- * Plain-English gloss for each judging pillar.
- *
- * The pillars in `event-content.ts` are written for someone who already knows
- * what "procedural" means. They stay as they are - the jury uses that wording -
- * and get one honest sentence in front of them here.
- */
 const PILLAR_PLAIN: Record<string, string> = {
   "Visual Quality & Polish": "Does it look good? Colours that sit together, edges that are clean.",
   "Technical Complexity & Craft":
@@ -796,7 +789,6 @@ const PILLAR_PLAIN: Record<string, string> = {
   "Open-Source & Reproducibility": "Can we clone your repo, run it, and get your picture back?",
 };
 
-/** The four things that get an entry thrown out, as a thing you tap. */
 const ENTRY_CHECKS = [
   {
     id: "square",
@@ -808,7 +800,11 @@ const ENTRY_CHECKS = [
     label: "No name or watermark on it",
     hint: "voting is anonymous - any signature pulls the entry",
   },
-  { id: "public", label: "My repo is public", hint: "a 404 is not a submission" },
+  {
+    id: "public",
+    label: "My repo is public",
+    hint: "a 404 is not a submission",
+  },
   {
     id: "license",
     label: "It has a LICENSE file",
@@ -816,20 +812,8 @@ const ENTRY_CHECKS = [
   },
 ];
 
-/**
- * The rules, as a checklist you tap rather than a page you read.
- *
- * Same four facts either way - but a list of paragraphs gets skimmed and
- * remembered as "some rules about images", while four things you have to
- * actively tick get read once each. The tick is deliberately not saved: it is a
- * question about the entry in front of you today, not a setting.
- */
 function EntryChecker() {
   const [ticked, setTicked] = createSignal<string[]>([]);
-
-  // Hydrated on mount, like the rest of the road's state: this is the one part
-  // of the page somebody will tick, walk away from, and come back to at 11pm on
-  // Day 6 wanting to know what they had already sorted out.
   onMount(() => setTicked(readEntryChecks()));
 
   const isOn = (id: string) => ticked().includes(id);
@@ -857,7 +841,10 @@ function EntryChecker() {
             >
               <span
                 class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded"
-                style={{ border: "2px solid var(--ink)", background: "var(--paper-2)" }}
+                style={{
+                  border: "2px solid var(--ink)",
+                  background: "var(--paper-2)",
+                }}
               >
                 <Show when={isOn(check.id)}>
                   <Check size={14} strokeWidth={4} />
@@ -884,7 +871,6 @@ function EntryChecker() {
   );
 }
 
-/** Five pillars, as chips that open. Nobody reads five paragraphs in a row. */
 function JudgingPillars() {
   const [open, setOpen] = createSignal<string | null>(POOKALAM.judging[0].name);
   const pops = ["pop-yellow", "pop-teal", "pop-blue", "pop-purple", "pop-pink"];
@@ -951,8 +937,6 @@ function RulesPayload() {
   );
 }
 
-/* ---------------------------------------------------------------- a stop card */
-
 function CodePreview(props: { snippet: string }) {
   return (
     <pre
@@ -970,8 +954,8 @@ function StopCard(props: {
   side: Side;
   done: boolean;
   interactiveReady: boolean;
-  /** First name, when we know it. The road talks to a person, not a visitor. */
   name?: string;
+  active?: boolean;
   onToggle: () => void;
 }) {
   const [copied, setCopied] = createSignal(false);
@@ -987,14 +971,8 @@ function StopCard(props: {
       id={props.stop.id}
       class={`scroll-mt-28 ${props.side === "left" ? "sm:mr-auto" : "sm:ml-auto"} w-full sm:w-[92%]`}
     >
-      {/* Clipping is load-bearing on a phone: the sticker and the pop-label are
-          both rotated, and their corners would otherwise push the whole page
-          sideways at 360px. It has to be `overflow-clip` rather than `hidden` -
-          `hidden` makes this card a scroll container, and a scroll container
-          silently disables `position: sticky` for everything inside it, which
-          is what stranded the sandbox canvas above the fold. */}
       <div
-        class={`card ${props.stop.pop} relative space-y-4 overflow-clip ${props.done ? "opacity-90" : ""}`}
+        class={`card ${props.stop.pop} relative space-y-4 overflow-clip ${props.done ? "opacity-90" : ""} ${props.active ? "ring-4 ring-[var(--ink)]" : ""}`}
       >
         <Halftone opacity={0.09} />
 
@@ -1022,8 +1000,6 @@ function StopCard(props: {
             style={{
               "--pop": `var(--${props.stop.pop})`,
               "--tilt": props.index % 2 === 0 ? "-2deg" : "1.5deg",
-              // The class default bottoms out near 16px on a phone, smaller than
-              // the body text under it. Titles are how you scan a road.
               "font-size": "clamp(1.45rem, 6vw, 2.1rem)",
             }}
           >
@@ -1034,10 +1010,6 @@ function StopCard(props: {
           </p>
         </div>
 
-        {/* On a sandbox stop the steps ride inside the playground's left column,
-            so the canvas sits beside them at the top of the card instead of
-            below everything - that empty top-right corner was the first thing
-            anyone noticed. Everywhere else the steps stand alone. */}
         <Show when={props.stop.code?.sandbox} fallback={<Steps stop={props.stop} />}>
           <div class="art-over space-y-1.5">
             <Show
@@ -1106,8 +1078,6 @@ function StopCard(props: {
           <AskAi prompt={props.stop.aiPrompt} />
         </div>
 
-        {/* Chips, not cards: this is a hand-off to somebody else's site, and it
-            should never outweigh the stop it sits in. */}
         <Show when={props.stop.links}>
           <div class="art-over flex flex-wrap items-center gap-1.5">
             <span class="text-xs font-black uppercase tracking-wider text-muted">learn more:</span>
@@ -1136,9 +1106,6 @@ function StopCard(props: {
           />
         </div>
 
-        {/* The prose, folded away. Nobody reads three paragraphs on a
-            competition page, and the people who do want them are exactly the
-            people who will open a summary to find them. */}
         <Show when={props.stop.more}>
           <details class="art-over group">
             <summary class="flex cursor-pointer list-none items-center gap-1.5 text-sm font-black">
@@ -1157,14 +1124,13 @@ function StopCard(props: {
           </details>
         </Show>
 
-        {/* The off-ramp for people who did not need any of that. Every stop has
-            one: a third-year who scrolls past nine cards of things they already
-            know decides the page is not for them, and they are the ones most
-            likely to actually submit. */}
         <Show when={props.stop.levelUp}>
           <div
             class="art-over flex items-start gap-2 rounded p-2.5"
-            style={{ border: "var(--ink-w) dashed var(--ink)", background: "var(--paper-3)" }}
+            style={{
+              border: "var(--ink-w) dashed var(--ink)",
+              background: "var(--paper-3)",
+            }}
           >
             <SpriteIcon name="arch-crown" size={20} interactive class="mt-0.5 shrink-0" />
             <p class="m-0 text-sm font-semibold leading-relaxed">
@@ -1174,9 +1140,6 @@ function StopCard(props: {
           </div>
         </Show>
 
-        {/* What you just earned, in plain words, once, with your name on it.
-            Nobody tells a first-year that drawing a circle with code is the same
-            skill professionals use, so this does. */}
         <Show when={props.done}>
           <div
             class="art-over anim-pop flex items-start gap-2.5 rounded p-3"
@@ -1195,9 +1158,6 @@ function StopCard(props: {
           </div>
         </Show>
 
-        {/* Your own two columns: what you thought of the stop, and whatever you
-            need to remember about it tomorrow. The rating only appears once the
-            stop is done - asking how it went before you have done it is noise. */}
         <div class="art-over flex flex-col gap-3 pt-1 sm:flex-row sm:items-start sm:justify-between">
           <Show when={props.done} fallback={<span />}>
             <SelfRating stopId={props.stop.id} />
@@ -1242,28 +1202,17 @@ function StopCard(props: {
 /* ----------------------------------------------------------------- the road */
 
 export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | null }) {
-  // Starts false in SSR and during hydration, then mounts the interactive
-  // editors once the useful text has painted. This is intentionally not a
-  // viewport check: deep links and keyboard users must get the same content.
   const [interactiveReady, setInteractiveReady] = createSignal(false);
+  const [isStuck, setIsStuck] = createSignal(false);
+  let sentinelEl: HTMLDivElement | undefined;
 
-  /**
-   * The viewer's first name, when they are signed in.
-   *
-   * Read here rather than passed down so the road can be dropped on any page.
-   * A road that says "Nice one, Aravind" after a stop is a different experience
-   * from one that says "Nice one" - and signed-out visitors simply get the
-   * shorter sentence, never a placeholder.
-   */
   const shellData = createAsync(() => shell());
   const me = () => shellData()?.me ?? undefined;
   const firstName = () => me()?.name?.trim().split(/\s+/)[0] || undefined;
 
-  // Empty on the server and on first paint, filled in on mount: reading
-  // localStorage during render would make the markup disagree with the HTML
-  // that was sent, and Solid hydrates against that HTML.
   const [done, setDone] = createSignal<string[]>([]);
   const [roadCursor, setRoadCursor] = createSignal(0);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   onMount(() => {
     const progress = readRoadProgress();
@@ -1271,6 +1220,19 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
     const firstOpen = ROAD_STOPS.findIndex((stop) => !progress.includes(stop.id));
     setRoadCursor(firstOpen >= 0 ? firstOpen : ROAD_STOPS.length - 1);
     setInteractiveReady(true);
+
+    // Exact moment the sentinel touches the sticky top navbar offset
+    if (sentinelEl) {
+      const topOffset = window.innerWidth >= 640 ? "64px" : "96px";
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          setIsStuck(!entry.isIntersecting);
+        },
+        { rootMargin: `-${topOffset} 0px 0px 0px`, threshold: 0 },
+      );
+      observer.observe(sentinelEl);
+      onCleanup(() => observer.disconnect());
+    }
   });
 
   const isDone = (id: string) => done().includes(id);
@@ -1288,176 +1250,224 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
 
   const doneCount = createMemo(() => ROAD_STOPS.filter((s) => isDone(s.id)).length);
 
-  /** The first stop not yet ticked - where "continue" sends you. */
-  const nextStop = createMemo(() => ROAD_STOPS.find((s) => !isDone(s.id)) ?? null);
+  const setActiveStop = (id: string) => {
+    const index = ROAD_STOPS.findIndex((stop) => stop.id === id);
+    if (index < 0) return;
+    setRoadCursor(index);
+    setSearchParams({ section: id }, { replace: true, scroll: false });
+  };
 
+  onMount(() => {
+    const requested = Array.isArray(searchParams.section)
+      ? searchParams.section[0]
+      : searchParams.section;
+    if (requested && ROAD_STOPS.some((stop) => stop.id === requested)) {
+      setRoadCursor(ROAD_STOPS.findIndex((stop) => stop.id === requested));
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        const id = visible?.target.id;
+        if (id) setActiveStop(id);
+      },
+      { rootMargin: "-18% 0px -62% 0px", threshold: 0 },
+    );
+
+    for (const stop of ROAD_STOPS) {
+      const element = document.getElementById(stop.id);
+      if (element) observer.observe(element);
+    }
+    onCleanup(() => observer.disconnect());
+  });
+
+  const nextStop = createMemo(() => ROAD_STOPS.find((s) => !isDone(s.id)) ?? null);
   const allDone = createMemo(() => doneCount() === ROAD_STOPS.length);
+
   const moveRoadCursor = (direction: -1 | 1) => {
     const nextIndex = roadCursor() + direction;
     if (nextIndex < 0 || nextIndex >= ROAD_STOPS.length) return;
     const stop = ROAD_STOPS[nextIndex];
     if (!stop) return;
     setRoadCursor(nextIndex);
+    setSearchParams({ section: stop.id }, { replace: true, scroll: false });
     scrollToAnchor(stop.id);
   };
 
-  /**
-   * A leg is walked once the stop it leaves from is ticked. The lead-in leg
-   * from the header is always walked: you are standing on it.
-   */
   const walked = (index: number) => index === 0 || isDone(ROAD_STOPS[index - 1].id);
 
   return (
     <section id="road" class="relative scroll-mt-28">
-      <div class="sticky top-[6.75rem] z-30 mb-3 rounded-lg sm:top-16">
-        <div
-          class="flex items-center gap-2 rounded-lg px-2.5 py-2 shadow-md sm:px-3"
-          style={{
-            border: "var(--ink-w-bold) solid var(--ink)",
-            background: "var(--paper-2)",
-          }}
-        >
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-muted sm:text-xs">
-              <span>{ROAD_STOPS[roadCursor()].day}</span>
-              <span aria-hidden="true">·</span>
-              <span>
-                {doneCount()}/{ROAD_STOPS.length} cleared
-              </span>
-            </div>
-            <p class="m-0 truncate text-xs font-black sm:text-sm">
-              {ROAD_STOPS[roadCursor()].title}
-            </p>
-            <div
-              class="mt-1 flex gap-0.5"
-              aria-label={`${doneCount()} of ${ROAD_STOPS.length} stops cleared`}
-            >
-              <For each={ROAD_STOPS}>
-                {(stop) => (
-                  <span
-                    class="h-1.5 min-w-0 flex-1 rounded-full"
-                    style={{
-                      background: isDone(stop.id) ? `var(--${stop.pop})` : "var(--paper-3)",
-                    }}
-                  />
-                )}
-              </For>
-            </div>
-          </div>
-          <div class="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              class="grid h-7 w-7 place-items-center rounded-md bg-[var(--paper)] text-[var(--ink)] disabled:invisible"
-              style={{ border: "var(--ink-w) solid var(--ink)" }}
-              disabled={roadCursor() === 0}
-              onClick={() => moveRoadCursor(-1)}
-              aria-label="Previous pookalam road stop"
-              title="Previous stop"
-            >
-              <ChevronLeft size={15} strokeWidth={2.5} />
-            </button>
-            <button
-              type="button"
-              class="grid h-7 w-7 place-items-center rounded-md bg-[var(--paper)] text-[var(--ink)] disabled:invisible"
-              style={{ border: "var(--ink-w) solid var(--ink)" }}
-              disabled={roadCursor() === ROAD_STOPS.length - 1}
-              onClick={() => moveRoadCursor(1)}
-              aria-label="Next pookalam road stop"
-              title="Next stop"
-            >
-              <ChevronRight size={15} strokeWidth={2.5} />
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* 1. Sentinel to trigger the EXACT moment sticky engages */}
+      <div
+        ref={sentinelEl}
+        class="pointer-events-none h-px w-full -mb-px opacity-0"
+        aria-hidden="true"
+      />
 
-      <div class="card pop-teal relative space-y-3.5 overflow-hidden">
-        <Confetti seed="road-head" count={6} animate opacity={0.35} />
+      {/* 2. Single Unified Sticky Container */}
+      <div
+        class={`sticky z-40 mb-3 overflow-hidden transition-all duration-300 ${
+          isStuck()
+            ? "top-[6rem] sm:top-16 card p-2.5 shadow-lg"
+            : "top-[6rem] sm:top-16 card pop-teal space-y-3.5"
+        }`}
+        style={isStuck() ? { background: "var(--paper-2)" } : undefined}
+      >
+        <Show when={!isStuck()}>
+          <Confetti seed="road-head" count={6} animate opacity={0.35} />
+        </Show>
 
-        <div class="art-over space-y-3.5">
-          <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-            <div class="min-w-0 space-y-1">
-              <span class="sticker text-[10px]" style={{ "--pop": "var(--pop-yellow)" }}>
-                nine stops · one week · zero experience required
-              </span>
-              <h2
-                class="wordmark m-0 leading-tight"
-                data-text="THE POOKALAM ROAD"
-                style={{ "font-size": "clamp(1.3rem, 5vw, 2.2rem)" }}
-              >
-                THE POOKALAM ROAD
-              </h2>
-              <p class="m-0 font-mono text-sm font-bold text-muted">
-                {firstName() ? `${firstName()} · ` : ""}
-                {doneCount()} of {ROAD_STOPS.length} stops cleared
-              </p>
-            </div>
+        <div class="art-over">
+          {/* Hero View - Hidden the moment it sticks */}
+          <Show when={!isStuck()}>
+            <div class="space-y-3.5">
+              <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+                <div class="min-w-0 space-y-1">
+                  <span class="sticker text-[10px]" style={{ "--pop": "var(--pop-yellow)" }}>
+                    nine stops · one week · zero experience required
+                  </span>
+                  <h2
+                    class="wordmark m-0 leading-tight"
+                    data-text="THE POOKALAM ROAD"
+                    style={{ "font-size": "clamp(1.3rem, 5vw, 2.2rem)" }}
+                  >
+                    THE POOKALAM ROAD
+                  </h2>
+                  <p class="m-0 font-mono text-sm font-bold text-muted">
+                    {firstName() ? `${firstName()} · ` : ""}
+                    {doneCount()} of {ROAD_STOPS.length} stops cleared
+                  </p>
+                </div>
 
-            <div class="flex flex-wrap items-center gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
-              <Show when={nextStop()}>
-                {(stop) => (
+                <div class="flex flex-wrap items-center gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
+                  <Show when={nextStop()}>
+                    {(stop) => (
+                      <a
+                        href={`#${stop().id}`}
+                        class="btn-brand min-h-0 justify-center px-3 py-2 text-center text-sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          scrollToAnchor(stop().id);
+                        }}
+                      >
+                        {doneCount() === 0 ? "Start walking" : "Back to where I stopped"}
+                      </a>
+                    )}
+                  </Show>
+
                   <a
-                    href={`#${stop().id}`}
-                    class="btn-brand min-h-0 justify-center px-3 py-2 text-center text-sm"
+                    href="#judging"
+                    class="btn-ghost min-h-0 justify-center gap-1.5 px-3 py-2 text-center text-sm"
                     onClick={(e) => {
                       e.preventDefault();
-                      scrollToAnchor(stop().id);
+                      scrollToAnchor("judging");
                     }}
                   >
-                    {doneCount() === 0 ? "Start walking" : "Back to where I stopped"}
+                    <FastForward size={14} class="shrink-0" />
+                    <span>I know this, just the rules</span>
                   </a>
-                )}
-              </Show>
 
-              {/* The express lane. Somebody who has shipped code before should
-                  not have to scroll past "draw one circle" to find the deadline
-                  rules, and saying so outright is what stops the page reading
-                  as a school lesson. */}
-              <a
-                href="#judging"
-                class="btn-ghost min-h-0 justify-center gap-1.5 px-3 py-2 text-center text-sm"
-                onClick={(e) => {
-                  e.preventDefault();
-                  scrollToAnchor("judging");
-                }}
-              >
-                <FastForward size={14} class="shrink-0" />
-                <span>I know this, just the rules</span>
-              </a>
+                  <Show when={doneCount() > 0}>
+                    <button
+                      type="button"
+                      onClick={reset}
+                      class="btn-ghost min-h-0 justify-center gap-1.5 px-2.5 py-2 text-sm"
+                      title="Clear my progress"
+                    >
+                      <RotateCcw size={13} />
+                      <span>Start over</span>
+                    </button>
+                  </Show>
+                </div>
+              </div>
 
-              <Show when={doneCount() > 0}>
+              <div class="flex gap-1">
+                <For each={ROAD_STOPS}>
+                  {(stop) => (
+                    <div
+                      class="h-3 flex-1 rounded-full"
+                      style={{
+                        border: "var(--ink-w) solid var(--ink)",
+                        background: isDone(stop.id) ? `var(--${stop.pop})` : "var(--paper-3)",
+                      }}
+                      aria-hidden="true"
+                    />
+                  )}
+                </For>
+              </div>
+
+              <p class="comment text-sm">
+                days are a suggestion, not a rule. some walk this whole road in one evening, some
+                take the week, and every stop has a shortcut for people who already know that bit.
+              </p>
+            </div>
+          </Show>
+
+          {/* Mini View - Appears the moment it touches the sticky top offset */}
+          <Show when={isStuck()}>
+            <div class="flex items-center justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-muted sm:text-xs">
+                  <span>{ROAD_STOPS[roadCursor()].day}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>
+                    {doneCount()}/{ROAD_STOPS.length} cleared
+                  </span>
+                </div>
+                <p class="m-0 truncate text-xs font-black sm:text-sm">
+                  {ROAD_STOPS[roadCursor()].title}
+                </p>
+                <div
+                  class="mt-1 flex gap-0.5"
+                  role="progressbar"
+                  aria-label={`${doneCount()} of ${ROAD_STOPS.length} stops cleared`}
+                  aria-valuenow={doneCount()}
+                  aria-valuemin={0}
+                  aria-valuemax={ROAD_STOPS.length}
+                >
+                  <For each={ROAD_STOPS}>
+                    {(stop) => (
+                      <span
+                        class="h-1.5 min-w-0 flex-1 rounded-full"
+                        style={{
+                          background: isDone(stop.id) ? `var(--${stop.pop})` : "var(--paper-3)",
+                        }}
+                      />
+                    )}
+                  </For>
+                </div>
+              </div>
+
+              {/* Prev / Next buttons */}
+              <div class="flex shrink-0 items-center gap-1">
                 <button
                   type="button"
-                  onClick={reset}
-                  class="btn-ghost min-h-0 justify-center gap-1.5 px-2.5 py-2 text-sm"
-                  title="Clear my progress"
+                  class="grid h-7 w-7 place-items-center rounded-md bg-[var(--paper)] text-[var(--ink)] disabled:invisible"
+                  style={{ border: "var(--ink-w) solid var(--ink)" }}
+                  disabled={roadCursor() === 0}
+                  onClick={() => moveRoadCursor(-1)}
+                  aria-label="Previous pookalam road stop"
+                  title="Previous stop"
                 >
-                  <RotateCcw size={13} />
-                  <span>Start over</span>
+                  <ChevronLeft size={15} strokeWidth={2.5} />
                 </button>
-              </Show>
+                <button
+                  type="button"
+                  class="grid h-7 w-7 place-items-center rounded-md bg-[var(--paper)] text-[var(--ink)] disabled:invisible"
+                  style={{ border: "var(--ink-w) solid var(--ink)" }}
+                  disabled={roadCursor() === ROAD_STOPS.length - 1}
+                  onClick={() => moveRoadCursor(1)}
+                  aria-label="Next pookalam road stop"
+                  title="Next stop"
+                >
+                  <ChevronRight size={15} strokeWidth={2.5} />
+                </button>
+              </div>
             </div>
-          </div>
-
-          <div class="flex gap-1">
-            <For each={ROAD_STOPS}>
-              {(stop) => (
-                <div
-                  class="h-3 flex-1 rounded-full"
-                  style={{
-                    border: "var(--ink-w) solid var(--ink)",
-                    background: isDone(stop.id) ? `var(--${stop.pop})` : "var(--paper-3)",
-                  }}
-                  aria-hidden="true"
-                />
-              )}
-            </For>
-          </div>
-
-          <p class="comment text-sm">
-            days are a suggestion, not a rule. some walk this whole road in one evening, some take
-            the week, and every stop has a shortcut for people who already know that bit.
-          </p>
+          </Show>
         </div>
       </div>
 
@@ -1471,10 +1481,6 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
               walked={walked(index())}
               label={index() + 1}
               done={isDone(stop.id)}
-              // A detour, not a stop: after four rings of ellipses the obvious
-              // question is "is this as far as it goes", and it is better
-              // answered on the way to git than left hanging until somebody
-              // sees a winning entry on Day 7.
               detour={
                 ROAD_STOPS[index() - 1]?.id === "rings-and-colour" ? (
                   <PookalamShowcase />
@@ -1488,6 +1494,7 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
               done={isDone(stop.id)}
               interactiveReady={interactiveReady()}
               name={firstName()}
+              active={roadCursor() === index()}
               onToggle={() => toggle(stop.id)}
             />
           </>
@@ -1501,20 +1508,17 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
         walked={isDone(ROAD_STOPS[ROAD_STOPS.length - 1].id)}
       />
 
-      {/* ------------------------------------------------------- FINISH LINE
-       * Also where the old "how the competition works" timeline ended up. It
-       * only becomes a real question once you have something to submit, and at
-       * the top of the page it was answering it two scrolls too early.
-       */}
+      {/* ------------------------------------------------------- FINISH LINE */}
       <div class="card pop-yellow relative space-y-4 overflow-hidden">
         <Confetti seed="road-finish" count={allDone() ? 20 : 9} animate opacity={0.45} />
 
-        {/* Nine of nine. Said properly, once - this is the moment somebody
-            decides whether they are "a person who codes". */}
         <Show when={allDone()}>
           <div
             class="art-over anim-pop flex items-start gap-3 rounded p-3.5"
-            style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--paper-2)" }}
+            style={{
+              border: "var(--ink-w-bold) solid var(--ink)",
+              background: "var(--paper-2)",
+            }}
           >
             <SpriteIcon name="tux-king" size={34} animate="pulse" class="mt-0.5 shrink-0" />
             <div class="space-y-1">
@@ -1558,8 +1562,6 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
                 <span>{props.hasEntry ? "Edit my entry" : "Submit my pookalam"}</span>
               </A>
 
-              {/* The clock again, where the decision to submit is actually
-                  made. Nobody scrolls back up to check how long is left. */}
               <Show when={props.closesAt}>
                 {(closesAt) => (
                   <Countdown target={new Date(closesAt())} doneLabel="Submissions closed" />

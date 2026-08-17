@@ -93,7 +93,10 @@ export function PookalamSandbox(props: {
 
     if (typeof window !== "undefined" && window.innerWidth < 640) {
       const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-      resultRef?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+      resultRef?.scrollIntoView({
+        behavior: reduce ? "auto" : "smooth",
+        block: "center",
+      });
     }
   };
 
@@ -252,7 +255,7 @@ draw();`;
           ref={(el) => {
             resultRef = el;
           }}
-          class="order-first sticky top-[6.75rem] z-10 space-y-2 self-start rounded bg-[var(--paper-2)] p-1 sm:order-none sm:top-24"
+          class="order-first sticky top-[10.75rem] z-10 space-y-2 self-start rounded bg-[var(--paper-2)] p-1 sm:order-none sm:top-36"
         >
           <iframe
             title="Your pookalam code, running"
@@ -264,7 +267,11 @@ draw();`;
             loading="lazy"
             srcdoc={doc()}
             class="inked mx-auto block w-full max-w-[13rem] rounded sm:max-w-[20rem]"
-            style={{ "aspect-ratio": "1 / 1", background: "#181511", border: "none" }}
+            style={{
+              "aspect-ratio": "1 / 1",
+              background: "#181511",
+              border: "none",
+            }}
           />
           <p class="comment m-0 text-center text-sm sm:text-left">your code, running. right now.</p>
 
@@ -286,7 +293,10 @@ draw();`;
 
       <p
         class="m-0 rounded p-2.5 text-xs font-semibold leading-relaxed"
-        style={{ border: "var(--ink-w) dashed var(--ink)", background: "var(--paper-3)" }}
+        style={{
+          border: "var(--ink-w) dashed var(--ink)",
+          background: "var(--paper-3)",
+        }}
       >
         <span class="font-black uppercase tracking-wide">This box is for learning. </span>
         Everyone on this page gets the same snippet, so a tweaked copy is not an entry - it scores

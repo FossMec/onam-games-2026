@@ -1,5 +1,5 @@
 import { Title } from "@solidjs/meta";
-import { A, createAsync, useSearchParams } from "@solidjs/router";
+import { A, createAsync, useNavigate, useSearchParams } from "@solidjs/router";
 import type { RouteDefinition } from "@solidjs/router";
 import { BookOpen, Clock, Lock, Zap } from "lucide-solid";
 import { For, Show, createEffect, createSignal } from "solid-js";
@@ -17,6 +17,7 @@ import { EVENT, POOKALAM } from "~/lib/event-content";
 import { type SpriteName } from "~/lib/sprites";
 import { gamesList, pookalamState, shell } from "~/lib/queries";
 import { comicImage, gameImage, memeImage } from "~/lib/img";
+import gameHypeCard from "~/assets/images/game-hype-card.webp";
 
 /** Underline colours for the hero stat chips, in order. */
 const STAT_POP = ["var(--pop-red)", "var(--pop-teal)", "var(--pop-yellow)", "var(--pop-purple)"];
@@ -244,6 +245,7 @@ export const route = {
 } satisfies RouteDefinition;
 
 export default function Home() {
+  const navigate = useNavigate();
   // Keep navigation and static landing content usable while these personalized
   // reads resolve. A resource without an initial value suspends the whole route
   // during client navigation and looks like a second page reload.
@@ -672,13 +674,18 @@ export default function Home() {
                   >
                     {(deadline) => <Countdown target={deadline()} doneLabel="Submissions Closed" />}
                   </Show>
-                  <a
-                    href="/code-a-pookalam"
-                    class="btn-brand text-xs sm:text-sm px-4 h-[35px] sm:h-[37px] inline-flex items-center gap-1.5 shrink-0"
-                  >
-                    <span>Explore Code-a-Pookalam</span>
-                    <span>→</span>
-                  </a>
+                  <div class="pookalam-cta-wrap">
+                    <div class="pookalam-cta-burst" aria-hidden="true">
+                      <Burst color="var(--pop-yellow)" seed="pookalam-cta" spikes={11} double />
+                    </div>
+                    <a
+                      href="/code-a-pookalam"
+                      class="pookalam-cta-button btn-brand relative z-10 text-xs sm:text-sm px-4 h-[35px] sm:h-[37px] inline-flex items-center gap-1.5 shrink-0"
+                    >
+                      <span>Explore Code-a-Pookalam</span>
+                      <span>→</span>
+                    </a>
+                  </div>
                 </div>
               </div>
 
@@ -722,16 +729,43 @@ export default function Home() {
             const isDay7 = current.day === 7;
             const targetHref = isDay7 ? "/code-a-pookalam/vote" : `/games/${current.slug}`;
             const playHref = me() ? targetHref : "/auth/signin";
+            const canPlay = current.status === "live" || current.status === "tester";
 
             return (
-              <div class="space-y-5 max-w-4xl mx-auto">
+              <div class="game-hype-card card pop-teal relative mx-auto grid w-full max-w-6xl overflow-hidden p-3 sm:p-5 md:grid-cols-[0.78fr_1.22fr] md:gap-5 md:p-6">
+                <Halftone opacity={0.08} />
+                <Confetti seed="games-banner" count={12} opacity={0.45} animate />
+                <SpriteIcon
+                  name="muthukuda"
+                  size={48}
+                  animate="float"
+                  class="pointer-events-none absolute right-3 top-3 hidden rotate-12 sm:block"
+                  aria-hidden="true"
+                />
                 <article
-                  class={`card ${DAY_POPS[(current.day - 1) % DAY_POPS.length]} relative overflow-hidden p-5 sm:p-7 space-y-5`}
+                  role="link"
+                  tabIndex={0}
+                  onClick={() => navigate(canPlay ? playHref : "/games")}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      navigate(canPlay ? playHref : "/games");
+                    }
+                  }}
+                  class={`game-hype-current ${DAY_POPS[(current.day - 1) % DAY_POPS.length]} relative overflow-hidden rounded-lg border-1 border-[var(--ink)] p-3 pb-4 space-y-3 sm:p-4 sm:pb-5 sm:space-y-4`}
+                  aria-label={canPlay ? `Play ${current.title}` : "Explore all daily games"}
                 >
-                  <div class="flex flex-col md:flex-row gap-6 items-center md:items-start">
+                  <Halftone opacity={0.1} />
+                  <div
+                    class="pointer-events-none absolute -right-8 -top-8 hidden h-28 w-28 rotate-12 sm:block"
+                    aria-hidden="true"
+                  >
+                    <Burst color="var(--pop-yellow)" seed="games-feature-burst" spikes={13} />
+                  </div>
+                  <div class="relative z-10 flex flex-col gap-4 sm:gap-5">
                     {/* Artwork */}
                     <div
-                      class="relative overflow-hidden rounded-lg aspect-square w-full sm:w-56 md:w-64 shrink-0 bg-[var(--paper-3)] flex items-center justify-center"
+                      class="game-hype-current-art relative aspect-[1.12] w-full shrink-0 overflow-hidden rounded-lg bg-[var(--paper-3)] flex items-center justify-center"
                       style={{ border: "var(--ink-w-bold) solid var(--ink)" }}
                     >
                       <Show
@@ -770,16 +804,16 @@ export default function Home() {
                           src={GAME_IMAGES[current.slug] ?? gameImage("open-source-tinder.webp")}
                           alt={current.title}
                           loading="lazy"
-                          class="h-full w-full object-cover aspect-square"
+                          class="h-full w-full object-cover"
                         />
                       </Show>
                     </div>
 
                     {/* Game Info */}
-                    <div class="space-y-3 flex-1 w-full text-center md:text-left">
-                      <div class="flex items-center justify-center md:justify-between gap-2 flex-wrap">
+                    <div class="game-hype-current-info flex-1 w-full space-y-3 text-center">
+                      <div class="flex items-center justify-center gap-2 flex-wrap">
                         <div class="flex items-center gap-2">
-                          <SpriteIcon name={teaser.icon} size={28} animate="wobble" interactive />
+                          <SpriteIcon name={teaser.icon} size={28} animate="wobble" />
                           <span
                             class="text-xs font-extrabold uppercase tracking-widest"
                             style={{
@@ -796,11 +830,21 @@ export default function Home() {
 
                       <h3 class="text-2xl sm:text-3xl m-0">
                         <Show when={!locked} fallback={<span>Day {current.day}: ????????</span>}>
-                          <A href={playHref} class="underline decoration-2 underline-offset-4">
+                          <span class="underline decoration-2 underline-offset-4">
                             {current.title}
-                          </A>
+                          </span>
                         </Show>
                       </h3>
+
+                      <div class="pt-3">
+                        <A
+                          href="/games"
+                          class="btn-brand px-4 py-2 text-sm"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          Open now <span aria-hidden="true">→</span>
+                        </A>
+                      </div>
 
                       <Show
                         when={!locked}
@@ -810,12 +854,12 @@ export default function Home() {
                           </p>
                         }
                       >
-                        <p class="text-sm sm:text-base font-semibold leading-relaxed text-[var(--ink-soft)]">
+                        <p class="game-hype-current-tagline text-sm sm:text-base font-semibold leading-relaxed text-[var(--ink-soft)]">
                           {current.tagline}
                         </p>
                       </Show>
 
-                      <div class="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1">
+                      <div class="game-hype-current-badges flex flex-wrap items-center justify-center gap-2 pt-1">
                         <span class="badge">{current.difficulty}</span>
                         <span class="badge">
                           {current.maxAttempts > 100
@@ -828,127 +872,132 @@ export default function Home() {
                           {current.metric === "score" ? "highest score wins" : "fastest wins"}
                         </span>
                       </div>
-
-                      <div class="pt-2 flex flex-col sm:flex-row items-center gap-2">
-                        <Show when={current.status === "live" || current.status === "tester"}>
-                          <A
-                            href={playHref}
-                            class="btn-brand w-full sm:w-auto text-center px-6 py-2.5 inline-block"
-                          >
-                            <Show
-                              when={me()}
-                              fallback={
-                                isDay7 ? "Sign in to Vote →" : `Sign in & Play Day ${current.day} →`
-                              }
-                            >
-                              {isDay7 ? "Vote in ELO Showdown →" : `Play Day ${current.day} Now →`}
-                            </Show>
-                          </A>
-                        </Show>
-                        <A
-                          href="/games"
-                          class="btn-ghost w-full sm:w-auto text-center px-5 py-2.5 inline-block"
-                        >
-                          Explore All 7 Games Arena →
-                        </A>
-                      </div>
                     </div>
+                  </div>
+                  <div class="game-hype-current-pops" aria-hidden="true">
+                    <For
+                      each={fullSchedule()
+                        .filter((item) => item.day !== current.day)
+                        .slice(0, 2)}
+                    >
+                      {(item) => (
+                        <div class="game-hype-current-pop">
+                          <img
+                            src={GAME_IMAGES[item.slug] ?? gameImage("open-source-tinder.webp")}
+                            alt=""
+                            loading="lazy"
+                          />
+                        </div>
+                      )}
+                    </For>
                   </div>
                 </article>
 
-                {/* 7-Day Mini Rail Preview */}
-                <div class="space-y-2">
-                  <div class="flex items-center justify-between px-1">
-                    <p
-                      class="text-xs font-extrabold uppercase tracking-widest"
-                      style={{ "font-family": "var(--font-stack-display)" }}
-                    >
-                      All 7 Days at a Glance
-                    </p>
-                    <A
-                      href="/games"
-                      class="text-xs font-extrabold underline decoration-2 underline-offset-4"
-                      style={{ color: "var(--ink)" }}
-                    >
-                      Open Games Hub →
-                    </A>
+                <div class="game-hype-stage relative z-10 mt-3 md:mt-0">
+                  <div class="game-hype-copy relative z-20  font-[var(--font-stack-hand)]">
+                    <h3>
+                      The FOSS you love was made by people like you.
+                      <br />
+                      Come make a little noise with us.
+                    </h3>
                   </div>
-                  <div class="scrollbar-none -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-7 sm:overflow-visible sm:px-0">
-                    <For each={fullSchedule()}>
-                      {(item) => {
-                        const isLock = item.status === "upcoming";
-                        const st = statusSticker[item.status] ?? statusSticker.upcoming;
-
-                        return (
-                          <A
-                            href={`/games?day=${item.day}`}
-                            class={`card w-[6.8rem] shrink-0 snap-start sm:w-auto p-2 text-center flex flex-col items-center justify-between gap-1.5 transition-all no-underline ${
-                              DAY_POPS[(item.day - 1) % DAY_POPS.length]
-                            } opacity-90 hover:opacity-100 hover:translate-y-[-1px]`}
-                            style={{
-                              border: "var(--ink-w) solid var(--ink)",
-                            }}
-                          >
-                            <span
-                              class="text-[10px] font-extrabold uppercase tracking-wider"
-                              style={{
-                                "font-family": "var(--font-stack-display)",
-                              }}
-                            >
-                              Day {item.day}
-                            </span>
-
+                  <div class="game-hype-artframe relative">
+                    <Halftone opacity={0.07} />
+                    <img
+                      src={gameHypeCard}
+                      alt="Onam game stickers: a vallam, pookalams, penguin, and playful FOSS characters"
+                      class="game-hype-stickers pointer-events-none absolute z-10 select-none"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <div class="game-hype-game-tokens" aria-label="More daily game artwork">
+                      <For
+                        each={fullSchedule()
+                          .filter((item) => item.day !== current.day)
+                          .slice(0, 3)}
+                      >
+                        {(item) => (
+                          <div class="game-hype-game-token">
+                            <img
+                              src={GAME_IMAGES[item.slug] ?? gameImage("open-source-tinder.webp")}
+                              alt={`${item.title} game artwork`}
+                              loading="lazy"
+                            />
+                          </div>
+                        )}
+                      </For>
+                    </div>
+                    <div class="game-hype-squiggle game-hype-squiggle-one" aria-hidden="true">
+                      〰
+                    </div>
+                    <div class="game-hype-squiggle game-hype-squiggle-two" aria-hidden="true">
+                      〰
+                    </div>
+                    <A
+                      href={canPlay ? playHref : "/games"}
+                      class="game-hype-play"
+                      aria-label={canPlay ? `Play ${current.title}` : "Explore all daily games"}
+                    >
+                      <span>
+                        PLAY
+                        <br />
+                        NOW!
+                      </span>
+                    </A>
+                    <span class="game-hype-arrow" aria-hidden="true">
+                      ↗
+                    </span>
+                  </div>
+                  <div class="game-hype-rail hidden relative z-20 mt-auto space-y-1.5">
+                    <div class="flex items-center justify-between gap-2 px-1">
+                      <p class="m-0 text-xs font-black uppercase tracking-[0.16em] text-muted">
+                        More mischief inside
+                      </p>
+                      <span class="hidden text-xs font-black sm:inline">Pick one. Then play.</span>
+                    </div>
+                    <div class="scrollbar-none -mx-1 flex h-[15rem] gap-2 overflow-x-auto px-1 pb-1 lg:relative lg:mx-0 lg:block lg:h-full lg:min-h-[20rem] lg:overflow-visible">
+                      <For each={fullSchedule()}>
+                        {(item) => {
+                          const isLock = item.status === "upcoming";
+                          const tilt = [-1.5, 1, -1, 1.5, -1, 1.5, -1][(item.day - 1) % 7];
+                          return (
                             <div
-                              class="w-11 h-11 sm:w-12 sm:h-12 rounded aspect-square overflow-hidden bg-[var(--paper-3)] shrink-0 relative flex items-center justify-center"
+                              class={`relative flex w-28 shrink-0 flex-col items-center gap-1 rounded-lg bg-[var(--paper-2)] p-1.5 lg:absolute lg:w-32 ${DAY_POPS[(item.day - 1) % 7]}`}
                               style={{
-                                border: "var(--ink-w) solid var(--ink)",
+                                border: "var(--ink-w-bold) solid var(--ink)",
+                                transform: `rotate(${tilt}deg)`,
+                                left: `${[2, 18, 35, 52, 68, 82, 42][(item.day - 1) % 7]}%`,
+                                top: `${[38, 2, 43, 0, 40, 4, 74][(item.day - 1) % 7]}%`,
                               }}
                             >
-                              <Show
-                                when={!isLock}
-                                fallback={
-                                  <div class="relative w-full h-full flex items-center justify-center">
-                                    <img
-                                      src={
-                                        GAME_IMAGES[item.slug] ??
-                                        gameImage("open-source-tinder.webp")
-                                      }
-                                      alt="Locked preview"
-                                      class="absolute inset-0 w-full h-full object-cover blur-sm opacity-40 grayscale"
-                                    />
-                                    <div class="relative z-10 w-5 h-5 rounded-full bg-[var(--paper-2)] border border-[var(--ink)] grid place-items-center text-[var(--ink)]">
-                                      <Lock size={10} strokeWidth={2.5} />
-                                    </div>
-                                  </div>
-                                }
+                              <div
+                                class="relative aspect-square w-10 overflow-hidden rounded bg-[var(--paper-2)] sm:w-12 lg:w-full"
+                                style={{ border: "var(--ink-w) solid var(--ink)" }}
                               >
                                 <img
                                   src={
                                     GAME_IMAGES[item.slug] ?? gameImage("open-source-tinder.webp")
                                   }
-                                  alt={item.title}
+                                  alt=""
                                   loading="lazy"
-                                  class="h-full w-full object-cover aspect-square"
+                                  class={`h-full w-full object-cover ${isLock ? "blur-sm grayscale opacity-45" : ""}`}
                                 />
-                              </Show>
+                                <Show when={isLock}>
+                                  <span class="absolute inset-0 grid place-items-center">
+                                    <span
+                                      class="grid h-5 w-5 place-items-center rounded-full bg-[var(--paper-2)]"
+                                      style={{ border: "var(--ink-w) solid var(--ink)" }}
+                                    >
+                                      <Lock size={10} strokeWidth={2.5} />
+                                    </span>
+                                  </span>
+                                </Show>
+                              </div>
                             </div>
-
-                            <span class="text-[9px] font-extrabold truncate w-full text-[var(--ink)]">
-                              {isLock ? "Locked" : item.title}
-                            </span>
-                            <span
-                              class="text-[8px] font-extrabold px-1 py-0.5 rounded uppercase"
-                              style={{
-                                background: st.pop,
-                                border: "1px solid var(--ink)",
-                              }}
-                            >
-                              {st.label}
-                            </span>
-                          </A>
-                        );
-                      }}
-                    </For>
+                          );
+                        }}
+                      </For>
+                    </div>
                   </div>
                 </div>
               </div>
