@@ -38,18 +38,13 @@ const WINDOW_HOURS = 4;
 const WINDOW_MS = WINDOW_HOURS * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-interface DayLayer {
-  dayKey: string;
-  cells: Uint8Array;
-}
-
 export function CollabPookalam() {
   let canvas: HTMLCanvasElement | undefined;
   let shell: HTMLDivElement | undefined;
   let rootRef: HTMLDivElement | undefined;
 
   const [today, setToday] = createSignal<Uint8Array | null>(null);
-  const [history, setHistory] = createSignal<DayLayer[]>([]);
+
   const [_dayKey, setDayKey] = createSignal("");
   const [placed, setPlaced] = createSignal(0);
   const [open, setOpen] = createSignal(true);
@@ -218,10 +213,21 @@ export function CollabPookalam() {
 
   const canOverwrite = () => placed() >= OVERWRITE_THRESHOLD;
 
+  const centerZoom = (nextZoom: number) => {
+    if (nextZoom <= 1) return;
+    requestAnimationFrame(() => {
+      if (!shell) return;
+      const targetScroll = (fit() * nextZoom - fit()) / 2;
+      shell.scrollLeft = targetScroll;
+      shell.scrollTop = targetScroll;
+    });
+  };
+
   const stepZoom = (direction: 1 | -1) => {
     const i = ZOOM_STEPS.indexOf(zoom());
-    const next = ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, Math.max(0, i + direction))];
-    setZoom(next ?? 1);
+    const next = ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, Math.max(0, i + direction))] ?? 1;
+    setZoom(next);
+    centerZoom(next);
   };
 
   const loadMessages = async () => {
@@ -245,9 +251,7 @@ export function CollabPookalam() {
       const res = await fetch("/api/pookalam/state");
       const state = await res.json();
       setToday(fromBase64(state.today.cells));
-      setHistory(
-        state.history.map((day: any) => ({ dayKey: day.dayKey, cells: fromBase64(day.cells) })),
-      );
+
       setDayKey(state.today.dayKey);
       setPlaced(state.today.placed);
       setOpen(state.open);
@@ -381,14 +385,27 @@ export function CollabPookalam() {
       window.removeEventListener("resize", measure);
       clearInterval(timer);
       clearInterval(rotateTimer);
+      if (paintFrame !== undefined) cancelAnimationFrame(paintFrame);
+      if (pinchFrame !== undefined) cancelAnimationFrame(pinchFrame);
+      paintJob += 1;
       void flush();
     });
   });
 
-  /** Repaints canvas with crisp DPR */
+  // A full pookalam can contain thousands of flowers across the current and
+  // historical layers. Painting all of them in one task blocks navigation and
+  // scrolling, especially on mobile. Keep only one render job alive and yield
+  // between small batches so the page remains interactive while the artwork
+  // fills in.
+  let paintFrame: number | undefined;
+  let paintJob = 0;
+
+  /** Repaints canvas with crisp DPR without monopolising the main thread. */
   const paint = () => {
     const grid = today();
-    if (!canvas || !grid) return;
+    if (!canvas || !grid || typeof window === "undefined") return;
+    if (paintFrame !== undefined) cancelAnimationFrame(paintFrame);
+    const job = ++paintJob;
     const css = fit();
     const dpr = Math.max(window.devicePixelRatio || 1, 2);
     canvas.width = Math.floor(css * dpr);
@@ -414,37 +431,46 @@ export function CollabPookalam() {
     ctx.strokeStyle = "rgba(251, 243, 228, 0.08)";
     ctx.stroke();
 
-    const layers = history();
-    layers.forEach((layer, i) => {
-      const depth = layers.length - i;
-      ctx.globalAlpha = Math.max(0.18, 0.62 - depth * 0.08);
-      paintLayer(ctx, layer.cells, css, 0.94 - depth * 0.04);
-    });
+    let cellIndex = 0;
 
-    ctx.globalAlpha = 1;
-    paintLayer(ctx, grid, css, 1);
+    const drawBatch = (frameStart: number) => {
+      if (!canvas || job !== paintJob) return;
+      ctx.globalAlpha = 1;
+      while (cellIndex < CELL_COUNT) {
+        const i = cellIndex++;
+        const id = readCell(grid, i);
+        if (id !== 0) {
+          const flower = flowerById(id);
+          const slot = SLOTS[i];
+          if (flower && slot) {
+            const jitter = ((((i * 2654435761) >>> 0) % 1000) / 1000 - 0.5) * 0.12;
+            const wobble = 0.98 + (((i * 40503) >>> 0) % 100) / 2500;
+            drawFlower(
+              ctx,
+              slot.x * css,
+              slot.y * css,
+              slot.cellRadius * css * wobble,
+              flower,
+              slot.angle + jitter,
+            );
+          }
+        }
+        if (performance.now() - frameStart >= 5) {
+          paintFrame = requestAnimationFrame(() => drawBatch(performance.now()));
+          return;
+        }
+      }
+      paintFrame = undefined;
+    };
+
+    paintFrame = requestAnimationFrame(() => drawBatch(performance.now()));
   };
 
   createEffect(() => {
     // Only re-paint when grid, history or fit size changes (not on every frame of zoom!)
     today();
-    history();
     fit();
     paint();
-  });
-
-  // Auto-center scroll when zoom level changes
-  createEffect(() => {
-    const z = zoom();
-    const f = fit();
-    if (shell && z > 1 && !pinching()) {
-      setTimeout(() => {
-        if (!shell) return;
-        const targetScroll = (f * z - f) / 2;
-        shell.scrollLeft = targetScroll;
-        shell.scrollTop = targetScroll;
-      }, 0);
-    }
   });
 
   const DEBOUNCE_MS = 350;
@@ -581,6 +607,11 @@ export function CollabPookalam() {
   const activePointers = new Map<number, { x: number; y: number }>();
   let initialPinchDist: number | null = null;
   let initialPinchZoom = 1;
+  let initialPinchMidpoint: { x: number; y: number } | null = null;
+  let initialPinchScroll = { left: 0, top: 0 };
+  let latestPinchMidpoint: { x: number; y: number } | null = null;
+  let pendingPinchZoom = 1;
+  let pinchFrame: number | undefined;
   const [pinching, setPinching] = createSignal(false);
   let lastPointerPos: { x: number; y: number } | null = null;
   let lastPlacedIndex: number | null = null;
@@ -588,14 +619,18 @@ export function CollabPookalam() {
   const handlePointerDown = (event: PointerEvent) => {
     activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (activePointers.size >= 2) {
-      setPinching(true);
       if (drawing()) endStroke();
       const pts = Array.from(activePointers.values());
       const p1 = pts[0];
       const p2 = pts[1];
-      if (p1 && p2) {
+      if (p1 && p2 && shell) {
+        setPinching(true);
         initialPinchDist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
         initialPinchZoom = zoom();
+        initialPinchMidpoint = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+        latestPinchMidpoint = initialPinchMidpoint;
+        pendingPinchZoom = initialPinchZoom;
+        initialPinchScroll = { left: shell.scrollLeft, top: shell.scrollTop };
       }
       return;
     }
@@ -643,10 +678,31 @@ export function CollabPookalam() {
         const currentDist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
         const factor = currentDist / initialPinchDist;
         const nextZoom = Math.min(
-          3.5,
-          Math.max(1, Math.round(initialPinchZoom * factor * 10) / 10),
+          ZOOM_STEPS[ZOOM_STEPS.length - 1],
+          Math.max(1, Math.round(initialPinchZoom * factor * 100) / 100),
         );
         setZoom(nextZoom);
+        pendingPinchZoom = nextZoom;
+        latestPinchMidpoint = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+
+        // Wait until Solid has applied the new transform and the browser has
+        // expanded the scroll area. Assigning scrollLeft/Top in this pointer
+        // event uses the old scroll bounds and causes the diagonal drift.
+        if (pinchFrame === undefined) {
+          pinchFrame = requestAnimationFrame(() => {
+            pinchFrame = undefined;
+            if (!shell || !initialPinchMidpoint || !latestPinchMidpoint) return;
+            const shellRect = shell.getBoundingClientRect();
+            const anchorX =
+              (initialPinchScroll.left + initialPinchMidpoint.x - shellRect.left) /
+              initialPinchZoom;
+            const anchorY =
+              (initialPinchScroll.top + initialPinchMidpoint.y - shellRect.top) / initialPinchZoom;
+            shell.scrollLeft =
+              anchorX * pendingPinchZoom - (latestPinchMidpoint.x - shellRect.left);
+            shell.scrollTop = anchorY * pendingPinchZoom - (latestPinchMidpoint.y - shellRect.top);
+          });
+        }
       }
       return;
     }
@@ -696,9 +752,11 @@ export function CollabPookalam() {
     activePointers.delete(event.pointerId);
     if (activePointers.size < 2) {
       initialPinchDist = null;
-      setPinching(false);
+      initialPinchMidpoint = null;
+      latestPinchMidpoint = null;
     }
     if (activePointers.size === 0) {
+      setPinching(false);
       endStroke();
     }
   };
@@ -714,7 +772,12 @@ export function CollabPookalam() {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.2 : 0.2;
-      setZoom((z) => Math.min(3.5, Math.max(1, Math.round((z + delta) * 10) / 10)));
+      const next = Math.min(
+        ZOOM_STEPS[ZOOM_STEPS.length - 1],
+        Math.max(1, Math.round((zoom() + delta) * 10) / 10),
+      );
+      setZoom(next);
+      centerZoom(next);
     }
   };
 
@@ -998,12 +1061,12 @@ export function CollabPookalam() {
           >
             <div
               style={{
-                // The canvas is resized once; do not also transform this
-                // wrapper, or pinch zoom scales the artwork twice and causes
-                // scroll-position flicker on mobile.
                 width: `${fit() * zoom()}px`,
                 height: `${fit() * zoom()}px`,
                 position: "relative",
+                transform: `scale(${zoom()})`,
+                "transform-origin": "top left",
+                transition: pinching() ? "none" : "transform 150ms cubic-bezier(0.2, 0, 0, 1)",
               }}
             >
               <canvas
@@ -1015,9 +1078,9 @@ export function CollabPookalam() {
                 onWheel={handleWheel}
                 class="block select-none"
                 style={{
-                  width: `${fit() * zoom()}px`,
-                  height: `${fit() * zoom()}px`,
-                  "touch-action": "none",
+                  width: `${fit()}px`,
+                  height: `${fit()}px`,
+                  "touch-action": canPlace() ? "none" : "pan-x pan-y",
                   cursor: canPlace()
                     ? 'url("/cursors/muthukuda-point.png") 6 2, crosshair'
                     : 'url("/cursors/muthukuda.png") 6 2, default',
@@ -1636,33 +1699,6 @@ const StrokeDemo = () => {
     </div>
   );
 };
-
-function paintLayer(
-  ctx: CanvasRenderingContext2D,
-  cells: Uint8Array,
-  css: number,
-  scale: number,
-): void {
-  for (let i = 0; i < CELL_COUNT; i++) {
-    const id = readCell(cells, i);
-    if (id === 0) continue;
-    const flower = flowerById(id);
-    if (!flower) continue;
-
-    const slot = SLOTS[i];
-    const jitter = ((((i * 2654435761) >>> 0) % 1000) / 1000 - 0.5) * 0.12;
-    const wobble = 0.98 + (((i * 40503) >>> 0) % 100) / 2500;
-
-    drawFlower(
-      ctx,
-      slot.x * css,
-      slot.y * css,
-      slot.cellRadius * css * wobble * scale,
-      flower,
-      slot.angle + jitter,
-    );
-  }
-}
 
 /** One flower on its own tiny canvas, centered with crisp DPR. */
 function FlowerSwatch(props: { flower: Flower; size?: number }) {

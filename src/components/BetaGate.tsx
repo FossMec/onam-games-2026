@@ -24,7 +24,10 @@ import { shell } from "~/lib/queries";
  * already have.
  */
 export function BetaGate(props: { children: JSX.Element }) {
-  const data = createAsync(() => shell());
+  // Do not suspend the entire app while the access check is in flight. The
+  // unknown state is intentionally allowed through; only a resolved denial
+  // should replace the page with the beta gate.
+  const data = createAsync(() => shell(), { initialValue: null });
   const access = () => data()?.access;
   const location = useLocation();
 

@@ -10,7 +10,6 @@ import { SpriteIcon } from "./art/SpriteIcon";
  * Short labels for navigation. Responsive layout on phone so long labels never crowd.
  */
 const LINKS = [
-  { href: "/", label: "Home" },
   { href: "/games", label: "Games" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/code-a-pookalam", label: "Pookalam" },
@@ -170,7 +169,7 @@ function ProfileMenu(props: {
 
 export function Nav() {
   const loc = useLocation();
-  const data = createAsync(() => shell());
+  const data = createAsync(() => shell(), { initialValue: null });
   const me = () => data()?.me ?? undefined;
 
   const isActive = (href: string) => {
@@ -239,12 +238,12 @@ export function Nav() {
 
             {/* Nav Links + Desktop User Profile */}
             <div class="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full sm:w-auto">
-              <nav class="flex items-center justify-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+              <nav class="min-w-0 max-w-full h-full flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 w-full sm:w-auto  scrollbar-none ">
                 <For each={LINKS}>
                   {(link) => (
                     <A
                       href={link.href}
-                      class="flex-1 sm:flex-initial text-center inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 text-xs sm:px-3.5 sm:py-1.5 sm:text-sm transition-transform active:translate-y-0.5"
+                      class="flex-none   whitespace-nowrap text-center inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 text-xs sm:px-3.5 sm:py-2 sm:text-sm transition-transform "
                       style={{
                         "font-family": "var(--font-stack-display)",
                         "font-weight": 800,
@@ -261,7 +260,7 @@ export function Nav() {
                 <Show when={isPookalamSection()}>
                   <A
                     href="/code-a-pookalam/submit"
-                    class="flex-1 sm:flex-initial text-center inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 text-xs sm:px-3.5 sm:py-1.5 sm:text-sm transition-transform active:translate-y-0.5 cursor-pointer"
+                    class="flex-none whitespace-nowrap text-center inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 text-xs sm:px-3.5 sm:py-2 sm:text-sm cursor-pointer"
                     style={{
                       "font-family": "var(--font-stack-display)",
                       "font-weight": 800,

@@ -1,4 +1,4 @@
-import { Play, RotateCcw, TriangleAlert } from "lucide-solid";
+import { ChevronDown, Play, RotateCcw, TriangleAlert } from "lucide-solid";
 import { For, type JSX, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 
 import { sandboxDocument } from "~/lib/pookalam-sandbox-doc";
@@ -62,12 +62,17 @@ function highlight(code: string): Piece[] {
  * with the editor. The canvas then sits beside them at the top of the card
  * instead of underneath, which is where the empty space was.
  */
-export function PookalamSandbox(props: { snippet: string; intro?: JSX.Element }) {
+export function PookalamSandbox(props: {
+  snippet: string;
+  intro?: JSX.Element;
+  showAnimate?: boolean;
+}) {
   const [code, setCode] = createSignal(props.snippet);
   const [doc, setDoc] = createSignal(sandboxDocument(props.snippet, 0));
   let runs = 0;
   const [error, setError] = createSignal<string | null>(null);
   const [ran, setRan] = createSignal(false);
+  const [codeOpen, setCodeOpen] = createSignal(true);
 
   const pieces = createMemo(() => highlight(code()));
 
@@ -98,7 +103,43 @@ export function PookalamSandbox(props: { snippet: string; intro?: JSX.Element })
     setDoc(sandboxDocument(props.snippet, ++runs));
   };
 
+  const animate = () => {
+    const source = code();
+    if (source.includes("requestAnimationFrame(draw)")) return;
+    const indented = source
+      .split("\n")
+      .map((line) => `  ${line}`)
+      .join("\n");
+    const animated = `let rotation = 0;
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  ctx.save();
+  ctx.translate(W / 2, H / 2);
+  ctx.rotate(rotation);
+  ctx.translate(-W / 2, -H / 2);
+
+${indented}
+
+  ctx.restore();
+  rotation += 0.01;
+  requestAnimationFrame(draw);
+}
+
+draw();`;
+    setCode(animated);
+    setError(null);
+    setDoc(sandboxDocument(animated, ++runs));
+    setRan(true);
+    if (flash) clearTimeout(flash);
+    flash = setTimeout(() => setRan(false), 1400);
+  };
+
   onMount(() => {
+    // On phones the rendered result is the useful first view; keep the editor
+    // available behind an accordion. Desktop keeps the editor open.
+    setCodeOpen(window.matchMedia("(min-width: 640px)").matches);
+
     const onMessage = (event: MessageEvent) => {
       // Only from a sandboxed frame - one without `allow-same-origin` always
       // posts with a null origin, so anything with a real origin is somebody
@@ -128,58 +169,90 @@ export function PookalamSandbox(props: { snippet: string; intro?: JSX.Element })
         <div class="space-y-3">
           <Show when={props.intro}>{props.intro}</Show>
 
-          <div class="inked relative overflow-hidden rounded bg-[#181511]">
-            <pre
-              aria-hidden="true"
-              class="pointer-events-none m-0 whitespace-pre-wrap break-words p-3 font-mono text-[13px] leading-relaxed"
-              style={{ "min-height": "12rem" }}
-            >
-              <For each={pieces()}>
-                {(piece) => <span style={{ color: piece.colour ?? "#fbf3e4" }}>{piece.text}</span>}
-              </For>
-            </pre>
-            <textarea
-              class="absolute inset-0 block h-full w-full resize-none whitespace-pre-wrap break-words bg-transparent p-3 font-mono text-[13px] leading-relaxed text-transparent caret-[#f5c443] outline-none"
-              spellcheck={false}
-              autocapitalize="off"
-              autocorrect="off"
-              value={code()}
-              onInput={(e) => setCode(e.currentTarget.value)}
-              aria-label="Editable pookalam code"
-            />
-          </div>
+          <details
+            class="group block"
+            open={codeOpen()}
+            onToggle={(event) => setCodeOpen(event.currentTarget.open)}
+          >
+            <summary class="btn-ghost mb-2 cursor-pointer list-none justify-between text-sm sm:hidden">
+              <span>{codeOpen() ? "Hide code editor" : "Open code editor"}</span>
+              <ChevronDown size={15} class="transition-transform group-open:rotate-180" />
+            </summary>
 
-          <div class="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={run} class="btn-accent min-h-0 gap-2 px-3 py-2 text-sm">
-              <Play size={15} strokeWidth={3} />
-              <span>Run it</span>
-            </button>
-            <button
-              type="button"
-              onClick={reset}
-              class="btn-ghost min-h-0 gap-1.5 px-3 py-2 text-sm"
-            >
-              <RotateCcw size={13} />
-              <span>Reset</span>
-            </button>
-            <Show
-              when={ran()}
-              fallback={
-                <span class="text-xs font-bold text-muted">change any number, then run</span>
-              }
-            >
-              <span class="anim-pop badge text-[10px]" style={{ "--pop": "var(--pop-teal)" }}>
-                ran it - look right
-              </span>
-            </Show>
-          </div>
+            <div class="space-y-2">
+              <div class="inked relative overflow-hidden rounded bg-[#181511]">
+                <pre
+                  aria-hidden="true"
+                  class="pointer-events-none m-0 whitespace-pre-wrap break-words p-3 font-mono text-[13px] leading-relaxed"
+                  style={{ "min-height": "12rem" }}
+                >
+                  <For each={pieces()}>
+                    {(piece) => (
+                      <span style={{ color: piece.colour ?? "#fbf3e4" }}>{piece.text}</span>
+                    )}
+                  </For>
+                </pre>
+                <textarea
+                  class="absolute inset-0 block h-full w-full resize-none whitespace-pre-wrap break-words bg-transparent p-3 font-mono text-[13px] leading-relaxed text-transparent caret-[#f5c443] outline-none"
+                  spellcheck={false}
+                  autocapitalize="off"
+                  autocorrect="off"
+                  value={code()}
+                  onInput={(e) => setCode(e.currentTarget.value)}
+                  aria-label="Editable pookalam code"
+                />
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={run}
+                  class="btn-accent min-h-0 gap-2 px-3 py-2 text-sm"
+                >
+                  <Play size={15} strokeWidth={3} />
+                  <span>Run it</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={reset}
+                  class="btn-ghost min-h-0 gap-1.5 px-3 py-2 text-sm"
+                >
+                  <RotateCcw size={13} />
+                  <span>Reset</span>
+                </button>
+                <Show when={props.showAnimate}>
+                  <button
+                    type="button"
+                    onClick={animate}
+                    class="btn-ghost min-h-0 gap-1.5 px-3 py-2 text-sm"
+                    title="Wrap the rings in a simple rotation animation"
+                  >
+                    <Play size={13} />
+                    <span>Animate</span>
+                  </button>
+                </Show>
+                <Show
+                  when={ran()}
+                  fallback={
+                    <span class="text-xs font-bold text-muted">change any number, then run</span>
+                  }
+                >
+                  <span class="anim-pop badge text-[10px]" style={{ "--pop": "var(--pop-teal)" }}>
+                    ran it - look right
+                  </span>
+                </Show>
+              </div>
+            </div>
+          </details>
         </div>
 
         {/* the result, pinned so it stays on screen while you scroll a long
             snippet - pressing Run has to visibly do something */}
         <div
-          ref={(el) => (resultRef = el)}
-          class="order-first space-y-2 self-start sm:order-none sm:sticky sm:top-24"
+          ref={(el) => {
+            resultRef = el;
+          }}
+          class="order-first sticky top-[6.75rem] z-10 space-y-2 self-start rounded bg-[var(--paper-2)] p-1 sm:order-none sm:top-24"
         >
           <iframe
             title="Your pookalam code, running"

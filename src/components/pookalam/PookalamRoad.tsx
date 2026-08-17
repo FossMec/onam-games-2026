@@ -1,6 +1,8 @@
 import {
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   ExternalLink,
   FastForward,
@@ -248,21 +250,75 @@ function RoadLeg(props: {
  */
 
 function StepsSwipe(props: { steps: string[]; pop: string }) {
+  let rail: HTMLDivElement | undefined;
+  const [canPrev, setCanPrev] = createSignal(false);
+  const [canNext, setCanNext] = createSignal(true);
+
+  const updateEdges = () => {
+    if (!rail) return;
+    const maxScroll = rail.scrollWidth - rail.clientWidth;
+    setCanPrev(rail.scrollLeft > 2);
+    setCanNext(rail.scrollLeft < maxScroll - 2);
+  };
+
+  const move = (direction: -1 | 1) => {
+    rail?.scrollBy({
+      left: direction * Math.max(rail.clientWidth * 0.78, 220),
+      behavior: "smooth",
+    });
+    requestAnimationFrame(updateEdges);
+  };
+
+  onMount(() => {
+    updateEdges();
+    window.addEventListener("resize", updateEdges);
+    onCleanup(() => window.removeEventListener("resize", updateEdges));
+  });
+
   return (
-    <div class="swipe-rail">
-      <For each={props.steps}>
-        {(step, i) => (
-          <div class="card card-plain relative bg-surface p-3">
-            <div class="pointer-events-none absolute -left-1 -top-1 h-12 w-12 opacity-60">
-              <Burst color={`var(--${props.pop})`} seed={`${step}-${i()}`} spikes={9} />
+    <div class="relative">
+      <div ref={(el) => (rail = el)} class="swipe-rail" onScroll={updateEdges}>
+        <For each={props.steps}>
+          {(step, i) => (
+            <div class="card card-plain relative bg-surface p-3">
+              <div class="pointer-events-none absolute -left-1 -top-1 h-12 w-12 opacity-60">
+                <Burst color={`var(--${props.pop})`} seed={`${step}-${i()}`} spikes={9} />
+              </div>
+              <p class="relative m-0 font-display text-2xl font-black leading-none">{i() + 1}</p>
+              <p class="relative m-0 pt-1.5 text-sm font-semibold leading-relaxed">
+                <Inline text={step} />
+              </p>
             </div>
-            <p class="relative m-0 font-display text-2xl font-black leading-none">{i() + 1}</p>
-            <p class="relative m-0 pt-1.5 text-sm font-semibold leading-relaxed">
-              <Inline text={step} />
-            </p>
-          </div>
-        )}
-      </For>
+          )}
+        </For>
+      </div>
+
+      <div class="mt-2 flex justify-end gap-1.5 sm:hidden">
+        <Show when={canPrev()}>
+          <button
+            type="button"
+            class="grid h-8 w-8 place-items-center rounded-md bg-[var(--paper-2)] text-[var(--ink)] shadow-sm transition-transform active:translate-y-px"
+            style={{ border: "var(--ink-w) solid var(--ink)" }}
+            onClick={() => move(-1)}
+            aria-label="Previous step"
+            title="Previous step"
+          >
+            <ChevronLeft size={17} strokeWidth={2.5} />
+          </button>
+        </Show>
+        <Show when={canNext()}>
+          <button
+            type="button"
+            class="grid h-8 w-8 place-items-center rounded-md bg-[var(--paper-2)] text-[var(--ink)] shadow-sm transition-transform active:translate-y-px"
+            style={{ border: "var(--ink-w) solid var(--ink)" }}
+            onClick={() => move(1)}
+            aria-label="Next step"
+            title="Next step"
+          >
+            <ChevronRight size={17} strokeWidth={2.5} />
+          </button>
+        </Show>
+      </div>
     </div>
   );
 }
@@ -999,6 +1055,7 @@ function StopCard(props: {
               <PookalamSandbox
                 snippet={props.stop.code!.snippet}
                 intro={<Steps stop={props.stop} />}
+                showAnimate={props.stop.day === "Day 4"}
               />
             </Show>
           </div>
@@ -1206,9 +1263,13 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
   // localStorage during render would make the markup disagree with the HTML
   // that was sent, and Solid hydrates against that HTML.
   const [done, setDone] = createSignal<string[]>([]);
+  const [roadCursor, setRoadCursor] = createSignal(0);
 
   onMount(() => {
-    setDone(readRoadProgress());
+    const progress = readRoadProgress();
+    setDone(progress);
+    const firstOpen = ROAD_STOPS.findIndex((stop) => !progress.includes(stop.id));
+    setRoadCursor(firstOpen >= 0 ? firstOpen : ROAD_STOPS.length - 1);
     setInteractiveReady(true);
   });
 
@@ -1231,6 +1292,14 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
   const nextStop = createMemo(() => ROAD_STOPS.find((s) => !isDone(s.id)) ?? null);
 
   const allDone = createMemo(() => doneCount() === ROAD_STOPS.length);
+  const moveRoadCursor = (direction: -1 | 1) => {
+    const nextIndex = roadCursor() + direction;
+    if (nextIndex < 0 || nextIndex >= ROAD_STOPS.length) return;
+    const stop = ROAD_STOPS[nextIndex];
+    if (!stop) return;
+    setRoadCursor(nextIndex);
+    scrollToAnchor(stop.id);
+  };
 
   /**
    * A leg is walked once the stop it leaves from is ticked. The lead-in leg
@@ -1240,6 +1309,68 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
 
   return (
     <section id="road" class="relative scroll-mt-28">
+      <div class="sticky top-[6.75rem] z-30 mb-3 rounded-lg sm:top-16">
+        <div
+          class="flex items-center gap-2 rounded-lg px-2.5 py-2 shadow-md sm:px-3"
+          style={{
+            border: "var(--ink-w-bold) solid var(--ink)",
+            background: "var(--paper-2)",
+          }}
+        >
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-muted sm:text-xs">
+              <span>{ROAD_STOPS[roadCursor()].day}</span>
+              <span aria-hidden="true">·</span>
+              <span>
+                {doneCount()}/{ROAD_STOPS.length} cleared
+              </span>
+            </div>
+            <p class="m-0 truncate text-xs font-black sm:text-sm">
+              {ROAD_STOPS[roadCursor()].title}
+            </p>
+            <div
+              class="mt-1 flex gap-0.5"
+              aria-label={`${doneCount()} of ${ROAD_STOPS.length} stops cleared`}
+            >
+              <For each={ROAD_STOPS}>
+                {(stop) => (
+                  <span
+                    class="h-1.5 min-w-0 flex-1 rounded-full"
+                    style={{
+                      background: isDone(stop.id) ? `var(--${stop.pop})` : "var(--paper-3)",
+                    }}
+                  />
+                )}
+              </For>
+            </div>
+          </div>
+          <div class="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              class="grid h-7 w-7 place-items-center rounded-md bg-[var(--paper)] text-[var(--ink)] disabled:invisible"
+              style={{ border: "var(--ink-w) solid var(--ink)" }}
+              disabled={roadCursor() === 0}
+              onClick={() => moveRoadCursor(-1)}
+              aria-label="Previous pookalam road stop"
+              title="Previous stop"
+            >
+              <ChevronLeft size={15} strokeWidth={2.5} />
+            </button>
+            <button
+              type="button"
+              class="grid h-7 w-7 place-items-center rounded-md bg-[var(--paper)] text-[var(--ink)] disabled:invisible"
+              style={{ border: "var(--ink-w) solid var(--ink)" }}
+              disabled={roadCursor() === ROAD_STOPS.length - 1}
+              onClick={() => moveRoadCursor(1)}
+              aria-label="Next pookalam road stop"
+              title="Next stop"
+            >
+              <ChevronRight size={15} strokeWidth={2.5} />
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div class="card pop-teal relative space-y-3.5 overflow-hidden">
         <Confetti seed="road-head" count={6} animate opacity={0.35} />
 

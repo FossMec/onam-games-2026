@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, lt, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
 import { collabPookalam } from "~/server/db/schema";
 import { getSettings } from "~/server/settings/service";
@@ -16,9 +16,7 @@ import { IST_OFFSET_MS } from "./window";
  * The shared pookalam: one continuous communal canvas that lives and grows
  * throughout the festival.
  */
-
-/** How many days back the page draws underneath today. */
-const HISTORY_DAYS = 6;
+const COMMUNITY_GRID_KEY = "community";
 
 export interface CollabDay {
   dayKey: string;
@@ -30,8 +28,7 @@ export interface CollabDay {
 export interface CollabState {
   open: boolean;
   today: CollabDay;
-  /** Previous days, oldest first — painted underneath today. */
-  history: CollabDay[];
+
   /** Browser-enforced allowance, from settings. */
   dailyFlowers: number;
   canPlace: boolean;
@@ -54,37 +51,32 @@ async function getConfig(): Promise<{ open: boolean; dailyFlowers: number }> {
 }
 
 /**
- * Ensures today's canvas row exists, carrying over existing flowers from previous days
- * so the pookalam lives forever and continuously evolves.
+ * Ensures the one event-wide canvas exists. Older deployments created one row
+ * per day; the migration collapses those rows, and this key prevents that model
+ * from returning in application code.
  */
-async function ensureToday(dayKey: string) {
+async function ensureCommunityGrid() {
   const db = getDb();
-  const existing = await db
+  const [existing] = await db
     .select()
     .from(collabPookalam)
-    .where(eq(collabPookalam.dayKey, dayKey))
+    .where(eq(collabPookalam.dayKey, COMMUNITY_GRID_KEY))
     .limit(1);
-  if (existing.length > 0) return existing[0];
-
-  // Carry forward existing flowers from previous day
-  const [latest] = await db
-    .select()
-    .from(collabPookalam)
-    .where(lt(collabPookalam.dayKey, dayKey))
-    .orderBy(desc(collabPookalam.dayKey))
-    .limit(1);
-
-  const cells = latest?.cells ? new Uint8Array(latest.cells) : emptyGrid();
-  const placed = latest?.placed ?? 0;
-
-  await db.insert(collabPookalam).values({ dayKey, cells, placed }).onConflictDoNothing();
+  if (existing) return existing;
 
   const [row] = await db
+    .insert(collabPookalam)
+    .values({ dayKey: COMMUNITY_GRID_KEY, cells: emptyGrid(), placed: 0 })
+    .onConflictDoNothing()
+    .returning();
+
+  if (row) return row;
+  const [created] = await db
     .select()
     .from(collabPookalam)
-    .where(eq(collabPookalam.dayKey, dayKey))
+    .where(eq(collabPookalam.dayKey, COMMUNITY_GRID_KEY))
     .limit(1);
-  return row;
+  return created;
 }
 
 function encode(row: { dayKey: string; cells: Uint8Array; placed: number }): CollabDay {
@@ -92,22 +84,12 @@ function encode(row: { dayKey: string; cells: Uint8Array; placed: number }): Col
 }
 
 export async function getCollabState(signedIn: boolean): Promise<CollabState> {
-  const dayKey = istDayKey();
   const config = await getConfig();
-  const [today, history] = await Promise.all([
-    ensureToday(dayKey),
-    getDb()
-      .select()
-      .from(collabPookalam)
-      .where(lt(collabPookalam.dayKey, dayKey))
-      .orderBy(asc(collabPookalam.dayKey))
-      .limit(HISTORY_DAYS),
-  ]);
+  const today = await ensureCommunityGrid();
 
   return {
     open: config.open,
     today: encode(today),
-    history: history.map(encode),
     dailyFlowers: config.dailyFlowers,
     canPlace: config.open && signedIn,
   };
@@ -128,7 +110,7 @@ export type PlaceResult =
  *
  * The OR is safe precisely because the guard proved the nibble was zero.
  */
-async function writeCell(dayKey: string, index: number, flowerId: number): Promise<number | null> {
+async function writeCell(index: number, flowerId: number): Promise<number | null> {
   const { byteIndex, shift, mask } = cellAddress(index);
   const shifted = flowerId << shift;
   const clearMask = 0xff - mask;
@@ -146,7 +128,7 @@ async function writeCell(dayKey: string, index: number, flowerId: number): Promi
     })
     .where(
       and(
-        eq(collabPookalam.dayKey, dayKey),
+        eq(collabPookalam.dayKey, COMMUNITY_GRID_KEY),
         // Bare cell, OR eraser, OR canvas is >= 80% filled (<= 20% empty)
         sql`(${flowerId} = 0 or (get_byte(${collabPookalam.cells}, ${byteIndex}) & ${mask}) = 0 or ${collabPookalam.placed} >= 2000)`,
       ),
@@ -163,10 +145,9 @@ export async function placeFlower(index: number, flowerId: number): Promise<Plac
   const config = await getConfig();
   if (!config.open) return { ok: false, reason: "The shared pookalam is closed right now." };
 
-  const dayKey = istDayKey();
-  await ensureToday(dayKey);
+  await ensureCommunityGrid();
 
-  const placed = await writeCell(dayKey, index, flowerId);
+  const placed = await writeCell(index, flowerId);
   if (placed === null) return { ok: false, reason: "Someone got there first.", taken: true };
   return { ok: true, index, flowerId, placed };
 }
@@ -213,8 +194,7 @@ export async function placeStroke(
     };
   }
 
-  const dayKey = istDayKey();
-  await ensureToday(dayKey);
+  await ensureCommunityGrid();
 
   const written: number[] = [];
   let placed = 0;
@@ -226,7 +206,7 @@ export async function placeStroke(
     if (seen.has(cell.index)) continue;
     seen.add(cell.index);
 
-    const next = await writeCell(dayKey, cell.index, cell.flowerId);
+    const next = await writeCell(cell.index, cell.flowerId);
     if (next !== null) {
       written.push(cell.index);
       placed = next;
@@ -238,7 +218,7 @@ export async function placeStroke(
   const [row] = await getDb()
     .select({ cells: collabPookalam.cells, placed: collabPookalam.placed })
     .from(collabPookalam)
-    .where(eq(collabPookalam.dayKey, dayKey))
+    .where(eq(collabPookalam.dayKey, COMMUNITY_GRID_KEY))
     .limit(1);
 
   return {
@@ -250,8 +230,7 @@ export async function placeStroke(
 
 /** Today's grid alone, for the cheap poll that keeps the canvas fresh. */
 export async function getTodayGrid(): Promise<CollabDay> {
-  const dayKey = istDayKey();
-  return encode(await ensureToday(dayKey));
+  return encode(await ensureCommunityGrid());
 }
 
 /** Cells filled today, as a fraction — for the "how full is it" meter. */

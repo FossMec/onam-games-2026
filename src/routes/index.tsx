@@ -113,7 +113,10 @@ function day7Schedule(
    * starts showing what it is, matching the reveal every other day gets.
    */
   const untilOpen = new Date(opensAt).getTime() - Date.now();
-  return { status: untilOpen <= DAY_MS ? "preview" : "upcoming", releaseAt: opensAt };
+  return {
+    status: untilOpen <= DAY_MS ? "preview" : "upcoming",
+    releaseAt: opensAt,
+  };
 }
 
 /** Day 7 sits one day after the last day that does have a release instant. */
@@ -241,15 +244,18 @@ export const route = {
 } satisfies RouteDefinition;
 
 export default function Home() {
-  const games = createAsync(() => gamesList());
-  const shellData = createAsync(() => shell());
+  // Keep navigation and static landing content usable while these personalized
+  // reads resolve. A resource without an initial value suspends the whole route
+  // during client navigation and looks like a second page reload.
+  const games = createAsync(() => gamesList(), { initialValue: null });
+  const shellData = createAsync(() => shell(), { initialValue: null });
   const me = () => shellData()?.me ?? undefined;
   /*
    * Day 7 is Code-a-Pookalam, which is not a row in `games` - so its status
    * cannot come from the schedule resolver like every other day. The arena's
    * own phase window is the authority on whether it is open.
    */
-  const pookalam = createAsync(() => pookalamState());
+  const pookalam = createAsync(() => pookalamState(), { initialValue: null });
 
   /*
    * Three states, not two. `createAsync` is `undefined` until the schedule
@@ -258,7 +264,7 @@ export default function Home() {
    * pictures, and neither of them is allowed to take the rest of the page
    * (which is all static copy) down with it.
    */
-  const scheduleLoading = () => games() === undefined;
+  const scheduleLoading = () => games() == null;
   const scheduleMissing = () => games()?.length === 0;
 
   const [searchParams] = useSearchParams();
@@ -442,7 +448,10 @@ export default function Home() {
               </h1>
               <span
                 class="text-[0.6rem] sm:text-xs font-black tracking-widest uppercase text-muted pr-1 -mt-1 sm:-mt-2 select-none"
-                style={{ "font-family": "var(--font-stack-display)", opacity: "0.85" }}
+                style={{
+                  "font-family": "var(--font-stack-display)",
+                  opacity: "0.85",
+                }}
               >
                 by fossmec
               </span>
@@ -687,112 +696,6 @@ export default function Home() {
           </div>
         </div>
       </Section>
-
-      {/* ------------------------------------------------- collaborative pookalam */}
-      <Section
-        title="The shared pookalam"
-        id="shared-pookalam"
-        confettiSeed="collab-sec"
-        confettiCount={4}
-      >
-        {/*
-          Same treatment as the Code-a-Pookalam card above it — a flat pop
-          fill, thick ink, halftone, confetti. Blue rather than pink so the two
-          pookalam sections read as siblings without reading as duplicates.
-        */}
-        <div
-          class="relative overflow-hidden rounded-lg p-2 sm:p-3 md:p-3.5"
-          style={{
-            border: "var(--ink-w-bold) solid var(--ink)",
-            background: "var(--pop-blue)",
-          }}
-        >
-          {/*
-            Halftone only, no confetti.
-
-            Every other card here gets both, but this one is mostly a canvas
-            somebody is trying to aim at. Scattered shapes drifting around the
-            edge of a drawing surface read as marks on the drawing.
-          */}
-          <Halftone opacity={0.12} />
-
-          {/*
-            The gutters either side of the canvas are the only place decoration
-            can go without landing on somebody's drawing, so the confetti and
-            the sprites live there and nowhere else. Hidden below `lg`, where
-            there are no gutters to fill.
-          */}
-          <div
-            class="pointer-events-none absolute inset-y-0 left-0 hidden w-28 overflow-hidden lg:block"
-            aria-hidden="true"
-          >
-            <Confetti seed="collab-left" count={7} opacity={0.55} animate />
-            <SpriteIcon
-              name="nilavilakku"
-              size={40}
-              animate="float"
-              class="absolute left-5 top-[18%]"
-            />
-            <SpriteIcon
-              name="sadya-leaf"
-              size={38}
-              animate="float"
-              delay={1.4}
-              class="absolute left-8 bottom-[22%]"
-            />
-          </div>
-          <div
-            class="pointer-events-none absolute inset-y-0 right-0 hidden w-28 overflow-hidden lg:block"
-            aria-hidden="true"
-          >
-            <Confetti seed="collab-right" count={7} opacity={0.55} animate />
-            <SpriteIcon
-              name="muthukuda"
-              size={42}
-              animate="float"
-              delay={0.7}
-              class="absolute right-5 top-[26%]"
-            />
-            <SpriteIcon
-              name="pookalam-flower"
-              size={38}
-              animate="float"
-              delay={2.1}
-              class="absolute right-8 bottom-[18%]"
-            />
-          </div>
-
-          <div class="art-over space-y-3">
-            {/*
-              The pitch, not a description.
-
-              "One grid, everyone's flowers" was accurate and completely inert —
-              it told you the mechanic and gave you no reason to care. What
-              makes this worth a tap is that it is the one thing on the site
-              nobody owns: your flowers sit next to a stranger's forever, and
-              the picture is only good if enough people show up. That is worth
-              saying out loud, in the voice the rest of the site uses.
-            */}
-            <div class="text-center space-y-1 pb-1 max-w-4xl mx-auto">
-              <h2
-                class="m-0 font-black leading-[0.95] text-2xl sm:text-3xl md:text-4xl"
-                style={{ "font-family": "var(--font-stack-display)" }}
-              >
-                Open source is all about collaboration.
-                <br />
-                <span style={{ color: "var(--paper)" }}>Build the pookalam together.</span>
-              </h2>
-              <p class="m-0 font-bold text-xs sm:text-sm text-[var(--ink)]">
-                Celebrate with FOSS MEC by creating a communal flower carpet — contribute petals,
-                build around each other, and create art together.
-              </p>
-            </div>
-            <CollabPookalam />
-          </div>
-        </div>
-      </Section>
-
-      {/* ------------------------------------------------------- Explore Daily Games Card */}
       <Section
         title="Daily Mini-Games Arena"
         id="games-arena"
@@ -1053,6 +956,112 @@ export default function Home() {
           })()}
         </Show>
       </Section>
+
+      {/* ------------------------------------------------- collaborative pookalam */}
+      <Section
+        title="The shared pookalam"
+        id="shared-pookalam"
+        confettiSeed="collab-sec"
+        confettiCount={4}
+      >
+        {/*
+          Same treatment as the Code-a-Pookalam card above it — a flat pop
+          fill, thick ink, halftone, confetti. Blue rather than pink so the two
+          pookalam sections read as siblings without reading as duplicates.
+        */}
+        <div
+          class="relative overflow-hidden rounded-lg p-2 sm:p-3 md:p-3.5"
+          style={{
+            border: "var(--ink-w-bold) solid var(--ink)",
+            background: "var(--pop-blue)",
+          }}
+        >
+          {/*
+            Halftone only, no confetti.
+
+            Every other card here gets both, but this one is mostly a canvas
+            somebody is trying to aim at. Scattered shapes drifting around the
+            edge of a drawing surface read as marks on the drawing.
+          */}
+          <Halftone opacity={0.12} />
+
+          {/*
+            The gutters either side of the canvas are the only place decoration
+            can go without landing on somebody's drawing, so the confetti and
+            the sprites live there and nowhere else. Hidden below `lg`, where
+            there are no gutters to fill.
+          */}
+          <div
+            class="pointer-events-none absolute inset-y-0 left-0 hidden w-28 overflow-hidden lg:block"
+            aria-hidden="true"
+          >
+            <Confetti seed="collab-left" count={7} opacity={0.55} animate />
+            <SpriteIcon
+              name="nilavilakku"
+              size={40}
+              animate="float"
+              class="absolute left-5 top-[18%]"
+            />
+            <SpriteIcon
+              name="sadya-leaf"
+              size={38}
+              animate="float"
+              delay={1.4}
+              class="absolute left-8 bottom-[22%]"
+            />
+          </div>
+          <div
+            class="pointer-events-none absolute inset-y-0 right-0 hidden w-28 overflow-hidden lg:block"
+            aria-hidden="true"
+          >
+            <Confetti seed="collab-right" count={7} opacity={0.55} animate />
+            <SpriteIcon
+              name="muthukuda"
+              size={42}
+              animate="float"
+              delay={0.7}
+              class="absolute right-5 top-[26%]"
+            />
+            <SpriteIcon
+              name="pookalam-flower"
+              size={38}
+              animate="float"
+              delay={2.1}
+              class="absolute right-8 bottom-[18%]"
+            />
+          </div>
+
+          <div class="art-over space-y-3">
+            {/*
+              The pitch, not a description.
+
+              "One grid, everyone's flowers" was accurate and completely inert —
+              it told you the mechanic and gave you no reason to care. What
+              makes this worth a tap is that it is the one thing on the site
+              nobody owns: your flowers sit next to a stranger's forever, and
+              the picture is only good if enough people show up. That is worth
+              saying out loud, in the voice the rest of the site uses.
+            */}
+            <div class="text-center space-y-1 pb-1 max-w-4xl mx-auto">
+              <h2
+                class="m-0 font-black leading-[0.95] text-2xl sm:text-3xl md:text-4xl"
+                style={{ "font-family": "var(--font-stack-display)" }}
+              >
+                Open source is all about collaboration.
+                <br />
+                <span style={{ color: "var(--paper)" }}>Build the pookalam together.</span>
+              </h2>
+              <p class="m-0 font-bold text-xs sm:text-sm text-[var(--ink)]">
+                Celebrate with FOSS MEC by creating a communal flower carpet — contribute petals,
+                build around each other, and create art together.
+              </p>
+            </div>
+            <CollabPookalam />
+          </div>
+        </div>
+      </Section>
+
+      {/* ------------------------------------------------------- Explore Daily Games Card */}
 
       {/* ---------------------------------------------------------- prizes */}
       <Section title="Prizes & Rewards" confettiSeed="prizes-sec" confettiCount={6}>
@@ -1320,7 +1329,10 @@ export default function Home() {
             <A href="/comics" class="relative block cursor-pointer" title="Read Comics Vault">
               <div
                 class="w-28 sm:w-36 aspect-square rounded-lg overflow-hidden shadow-xs"
-                style={{ border: "2.5px solid var(--ink)", background: "var(--paper)" }}
+                style={{
+                  border: "2.5px solid var(--ink)",
+                  background: "var(--paper)",
+                }}
               >
                 <img
                   src={comicImage("comic-1.webp")}
@@ -1333,12 +1345,15 @@ export default function Home() {
 
             <A
               href="/comics"
-              class="relative block cursor-pointer hidden xs:block"
+              class="relative  cursor-pointer hidden xs:block"
               title="Read Comics Vault"
             >
               <div
                 class="w-28 sm:w-36 aspect-square rounded-lg overflow-hidden shadow-xs"
-                style={{ border: "2.5px solid var(--ink)", background: "var(--paper)" }}
+                style={{
+                  border: "2.5px solid var(--ink)",
+                  background: "var(--paper)",
+                }}
               >
                 <img
                   src={comicImage("comic-2.webp")}

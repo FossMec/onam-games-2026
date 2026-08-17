@@ -552,10 +552,10 @@ export const pookalamStandings = pgTable("pookalam_standings", {
  * thousands of rows a day, a query that grows with how well the thing goes, and
  * an audit trail of who put which marigold where that nobody will ever read.
  *
- * `dayKey` is an IST calendar date, `YYYY-MM-DD`. Days accumulate rather than
- * reset — yesterday's rows are still here, and the page paints them underneath
- * today's, so by the end of the week the canvas is a stack of pookalams laid
- * one on another exactly as they are at home.
+ * The flower grid is one event-wide canvas. `dayKey` is retained as the
+ * storage column for compatibility with the existing table, but it is a
+ * singleton key with the value `community`. Wishes below have their own
+ * per-day key and are intentionally separate from the grid.
  *
  * There is deliberately no per-user column anywhere. How many flowers someone
  * has left today is counted in their own browser: enforcing it here would mean
@@ -563,7 +563,7 @@ export const pookalamStandings = pgTable("pookalam_standings", {
  * more flowers on a communal drawing.
  */
 export const collabPookalam = pgTable("collab_pookalam", {
-  /** IST calendar date, `YYYY-MM-DD`. */
+  /** Singleton storage key: always `community`. */
   dayKey: text("day_key").primaryKey(),
   /** 1250 bytes: 2500 cells x 4 bits. See `server/pookalam/grid.ts`. */
   cells: customBytea("cells").notNull(),

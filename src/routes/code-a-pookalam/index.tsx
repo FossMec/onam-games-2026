@@ -93,7 +93,10 @@ export const route = {
 } satisfies RouteDefinition;
 
 export default function CodeAPookalam() {
-  const state = createAsync(() => pookalamState());
+  // A null initial value keeps the static hero/prizes renderable while the
+  // viewer-specific state resolves. Without it, the route-level Suspense
+  // fallback replaces the whole page with the loading animation.
+  const state = createAsync(() => pookalamState(), { initialValue: null });
   // The studio only exists in the browser; see the note on the import.
   const [studioReady, setStudioReady] = createSignal(false);
   onMount(() => setStudioReady(true));
