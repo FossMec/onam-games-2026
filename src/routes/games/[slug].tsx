@@ -196,7 +196,10 @@ export default function GamePage() {
 
       const done = getFinished(currentSlug);
       if (done) {
-        setFinishedBoard({ view: done.view as GameView, submission: done.submission });
+        setFinishedBoard({
+          view: done.view as GameView,
+          submission: done.submission,
+        });
       }
 
       const stored = getStoredAttempt(currentSlug);
@@ -254,7 +257,10 @@ export default function GamePage() {
         setStartedAt(null);
         return;
       }
-      storeAttempt(slug(), { attemptToken: data.attemptToken, startedAt: data.startedAt });
+      storeAttempt(slug(), {
+        attemptToken: data.attemptToken,
+        startedAt: data.startedAt,
+      });
       setAttemptToken(data.attemptToken);
       setStartedAt(new Date(data.startedAt).getTime());
       setNow(Date.now());
@@ -325,7 +331,9 @@ export default function GamePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ attemptToken: token, submittedState }),
       });
-      const data = (await res.json()) as Partial<FinishPayload> & { error?: string };
+      const data = (await res.json()) as Partial<FinishPayload> & {
+        error?: string;
+      };
       if (!res.ok) {
         setError(friendly(data.error ?? "Failed to submit"));
         return;
@@ -521,7 +529,12 @@ export default function GamePage() {
     const minX = Math.min(...layout.map((p) => p.gx));
     const minY = Math.min(...layout.map((p) => p.gy));
     return {
-      pieces: layout.map((p) => ({ id: p.id, groupId: 0, x: p.gx - minX, y: p.gy - minY })),
+      pieces: layout.map((p) => ({
+        id: p.id,
+        groupId: 0,
+        x: p.gx - minX,
+        y: p.gy - minY,
+      })),
       moveLog: submission?.moveLog ?? [],
     };
   };
@@ -716,7 +729,7 @@ export default function GamePage() {
               <p>
                 <span class="text-muted">Releases in </span>
                 <span class="font-mono tabular-nums">
-                  <Countdown target={new Date(game()!.releaseAt!)} />
+                  <Countdown target={new Date(game()!.releaseAt!)} compact />
                 </span>
               </p>
             </Show>
@@ -955,7 +968,11 @@ export default function GamePage() {
                   view={finishedBoard()!.view as WendViewData}
                   disabled
                   initialFound={
-                    (finishedBoard()!.submission as { found?: WendFound[] } | null)?.found
+                    (
+                      finishedBoard()!.submission as {
+                        found?: WendFound[];
+                      } | null
+                    )?.found
                   }
                   onFinish={() => undefined}
                 />
@@ -965,7 +982,11 @@ export default function GamePage() {
                   view={finishedBoard()!.view as VallamViewData}
                   disabled
                   initialMoves={
-                    (finishedBoard()!.submission as { moves?: VallamMove[] } | null)?.moves
+                    (
+                      finishedBoard()!.submission as {
+                        moves?: VallamMove[];
+                      } | null
+                    )?.moves
                   }
                   onFinish={() => undefined}
                 />
@@ -1194,7 +1215,10 @@ function GameBar(props: {
           <A
             href="/games"
             class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5"
-            style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
+            style={{
+              background: "var(--paper-2)",
+              border: "var(--ink-w) solid var(--ink)",
+            }}
             aria-label="Back to games hub"
             title="Back to games hub"
           >
@@ -1209,7 +1233,10 @@ function GameBar(props: {
             <A
               href="/games"
               class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5 hover:bg-paper-3"
-              style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
+              style={{
+                background: "var(--paper-2)",
+                border: "var(--ink-w) solid var(--ink)",
+              }}
               aria-label="Back to games hub"
               title="Games Hub"
             >
@@ -1220,7 +1247,10 @@ function GameBar(props: {
           <A
             href={`/games/${prevGame()!.slug}`}
             class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5 hover:bg-paper-3"
-            style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
+            style={{
+              background: "var(--paper-2)",
+              border: "var(--ink-w) solid var(--ink)",
+            }}
             aria-label={`Previous Day: Day ${prevGame()!.day} ${prevGame()!.title}`}
             title={`Day ${prevGame()!.day}: ${prevGame()!.title}`}
           >
@@ -1251,7 +1281,10 @@ function GameBar(props: {
         <A
           href={`/games/${nextGame()!.slug}`}
           class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-75 active:translate-y-0.5 hover:bg-paper-3"
-          style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--ink)" }}
+          style={{
+            background: "var(--paper-2)",
+            border: "var(--ink-w) solid var(--ink)",
+          }}
           aria-label={`Next Day: Day ${nextGame()!.day} ${nextGame()!.title}`}
           title={`Day ${nextGame()!.day}: ${nextGame()!.title}`}
         >
@@ -1352,7 +1385,10 @@ function StartPanel(props: {
   return (
     <section
       class="relative overflow-hidden rounded-xl p-5 text-center sm:p-8"
-      style={{ border: "var(--ink-w-bold) solid var(--ink)", background: "var(--paper-2)" }}
+      style={{
+        border: "var(--ink-w-bold) solid var(--ink)",
+        background: "var(--paper-2)",
+      }}
     >
       <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         <Confetti seed={`game-${props.title}`} count={6} animate />
@@ -1427,7 +1463,10 @@ function StartPanel(props: {
           <Show when={props.preview}>
             <div
               class="mx-auto max-w-sm space-y-1 rounded-lg p-4"
-              style={{ background: "var(--paper-3)", border: "var(--ink-w) solid var(--ink)" }}
+              style={{
+                background: "var(--paper-3)",
+                border: "var(--ink-w) solid var(--ink)",
+              }}
             >
               <p class="font-display text-sm font-extrabold uppercase tracking-wide">Opens in</p>
               <p class="font-mono text-3xl font-black tabular-nums">
@@ -1445,7 +1484,10 @@ function StartPanel(props: {
           <Show when={!props.preview && props.endAt}>
             <div
               class="mx-auto max-w-sm rounded-lg p-3 text-center"
-              style={{ background: "var(--paper-3)", border: "var(--ink-w) solid var(--ink)" }}
+              style={{
+                background: "var(--paper-3)",
+                border: "var(--ink-w) solid var(--ink)",
+              }}
             >
               <p class="font-display text-sm font-extrabold uppercase tracking-wide">
                 Time left to play

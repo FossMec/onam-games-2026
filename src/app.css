@@ -1340,6 +1340,195 @@ textarea {
   border: var(--ink-w) solid var(--ink);
 }
 
+.pookalam-balloon-layer {
+  position: absolute;
+  z-index: 45;
+  top: 0;
+  left: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.pookalam-balloon {
+  position: absolute;
+  bottom: -5rem;
+  width: 3.4rem;
+  height: 4.5rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  animation: pookalam-balloon-rise var(--balloon-duration, 13s) linear forwards;
+}
+
+.pookalam-balloon-body {
+  position: absolute;
+  top: 0;
+  left: 0.2rem;
+  width: 3rem;
+  height: 3.65rem;
+  border: var(--ink-w-bold) solid var(--ink);
+  border-radius: 52% 48% 48% 52%;
+  background: var(--balloon-color);
+  box-shadow: inset -0.35rem -0.3rem 0 color-mix(in srgb, var(--ink) 12%, transparent);
+  transform: rotate(-5deg);
+}
+
+.pookalam-balloon-body::after {
+  position: absolute;
+  right: 0.55rem;
+  top: 0.5rem;
+  width: 0.45rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, white 55%, transparent);
+  content: "";
+  transform: rotate(24deg);
+}
+
+.pookalam-balloon-string {
+  position: absolute;
+  top: 3.55rem;
+  left: 1.7rem;
+  width: 1px;
+  height: 1.2rem;
+  background: var(--ink);
+  transform: rotate(7deg);
+}
+
+.pookalam-balloon-string::after {
+  position: absolute;
+  top: -0.12rem;
+  left: -0.16rem;
+  width: 0.35rem;
+  height: 0.35rem;
+  background: var(--balloon-color);
+  border: 1px solid var(--ink);
+  content: "";
+  transform: rotate(45deg);
+}
+
+.pookalam-balloon-reward {
+  position: absolute;
+  z-index: 1;
+  top: 1.45rem;
+  left: 0;
+  width: 100%;
+  color: var(--ink);
+  font-family: var(--font-stack-display);
+  font-size: 0.85rem;
+  font-weight: 900;
+  text-align: center;
+  transform: rotate(-5deg);
+}
+
+.pookalam-balloon.is-popped {
+  animation-play-state: paused;
+  pointer-events: none;
+}
+
+.pookalam-balloon.is-popped .pookalam-balloon-body {
+  animation: pookalam-balloon-burst 0.7s ease-out forwards;
+}
+
+.pookalam-balloon.is-popped .pookalam-balloon-reward {
+  animation: pookalam-reward-rise 2.2s ease-out forwards;
+}
+
+.pookalam-balloon-pop-art {
+  position: absolute;
+  top: -1.9rem;
+  left: -1.9rem;
+  display: grid;
+  place-items: center;
+  width: 7rem;
+  height: 7rem;
+  animation: pookalam-pop-art 0.75s ease-out forwards;
+}
+
+.pookalam-balloon-pop-art img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes pookalam-balloon-rise {
+  from {
+    bottom: -5rem;
+  }
+  to {
+    bottom: calc(100% + 5rem);
+  }
+}
+
+/* @keyframes pookalam-balloon-pop { */
+/*   50% { */
+/*     scale: 1.35; */
+/*     opacity: 0.8; */
+/*   } */
+/*   100% { */
+/*     scale: 0.1; */
+/*     opacity: 0; */
+/*   } */
+/* } */
+
+@keyframes pookalam-balloon-burst {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--balloon-color) 85%, white);
+  }
+  45% {
+    box-shadow:
+      0 -1.1rem 0 -0.2rem var(--pop-yellow),
+      1.1rem -0.35rem 0 -0.2rem var(--pop-pink),
+      -1.1rem -0.35rem 0 -0.2rem var(--pop-teal),
+      0 0 0 0.5rem transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 1.4rem transparent;
+  }
+}
+
+@keyframes pookalam-reward-rise {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+    scale: 0.7;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: 0 -3.5rem;
+    scale: 1.15;
+  }
+}
+
+@keyframes pookalam-pop-art {
+  0% {
+    opacity: 0;
+    scale: 0.25;
+  }
+  35% {
+    opacity: 1;
+    scale: 1.12;
+  }
+  100% {
+    opacity: 0;
+    scale: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pookalam-balloon {
+    animation-duration: 24s;
+  }
+}
+
 .game-hype-current-countdown {
   position: absolute;
   z-index: 25;

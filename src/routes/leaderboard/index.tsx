@@ -290,7 +290,7 @@ export default function Leaderboard() {
 
   return (
     <main
-      class="container relative space-y-4 py-6 max-w-4xl mx-auto"
+      class="container min-h-[30rem] relative space-y-4 py-6 max-w-4xl mx-auto"
       style={{
         opacity: pending() ? 0.65 : 1,
         transition: "opacity 140ms ease-out",

@@ -10,6 +10,7 @@ import { Nav } from "./components/Nav";
 import { ShortlistNotice } from "./components/pookalam/ShortlistNotice";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { InkFilter } from "./components/art/InkFilter";
+import { PookalamBalloons } from "./components/PookalamBalloons";
 import "./app.css";
 
 export default function App() {
@@ -88,6 +89,7 @@ export default function App() {
           {/* Filter defs, mounted once for the whole app. */}
           <InkFilter />
           <div class="flex min-h-screen flex-col relative z-0">
+            <PookalamBalloons />
             {/*
               Every page, above the navigation header - a warning nobody sees is not
               a warning.

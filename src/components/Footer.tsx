@@ -53,9 +53,25 @@ export function Footer() {
       <div class="container art-over space-y-4 py-8 text-center max-w-2xl mx-auto">
         <div class="flex items-center justify-center gap-3">
           <SpriteIcon name="tux-king" size={34} animate="wobble" interactive />
-          <p class="wordmark text-2xl sm:text-3xl" data-text="ONAM GAMES">
-            ONAM GAMES
-          </p>
+          <div class="inline-flex flex-col items-end">
+            <p
+              class="wordmark tracking-wider"
+              data-text="ONAM GAMES"
+              style={{ "font-size": "1.75rem" }}
+            >
+              ONAM GAMES
+            </p>
+            <span
+              class="text-[0.6rem] sm:text-xs font-black tracking-widest uppercase text-muted pr-1   select-none"
+              style={{
+                "font-family": "var(--font-stack-display)",
+                opacity: "0.85",
+              }}
+            >
+              by fossmec
+            </span>
+          </div>
+
           <SpriteIcon name="maveli-laptop" size={34} animate="wobble" interactive />
         </div>
 

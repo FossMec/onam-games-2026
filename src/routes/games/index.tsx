@@ -309,7 +309,7 @@ export default function GamesPage() {
                         <Show when={locked && current.releaseAt}>
                           <div class="card card-plain flex flex-col items-center justify-center gap-2 p-3 text-center">
                             <p class="comment text-sm">Unlocks in</p>
-                            <Countdown target={new Date(current.releaseAt!)} />
+                            <Countdown target={new Date(current.releaseAt!)} compact />
                           </div>
                         </Show>
 

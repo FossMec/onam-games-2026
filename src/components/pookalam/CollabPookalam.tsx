@@ -15,6 +15,7 @@ import { For, Show, batch, createEffect, createSignal, onCleanup, onMount } from
 import { EMPTY_BRUSH, FLOWERS, type Flower, drawFlower, flowerById } from "~/lib/pookalam-flowers";
 import { CELL_COUNT, fromBase64, readCell, writeCell } from "~/lib/pookalam-grid";
 import { PADDING_SCALE, SLOTS, slotAt } from "~/lib/pookalam-layout";
+import { POOKALAM_CREDITS_EVENT, setPookalamDailyLimit } from "~/lib/pookalam-credits";
 import type { CollabMessageItem } from "~/server/pookalam/comments";
 
 const MAX_MESSAGE_CHARS = 100;
@@ -23,8 +24,6 @@ const MAX_CANVAS_PX_MOBILE = 420;
 const MIN_CANVAS_PX = 260;
 const ZOOM_STEPS = [1, 1.6, 2.4, 3.2];
 const GROUND = "#2b2733";
-const STORAGE_PREFIX = "collab-pookalam:";
-const TIMESTAMPS_KEY = STORAGE_PREFIX + "placements";
 
 // Overwriting on top unlocks when <= 20% empty (i.e. >= 80% filled = 2000 cells)
 const OVERWRITE_THRESHOLD = Math.floor(CELL_COUNT * 0.8);
@@ -33,10 +32,15 @@ const OVERWRITE_THRESHOLD = Math.floor(CELL_COUNT * 0.8);
 const MAX_FLOWER_PERCENT = 0.2;
 const MAX_FLOWER_CELLS = Math.floor(CELL_COUNT * MAX_FLOWER_PERCENT); // 500 cells
 
-// Rolling 4-hour window
-const WINDOW_HOURS = 4;
-const WINDOW_MS = WINDOW_HOURS * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const TOKEN_BUCKET_KEY = "collab-pookalam:token-bucket";
+
+type TokenBucket = {
+  day: string;
+  credits: number;
+  lastCreditAt: number;
+  balloonsToday: number;
+};
 
 export function CollabPookalam() {
   let canvas: HTMLCanvasElement | undefined;
@@ -51,7 +55,7 @@ export function CollabPookalam() {
   const [canPlace, setCanPlace] = createSignal(false);
   const [isAdmin, setIsAdmin] = createSignal(false);
   const [allowance, setAllowance] = createSignal(30);
-  const [timestamps, setTimestamps] = createSignal<number[]>([]);
+  const [bucket, setBucket] = createSignal<TokenBucket | null>(null);
   const [now, setNow] = createSignal(Date.now());
   const [picked, setPicked] = createSignal<Flower>(FLOWERS[0]);
   const [zoom, setZoom] = createSignal(1);
@@ -117,76 +121,129 @@ export function CollabPookalam() {
     setDisplayedMessages(sampleMessages(messagePool(), myMessage()));
   };
 
-  // Read clean timestamps within last 24h
-  const readStoredTimestamps = (): number[] => {
+  const todayKey = () => new Date().toISOString().slice(0, 10);
+  const saveBucket = (next: TokenBucket) => {
+    setBucket(next);
     try {
-      const raw = localStorage.getItem(TIMESTAMPS_KEY);
-      if (!raw) return [];
-      const arr = JSON.parse(raw);
-      if (!Array.isArray(arr)) return [];
-      const curr = Date.now();
-      return arr.filter((t) => typeof t === "number" && curr - t < DAY_MS);
+      localStorage.setItem(TOKEN_BUCKET_KEY, JSON.stringify(next));
     } catch {
-      return [];
+      /* storage disabled: state remains valid for this mount */
     }
   };
 
-  const saveTimestamps = (ts: number[]) => {
-    setTimestamps(ts);
-    try {
-      localStorage.setItem(TIMESTAMPS_KEY, JSON.stringify(ts));
-    } catch {
-      /* storage disabled fallback */
+  const refillBucket = (input: TokenBucket): TokenBucket => {
+    const daily = Math.max(0, allowance());
+    const cap = Math.min(Math.ceil(daily / 3), 100);
+    const nowMs = Date.now();
+    if (input.day !== todayKey()) {
+      return {
+        day: todayKey(),
+        credits: cap,
+        lastCreditAt: nowMs,
+        balloonsToday: 0,
+      };
     }
+    const normalized: TokenBucket = {
+      day: input.day,
+      credits: Math.min(Math.max(0, input.credits), cap),
+      balloonsToday: Math.min(Math.max(0, input.balloonsToday), Math.floor(daily / 5)),
+      lastCreditAt: Math.min(input.lastCreditAt, nowMs),
+    };
+    if (daily <= 0) return normalized;
+    const intervalMs = DAY_MS / daily;
+    const generated = Math.floor(Math.max(0, nowMs - normalized.lastCreditAt) / intervalMs);
+    if (generated === 0) return normalized;
+    return {
+      ...normalized,
+      credits: Math.min(cap, normalized.credits + generated),
+      lastCreditAt: normalized.lastCreditAt + generated * intervalMs,
+    };
+  };
+
+  const refreshBucket = () => {
+    const current = bucket();
+    if (!current) return;
+    const next = refillBucket(current);
+    if (JSON.stringify(next) !== JSON.stringify(current)) saveBucket(next);
   };
 
   const recordPlacement = (count = 1) => {
-    const curr = Date.now();
-    const existing = readStoredTimestamps();
-    const next = [...existing, ...Array(count).fill(curr)];
-    saveTimestamps(next);
+    const current = bucket();
+    if (!current) return;
+    const refreshed = refillBucket(current);
+    saveBucket({
+      ...refreshed,
+      credits: Math.max(0, refreshed.credits - count),
+    });
   };
 
-  // 4-Hour Rolling Window Calculations
-  const windowLimit = () => Math.max(1, Math.ceil(allowance() / 3)); // 10 flowers per 4-hour window
-  const dailyLimit = () => allowance(); // 30 flowers per 24 hours
-
-  const dailyUsed = () => {
-    const curr = now();
-    return timestamps().filter((t) => curr - t < DAY_MS).length;
+  const restoreCredits = (count: number) => {
+    if (count <= 0) return;
+    const current = bucket();
+    if (!current) return;
+    saveBucket({
+      ...current,
+      credits: Math.min(windowLimit(), current.credits + count),
+    });
   };
 
-  const windowUsed = () => {
-    const curr = now();
-    return timestamps().filter((t) => curr - t < WINDOW_MS).length;
+  // Token bucket: daily tokens/3 maximum, with one token returning every 24h/dailyTokens.
+  const windowLimit = () => Math.min(Math.ceil(allowance() / 3), 100);
+  const dailyLimit = () => allowance();
+  const availableTokens = () => {
+    now();
+    refreshBucket();
+    const current = bucket();
+    return current ? Math.floor(current.credits) : 0;
   };
+  const windowRemaining = () => {
+    refreshBucket();
+    return Math.floor(bucket()?.credits ?? 0);
+  };
+  const left = () => availableTokens();
+  const isWindowCapped = () => windowRemaining() <= 0;
 
-  const dailyRemaining = () => Math.max(0, dailyLimit() - dailyUsed());
-  const windowRemaining = () => Math.max(0, windowLimit() - windowUsed());
-  const left = () => Math.min(dailyRemaining(), windowRemaining());
-
-  const isWindowCapped = () => windowRemaining() <= 0 && dailyRemaining() > 0;
-
-  // Formatted countdown until next 4-hour window drop
   const nextDropIn = () => {
-    const curr = now();
-    const inWindow = timestamps()
-      .filter((t) => curr - t < WINDOW_MS)
-      .sort((a, b) => a - b);
-    if (inWindow.length === 0) return null;
-    const oldest = inWindow[0];
-    const dropTime = oldest + WINDOW_MS;
-    const diffMs = Math.max(0, dropTime - curr);
-    const hours = Math.floor(diffMs / (60 * 60 * 1000));
-    const mins = Math.ceil((diffMs % (60 * 60 * 1000)) / (60 * 1000));
-    if (hours > 0) return `${hours}h ${mins}m`;
-    return `${mins}m`;
+    now();
+    refreshBucket();
+    const current = bucket();
+    if (!current || current.credits >= windowLimit() || allowance() <= 0) return null;
+    const intervalMs = DAY_MS / allowance();
+    const diffMs = Math.max(0, intervalMs - (Date.now() - current.lastCreditAt));
+    const totalSeconds = Math.max(1, Math.ceil(diffMs / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours > 0) return `${hours}h ${mins}m ${seconds}s`;
+    if (mins > 0) return `${mins}m ${seconds}s`;
+    return `${seconds}s`;
+  };
+
+  const initBucket = () => {
+    try {
+      const raw = localStorage.getItem(TOKEN_BUCKET_KEY);
+      const parsed = raw ? (JSON.parse(raw) as Partial<TokenBucket>) : null;
+      const initial: TokenBucket = {
+        day: typeof parsed?.day === "string" ? parsed.day : todayKey(),
+        credits: typeof parsed?.credits === "number" ? parsed.credits : windowLimit(),
+        lastCreditAt: typeof parsed?.lastCreditAt === "number" ? parsed.lastCreditAt : Date.now(),
+        balloonsToday: typeof parsed?.balloonsToday === "number" ? parsed.balloonsToday : 0,
+      };
+      saveBucket(refillBucket(initial));
+    } catch {
+      saveBucket({
+        day: todayKey(),
+        credits: windowLimit(),
+        lastCreditAt: Date.now(),
+        balloonsToday: 0,
+      });
+    }
   };
 
   const howToSteps = () => [
     "Pick a poov from the catalogue — nine authentic Kerala flowers under their real Malayalam names.",
     "Tap a square to place it, or press and drag to lay a smooth line of petals at once.",
-    `Your daily flower quota is delivered in rolling 4-hour drops of ${windowLimit()} flowers each so collaboration stays active all day.`,
+    `You can hold up to ${windowLimit()} credits. One credit returns every ${Math.round(DAY_MS / Math.max(1, allowance()) / 60000)} minutes, up to ${dailyLimit()} credits in a day.`,
     "Each flower species can occupy up to 20% of the pookalam to ensure a colorful, diverse carpet.",
     "Drawing on top of existing flowers unlocks once the canvas is 80% filled (less than 20% empty).",
     "Once you finish placing flowers in a window, you unlock the ability to post your daily Onam wish!",
@@ -257,7 +314,8 @@ export function CollabPookalam() {
       setOpen(state.open);
       setCanPlace(state.canPlace);
       setAllowance(state.dailyFlowers);
-      setTimestamps(readStoredTimestamps());
+      setPookalamDailyLimit(state.dailyFlowers);
+      initBucket();
 
       // If default picked flower is already capped, select first available
       if (isFlowerCapped(picked().id)) {
@@ -273,6 +331,28 @@ export function CollabPookalam() {
       setLoaded(true);
     }
   };
+
+  onMount(() => {
+    const handleCredits = (event: Event) => {
+      const amount = (event as CustomEvent<number>).detail;
+      if (Number.isFinite(amount)) {
+        const current = bucket();
+        if (current) {
+          try {
+            const stored = JSON.parse(localStorage.getItem(TOKEN_BUCKET_KEY) ?? "null");
+            if (stored?.day === todayKey()) setBucket(stored as TokenBucket);
+          } catch {
+            /* Keep the in-memory bucket when storage is unavailable. */
+          }
+        } else {
+          // A global balloon can be popped before the pookalam API finishes loading.
+          initBucket();
+        }
+      }
+    };
+    window.addEventListener(POOKALAM_CREDITS_EVENT, handleCredits);
+    onCleanup(() => window.removeEventListener(POOKALAM_CREDITS_EVENT, handleCredits));
+  });
 
   const toggleLike = async (messageId: string) => {
     const updateMsg = (m: CollabMessageItem) => {
@@ -371,11 +451,10 @@ export function CollabPookalam() {
     if (rootRef) observer.observe(rootRef);
     window.addEventListener("resize", measure);
 
-    // Periodic live timer tick (every 5 seconds) to update countdowns and window unlocks
+    // Periodic live timer tick to update token refills and countdowns.
     const timer = setInterval(() => {
       setNow(Date.now());
-      setTimestamps(readStoredTimestamps());
-    }, 5000);
+    }, 1000);
 
     // Local client-side smooth rotation of displayed wishes every 15s (no server polling!)
     const rotateTimer = setInterval(refreshDisplayed, 15000);
@@ -559,6 +638,7 @@ export function CollabPookalam() {
     // 2. Update state in memory
     writeCell(grid, index, flower.id);
     stroke.push(index);
+    recordPlacement(1);
     scheduleFlush();
     return true;
   };
@@ -593,11 +673,9 @@ export function CollabPookalam() {
         if (kept < cells.length) {
           if (result?.reason) setNote(result.reason);
         }
-        if (kept > 0) {
-          recordPlacement(kept);
-        }
+        restoreCredits(cells.length - kept);
       } catch {
-        /* network error fallback */
+        restoreCredits(cells.length);
       }
     });
     return inFlight;
@@ -638,9 +716,7 @@ export function CollabPookalam() {
     if (!canPlace() || busy() || !canvas) return;
     if (left() <= 0) {
       if (isWindowCapped()) {
-        setNote(
-          `4-hour window limit reached (${windowLimit()} flowers). Next drop unlocks ${nextDropIn() ?? "soon"}!`,
-        );
+        setNote(`No credits available. Next +1 credit in ${nextDropIn() ?? "soon"}.`);
       } else {
         setNote(`Daily limit reached (${dailyLimit()} flowers). Come back tomorrow for more!`);
       }
@@ -797,7 +873,7 @@ export function CollabPookalam() {
       ref={(el) => (rootRef = el)}
       class="w-full flex flex-col items-center justify-center space-y-2 relative"
     >
-      {/* ---------------- Mobile Only Top Utility Bar (Shows 4h Period & Daily Limits) ---------------- */}
+      {/* ---------------- Mobile Only Top Utility Bar ---------------- */}
       <div class="lg:hidden w-full flex items-center justify-between gap-1 px-1">
         <Show when={canPlace()}>
           <div class="flex items-center gap-1 shrink-0">
@@ -817,22 +893,10 @@ export function CollabPookalam() {
                   "bg-[var(--pop-red)]": windowRemaining() <= 0,
                 }}
               />
-              4h Drop:{" "}
+              Credits:{" "}
               <strong>
                 {windowRemaining()}/{windowLimit()}
               </strong>
-            </span>
-
-            <span
-              class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9.5px] font-bold"
-              style={{
-                background: "var(--paper-2)",
-                border: "1px solid var(--ink)",
-                color: "var(--ink-soft)",
-              }}
-              title="Daily Total Allowance (24 Hours)"
-            >
-              Today: {dailyRemaining()}/{dailyLimit()}
             </span>
           </div>
         </Show>
@@ -1029,9 +1093,7 @@ export function CollabPookalam() {
                 >
                   <p class="m-0 flex items-center justify-center gap-1 text-[var(--pop-teal)] font-black">
                     <Clock size={10} strokeWidth={2.5} />
-                    <span>
-                      Next +{windowLimit()} drop in {nextDropIn() ?? "soon"}
-                    </span>
+                    <span>Next +1 credit in {nextDropIn() ?? "soon"}</span>
                   </p>
                 </Show>
               </div>
@@ -1204,23 +1266,15 @@ export function CollabPookalam() {
               }}
             >
               <div class="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-[var(--ink)]">
-                <span>4h Drop:</span>
+                <span>Credits:</span>
                 <span class="text-[var(--pop-teal)] font-extrabold">
                   {windowRemaining()} / {windowLimit()}
                 </span>
               </div>
-              <div class="flex items-center justify-between text-[9.5px] font-bold text-[var(--ink-soft)]">
-                <span>Today:</span>
-                <span>
-                  {dailyRemaining()} / {dailyLimit()}
-                </span>
-              </div>
-              <Show when={isWindowCapped()}>
+              <Show when={windowRemaining() < windowLimit()}>
                 <p class="text-[8.5px] font-black text-[var(--pop-teal)] m-0 pt-0.5 flex items-center justify-center gap-1">
                   <Clock size={9} strokeWidth={2.5} />
-                  <span>
-                    +{windowLimit()} in {nextDropIn() ?? "soon"}
-                  </span>
+                  <span>+1 credit in {nextDropIn() ?? "soon"}</span>
                 </p>
               </Show>
               <p
@@ -1429,9 +1483,7 @@ export function CollabPookalam() {
                 >
                   <p class="m-0 flex items-center justify-center gap-1 text-[var(--pop-teal)] font-black">
                     <Clock size={11} strokeWidth={2.5} />
-                    <span>
-                      4-hour limit reached · Next +{windowLimit()} in {nextDropIn() ?? "soon"}
-                    </span>
+                    <span>No credits available · Next +1 in {nextDropIn() ?? "soon"}</span>
                   </p>
                 </Show>
               </div>
