@@ -10,7 +10,7 @@ import { SHOUT_COLOR } from "~/lib/shouts";
 export default function NotFound() {
   return (
     <main class="container flex min-h-[60vh] items-center justify-center py-10">
-      <Title>Nothing here - FOSS Onam Games</Title>
+      <Title>Nothing here - Onam Games</Title>
       <HttpStatusCode code={404} />
 
       <div

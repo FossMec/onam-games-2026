@@ -37,7 +37,7 @@ const FONTS = [
   {
     family: "Bungee",
     job: "wordmark & primary brand logo",
-    why: "Bold signage typeface with pure flat geometry. Reserved exclusively for the FOSS ONAM wordmark so brand impact stays sharp and uncompromised.",
+    why: "Bold signage typeface with pure flat geometry. Reserved exclusively for the ONAM GAMES wordmark so brand impact stays sharp and uncompromised.",
     stack: "var(--font-stack-logo)",
   },
   {
@@ -246,7 +246,7 @@ export default function DesignLanguage() {
 
   return (
     <main class="container space-y-12 py-6">
-      <Title>Design System & Art Language - FOSS Onam Games</Title>
+      <Title>Design System & Art Language - Onam Games</Title>
 
       <a
         href="/"
@@ -286,7 +286,7 @@ export default function DesignLanguage() {
       <Section title="Design Philosophy & Visual Roots">
         <div class="card card-plain p-6 space-y-4 bg-[var(--paper-2)]">
           <p class="text-base sm:text-lg font-semibold leading-relaxed">
-            FOSS Onam Games combines <strong>90s comic book print aesthetics</strong>,{" "}
+            Onam Games combines <strong>90s comic book print aesthetics</strong>,{" "}
             <strong>1980s Memphis geometric movement</strong>, and{" "}
             <strong>traditional Kerala Onam heritage</strong> into an authentic, high-octane
             celebration.

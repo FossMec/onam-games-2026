@@ -13,7 +13,7 @@
 import type { SpriteName } from "./sprites";
 
 export const EVENT = {
-  name: "FOSS ONAM",
+  name: "Onam Games",
 
   /**
    * The hero's numbers, as chips rather than a sentence.
@@ -48,10 +48,10 @@ export const EVENT = {
   registerNote: "Sign in with Google. Takes about eleven seconds.",
 
   about: {
-    title: "About FOSS ONAM",
+    title: "About Onam Games",
     headline: "Seven days of games, code, and celebration",
     description:
-      "FOSS ONAM is the inaugural open-source festival created by FOSS MEC (Model Engineering College), expanding our annual Code-a-Pookalam competition into a full week of celebrations. We bring together students, developers, and puzzle enthusiasts for 6 daily mini-games, algorithmic pookalam design, and collaborative community art — celebrating Onam through code.",
+      "Onam Games is the inaugural open-source festival created by FOSS MEC (Model Engineering College), expanding our annual Code-a-Pookalam competition into a full week of celebrations. We bring together students, developers, and puzzle enthusiasts for 6 daily mini-games, algorithmic pookalam design, and collaborative community art - celebrating Onam through code.",
     features: [
       {
         title: "6 Daily Puzzle Challenges",

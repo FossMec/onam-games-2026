@@ -305,7 +305,7 @@ export default function Leaderboard() {
         transition: "opacity 140ms ease-out",
       }}
     >
-      <Title>Daily Leaderboard - FOSS Onam Games</Title>
+      <Title>Daily Leaderboard - Onam Games</Title>
 
       {/* Desktop Inked Sidebar: Festival Meme (Failure is not an Option<T>) + Share Card Widget on the right margin */}
       <aside class="hidden 2xl:flex flex-col gap-3 absolute left-[calc(100%+2rem)] top-6 w-68 pointer-events-auto">

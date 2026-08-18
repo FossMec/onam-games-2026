@@ -60,7 +60,7 @@ export default function SignIn() {
 
   return (
     <main class="container flex min-h-[70vh] flex-col items-center justify-center py-8 gap-4">
-      <Title>Sign in - FOSS Onam Games</Title>
+      <Title>Sign in - Onam Games</Title>
 
       <img
         src={memeImage("need-more-tokens.webp")}
@@ -83,8 +83,8 @@ export default function SignIn() {
       >
         <Confetti seed="signin" count={8} animate />
         <div class="art-over space-y-4">
-          <p class="wordmark text-3xl" data-text="FOSS ONAM">
-            FOSS ONAM
+          <p class="wordmark text-3xl" data-text="ONAM GAMES">
+            ONAM GAMES
           </p>
           <p class="font-semibold text-sm sm:text-base">
             A week of daily games. Sign in to get on the leaderboard and win daily cash prizes.

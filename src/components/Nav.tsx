@@ -201,8 +201,8 @@ export function Nav() {
                   class="shrink-0"
                 />
                 <div class="flex items-baseline gap-1.5">
-                  <span class="wordmark text-lg sm:text-2xl" data-text="FOSS ONAM">
-                    FOSS ONAM
+                  <span class="wordmark text-lg sm:text-2xl" data-text="ONAM GAMES">
+                    ONAM GAMES
                   </span>
                   <span
                     class="text-[11px] sm:text-xs font-extrabold tracking-tight uppercase"

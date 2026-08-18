@@ -43,7 +43,7 @@ export function Footer() {
       <div class="hidden lg:block absolute right-6 xl:right-16 top-1/2 -translate-y-1/2 w-44 xl:w-52 pointer-events-none select-none z-10">
         <img
           src={memeImage("meme-footer.webp")}
-          alt="FOSS Onam Festival Meme"
+          alt="Onam Games festival meme"
           class="w-full h-auto object-contain rounded-xl border-2 border-[var(--ink)] block"
           loading="lazy"
           decoding="async"
@@ -53,8 +53,8 @@ export function Footer() {
       <div class="container art-over space-y-4 py-8 text-center max-w-2xl mx-auto">
         <div class="flex items-center justify-center gap-3">
           <SpriteIcon name="tux-king" size={34} animate="wobble" interactive />
-          <p class="wordmark text-2xl sm:text-3xl" data-text="FOSS ONAM">
-            FOSS ONAM
+          <p class="wordmark text-2xl sm:text-3xl" data-text="ONAM GAMES">
+            ONAM GAMES
           </p>
           <SpriteIcon name="maveli-laptop" size={34} animate="wobble" interactive />
         </div>
@@ -119,7 +119,7 @@ export function Footer() {
         <div class="flex justify-center py-2 lg:hidden">
           <img
             src={memeImage("meme-footer.webp")}
-            alt="FOSS Onam Festival Meme"
+            alt="Onam Games festival meme"
             class="max-w-xs sm:max-w-sm w-full h-auto object-contain select-none rounded-xl border-2 border-[var(--ink)] block"
             loading="lazy"
             decoding="async"

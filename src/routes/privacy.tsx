@@ -68,22 +68,22 @@ const SECTIONS = [
 export default function Privacy() {
   return (
     <main class="container space-y-8 py-10 max-w-3xl">
-      <Title>Privacy Policy - FOSS Onam Games</Title>
+      <Title>Privacy Policy - Onam Games</Title>
 
       <header class="space-y-2">
         <p
           class="text-xs font-extrabold uppercase tracking-widest"
           style={{ color: "var(--pop-teal-deep)" }}
         >
-          FOSS Onam Games 2026
+          Onam Games 2026
         </p>
         <h1 class="text-3xl sm:text-4xl">Privacy Policy</h1>
         <p class="comment font-semibold">Last updated: 15 August 2026</p>
       </header>
 
       <p class="card card-plain font-semibold leading-relaxed">
-        FOSS MEC runs the FOSS Onam Games website. This policy explains what information we collect,
-        why, and the choices you have. It is written for people, not lawyers.
+        FOSS MEC runs the Onam Games website. This policy explains what information we collect, why,
+        and the choices you have. It is written for people, not lawyers.
       </p>
 
       <div class="space-y-6">

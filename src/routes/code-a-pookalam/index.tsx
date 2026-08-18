@@ -124,7 +124,7 @@ export default function CodeAPookalam() {
 
   return (
     <main class="container space-y-12 py-6">
-      <Title>{POOKALAM.title} - FOSS Onam Games</Title>
+      <Title>{POOKALAM.title} - Onam Games</Title>
 
       <Show when={pageReady()} fallback={<LoadingScreen compact />}>
         {/* ------------------------------------------------------------- HERO */}

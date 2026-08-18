@@ -4,7 +4,7 @@ import { For } from "solid-js";
 const SECTIONS = [
   {
     title: "Acceptance",
-    body: 'By accessing or using foss-onam.onrender.com ("the Site"), you agree to these Terms. If you do not agree, please do not use the Site. The Site is operated by FOSS MEC for the FOSS Onam Games 2026 event.',
+    body: 'By accessing or using foss-onam.onrender.com ("the Site"), you agree to these Terms. If you do not agree, please do not use the Site. The Site is operated by FOSS MEC for the Onam Games 2026 event.',
   },
   {
     title: "The games",
@@ -63,14 +63,14 @@ const SECTIONS = [
 export default function Terms() {
   return (
     <main class="container space-y-8 py-10 max-w-3xl">
-      <Title>Terms of Service - FOSS Onam Games</Title>
+      <Title>Terms of Service - Onam Games</Title>
 
       <header class="space-y-2">
         <p
           class="text-xs font-extrabold uppercase tracking-widest"
           style={{ color: "var(--pop-teal-deep)" }}
         >
-          FOSS Onam Games 2026
+          Onam Games 2026
         </p>
         <h1 class="text-3xl sm:text-4xl">Terms of Service</h1>
         <p class="comment font-semibold">Last updated: 15 August 2026</p>

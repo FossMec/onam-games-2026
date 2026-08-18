@@ -924,7 +924,7 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   const subDetailParts: string[] = [];
   if (collegeText) subDetailParts.push(collegeText);
   if (branchBatchText) subDetailParts.push(branchBatchText);
-  const subDetailText = subDetailParts.join(" · ") || "PLAYED FOSS ONAM GAMES";
+  const subDetailText = subDetailParts.join(" · ") || "PLAYED ONAM GAMES";
 
   if (hasAvatar && avatarImg) {
     const avatarSize = 88;

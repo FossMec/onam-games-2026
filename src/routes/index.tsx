@@ -313,10 +313,10 @@ export default function Home() {
             <div class="inline-flex flex-col items-end">
               <h1
                 class="wordmark tracking-wider"
-                data-text="FOSS ONAM"
+                data-text="ONAM GAMES"
                 style={{ "font-size": "clamp(1.6rem, 8vw, 3.75rem)" }}
               >
-                FOSS ONAM
+                ONAM GAMES
               </h1>
               <span
                 class="text-[0.6rem] sm:text-xs font-black tracking-widest uppercase text-muted pr-1 -mt-1 sm:-mt-2 select-none"
@@ -1033,7 +1033,7 @@ export default function Home() {
         <MaveliLetter />
       </Section>
 
-      {/* ---------------------------------------------------- About FOSS ONAM & Purpose */}
+      {/* ---------------------------------------------------- About Onam Games & Purpose */}
       <Section title={EVENT.about.title} id="about" confettiSeed="about-sec" confettiCount={5}>
         <div class="space-y-4">
           {/* Main Overview Banner */}

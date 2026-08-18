@@ -75,7 +75,7 @@ export default function Admin() {
 
   return (
     <main class="container space-y-5 py-6 max-w-6xl">
-      <Title>Admin Control Center - FOSS Onam Games</Title>
+      <Title>Admin Control Center - Onam Games</Title>
 
       {/* Header Banner */}
       <div

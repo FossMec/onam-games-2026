@@ -55,7 +55,7 @@ export default function StyleGuide() {
 
   return (
     <main class="container space-y-12 py-8">
-      <Title>Style guide - FOSS Onam Games</Title>
+      <Title>Style guide - Onam Games</Title>
 
       <section
         class="relative overflow-hidden rounded-lg p-6 text-center"

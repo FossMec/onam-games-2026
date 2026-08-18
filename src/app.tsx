@@ -17,25 +17,25 @@ export default function App() {
     <Router
       root={(props) => (
         <MetaProvider>
-          <Title>FOSS ONAM</Title>
+          <Title>Onam Games by FOSSMEC</Title>
           <Meta
             name="description"
-            content="FOSS ONAM: Seven days, 6 daily puzzle games with rewards, Code-a-Pookalam, and a community flower carpet. Free registration with ₹5K+ in prize pools by FOSS MEC."
+            content="Onam Games by FOSSMEC: Seven days, 6 daily puzzle games with rewards, Code-a-Pookalam, and a community flower carpet."
           />
           <Meta name="author" content="Dijith Dinesh" />
           <Meta name="creator" content="Dijith Dinesh" />
-          <Meta name="application-name" content="FOSS ONAM" />
-          <Meta property="og:site_name" content="FOSS ONAM" />
+          <Meta name="application-name" content="Onam Games" />
+          <Meta property="og:site_name" content="Onam Games" />
           <Meta property="og:type" content="website" />
           <Meta property="og:url" content="https://foss-onam.onrender.com/" />
           <Meta
             name="google-site-verification"
             content="hmMLL8KnfSg_CX5_cjL7qq_fqiclk-QLJsPh2xqA_MM"
           />
-          <Meta property="og:title" content="FOSS ONAM" />
+          <Meta property="og:title" content="Onam Games by FOSSMEC" />
           <Meta
             property="og:description"
-            content="FOSS ONAM: Seven days, 6 daily puzzle games with rewards, Code-a-Pookalam, and a community flower carpet. Free registration with ₹5K+ in prize pools by FOSS MEC."
+            content="Onam Games by FOSSMEC: Seven days, 6 daily puzzle games with rewards, Code-a-Pookalam, and a community flower carpet."
           />
           <Meta property="og:image" content="https://foss-onam.onrender.com/images/og-image.webp" />
           <Meta property="og:image:type" content="image/webp" />
@@ -44,10 +44,10 @@ export default function App() {
           <Meta name="twitter:card" content="summary_large_image" />
           <Meta name="twitter:site" content="@fossmec" />
           <Meta name="twitter:creator" content="@fossmec" />
-          <Meta name="twitter:title" content="FOSS ONAM" />
+          <Meta name="twitter:title" content="Onam Games by FOSSMEC" />
           <Meta
             name="twitter:description"
-            content="FOSS ONAM: Seven days, 6 daily puzzle games with rewards, Code-a-Pookalam, and a community flower carpet. Free registration with ₹5K+ in prize pools by FOSS MEC."
+            content="Onam Games by FOSSMEC: Seven days, 6 daily puzzle games with rewards, Code-a-Pookalam, and a community flower carpet."
           />
           <Meta
             name="twitter:image"

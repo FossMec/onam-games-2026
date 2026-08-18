@@ -432,7 +432,7 @@ export default function ComicsPage() {
 
   return (
     <>
-      <Title>Comics - FOSS Onam Games</Title>
+      <Title>Comics - Onam Games</Title>
 
       <style>{`
         .book-stage {

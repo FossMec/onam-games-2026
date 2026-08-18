@@ -249,7 +249,7 @@ export function ShareCard(props: ShareCardProps) {
   const share = async () => {
     const payload = {
       files: file() ? [file()!] : [],
-      title: "FOSS Onam Games",
+      title: "Onam Games",
       text: caption(),
     };
     const nav = navigator as Navigator & {
@@ -300,7 +300,7 @@ export function ShareCard(props: ShareCardProps) {
           </div>
         }
       >
-        <img src={url()} alt="Your FOSS Onam Games score card" class="h-full w-full object-cover" />
+        <img src={url()} alt="Your Onam Games score card" class="h-full w-full object-cover" />
       </Show>
 
       <Show when={phase() === "ready"}>
@@ -675,7 +675,7 @@ export function ShareCard(props: ShareCardProps) {
           >
             <img
               src={url()}
-              alt="Your FOSS Onam Games score card"
+              alt="Your Onam Games score card"
               class="w-auto max-w-full rounded object-contain"
               style={{
                 "max-height": "calc(100dvh - 8rem)",

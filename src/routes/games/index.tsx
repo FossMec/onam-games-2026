@@ -74,7 +74,7 @@ export default function GamesPage() {
 
   return (
     <main class="container space-y-8 py-6">
-      <Title>Daily Mini-Games Arena - FOSS Onam</Title>
+      <Title>Daily Mini-Games Arena - Onam Games</Title>
 
       {/* Header Banner */}
       <section

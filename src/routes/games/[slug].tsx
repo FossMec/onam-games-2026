@@ -634,7 +634,7 @@ export default function GamePage() {
 
   return (
     <main class="container space-y-6 py-6">
-      <Title>{game()?.title ?? "Game"} - FOSS Onam Games</Title>
+      <Title>{game()?.title ?? "Game"} - Onam Games</Title>
 
       <Show when={game() === undefined}>
         <LoadingScreen compact message="Inking daily challenge…" />
