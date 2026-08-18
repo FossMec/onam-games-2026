@@ -1,7 +1,7 @@
 import { Title } from "@solidjs/meta";
-import { createAsync } from "@solidjs/router";
+import { createAsync, revalidate } from "@solidjs/router";
 import { CheckCircle, RefreshCw, ShieldAlert, X } from "lucide-solid";
-import { Show, createSignal } from "solid-js";
+import { Show, Suspense, createSignal } from "solid-js";
 import { AdminTabs, type AdminTabId } from "~/components/admin/AdminTabs";
 import { PookalamGallery } from "~/components/admin/PookalamGallery";
 import { PookalamReview } from "~/components/admin/PookalamReview";
@@ -14,60 +14,57 @@ import { SettingsTab } from "~/components/admin/tabs/SettingsTab";
 import { UsersTab } from "~/components/admin/tabs/UsersTab";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import {
-  getAdminDashboard,
-  listActivity,
-  listAttemptsAction,
-  listBlockedIpsAction,
-  listSettings,
-  listSuspicious,
-  listTesters,
-  listUsers,
-} from "~/server/admin/actions";
-import { shell } from "~/lib/queries";
+  ADMIN_QUERY_KEYS,
+  adminActivity,
+  adminAttempts,
+  adminBlockedIps,
+  adminDashboard,
+  adminSettings,
+  adminSuspicious,
+  adminTesters,
+  adminUsers,
+  revalidateAfter,
+  shell,
+} from "~/lib/queries";
 
 export default function Admin() {
   const shellData = createAsync(() => shell());
   const me = () => shellData()?.me ?? undefined;
   const [activeTab, setActiveTab] = createSignal<AdminTabId>("overview");
   const [page, setPage] = createSignal(0);
-  const [version, setVersion] = createSignal(0);
-  const reload = () => setVersion((v) => v + 1);
 
-  const users = createAsync(() => {
-    void version();
-    return activeTab() === "users" ? listUsers(page()) : Promise.resolve(null);
-  });
-  const attempts = createAsync(() => {
-    void version();
-    return activeTab() === "attempts" ? listAttemptsAction(page()) : Promise.resolve(null);
-  });
-  const settings = createAsync(() => {
-    void version();
-    return activeTab() === "settings" ? listSettings() : Promise.resolve(null);
-  });
-  const testers = createAsync(() => {
-    void version();
-    return activeTab() === "testers" ? listTesters(page()) : Promise.resolve(null);
-  });
+  // Per-tab data is a cached query behind a suspending resource. The tab body
+  // has its own <Suspense> (below) so a cache miss on a tab switch shows a
+  // localized loader here instead of tripping the route-level one into a
+  // full-screen reload.
+  const users = createAsync(() =>
+    activeTab() === "users" ? adminUsers(page()) : Promise.resolve(null),
+  );
+  const attempts = createAsync(() =>
+    activeTab() === "attempts" ? adminAttempts(page()) : Promise.resolve(null),
+  );
+  const settings = createAsync(() =>
+    activeTab() === "settings" ? adminSettings() : Promise.resolve(null),
+  );
+  const testers = createAsync(() =>
+    activeTab() === "testers" ? adminTesters(page()) : Promise.resolve(null),
+  );
   const security = createAsync(async () => {
-    void version();
     if (activeTab() !== "security") return null;
     const [suspicious, blockedIps, betaTesters] = await Promise.all([
-      listSuspicious(page()),
-      listBlockedIpsAction(page()),
-      listTesters(page()),
+      adminSuspicious(page()),
+      adminBlockedIps(page()),
+      adminTesters(page()),
     ]);
     return { suspicious, blockedIps, testers: betaTesters };
   });
-  const activity = createAsync(() => {
-    void version();
-    return activeTab() === "logs" ? listActivity(page()) : Promise.resolve(null);
-  });
+  const activity = createAsync(() =>
+    activeTab() === "logs" ? adminActivity(page()) : Promise.resolve(null),
+  );
 
   const data = createAsync(async () => {
-    void version();
-    if (me()?.role !== "admin" || activeTab() !== "overview") return null;
-    return getAdminDashboard();
+    if (me()?.role !== "admin") return null;
+    return adminDashboard();
   });
 
   const [notification, setNotification] = createSignal<string | null>(null);
@@ -107,7 +104,7 @@ export default function Admin() {
 
         <button
           type="button"
-          onClick={reload}
+          onClick={() => revalidate()}
           class="btn-ghost text-xs px-3.5 py-1.5 inline-flex items-center gap-1.5 cursor-pointer font-extrabold"
         >
           <RefreshCw size={13} strokeWidth={2.5} />
@@ -174,7 +171,7 @@ export default function Admin() {
         {(() => {
           const d = data()!;
           return (
-            <div class="space-y-5">
+            <div class="space-y-5 min-h-[45vh]">
               {/* Navigation Tabs */}
               <AdminTabs
                 activeTab={activeTab()}
@@ -216,127 +213,151 @@ export default function Admin() {
                 </button>
               </div>
 
-              {/* 1. Overview Tab */}
-              <Show when={activeTab() === "overview"}>
-                <OverviewTab
-                  metrics={d.metrics}
-                  games={d.games}
-                  onNavigateTab={(t) => setActiveTab(t)}
-                />
-              </Show>
-
-              {/* 2. Games & Schedule Tab */}
-              <Show when={activeTab() === "games"}>
-                <GamesTab games={d.games} onReload={reload} onNotify={showNotification} />
-              </Show>
-
-              {/* 3. Users & Ban Tab */}
-              <Show when={activeTab() === "users"}>
-                <Show when={users()} fallback={<TabLoading />}>
-                  <UsersTab users={users()!} onReload={reload} onNotify={showNotification} />
+              {/* Tab body has its own Suspense so a cache-miss refetch on a tab
+                  switch shows a localized loader instead of the route-level
+                  full-screen one. */}
+              <Suspense fallback={<TabLoading />}>
+                {/* 1. Overview Tab */}
+                <Show when={activeTab() === "overview"}>
+                  <OverviewTab
+                    metrics={d.metrics}
+                    games={d.games}
+                    onNavigateTab={(t) => setActiveTab(t)}
+                  />
                 </Show>
-              </Show>
 
-              {/* 4. Attempts & Anti-Cheat Tab */}
-              <Show when={activeTab() === "attempts"}>
-                <Show when={attempts()} fallback={<TabLoading />}>
-                  <AttemptsTab
-                    attempts={attempts()!}
-                    onReload={reload}
+                {/* 2. Games & Schedule Tab */}
+                <Show when={activeTab() === "games"}>
+                  <GamesTab
+                    games={d.games}
+                    onReload={revalidateAfter(ADMIN_QUERY_KEYS.dashboard)}
                     onNotify={showNotification}
                   />
                 </Show>
-              </Show>
 
-              {/* 5. Settings Tab */}
-              <Show when={activeTab() === "settings"}>
-                <Show when={settings()} fallback={<TabLoading />}>
-                  <SettingsTab
-                    settings={settings()!}
-                    onReload={reload}
-                    onNotify={showNotification}
-                  />
+                {/* 3. Users & Ban Tab */}
+                <Show when={activeTab() === "users"}>
+                  <Show when={users()} fallback={<TabLoading />}>
+                    <UsersTab
+                      users={users()!}
+                      onReload={revalidateAfter(ADMIN_QUERY_KEYS.users)}
+                      onNotify={showNotification}
+                    />
+                  </Show>
                 </Show>
-              </Show>
 
-              {/* 6. Testers & Beta Access Tab */}
-              <Show when={activeTab() === "testers"}>
-                <Show when={testers()} fallback={<TabLoading />}>
-                  <SecurityTab
-                    testers={testers()!}
-                    blockedIps={[]}
-                    suspicious={[]}
-                    onReload={reload}
-                    onNotify={showNotification}
-                  />
+                {/* 4. Attempts & Anti-Cheat Tab */}
+                <Show when={activeTab() === "attempts"}>
+                  <Show when={attempts()} fallback={<TabLoading />}>
+                    <AttemptsTab
+                      attempts={attempts()!}
+                      onReload={revalidateAfter(
+                        ADMIN_QUERY_KEYS.attempts,
+                        ADMIN_QUERY_KEYS.dashboard,
+                      )}
+                      onNotify={showNotification}
+                    />
+                  </Show>
                 </Show>
-              </Show>
 
-              {/* 7. Security / Threat Stream Tab */}
-              <Show when={activeTab() === "security"}>
-                <Show when={security()} fallback={<TabLoading />}>
-                  <SecurityTab
-                    testers={security()!.testers}
-                    blockedIps={security()!.blockedIps}
-                    suspicious={security()!.suspicious}
-                    onReload={reload}
-                    onNotify={showNotification}
-                  />
+                {/* 5. Settings Tab */}
+                <Show when={activeTab() === "settings"}>
+                  <Show when={settings()} fallback={<TabLoading />}>
+                    <SettingsTab
+                      settings={settings()!}
+                      onReload={revalidateAfter(ADMIN_QUERY_KEYS.settings)}
+                      onNotify={showNotification}
+                    />
+                  </Show>
                 </Show>
-              </Show>
 
-              {/* 8. Code-a-Pookalam Review Tab */}
-              <Show when={activeTab() === "pookalam"}>
-                {(() => {
-                  const [pookalamSub, setPookalamSub] = createSignal<"review" | "gallery">(
-                    "review",
-                  );
-                  return (
-                    <div class="space-y-5">
-                      <div class="inline-flex rounded-md border-2 border-[var(--ink)] p-0.5 bg-[var(--paper)]">
-                        <button
-                          type="button"
-                          onClick={() => setPookalamSub("review")}
-                          class={`px-3 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
-                            pookalamSub() === "review"
-                              ? "bg-[var(--pop-yellow)] text-[var(--ink)]"
-                              : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
-                          }`}
-                        >
-                          Review queue
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPookalamSub("gallery")}
-                          class={`px-3 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
-                            pookalamSub() === "gallery"
-                              ? "bg-[var(--pop-teal)] text-[var(--ink)]"
-                              : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
-                          }`}
-                        >
-                          Shortlisting gallery
-                        </button>
+                {/* 6. Testers & Beta Access Tab */}
+                <Show when={activeTab() === "testers"}>
+                  <Show when={testers()} fallback={<TabLoading />}>
+                    <SecurityTab
+                      testers={testers()!}
+                      blockedIps={[]}
+                      suspicious={[]}
+                      onReload={revalidateAfter(
+                        ADMIN_QUERY_KEYS.testers,
+                        ADMIN_QUERY_KEYS.dashboard,
+                      )}
+                      onNotify={showNotification}
+                    />
+                  </Show>
+                </Show>
+
+                {/* 7. Security / Threat Stream Tab */}
+                <Show when={activeTab() === "security"}>
+                  <Show when={security()} fallback={<TabLoading />}>
+                    <SecurityTab
+                      testers={security()!.testers}
+                      blockedIps={security()!.blockedIps}
+                      suspicious={security()!.suspicious}
+                      onReload={revalidateAfter(
+                        ADMIN_QUERY_KEYS.testers,
+                        ADMIN_QUERY_KEYS.blockedIps,
+                        ADMIN_QUERY_KEYS.suspicious,
+                        ADMIN_QUERY_KEYS.dashboard,
+                      )}
+                      onNotify={showNotification}
+                    />
+                  </Show>
+                </Show>
+
+                {/* 8. Code-a-Pookalam Review Tab */}
+                <Show when={activeTab() === "pookalam"}>
+                  {(() => {
+                    const [pookalamSub, setPookalamSub] = createSignal<"review" | "gallery">(
+                      "review",
+                    );
+                    return (
+                      <div class="space-y-5">
+                        <div class="inline-flex rounded-md border-2 border-[var(--ink)] p-0.5 bg-[var(--paper)]">
+                          <button
+                            type="button"
+                            onClick={() => setPookalamSub("review")}
+                            class={`px-3 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
+                              pookalamSub() === "review"
+                                ? "bg-[var(--pop-yellow)] text-[var(--ink)]"
+                                : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                            }`}
+                          >
+                            Review queue
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPookalamSub("gallery")}
+                            class={`px-3 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
+                              pookalamSub() === "gallery"
+                                ? "bg-[var(--pop-teal)] text-[var(--ink)]"
+                                : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                            }`}
+                          >
+                            Shortlisting gallery
+                          </button>
+                        </div>
+
+                        <Show when={pookalamSub() === "review"}>
+                          {/* Approve, shortlist, see who made what. */}
+                          <PookalamReview />
+                        </Show>
+                        <Show when={pookalamSub() === "gallery"}>
+                          {/* The same anonymous gallery the testers judge in. */}
+                          <PookalamGallery />
+                        </Show>
                       </div>
-
-                      <Show when={pookalamSub() === "review"}>
-                        {/* Approve, shortlist, see who made what. */}
-                        <PookalamReview />
-                      </Show>
-                      <Show when={pookalamSub() === "gallery"}>
-                        {/* The same anonymous gallery the testers judge in. */}
-                        <PookalamGallery />
-                      </Show>
-                    </div>
-                  );
-                })()}
-              </Show>
-
-              {/* 9. Activity Logs Tab */}
-              <Show when={activeTab() === "logs"}>
-                <Show when={activity()} fallback={<TabLoading />}>
-                  <LogsTab logs={activity()!} />
+                    );
+                  })()}
                 </Show>
-              </Show>
+
+                {/* 9. Activity Logs Tab */}
+                <Show when={activeTab() === "logs"}>
+                  <Show when={activity()} fallback={<TabLoading />}>
+                    <LogsTab logs={activity()!} />
+                  </Show>
+                </Show>
+              </Suspense>
             </div>
           );
         })()}

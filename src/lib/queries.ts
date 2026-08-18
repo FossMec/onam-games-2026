@@ -1,9 +1,19 @@
-import { query } from "@solidjs/router";
+import { query, revalidate } from "@solidjs/router";
 import { getShellData } from "~/server/shell";
 import { getGames, getGame, getMyAttempt } from "~/server/games/actions";
 import { getPookalamState, getMyPookalamNotice, getFinalResults } from "~/server/pookalam/actions";
 import { getDaily } from "~/server/leaderboard/actions";
 import { getMe, getMyBanState } from "~/server/auth/actions";
+import {
+  getAdminDashboard,
+  listActivity,
+  listAttemptsAction,
+  listBlockedIpsAction,
+  listSettings,
+  listSuspicious,
+  listTesters,
+  listUsers,
+} from "~/server/admin/actions";
 
 /**
  * Every read the browser makes, in one place, wrapped in `query`.
@@ -90,3 +100,41 @@ export const QUERY_KEYS = {
   pookalamResults: pookalamResults.key,
   dailyBoard: dailyBoard.key,
 } as const;
+
+/*
+ * Admin console reads.
+ *
+ * Wrapped in `query` so each tab's data is cached client-side: revisiting a
+ * tab costs nothing, and a mutation drops only the keys it touches via
+ * `revalidateAfter` below - instead of re-fetching the whole console (and
+ * unmounting the tabbed layout) on every save.
+ */
+export const adminDashboard = query(getAdminDashboard, "admin-dashboard");
+export const adminUsers = query(listUsers, "admin-users");
+export const adminAttempts = query(listAttemptsAction, "admin-attempts");
+export const adminSettings = query(listSettings, "admin-settings");
+export const adminTesters = query(listTesters, "admin-testers");
+export const adminSuspicious = query(listSuspicious, "admin-suspicious");
+export const adminBlockedIps = query(listBlockedIpsAction, "admin-blocked-ips");
+export const adminActivity = query(listActivity, "admin-activity");
+
+/**
+ * The keys a console write should drop. `revalidate` matches by prefix, so
+ * `"admin-users"` also clears `admin-users[1]`, `admin-users[2]`, ...
+ */
+export const ADMIN_QUERY_KEYS = {
+  dashboard: "admin-dashboard",
+  users: "admin-users",
+  attempts: "admin-attempts",
+  settings: "admin-settings",
+  testers: "admin-testers",
+  suspicious: "admin-suspicious",
+  blockedIps: "admin-blocked-ips",
+  activity: "admin-activity",
+} as const;
+
+/** Returns an `onReload` callback that revalidates exactly the given keys. */
+export const revalidateAfter =
+  (...keys: string[]) =>
+  () =>
+    revalidate(keys);
