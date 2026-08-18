@@ -4,7 +4,6 @@ import {
   Gamepad2,
   Image as ImageIcon,
   LayoutDashboard,
-  Lock,
   Settings,
   ShieldAlert,
   Users,
@@ -17,7 +16,6 @@ export type AdminTabId =
   | "users"
   | "attempts"
   | "settings"
-  | "testers"
   | "security"
   | "pookalam"
   | "logs";
@@ -49,7 +47,6 @@ export function AdminTabs(props: AdminTabsProps) {
     { id: "users", label: "Users & Bans", icon: Users, badge: props.counts?.users },
     { id: "attempts", label: "Game Attempts", icon: Flame, badge: props.counts?.attempts },
     { id: "settings", label: "App Settings", icon: Settings },
-    { id: "testers", label: "Beta & Testers", icon: Lock, badge: props.counts?.testers },
     {
       id: "security",
       label: "Threats & Blocked IPs",

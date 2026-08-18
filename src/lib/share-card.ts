@@ -23,7 +23,7 @@
  */
 
 import { SPRITE_REGISTRY, type SpriteName } from "~/lib/sprites";
-import { gameImage, spriteImage } from "~/lib/img";
+import { gameImageForType, spriteImage } from "~/lib/img";
 import {
   aside,
   brag,
@@ -699,6 +699,7 @@ export interface ShareCardData {
   instagram?: string | null;
   gameTitle: string;
   gameSlug: string;
+  gameType: string;
   day: number;
   metric: "time" | "score" | "fcfs";
   durationMs: number | null;
@@ -759,7 +760,7 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
       loadImage(spriteImage("pookalam-flower.webp")),
       avatarUrl ? loadImage(avatarUrl).catch(() => null) : Promise.resolve(null),
       customPhotoUrl ? loadImage(customPhotoUrl).catch(() => null) : Promise.resolve(null),
-      loadImage(gameImage(`${data.gameSlug}.webp`)).catch(() => null),
+      loadImage(gameImageForType(data.gameType)).catch(() => null),
     ]);
 
   const canvas = document.createElement("canvas");
@@ -830,15 +831,16 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   ctx.fillStyle = TEAL_DEEP;
   // High-contrast pop accent color per game so text never clashes with game artwork
   const GAME_ACCENT: Record<string, string> = {
-    "maveli-jump": POP.teal,
-    "escape-the-vallam": POP.yellow,
-    "code-a-pookalam": POP.yellow,
-    "open-source-tinder": POP.teal,
-    "pookalam-jigsaw": POP.yellow,
-    "treasure-hunt": POP.teal,
+    jump: POP.teal,
+    unblock: POP.yellow,
+    vote: POP.yellow,
+    pookalam_vote: POP.yellow,
+    tinder: POP.teal,
+    jigsaw: POP.yellow,
+    hunt: POP.teal,
     wend: POP.yellow,
   };
-  const contrastAccent = GAME_ACCENT[data.gameSlug] ?? burstColor;
+  const contrastAccent = GAME_ACCENT[data.gameType] ?? burstColor;
 
   /* ---- 6. the hero: a two-panel comic spread --------------------------- */
   /*

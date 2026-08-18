@@ -67,6 +67,12 @@ const SETTINGS_META: Record<string, SettingMetadata> = {
     explanation:
       "When enabled, the entire website is locked behind the tester list so only verified testers and admins can browse or play. Toggle off on launch night to open the site to the public.",
   },
+  "access.tester_mode": {
+    label: "Tester Mode (Unlimited Retries)",
+    type: "boolean",
+    explanation:
+      "When enabled, testers and admins get unlimited attempts on all games. When switched OFF, testers play under real player rules with a strict 1-run limit per game to test real-world behavior during beta.",
+  },
 
   // Anti-Cheat
   enforce_one_user_per_device: {

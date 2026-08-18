@@ -1302,7 +1302,7 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
     <section id="road" class="relative scroll-mt-28">
       {/* 1. Sentinel to trigger the EXACT moment sticky engages */}
       <div
-        ref={sentinelEl}
+        ref={(element) => (sentinelEl = element)}
         class="pointer-events-none h-px w-full -mb-px opacity-0"
         aria-hidden="true"
       />

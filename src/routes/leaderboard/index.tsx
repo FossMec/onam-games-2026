@@ -171,7 +171,8 @@ export default function Leaderboard() {
    * instead, in the same day slot, because it is still just a day of the
    * festival and a second leaderboard URL would only be a thing to go find.
    */
-  const isDay7 = () => selectedDay() === 7 && !selectedGame();
+  const isDay7 = () =>
+    selectedDay() === 7 && (selectedGame()?.gameType === "vote" || !selectedGame());
 
   // Auto-set tab to tester if currently selected game is in tester preview and no query override
   createEffect(() => {
@@ -190,7 +191,9 @@ export default function Leaderboard() {
     void version();
     const g = selectedGame();
     const mode = isTesterOrAdmin() ? viewMode() : "main";
-    return g ? dailyBoard(g.id, mode, page(), 50) : Promise.resolve(null);
+    // Day 7 is the pookalam vote - no `games` row, no board to fetch. The
+    // arena's own boards render from their own reads.
+    return g && g.gameType !== "vote" ? dailyBoard(g.id, mode, page(), 50) : Promise.resolve(null);
   });
 
   /**
@@ -217,6 +220,7 @@ export default function Leaderboard() {
       instagram: user.instagramHandle,
       gameTitle: g.title,
       gameSlug: g.slug,
+      gameType: g.gameType,
       day: g.day,
       metric: entry.metric,
       durationMs: entry.durationMs,

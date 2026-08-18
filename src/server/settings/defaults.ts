@@ -51,6 +51,17 @@ export const settingsRegistry: SettingDef[] = [
     defaultValue: true,
   },
   {
+    key: "access.tester_mode",
+    group: "access",
+    /**
+     * When false (real player mode), testers and admins are subject to the same
+     * one-attempt-per-day rules as regular players, allowing true validation.
+     */
+    description:
+      "Tester mode: grant testers/admins unlimited retries (turn off for real-player test mode)",
+    defaultValue: true,
+  },
+  {
     key: "enforce_one_user_per_device",
     group: "anti-cheat",
     description: "Block a second account on a device already bound to another account",

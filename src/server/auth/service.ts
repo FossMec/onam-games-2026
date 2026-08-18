@@ -3,7 +3,7 @@ import type { FingerprintSignals } from "~/lib/fingerprint";
 import { bindDeviceToUser } from "~/server/anti-cheat/device";
 import { logActivity, logSuspicious } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
-import { authSessions, testers, users } from "~/server/db/schema";
+import { authSessions, users } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
 import { getRequestMeta } from "~/server/request";
 import { getSupabaseAdmin, getSupabaseAnon } from "~/server/supabase/client";
@@ -128,17 +128,6 @@ export async function completeOAuthSignIn(
     userId = created.id;
   }
 
-  // Tester promotion (added by email via /admin). Testers go through the exact
-  // same fingerprint + device binding as everyone else.
-  const [tester] = await db
-    .select({ id: testers.id })
-    .from(testers)
-    .where(and(eq(testers.email, email), eq(testers.active, true)))
-    .limit(1);
-  if (tester) {
-    await db.update(users).set({ role: "tester" }).where(eq(users.id, userId));
-  }
-
   // Device binding + one-user-per-device enforcement.
   const bind = await bindDeviceToUser(userId, signals, fpVisitorId);
   if (!bind.allowed) {
@@ -227,7 +216,7 @@ export async function completeOAuthSignIn(
       fpVisitorId: fpVisitorId ?? null,
       email,
       isNewUser: !existing,
-      isTester: !!tester,
+      isTester: existing?.role === "tester",
       sessionId: sess.id,
       revokedOtherSessions: displaced.length,
       ip: meta.ip,

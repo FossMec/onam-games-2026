@@ -4,6 +4,7 @@ import { dailyLeaderboard, games, users } from "~/server/db/schema";
 import type { GameMetric } from "~/server/games/registry";
 import { getGameDefByType } from "~/server/games/registry";
 import type { ViewerRole } from "~/server/games/service";
+import { getSetting } from "~/server/settings/service";
 
 export interface DailyEntry {
   rank: number;
@@ -71,7 +72,8 @@ export async function getDailyLeaderboard(
   const safePageSize = Math.min(100, Math.max(1, pageSize));
   const offset = (safePage - 1) * safePageSize;
 
-  const ranked = rankedBoard(db, gameId, viewerRole, viewMode, metric);
+  const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
+  const ranked = rankedBoard(db, gameId, viewerRole, viewMode, metric, isTesterModeEnabled);
   const inSlice = and(
     sql`${ranked.rank} > ${offset}`,
     sql`${ranked.rank} <= ${offset + safePageSize}`,
@@ -108,7 +110,7 @@ export async function getDailyLeaderboard(
     .filter((row) => row.rank > offset && row.rank <= offset + safePageSize)
     .map((row) => toEntry(row, row.rank));
 
-  const myRow = viewerUserId ? rows.find((row) => row.userId === viewerUserId) : undefined;
+  const myRow = viewerUserId ? rows.find((r) => r.userId === viewerUserId) : null;
   const myEntry = myRow ? toEntry(myRow, myRow.rank) : null;
 
   return {
@@ -135,6 +137,7 @@ function rankedBoard(
   viewerRole: ViewerRole,
   viewMode: "main" | "tester",
   metric: GameMetric,
+  isTesterModeEnabled = true,
 ) {
   return db.$with("ranked").as(
     db
@@ -169,36 +172,35 @@ function rankedBoard(
       })
       .from(dailyLeaderboard)
       .innerJoin(users, eq(users.id, dailyLeaderboard.userId))
-      .where(and(...boardConditions(gameId, viewerRole, viewMode))),
+      .where(and(...boardConditions(gameId, viewerRole, viewMode, isTesterModeEnabled))),
   );
 }
 
-function boardConditions(gameId: string, viewerRole: ViewerRole, viewMode: "main" | "tester") {
-  return [
+function boardConditions(
+  gameId: string,
+  viewerRole: ViewerRole,
+  viewMode: "main" | "tester",
+  isTesterModeEnabled = true,
+) {
+  /*
+   * When tester_mode is disabled (real-player test mode), testers & admins play
+   * with 1 attempt like normal players and appear directly on the main leaderboard.
+   */
+  const roleFilter = !isTesterModeEnabled
+    ? undefined
+    : viewerRole === "player" || viewMode === "main"
+      ? and(ne(users.role, "tester"), ne(users.role, "admin"))
+      : or(eq(users.role, "tester"), eq(users.role, "admin"));
+
+  const conditions = [
     eq(dailyLeaderboard.gameId, gameId),
     eq(dailyLeaderboard.isFlagged, false),
-    /*
-     * Only a hard ban takes a run off the board.
-     *
-     * This used to demand `banLevel = 0`, which quietly deleted anyone holding
-     * a level-1 *warning* from every board - and a warning is explicitly the
-     * level that "costs an honest player nothing" (`auth/bans.ts`), handed out
-     * for things as innocent as sharing a hostel's NAT IP. The player was told
-     * their run counted, the run was verified, and then it was nowhere, with no
-     * message explaining why.
-     *
-     * Levels 2 and 3 stay visible too. They are a timed bench on *playing*, and
-     * the ban notice itself promises "the leaderboard is still yours to watch";
-     * hiding an already-earned score for three hours and then restoring it
-     * reads as a bug from every direction. Level 4 is the only level that means
-     * "out of the games", and the rest of the codebase already uses `>= 4` as
-     * the line - this was the one place that disagreed.
-     */
     lt(users.banLevel, 4),
-    viewerRole === "player" || viewMode === "main"
-      ? and(ne(users.role, "tester"), ne(users.role, "admin"))
-      : or(eq(users.role, "tester"), eq(users.role, "admin")),
   ];
+  if (roleFilter) {
+    conditions.push(roleFilter);
+  }
+  return conditions;
 }
 
 function rankingOrder(metric: GameMetric) {
@@ -227,8 +229,9 @@ export async function getMyStanding(
     .where(eq(games.id, gameId))
     .limit(1);
   const metric: GameMetric = game ? (getGameDefByType(game.gameType)?.metric ?? "time") : "time";
+  const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
   const viewMode = viewerRole === "player" ? "main" : "tester";
-  const ranked = rankedBoard(db, gameId, viewerRole, viewMode, metric);
+  const ranked = rankedBoard(db, gameId, viewerRole, viewMode, metric, isTesterModeEnabled);
   const [row] = await db
     .with(ranked)
     .select()

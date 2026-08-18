@@ -46,9 +46,6 @@ export default function Admin() {
   const settings = createAsync(() =>
     activeTab() === "settings" ? adminSettings() : Promise.resolve(null),
   );
-  const testers = createAsync(() =>
-    activeTab() === "testers" ? adminTesters(page()) : Promise.resolve(null),
-  );
   const security = createAsync(async () => {
     if (activeTab() !== "security") return null;
     const [suspicious, blockedIps, betaTesters] = await Promise.all([
@@ -240,6 +237,7 @@ export default function Admin() {
                   <Show when={users()} fallback={<TabLoading />}>
                     <UsersTab
                       users={users()!}
+                      games={d.games}
                       onReload={revalidateAfter(ADMIN_QUERY_KEYS.users)}
                       onNotify={showNotification}
                     />
@@ -271,26 +269,11 @@ export default function Admin() {
                   </Show>
                 </Show>
 
-                {/* 6. Testers & Beta Access Tab */}
-                <Show when={activeTab() === "testers"}>
-                  <Show when={testers()} fallback={<TabLoading />}>
-                    <SecurityTab
-                      testers={testers()!}
-                      blockedIps={[]}
-                      suspicious={[]}
-                      onReload={revalidateAfter(
-                        ADMIN_QUERY_KEYS.testers,
-                        ADMIN_QUERY_KEYS.dashboard,
-                      )}
-                      onNotify={showNotification}
-                    />
-                  </Show>
-                </Show>
-
-                {/* 7. Security / Threat Stream Tab */}
+                {/* 6. Security / Threat Stream Tab */}
                 <Show when={activeTab() === "security"}>
                   <Show when={security()} fallback={<TabLoading />}>
                     <SecurityTab
+                      mode="security"
                       testers={security()!.testers}
                       blockedIps={security()!.blockedIps}
                       suspicious={security()!.suspicious}

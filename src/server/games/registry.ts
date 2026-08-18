@@ -102,6 +102,11 @@ export interface GamePublicCopy {
   title: string;
   tagline: string;
   hint: string;
+  /**
+   * The cryptic one-liner a locked card shows instead of the title. Deliberately
+   * vaguer than `hint` - it must tease without leaking what the game is.
+   */
+  teaser: string;
   howTo: string[];
 }
 
@@ -149,6 +154,7 @@ export const GAMES: readonly GameDef[] = [
       title: "Open Source Tinder",
       tagline: "Swipe right on freedom. Swipe left on the EULA.",
       hint: "Some of these logos are lying to you.",
+      teaser: "An interface you'll find most useful in your life.",
       howTo: [
         "Swipe right if it's open source. Swipe left if it's proprietary. Arrow keys work too.",
         "Open source means you can read the code, change it, and share it. Not just that it's free to download - plenty of things cost nothing and still own you.",
@@ -176,6 +182,7 @@ export const GAMES: readonly GameDef[] = [
       title: "Pookalam Jigsaw",
       tagline: "Radial symmetry was a mistake and you are about to find out why.",
       hint: "Every piece looks like every other piece. That is the joke.",
+      teaser: "Radial symmetry was a mistake and you're about to find out why.",
       howTo: [
         "Every piece is loose on one board. Drag them around.",
         "There are no slots. Pieces join to each other - get two neighbours close enough and they snap together.",
@@ -203,6 +210,7 @@ export const GAMES: readonly GameDef[] = [
       title: "Wend",
       tagline: "Six words, one grid, and absolutely no room to spare.",
       hint: "If a word leaves a tile stranded, it's the wrong word.",
+      teaser: "A word puzzle entangled in banana leaves.",
       howTo: [
         "Drag across the letters to trace a word. Paths bend - up, down, left, right, never diagonally.",
         "You don't get the words. You get how many there are and how long each one is.",
@@ -228,6 +236,7 @@ export const GAMES: readonly GameDef[] = [
       title: "Escape the Vallam",
       tagline: "Chundan vallam. Traffic jam. Vallamkali has never been this bureaucratic.",
       hint: "The snake boat only moves the long way. Everything else is in the way.",
+      teaser: "Unblock the snake boat before the floodwaters rise.",
       howTo: [
         "Slide boats along their own axis to clear a path.",
         "Get your vallam out of the right edge.",
@@ -256,6 +265,7 @@ export const GAMES: readonly GameDef[] = [
       title: "Maveli Jump",
       tagline: "One year of freedom. Infinite platforms. Zero dignity.",
       hint: "Paathalam is below. Kerala is above. Start climbing.",
+      teaser: "Help the king hop the platforms back to earth.",
       howTo: [
         "Hold the left or right half of the board or tilt your phone to steer. Maveli jumps on his own.",
         "Mint platforms are safe, orange platforms launch high, blue ones move, yellow ones break.",
@@ -291,6 +301,7 @@ export const GAMES: readonly GameDef[] = [
       title: "The Hunt",
       tagline: "The website knows more than it is telling you.",
       hint: "Clue one is here. The rest are not.",
+      teaser: "Clue one is here. The rest are hidden in the source.",
       howTo: [
         "Follow the clues. Some are on this site. Some are very much not.",
         "The last stage hands you a token - scan it, or paste it here.",

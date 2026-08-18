@@ -14,6 +14,8 @@ import {
   adminListTesters,
   adminListUsers,
   adminRemoveLeaderboardEntry,
+  adminResetTesterAttempts,
+  adminResetGameAttempts,
   adminSetTesterActive,
   adminSetUserBanLevel,
   adminSetUserRole,
@@ -47,6 +49,16 @@ export async function voidAttemptAction(attemptId: string) {
 
 export async function removeLeaderboardEntryAction(leaderboardId: string) {
   await adminRemoveLeaderboardEntry(leaderboardId);
+}
+
+export async function resetTesterAttemptsAction(
+  input: Parameters<typeof adminResetTesterAttempts>[0],
+) {
+  return adminResetTesterAttempts(input);
+}
+
+export async function resetGameAttemptsAction(gameIds: string[]) {
+  return adminResetGameAttempts(gameIds);
 }
 
 export async function listUsers(page = 0) {

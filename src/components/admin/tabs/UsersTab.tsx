@@ -1,6 +1,7 @@
 import { CheckCircle, Search, ShieldAlert, X } from "lucide-solid";
 import { For, Show, createMemo, createSignal } from "solid-js";
 import { setUserBanLevel, setUserRole } from "~/server/admin/actions";
+import { TesterAttemptReset } from "~/components/admin/TesterAttemptReset";
 
 export interface UserRow {
   id: string;
@@ -22,6 +23,7 @@ export interface UserRow {
 
 interface UsersTabProps {
   users: UserRow[];
+  games: { id: string; title: string; day: number }[];
   onReload: () => void;
   onNotify: (msg: string) => void;
 }
@@ -137,6 +139,13 @@ export function UsersTab(props: UsersTabProps) {
           {filteredUsers().length} / {props.users.length} Users
         </div>
       </div>
+
+      <TesterAttemptReset
+        users={props.users}
+        games={props.games}
+        onReload={props.onReload}
+        onNotify={props.onNotify}
+      />
 
       {/* Filter & Search Bar */}
       <div class="card card-plain p-3 bg-[var(--paper-2)] space-y-3">

@@ -14,9 +14,9 @@ import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { SpriteScatter } from "~/components/art/SpriteScatter";
 import { EVENT, POOKALAM } from "~/lib/event-content";
 
-import { type SpriteName } from "~/lib/sprites";
-import { gamesList, pookalamState, shell } from "~/lib/queries";
-import { comicImage, gameImage, memeImage } from "~/lib/img";
+import { gamesList, shell } from "~/lib/queries";
+import { teaserIcon } from "~/lib/game-teasers";
+import { comicImage, gameImage, gameImageForType, memeImage } from "~/lib/img";
 import gameHypeCard from "~/assets/images/game-hype-card.webp";
 
 /** Underline colours for the hero stat chips, in order. */
@@ -32,100 +32,6 @@ const DAY_POPS = [
   "pop-red",
   "pop-yellow",
 ];
-
-const GAME_IMAGES: Record<string, string> = {
-  "open-source-tinder": gameImage("open-source-tinder.webp"),
-  "pookalam-jigsaw": gameImage("pookalam-jigsaw.webp"),
-  wend: gameImage("wend.webp"),
-  "escape-the-vallam": gameImage("escape-the-vallam.webp"),
-  "maveli-jump": gameImage("maveli-jump.webp"),
-  "treasure-hunt": gameImage("treasure-hunt.webp"),
-  "code-a-pookalam-vote": gameImage("code-a-pookalam.webp"),
-};
-
-const GAME_TEASERS: Record<number, { hint: string; icon: SpriteName }> = {
-  1: {
-    hint: "An interface you'll find most useful in your life.",
-    icon: "tux-king",
-  },
-  2: {
-    hint: "Radial symmetry was a mistake and you're about to find out why.",
-    icon: "sadya-leaf",
-  },
-  3: {
-    hint: "A word puzzle entangled in banana leaves.",
-    icon: "octocat-garland",
-  },
-  4: {
-    hint: "Unblock the snake boat before the floodwaters rise.",
-    icon: "docker-pookalam",
-  },
-  5: {
-    hint: "Help the king hop the platforms back to earth.",
-    icon: "ferris-crab",
-  },
-  6: {
-    hint: "Clue one is here. The rest are hidden in the source.",
-    icon: "gopher-king",
-  },
-  7: {
-    hint: "Vote on community coded pookalams in 1v1 faceoffs.",
-    icon: "pookalam-flower",
-  },
-};
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-interface VotingPhase {
-  open: boolean;
-  reason: string;
-  opensAt: string | null;
-  closesAt: string | null;
-}
-
-/**
- * Status and release instant for the Day 7 arena card.
- *
- * Day 7 has no `games` row, so `resolveSchedule` never sees it and the card
- * used to be pushed onto the list with `status: "upcoming"` and
- * `releaseAt: null` hardcoded. Those are literals, not a state - nothing ever
- * recomputed them, so the card read "Locked" for the entire event no matter
- * what the admin configured. That is the bug this function exists to kill.
- *
- * The voting window is the authority, because it is the thing that actually
- * decides whether a tap on that card can do anything. When it has not been
- * configured yet, the release falls back to "the day after the last scheduled
- * game", which keeps a real countdown on screen instead of a dead lock - and
- * the card still refuses to claim it is live, because it would be lying.
- */
-function day7Schedule(
-  scheduled: { day: number; releaseAt: string | null }[],
-  voting: VotingPhase | undefined,
-): { status: string; releaseAt: string | null } {
-  const opensAt = voting?.opensAt ?? derivedDay7Release(scheduled);
-
-  if (voting?.open) return { status: "live", releaseAt: opensAt };
-  // Voting has been and gone: the results are the point now, not a countdown.
-  if (voting?.reason === "over") return { status: "closed", releaseAt: opensAt };
-  if (!opensAt) return { status: "upcoming", releaseAt: null };
-
-  /*
-   * Inside the last day before it opens the card stops being a mystery and
-   * starts showing what it is, matching the reveal every other day gets.
-   */
-  const untilOpen = new Date(opensAt).getTime() - Date.now();
-  return {
-    status: untilOpen <= DAY_MS ? "preview" : "upcoming",
-    releaseAt: opensAt,
-  };
-}
-
-/** Day 7 sits one day after the last day that does have a release instant. */
-function derivedDay7Release(scheduled: { day: number; releaseAt: string | null }[]): string | null {
-  const anchor = scheduled.filter((game) => game.releaseAt).sort((a, b) => b.day - a.day)[0];
-  if (!anchor?.releaseAt) return null;
-  return new Date(new Date(anchor.releaseAt).getTime() + (7 - anchor.day) * DAY_MS).toISOString();
-}
 
 const statusSticker: Record<string, { label: string; pop: string }> = {
   live: { label: "Live now", pop: "var(--pop-teal)" },
@@ -240,7 +146,6 @@ export const route = {
   preload() {
     void shell();
     void gamesList();
-    void pookalamState();
   },
 } satisfies RouteDefinition;
 
@@ -252,12 +157,6 @@ export default function Home() {
   const games = createAsync(() => gamesList(), { initialValue: null });
   const shellData = createAsync(() => shell(), { initialValue: null });
   const me = () => shellData()?.me ?? undefined;
-  /*
-   * Day 7 is Code-a-Pookalam, which is not a row in `games` - so its status
-   * cannot come from the schedule resolver like every other day. The arena's
-   * own phase window is the authority on whether it is open.
-   */
-  const pookalam = createAsync(() => pookalamState(), { initialValue: null });
 
   /*
    * Three states, not two. `createAsync` is `undefined` until the schedule
@@ -329,38 +228,9 @@ export default function Home() {
     }
   });
 
-  // Assemble full 7-day schedule
-  const fullSchedule = () => {
-    const rawGames = games() ?? [];
-    /*
-     * No schedule at all is not the same as a schedule with one entry: padding
-     * a lone Day 7 onto nothing would render a festival week that does not
-     * exist. Leave it empty and let the section say so.
-     */
-    if (rawGames.length === 0) return [];
-    const list = [...rawGames];
-
-    // Check if Day 7 is in the DB games list, otherwise append Day 7 ELO Voting
-    if (!list.some((g) => g.day === 7)) {
-      const arena = day7Schedule(list, pookalam()?.phases.voting);
-      list.push({
-        id: "day-7-vote",
-        slug: "code-a-pookalam-vote",
-        day: 7,
-        title: "Code-a-Pookalam ELO Voting",
-        hint: "Vote on community coded pookalams in 1v1 faceoffs.",
-        tagline: "Head-to-head pookalam showdown: judge pairs of coded art to crown the champion.",
-        difficulty: "community",
-        metric: "vote" as never,
-        maxAttempts: 1,
-        status: arena.status,
-        releaseAt: arena.releaseAt,
-        statusLabel: statusSticker[arena.status]?.label ?? "Locked",
-      } as never);
-    }
-
-    return list.sort((a, b) => a.day - b.day);
-  };
+  // The full seven days come straight from the API. Day 7 is the pookalam vote,
+  // which the schedule builder appends server-side, so no local card is needed.
+  const fullSchedule = () => games() ?? [];
 
   const activeGame = () => {
     const sched = fullSchedule();
@@ -722,10 +592,7 @@ export default function Home() {
             const current = activeGame()!;
             const locked = current.status === "upcoming";
             const sticker = statusSticker[current.status] ?? statusSticker.upcoming;
-            const teaser = GAME_TEASERS[current.day] ?? {
-              hint: "A mystery game",
-              icon: "tux-king",
-            };
+            const teaser = current.teaser ?? "A mystery game";
             const isDay7 = current.day === 7;
             const targetHref = isDay7 ? "/code-a-pookalam/vote" : `/games/${current.slug}`;
             const playHref = me() ? targetHref : "/auth/signin";
@@ -773,14 +640,12 @@ export default function Home() {
                         fallback={
                           <div class="relative h-full w-full overflow-hidden flex flex-col items-center justify-center text-center p-4 bg-[var(--paper-3)]">
                             <img
-                              src={
-                                GAME_IMAGES[current.slug] ?? gameImage("open-source-tinder.webp")
-                              }
+                              src={gameImageForType(current.gameType)}
                               alt="Classified preview"
                               class="absolute inset-0 h-full w-full object-cover blur-xl opacity-40 grayscale"
                             />
                             <div class="relative z-10 space-y-2">
-                              <SpriteIcon name={teaser.icon} size={48} animate="wobble" />
+                              <SpriteIcon name={teaserIcon(current)} size={48} animate="wobble" />
                               <p
                                 class="text-xl font-extrabold uppercase tracking-widest"
                                 style={{
@@ -801,7 +666,7 @@ export default function Home() {
                         }
                       >
                         <img
-                          src={GAME_IMAGES[current.slug] ?? gameImage("open-source-tinder.webp")}
+                          src={gameImageForType(current.gameType)}
                           alt={current.title}
                           loading="lazy"
                           class="h-full w-full object-cover"
@@ -813,7 +678,7 @@ export default function Home() {
                     <div class="game-hype-current-info flex-1 w-full space-y-3 text-center">
                       <div class="flex items-center justify-center gap-2 flex-wrap">
                         <div class="flex items-center gap-2">
-                          <SpriteIcon name={teaser.icon} size={28} animate="wobble" />
+                          <SpriteIcon name={teaserIcon(current)} size={28} animate="wobble" />
                           <span
                             class="text-xs font-extrabold uppercase tracking-widest"
                             style={{
@@ -849,9 +714,7 @@ export default function Home() {
                       <Show
                         when={!locked}
                         fallback={
-                          <p class="comment text-base font-semibold leading-relaxed">
-                            "{teaser.hint}"
-                          </p>
+                          <p class="comment text-base font-semibold leading-relaxed">"{teaser}"</p>
                         }
                       >
                         <p class="game-hype-current-tagline text-sm sm:text-base font-semibold leading-relaxed text-[var(--ink-soft)]">
@@ -869,7 +732,11 @@ export default function Home() {
                               : "one shot"}
                         </span>
                         <span class="badge">
-                          {current.metric === "score" ? "highest score wins" : "fastest wins"}
+                          {current.day === 7
+                            ? "community vote"
+                            : current.metric === "score"
+                              ? "highest score wins"
+                              : "fastest wins"}
                         </span>
                       </div>
                     </div>
@@ -882,11 +749,7 @@ export default function Home() {
                     >
                       {(item) => (
                         <div class="game-hype-current-pop">
-                          <img
-                            src={GAME_IMAGES[item.slug] ?? gameImage("open-source-tinder.webp")}
-                            alt=""
-                            loading="lazy"
-                          />
+                          <img src={gameImageForType(item.gameType)} alt="" loading="lazy" />
                         </div>
                       )}
                     </For>
@@ -919,7 +782,7 @@ export default function Home() {
                         {(item) => (
                           <div class="game-hype-game-token">
                             <img
-                              src={GAME_IMAGES[item.slug] ?? gameImage("open-source-tinder.webp")}
+                              src={gameImageForType(item.gameType)}
                               alt={`${item.title} game artwork`}
                               loading="lazy"
                             />
@@ -975,9 +838,7 @@ export default function Home() {
                                 style={{ border: "var(--ink-w) solid var(--ink)" }}
                               >
                                 <img
-                                  src={
-                                    GAME_IMAGES[item.slug] ?? gameImage("open-source-tinder.webp")
-                                  }
+                                  src={gameImageForType(item.gameType)}
                                   alt=""
                                   loading="lazy"
                                   class={`h-full w-full object-cover ${isLock ? "blur-sm grayscale opacity-45" : ""}`}

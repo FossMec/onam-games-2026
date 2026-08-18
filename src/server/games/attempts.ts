@@ -11,6 +11,7 @@ import { requireGameDef } from "./registry";
 import type { ViewerRole } from "./service";
 import { getGameBySlug, resolveSchedule } from "./service";
 import { updateStreak } from "./streak";
+import { getSetting } from "~/server/settings/service";
 
 function sha256(input: string): string {
   return createHash("sha256").update(input).digest("hex");
@@ -100,6 +101,9 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
     .where(and(eq(gameAttempts.userId, input.userId), eq(gameAttempts.gameId, game.id)))
     .orderBy(desc(gameAttempts.attemptNumber));
 
+  const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
+  const effectiveUnlimitedRole = isTesterModeEnabled && input.role !== "player";
+
   // Resume an open attempt: same seed in, same instance out. The timer keeps
   // running from the original `startedAt`, so a refresh is never a reset.
   const open = prior.find((a) => a.status === "in_progress");
@@ -111,19 +115,20 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
       view,
       startedAt: open.startedAt.toISOString(),
       attemptNumber: open.attemptNumber,
-      attemptsRemaining:
-        input.role === "player" ? def.maxAttempts - open.attemptNumber : def.maxAttempts,
-      unlimited: input.role !== "player",
+      attemptsRemaining: effectiveUnlimitedRole
+        ? def.maxAttempts
+        : Math.max(0, def.maxAttempts - open.attemptNumber),
+      unlimited: effectiveUnlimitedRole,
       maxDurationMs: def.maxDurationMs,
       alreadyStarted: true,
     };
   }
   /*
-   * Testers, admins, and players on closed games play without a run limit.
+   * Testers, admins, and players on closed games play without a run limit if tester mode is enabled.
    * Closed games are in free-play practice mode and do not count towards active leaderboards.
    */
   const isClosed = game.status === "closed";
-  const unlimited = input.role !== "player" || isClosed;
+  const unlimited = effectiveUnlimitedRole || isClosed;
   const used = prior.length;
   if (!unlimited && used >= def.maxAttempts) {
     throw new HttpError(
@@ -292,12 +297,13 @@ export async function getMyAttemptBySlug(
     .orderBy(desc(gameAttempts.attemptNumber))
     .limit(1);
 
-  const unlimited = role !== "player";
+  const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
+  const unlimited = isTesterModeEnabled && role !== "player";
   const base = {
     metric: def.metric,
     maxAttempts: def.maxAttempts,
     attemptsUsed: summary?.attemptsUsed ?? 0,
-    // Testers never run out, so the page must never draw them a "0 runs left".
+    // Testers never run out unless tester mode is disabled, so the page must only draw them unlimited when true.
     attemptsRemaining: unlimited
       ? def.maxAttempts
       : Math.max(0, def.maxAttempts - (summary?.attemptsUsed ?? 0)),
@@ -474,7 +480,8 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
   // Attempts are numbered 1..N at creation and never deleted, so the current
   // row's number already is the count of runs used - no recount needed.
   const attemptsUsed = attempt.attemptNumber;
-  const unlimited = input.role !== "player";
+  const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
+  const unlimited = isTesterModeEnabled && input.role !== "player";
   const attemptsRemaining = unlimited
     ? def.maxAttempts
     : Math.max(0, def.maxAttempts - attemptsUsed);

@@ -5,6 +5,8 @@ import type { GameMetric } from "./registry";
 import { getGameDefByType } from "./registry";
 import { getSettings } from "~/server/settings/service";
 import { sharedRead } from "~/server/cache";
+import { getConfig } from "~/server/pookalam/service";
+import type { PhaseState } from "~/server/pookalam/window";
 
 /**
  * Where a game sits in its day.
@@ -34,6 +36,8 @@ export interface GameCard {
   status: GameStatus;
   /** Registry copy - safe for every game at every status. */
   tagline: string;
+  /** The cryptic locked-card one-liner. Ships even when the card is masked. */
+  teaser: string | null;
   howTo: string[];
   metric: GameMetric;
   maxAttempts: number;
@@ -68,6 +72,7 @@ type ScheduleSettings = {
   releaseTime: string;
   durationHours: number;
   previewHours: number;
+  testerMode?: boolean;
 };
 
 /**
@@ -84,6 +89,7 @@ async function getScheduleSettings(): Promise<ScheduleSettings> {
     "schedule.release_time",
     "schedule.game_duration_hours",
     "schedule.preview_hours",
+    "access.tester_mode",
   ]);
   const read = <T>(key: string, fallback: T): T => (values.get(key) as T) ?? fallback;
   return {
@@ -91,6 +97,7 @@ async function getScheduleSettings(): Promise<ScheduleSettings> {
     releaseTime: read("schedule.release_time", "19:00"),
     durationHours: read("schedule.game_duration_hours", 24),
     previewHours: read("schedule.preview_hours", 24),
+    testerMode: read("access.tester_mode", true),
   };
 }
 
@@ -166,7 +173,11 @@ export async function resolveSchedule(
   let status: GameStatus;
   if (now >= endAt.getTime()) {
     status = "closed";
-  } else if (viewerRole !== "player" && now >= testerReleaseAt.getTime()) {
+  } else if (
+    scheduleSettings.testerMode !== false &&
+    viewerRole !== "player" &&
+    now >= testerReleaseAt.getTime()
+  ) {
     status = "tester";
   } else if (now >= releaseAt.getTime()) {
     status = "live";
@@ -209,12 +220,8 @@ function toCard(
     previewAt: schedule.previewAt?.toISOString() ?? null,
     testerReleaseAt: schedule.testerReleaseAt?.toISOString() ?? null,
     status: schedule.status,
-    // Only registry *copy* ships here. The previous version returned
-    // `configJson` wholesale for every published game - including unreleased
-    // ones - which handed tomorrow's setup to anyone who called the action.
-    // Puzzle data now reaches the browser solely through `/start`, which
-    // refuses to run until the game is live.
     tagline: def?.public.tagline ?? "",
+    teaser: game.hint || (def?.public.teaser ?? null),
     howTo: def?.public.howTo ?? [],
     metric: def?.metric ?? "time",
     maxAttempts: def?.maxAttempts ?? 1,
@@ -231,7 +238,9 @@ function toCard(
  * event and it only works if the data genuinely is not sent.
  *
  * What survives is what a locked card legitimately needs: which day it is, when
- * it opens, and that it is locked.
+ * it opens, and that it is locked. The `teaser` also survives - it is written to
+ * be shown exactly when the title cannot be - while the real `hint`, title,
+ * tagline and rules all go.
  *
  * Only `upcoming` gets this treatment. A game in `preview` has deliberately
  * given its details up - that is the entire point of the status - and hiding
@@ -275,7 +284,72 @@ export async function getGamesList(viewerRole: ViewerRole): Promise<GameCard[]> 
   const cards = await Promise.all(
     rows.map(async (game) => toCard(game, await resolveSchedule(game, viewerRole, settings))),
   );
-  return cards.map((card) => (card.status === "upcoming" ? maskCard(card) : card));
+  const list = cards.map((card) => (card.status === "upcoming" ? maskCard(card) : card));
+
+  // Day 7 is not a `games` row - it is the Code-a-Pookalam voting arena - so it
+  // never comes out of the query above. Appending it here means every schedule
+  // consumer (landing page, games hub, game page nav, leaderboard) reads the
+  // same seventh card from the API instead of each page hand-building its own
+  // copy. It is never masked: its title is not a reveal to protect.
+  //
+  // Only when the week is real, though. An empty schedule means an outage or a
+  // half-configured deploy, and a lone Day 7 would dress that up as a festival
+  // week that does not exist.
+  if (list.length > 0 && !list.some((card) => card.day === 7)) {
+    // When voting has no window configured, fall back to "the day after the
+    // last scheduled game" so the card keeps a real countdown instead of a
+    // dead lock. Derived here, from the same schedule the card sits in.
+    const anchor = list.filter((g) => g.releaseAt).sort((a, b) => b.day - a.day)[0];
+    const day7ReleaseAt = anchor?.releaseAt
+      ? new Date(new Date(anchor.releaseAt).getTime() + (7 - anchor.day) * DAY_MS).toISOString()
+      : null;
+    list.push(day7Card((await getConfig()).voting, day7ReleaseAt));
+  }
+  return list;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The Day 7 arena card, derived from the pookalam voting window.
+ *
+ * Status mirrors what the clock says about voting, with the same fallbacks the
+ * old client-side copies used: forced-open votes are "live", a finished vote is
+ * "closed", and before that the card is a countdown that turns into a "preview"
+ * on its last day. Without a configured window it stays "upcoming" - the card
+ * must never claim it is live when the admin has not set it up.
+ */
+function day7Card(voting: PhaseState, derivedReleaseAt: string | null): GameCard {
+  const opensAt = voting.opensAt;
+  const releaseAt = opensAt?.toISOString() ?? derivedReleaseAt;
+  let status: GameStatus = "upcoming";
+  if (voting.open) {
+    status = "live";
+  } else if (voting.reason === "over") {
+    status = "closed";
+  } else if (releaseAt && new Date(releaseAt).getTime() - Date.now() <= DAY_MS) {
+    status = "preview";
+  }
+  return {
+    id: "day-7-vote",
+    slug: "code-a-pookalam-vote",
+    day: 7,
+    title: "Code-a-Pookalam ELO Voting",
+    tagline: "1v1 Elo voting showdown. Community settles the podium.",
+    hint: "Vote on community coded pookalams in 1v1 faceoffs.",
+    teaser: "Vote on community coded pookalams in 1v1 faceoffs.",
+    howTo: [],
+    gameType: "vote",
+    difficulty: "community",
+    metric: "fcfs",
+    maxAttempts: 1,
+    releaseAt,
+    endAt: voting.closesAt?.toISOString() ?? null,
+    previewAt: null,
+    testerReleaseAt: null,
+    status,
+    assets: null,
+  };
 }
 
 export async function getGameBySlug(

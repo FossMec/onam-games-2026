@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   activityLogs,
   appSettings,
@@ -386,4 +386,58 @@ export async function adminRemoveLeaderboardEntry(leaderboardId: string) {
   await requireAdmin();
   const db = getDb();
   await db.delete(dailyLeaderboard).where(eq(dailyLeaderboard.id, leaderboardId));
+}
+
+/** Delete attempts so selected testers can replay from a clean state. */
+export async function adminResetTesterAttempts(input: {
+  allTesters?: boolean;
+  testerEmails?: string[];
+  gameIds?: string[];
+}) {
+  await requireAdmin();
+  const emails = (input.testerEmails ?? [])
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+  if (!input.allTesters && emails.length === 0) {
+    throw new Error("Select at least one tester or choose all testers");
+  }
+
+  const db = getDb();
+  const testerUsers = await db
+    .select({ id: users.id })
+    .from(users)
+    .innerJoin(testers, eq(testers.email, users.email))
+    .where(
+      and(eq(users.role, "tester"), input.allTesters ? undefined : inArray(users.email, emails)),
+    );
+  const userIds = testerUsers.map((user) => user.id);
+  if (userIds.length === 0) return 0;
+
+  const conditions = [inArray(gameAttempts.userId, userIds)];
+  if (input.gameIds?.length) conditions.push(inArray(gameAttempts.gameId, input.gameIds));
+  const where = and(...conditions);
+  const matching = await db.select({ id: gameAttempts.id }).from(gameAttempts).where(where);
+  if (matching.length === 0) return 0;
+
+  const attemptIds = matching.map((attempt) => attempt.id);
+  await db.delete(dailyLeaderboard).where(inArray(dailyLeaderboard.attemptId, attemptIds));
+  await db.delete(gameAttempts).where(inArray(gameAttempts.id, attemptIds));
+  return matching.length;
+}
+
+/** Delete tester attempts and leaderboard rows for one or more games. */
+export async function adminResetGameAttempts(gameIds: string[]) {
+  await requireAdmin();
+  if (gameIds.length === 0) throw new Error("Select at least one game");
+  const db = getDb();
+  const matching = await db
+    .select({ id: gameAttempts.id })
+    .from(gameAttempts)
+    .innerJoin(users, eq(users.id, gameAttempts.userId))
+    .where(and(inArray(gameAttempts.gameId, gameIds), eq(users.role, "tester")));
+  if (matching.length === 0) return 0;
+  const attemptIds = matching.map((attempt) => attempt.id);
+  await db.delete(dailyLeaderboard).where(inArray(dailyLeaderboard.attemptId, attemptIds));
+  await db.delete(gameAttempts).where(inArray(gameAttempts.id, attemptIds));
+  return matching.length;
 }

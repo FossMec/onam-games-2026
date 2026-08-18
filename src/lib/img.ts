@@ -3,7 +3,7 @@
  *
  * `vite-imagetools` resolves sizes per *import*, which is exactly right for a
  * literal `<img src={hero} />` - but several places here pick an image from a
- * map at runtime (`GAME_IMAGES[slug]`, a meme chosen by seed), and a runtime
+ * map at runtime (game artwork selected by game type, or a meme chosen by seed), and a runtime
  * string has no import site. `import.meta.glob` bridges that: every candidate
  * is transformed at build time and the map holds the resulting URLs, so the
  * lookup still lands on a correctly-sized file.
@@ -118,6 +118,22 @@ const basename = (ref: string) => ref.split("/").pop() ?? ref;
 
 export const gameImage = (ref: string) => lookup(GAME_SRC, basename(ref));
 export const gameImageSrcset = (ref: string) => lookup(GAME_SRCSET, basename(ref));
+
+const GAME_IMAGES_BY_TYPE: Record<string, string> = {
+  tinder: gameImage("open-source-tinder.webp"),
+  jigsaw: gameImage("pookalam-jigsaw.webp"),
+  wend: gameImage("wend.webp"),
+  unblock: gameImage("escape-the-vallam.webp"),
+  jump: gameImage("maveli-jump.webp"),
+  hunt: gameImage("treasure-hunt.webp"),
+  pookalam_vote: gameImage("code-a-pookalam.webp"),
+  vote: gameImage("code-a-pookalam.webp"),
+};
+
+/** Resolve game artwork from the stable engine type, not the editable URL slug. */
+export const gameImageForType = (gameType: string) =>
+  GAME_IMAGES_BY_TYPE[gameType] ?? gameImage("open-source-tinder.webp");
+
 export const memeImage = (ref: string) => lookup(MEME_SRC, basename(ref));
 export const memeImageSrcset = (ref: string) => lookup(MEME_SRCSET, basename(ref));
 export const markImage = (ref: string) => lookup(MARK_SRC, basename(ref));

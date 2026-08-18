@@ -1,6 +1,11 @@
 import { Clock, Edit2, Plus, Trash2, X } from "lucide-solid";
 import { For, Show, createSignal } from "solid-js";
-import { createGame, deleteGame, updateGame } from "~/server/admin/actions";
+import {
+  createGame,
+  deleteGame,
+  resetGameAttemptsAction,
+  updateGame,
+} from "~/server/admin/actions";
 
 export interface GameRow {
   id: string;
@@ -42,6 +47,29 @@ export function GamesTab(props: GamesTabProps) {
   const [editingGame, setEditingGame] = createSignal<GameRow | null>(null);
   const [isCreating, setIsCreating] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
+  const [resetGameId, setResetGameId] = createSignal("");
+
+  const resetGameAttempts = async () => {
+    const game = props.games.find((item) => item.id === resetGameId());
+    if (!game) return;
+    if (
+      !confirm(
+        `Permanently delete tester attempts and leaderboard rows for Day ${game.day}: ${game.title}?`,
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      const count = await resetGameAttemptsAction([game.id]);
+      props.onNotify(`Cleared ${count} attempt${count === 1 ? "" : "s"} for ${game.title}`);
+      setResetGameId("");
+      props.onReload();
+    } catch (err) {
+      props.onNotify(err instanceof Error ? err.message : "Failed to reset game attempts");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   // Form states
   const [formDay, setFormDay] = createSignal(1);
@@ -149,6 +177,37 @@ export function GamesTab(props: GamesTabProps) {
 
   return (
     <div class="space-y-4">
+      <div class="card card-plain p-4 space-y-2 bg-[var(--pop-yellow)]/30">
+        <h3 class="font-black">Reset Game Data</h3>
+        <p class="text-xs font-semibold opacity-80">
+          Permanently deletes tester attempts and leaderboard rows for the selected game. Normal
+          player data is never touched.
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <select
+            class="input text-xs font-bold"
+            value={resetGameId()}
+            onChange={(e) => setResetGameId(e.currentTarget.value)}
+          >
+            <option value="">Select a game</option>
+            <For each={props.games}>
+              {(game) => (
+                <option value={game.id}>
+                  Day {game.day}: {game.title}
+                </option>
+              )}
+            </For>
+          </select>
+          <button
+            type="button"
+            class="btn-ghost text-xs"
+            disabled={busy() || !resetGameId()}
+            onClick={resetGameAttempts}
+          >
+            Clear tester attempts for game
+          </button>
+        </div>
+      </div>
       {/* Header bar */}
       <div class="flex items-center justify-between gap-3 flex-wrap">
         <div>
@@ -210,9 +269,6 @@ export function GamesTab(props: GamesTabProps) {
                         <span class="font-mono text-xs px-1.5 py-0.5 rounded bg-[var(--paper-3)] border border-[var(--ink-soft)]/50">
                           {g.gameType}
                         </span>
-                        <div class="text-[10px] uppercase font-bold opacity-60 mt-0.5">
-                          {g.difficulty}
-                        </div>
                       </td>
 
                       <td class="p-3">
@@ -365,40 +421,25 @@ export function GamesTab(props: GamesTabProps) {
                 />
               </div>
 
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block font-extrabold mb-1">Game Engine Type</label>
-                  <select
-                    value={formType()}
-                    onChange={(e) => setFormType(e.currentTarget.value)}
-                    class="input w-full font-mono"
-                  >
-                    <option value="tinder">tinder (Open Source Tinder)</option>
-                    <option value="jigsaw">jigsaw (Pookalam Jigsaw)</option>
-                    <option value="wend">wend (Malayalam Wordle)</option>
-                    <option value="vallam">vallam (Escape the Vallam)</option>
-                    <option value="jump">jump (Maveli Jump)</option>
-                    <option value="hunt">hunt (FOSS Treasure Hunt)</option>
-                    <option value="pookalam_vote">pookalam_vote (Code-a-Pookalam Vote)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label class="block font-extrabold mb-1">Difficulty</label>
-                  <select
-                    value={formDiff()}
-                    onChange={(e) => setFormDiff(e.currentTarget.value)}
-                    class="input w-full"
-                  >
-                    <option value="easy">Easy</option>
-                    <option value="normal">Normal</option>
-                    <option value="hard">Hard</option>
-                  </select>
-                </div>
+              <div>
+                <label class="block font-extrabold mb-1">Game Engine Type</label>
+                <select
+                  value={formType()}
+                  onChange={(e) => setFormType(e.currentTarget.value)}
+                  class="input w-full font-mono"
+                >
+                  <option value="tinder">tinder (Open Source Tinder)</option>
+                  <option value="jigsaw">jigsaw (Pookalam Jigsaw)</option>
+                  <option value="wend">wend (Malayalam Wordle)</option>
+                  <option value="vallam">vallam (Escape the Vallam)</option>
+                  <option value="jump">jump (Maveli Jump)</option>
+                  <option value="hunt">hunt (FOSS Treasure Hunt)</option>
+                  <option value="pookalam_vote">pookalam_vote (Code-a-Pookalam Vote)</option>
+                </select>
               </div>
 
               <div>
-                <label class="block font-extrabold mb-1">Teaser Hint</label>
+                <label class="block font-extrabold mb-1">Teaser (Hint before game unlocks)</label>
                 <input
                   type="text"
                   value={formHint()}

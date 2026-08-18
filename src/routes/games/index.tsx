@@ -9,9 +9,9 @@ import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { SpriteScatter } from "~/components/art/SpriteScatter";
 import { Countdown } from "~/components/Countdown";
 import { LoadingScreen } from "~/components/LoadingScreen";
-import { type SpriteName } from "~/lib/sprites";
-import { gamesList, pookalamState as pookalamStateQuery, viewer } from "~/lib/queries";
-import { gameImage } from "~/lib/img";
+import { gamesList, viewer } from "~/lib/queries";
+import { teaserIcon } from "~/lib/game-teasers";
+import { gameImageForType } from "~/lib/img";
 
 const DAY_POPS = [
   "pop-yellow",
@@ -22,74 +22,6 @@ const DAY_POPS = [
   "pop-red",
   "pop-yellow",
 ];
-
-const GAME_IMAGES: Record<string, string> = {
-  "open-source-tinder": gameImage("open-source-tinder.webp"),
-  "pookalam-jigsaw": gameImage("pookalam-jigsaw.webp"),
-  wend: gameImage("wend.webp"),
-  "escape-the-vallam": gameImage("escape-the-vallam.webp"),
-  "maveli-jump": gameImage("maveli-jump.webp"),
-  "treasure-hunt": gameImage("treasure-hunt.webp"),
-  "code-a-pookalam-vote": gameImage("code-a-pookalam.webp"),
-};
-
-const GAME_TEASERS: Record<number, { hint: string; icon: SpriteName }> = {
-  1: {
-    hint: "Swipe right on open source, swipe left on proprietary EULAs.",
-    icon: "tux-king",
-  },
-  2: {
-    hint: "Radial symmetry was a mistake and you're about to find out why.",
-    icon: "sadya-leaf",
-  },
-  3: {
-    hint: "A word puzzle entangled in banana leaves.",
-    icon: "octocat-garland",
-  },
-  4: {
-    hint: "Unblock the snake boat before the floodwaters rise.",
-    icon: "docker-pookalam",
-  },
-  5: {
-    hint: "Help the king hop the platforms back to earth.",
-    icon: "ferris-crab",
-  },
-  6: {
-    hint: "Clue one is here. The rest are hidden in the source.",
-    icon: "gopher-king",
-  },
-  7: {
-    hint: "Vote on community coded pookalams in 1v1 faceoffs.",
-    icon: "pookalam-flower",
-  },
-};
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-interface VotingPhase {
-  open: boolean;
-  reason: string;
-  opensAt: string | null;
-  closesAt: string | null;
-}
-
-function day7Schedule(
-  scheduled: { day: number; releaseAt: string | null }[],
-  voting: VotingPhase | undefined,
-): { status: string; releaseAt: string | null } {
-  const opensAt = voting?.opensAt ?? derivedDay7Release(scheduled);
-  if (voting?.open) return { status: "live", releaseAt: opensAt };
-  if (voting?.reason === "over") return { status: "closed", releaseAt: opensAt };
-  if (!opensAt) return { status: "upcoming", releaseAt: null };
-  const untilOpen = new Date(opensAt).getTime() - Date.now();
-  return { status: untilOpen <= DAY_MS ? "preview" : "upcoming", releaseAt: opensAt };
-}
-
-function derivedDay7Release(scheduled: { day: number; releaseAt: string | null }[]): string | null {
-  const anchor = scheduled.filter((game) => game.releaseAt).sort((a, b) => b.day - a.day)[0];
-  if (!anchor?.releaseAt) return null;
-  return new Date(new Date(anchor.releaseAt).getTime() + (7 - anchor.day) * DAY_MS).toISOString();
-}
 
 const statusSticker: Record<string, { label: string; pop: string }> = {
   live: { label: "Live now", pop: "var(--pop-teal)" },
@@ -109,36 +41,15 @@ export const route = {
   preload() {
     void viewer();
     void gamesList();
-    void pookalamStateQuery();
   },
 } satisfies RouteDefinition;
 
 export default function GamesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const games = createAsync(() => gamesList());
-  const pookalamState = createAsync(() => pookalamStateQuery());
   const me = createAsync(() => viewer());
 
-  const fullSchedule = () => {
-    const list = games();
-    if (!list) return [];
-    const scheduled = list.map((g) => ({ day: g.day, releaseAt: g.releaseAt }));
-    const d7 = day7Schedule(scheduled, pookalamState()?.phases.voting);
-    const day7Item = {
-      id: "day-7-vote",
-      slug: "code-a-pookalam-vote",
-      day: 7,
-      title: "The Pookalam Arena",
-      tagline: "1v1 Elo voting showdown. Community settles the podium.",
-      status: d7.status,
-      difficulty: "community",
-      metric: "fcfs",
-      maxAttempts: 1,
-      releaseAt: d7.releaseAt,
-      endAt: pookalamState()?.phases.voting?.closesAt ?? null,
-    };
-    return [...list, day7Item];
-  };
+  const fullSchedule = () => games() ?? [];
 
   const activeGame = () => {
     const list = fullSchedule();
@@ -226,10 +137,7 @@ export default function GamesPage() {
             const locked = current.status === "upcoming";
             const previewing = current.status === "preview";
             const sticker = statusSticker[current.status] ?? statusSticker.upcoming;
-            const teaser = GAME_TEASERS[current.day] ?? {
-              hint: "A mystery game",
-              icon: "tux-king",
-            };
+            const teaser = current.teaser ?? "A mystery game";
             const isDay7 = current.day === 7;
             const targetHref = isDay7 ? "/code-a-pookalam/vote" : `/games/${current.slug}`;
             const playHref = me() ? targetHref : "/auth/signin";
@@ -295,14 +203,12 @@ export default function GamesPage() {
                         fallback={
                           <div class="relative h-full w-full overflow-hidden flex flex-col items-center justify-center text-center p-4 bg-[var(--paper-3)]">
                             <img
-                              src={
-                                GAME_IMAGES[current.slug] ?? gameImage("open-source-tinder.webp")
-                              }
+                              src={gameImageForType(current.gameType)}
                               alt="Classified preview"
                               class="absolute inset-0 h-full w-full object-cover blur-xl opacity-40 grayscale"
                             />
                             <div class="relative z-10 space-y-2">
-                              <SpriteIcon name={teaser.icon} size={48} animate="wobble" />
+                              <SpriteIcon name={teaserIcon(current)} size={48} animate="wobble" />
                               <p
                                 class="text-xl font-extrabold uppercase tracking-widest"
                                 style={{
@@ -323,7 +229,7 @@ export default function GamesPage() {
                         }
                       >
                         <img
-                          src={GAME_IMAGES[current.slug] ?? gameImage("open-source-tinder.webp")}
+                          src={gameImageForType(current.gameType)}
                           alt={current.title}
                           loading="eager"
                           class="h-full w-full object-cover aspect-square"
@@ -335,7 +241,12 @@ export default function GamesPage() {
                     <div class="space-y-4 flex-1 w-full text-center md:text-left">
                       <div class="flex items-center justify-center md:justify-between gap-2 flex-wrap">
                         <div class="flex items-center gap-2">
-                          <SpriteIcon name={teaser.icon} size={28} animate="wobble" interactive />
+                          <SpriteIcon
+                            name={teaserIcon(current)}
+                            size={28}
+                            animate="wobble"
+                            interactive
+                          />
                           <span
                             class="text-xs font-extrabold uppercase tracking-widest"
                             style={{
@@ -368,7 +279,7 @@ export default function GamesPage() {
                             >
                               Teaser:
                             </p>
-                            <p class="comment text-lg font-semibold">"{teaser.hint}"</p>
+                            <p class="comment text-lg font-semibold">"{teaser}"</p>
                           </div>
                         }
                       >
@@ -518,10 +429,7 @@ export default function GamesPage() {
                                 fallback={
                                   <div class="relative w-full h-full flex items-center justify-center">
                                     <img
-                                      src={
-                                        GAME_IMAGES[item.slug] ??
-                                        gameImage("open-source-tinder.webp")
-                                      }
+                                      src={gameImageForType(item.gameType)}
                                       alt="Locked preview"
                                       class="absolute inset-0 w-full h-full object-cover blur-sm opacity-40 grayscale"
                                     />
@@ -532,9 +440,7 @@ export default function GamesPage() {
                                 }
                               >
                                 <img
-                                  src={
-                                    GAME_IMAGES[item.slug] ?? gameImage("open-source-tinder.webp")
-                                  }
+                                  src={gameImageForType(item.gameType)}
                                   alt={item.title}
                                   loading="lazy"
                                   class="h-full w-full object-cover aspect-square"

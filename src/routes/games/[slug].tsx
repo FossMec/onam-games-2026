@@ -4,18 +4,6 @@ import { ChevronLeft, ChevronRight, Lock } from "lucide-solid";
 import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { Countdown } from "~/components/Countdown";
 
-const GAME_IMAGES: Record<string, string> = {
-  "open-source-tinder": gameImage("open-source-tinder.webp"),
-  "pookalam-jigsaw": gameImage("pookalam-jigsaw.webp"),
-  wend: gameImage("wend.webp"),
-  "escape-the-vallam": gameImage("escape-the-vallam.webp"),
-  "maveli-jump": gameImage("maveli-jump.webp"),
-  "treasure-hunt": gameImage("treasure-hunt.webp"),
-  "the-hunt": gameImage("treasure-hunt.webp"),
-  "code-a-pookalam": gameImage("code-a-pookalam.webp"),
-  "code-a-pookalam-vote": gameImage("code-a-pookalam.webp"),
-};
-
 import { ShoutBurst } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
@@ -41,6 +29,7 @@ import { WendGame, type Cell as WendCell, type WendViewData } from "~/components
 import { getMyRecap } from "~/server/games/actions";
 import {
   gameBySlug,
+  gamesList,
   myAttempt as myAttemptQuery,
   viewer,
   banState as banStateQuery,
@@ -59,7 +48,7 @@ import {
   storeAttempt,
 } from "~/lib/game-session";
 import { SHOUT_COLOR, moodForResult, shout } from "~/lib/shouts";
-import { gameImage } from "~/lib/img";
+import { gameImageForType } from "~/lib/img";
 
 /**
  * The client-visible half of a generated instance. Discriminated by `kind` so
@@ -127,6 +116,21 @@ export default function GamePage() {
   const me = createAsync(() => viewer());
   const myAttempt = createAsync(() => myAttemptQuery(slug()));
   const banState = createAsync(() => banStateQuery());
+  // The whole schedule, for the prev/next arrows in the top bar. `initialValue`
+  // keeps it from becoming a suspense point - the nav is chrome, not the page.
+  const schedule = createAsync(() => gamesList(), { initialValue: null });
+
+  /**
+   * The prev/next strip, derived from the schedule the API actually knows about.
+   *
+   * Locked cards arrive masked (empty slug), so they drop out naturally; Day 7
+   * drops out too because it is the pookalam vote, which lives at
+   * `/code-a-pookalam/vote` rather than on a `/games/` page.
+   */
+  const navList = () =>
+    (schedule() ?? [])
+      .filter((g) => g.slug && g.day !== 7)
+      .map((g) => ({ day: g.day, slug: g.slug, title: g.title }));
 
   const [attemptToken, setAttemptToken] = createSignal<string | null>(null);
   const [startedAt, setStartedAt] = createSignal<number | null>(null);
@@ -608,6 +612,7 @@ export default function GamePage() {
       instagram: user.instagramHandle,
       gameTitle: g.title,
       gameSlug: slug(),
+      gameType: g.gameType,
       day: g.day,
       metric: landed.metric,
       durationMs: landed.durationMs,
@@ -655,6 +660,7 @@ export default function GamePage() {
             slug={slug()}
             title={game()!.title}
             status={game()!.status}
+            nav={navList()}
             elapsed={null}
             onHowTo={(game()!.howTo?.length ?? 0) > 0 ? openRules : undefined}
           />
@@ -683,7 +689,7 @@ export default function GamePage() {
               }}
             >
               <img
-                src={GAME_IMAGES[slug()] ?? gameImage(`slug().webp`)}
+                src={gameImageForType(game()?.gameType ?? "")}
                 alt="Classified preview"
                 class="aspect-square w-full object-cover blur-md opacity-40 grayscale"
               />
@@ -721,6 +727,7 @@ export default function GamePage() {
             slug={slug()}
             title={game()!.title}
             tagline={game()!.tagline}
+            gameType={game()!.gameType}
             metric={game()!.metric}
             unlimited={false}
             attemptsLeft={game()!.maxAttempts}
@@ -748,6 +755,7 @@ export default function GamePage() {
               slug={slug()}
               title={game()!.title}
               tagline={game()!.tagline}
+              gameType={game()!.gameType}
               metric={game()!.metric}
               unlimited={unlimited()}
               attemptsLeft={attemptsLeft()}
@@ -781,6 +789,7 @@ export default function GamePage() {
                   slug={slug()}
                   title={game()!.title}
                   status={game()!.status}
+                  nav={navList()}
                   elapsed={elapsed()}
                   onHowTo={(game()!.howTo?.length ?? 0) > 0 ? openRules : undefined}
                 />
@@ -1140,21 +1149,17 @@ const METRIC_CHIP: Record<string, string> = {
  * mid-run actually looks at. Idle, it drops the title (the start panel below is
  * already shouting it) and is just a way back.
  */
-const GAME_NAV_LIST = [
-  { day: 1, slug: "escape-the-vallam", title: "Escape the Vallam" },
-  { day: 2, slug: "wend", title: "Word Wend" },
-  { day: 3, slug: "maveli-jump", title: "Maveli Jump" },
-  { day: 4, slug: "open-source-tinder", title: "Open Source Tinder" },
-  { day: 5, slug: "pookalam-jigsaw", title: "Pookalam Jigsaw" },
-  { day: 6, slug: "treasure-hunt", title: "The Hunt" },
-  { day: 7, slug: "code-a-pookalam", title: "Code-a-Pookalam" },
-];
-
 function GameBar(props: {
   day: number;
   slug: string;
   title: string;
   status: string;
+  /**
+   * The neighbours for the prev/next arrows, in schedule order. Derived from the
+   * games API in the page - locked cards and the Day 7 vote are already
+   * filtered out before this reaches the bar.
+   */
+  nav: { day: number; slug: string; title: string }[];
   /** Seconds elapsed, or null when no run is open. */
   elapsed: number | null;
   /** Opens the rules. Always available - see the note on the button. */
@@ -1164,11 +1169,11 @@ function GameBar(props: {
   const playing = () => props.elapsed !== null;
 
   const currentIndex = () =>
-    GAME_NAV_LIST.findIndex((g) => g.slug === props.slug || g.day === props.day);
-  const prevGame = () => (currentIndex() > 0 ? GAME_NAV_LIST[currentIndex() - 1] : null);
+    props.nav.findIndex((g) => g.slug === props.slug || g.day === props.day);
+  const prevGame = () => (currentIndex() > 0 ? props.nav[currentIndex() - 1] : null);
   const nextGame = () =>
-    currentIndex() >= 0 && currentIndex() < GAME_NAV_LIST.length - 1
-      ? GAME_NAV_LIST[currentIndex() + 1]
+    currentIndex() >= 0 && currentIndex() < props.nav.length - 1
+      ? props.nav[currentIndex() + 1]
       : null;
 
   return (
@@ -1306,6 +1311,7 @@ function StartPanel(props: {
   metric: string;
   unlimited: boolean;
   attemptsLeft: number;
+  gameType?: string;
   isRetryGame: boolean;
   isCatchUp: boolean;
   isTesterWindow: boolean;
@@ -1331,7 +1337,7 @@ function StartPanel(props: {
         ? `${props.attemptsLeft} run${props.attemptsLeft === 1 ? "" : "s"} left today`
         : "One attempt";
 
-  const imageSrc = () => GAME_IMAGES[props.slug] ?? gameImage(`${props.slug}.webp`);
+  const imageSrc = () => gameImageForType(props.gameType ?? "");
 
   return (
     <section
