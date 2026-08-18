@@ -1340,6 +1340,141 @@ textarea {
   border: var(--ink-w) solid var(--ink);
 }
 
+.game-hype-current-countdown {
+  position: absolute;
+  z-index: 25;
+  top: 0.6rem;
+  left: 0.4rem;
+  line-height: 1;
+}
+@keyframes game-hype-drift-mobile {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -0.07rem;
+  }
+}
+
+@keyframes game-hype-drift {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -0.28rem;
+  }
+}
+
+@keyframes game-hype-pulse {
+  0%,
+  100% {
+    scale: 1;
+  }
+  50% {
+    scale: 1.025;
+  }
+}
+
+@keyframes game-hype-token-one {
+  0%,
+  100% {
+    transform: rotate(-7deg) translate(0, 0);
+  }
+  50% {
+    transform: rotate(-7deg) translate(0, -0.3rem);
+  }
+}
+
+@keyframes game-hype-token-two {
+  0%,
+  100% {
+    transform: rotate(6deg) translate(0, 0);
+  }
+  50% {
+    transform: rotate(6deg) translate(0.18rem, -0.22rem);
+  }
+}
+
+@keyframes game-hype-token-three {
+  0%,
+  100% {
+    transform: rotate(4deg) translate(0, 0);
+  }
+  50% {
+    transform: rotate(4deg) translate(-0.16rem, -0.25rem);
+  }
+}
+
+.game-hype-game-token:nth-child(1) {
+  animation: game-hype-token-one 4.8s ease-in-out infinite;
+}
+
+.game-hype-game-token:nth-child(2) {
+  animation: game-hype-token-two 5.2s ease-in-out infinite -2.6s;
+}
+
+.game-hype-game-token:nth-child(3) {
+  animation: game-hype-token-three 4.5s ease-in-out infinite -3.7s;
+}
+
+.game-hype-stickers {
+  animation: game-hype-drift 7s ease-in-out infinite;
+}
+
+.game-hype-copy {
+  animation-delay: -2.4s;
+}
+
+.game-hype-prize-card {
+  position: absolute;
+  z-index: 35;
+  bottom: 2.5rem;
+  left: 1rem;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.08rem;
+  width: fit-content;
+  margin: 0;
+  padding: 0.45rem 0.9rem;
+  border: var(--ink-w) solid var(--ink);
+  border-radius: 0.5rem;
+  background: var(--pop-blue);
+  color: var(--ink);
+  line-height: 1.05;
+  text-align: center;
+  rotate: -1.5deg;
+  scale: 1.3;
+}
+
+.game-hype-prize-kicker {
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.game-hype-prize-card strong {
+  font-family: var(--font-stack-display);
+  font-size: 1.35rem;
+}
+
+.game-hype-prize-card > span:last-child {
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-hype-copy,
+  .game-hype-game-token,
+  .game-hype-stickers,
+  .game-hype-prize-card {
+    animation: none;
+  }
+}
+
 .pookalam-cta-wrap {
   position: relative;
   display: inline-flex;
@@ -1415,18 +1550,18 @@ textarea {
   position: absolute;
   z-index: 30;
   right: -1rem;
-  bottom: -2.6rem;
+  bottom: -4.6rem;
   display: grid;
   place-items: center;
   width: clamp(9.5rem, 23vw, 13rem);
   min-height: clamp(7.5rem, 18vw, 10rem);
   padding: 0.25rem 0.2rem 0.25rem;
   overflow: hidden;
-  border: var(--ink-w) solid var(--ink);
-  border-radius: 0.65rem;
-  background: var(--pop-yellow);
+  /* border: var(--ink-w) solid var(--ink); */
+  /* border-radius: 0.65rem; */
+  /* background: var(--pop-yellow); */
   color: var(--ink);
-  font-family: var(--font-stack-comic);
+  font-family: var(--font-stack-letter);
   font-size: clamp(2.35rem, 6.3vw, 4.3rem);
   line-height: 0.78;
   text-align: center;
@@ -1436,17 +1571,17 @@ textarea {
   paint-order: stroke fill;
 }
 
-.game-hype-play::before,
-.game-hype-play::after {
-  position: absolute;
-  z-index: -1;
-  color: var(--pop-teal);
-  font-family: var(--font-stack-hand);
-  font-size: clamp(2rem, 6vw, 4rem);
-  font-weight: 800;
-  line-height: 1;
-  content: "〰";
-}
+/* .game-hype-play::before, */
+/* .game-hype-play::after { */
+/*   position: absolute; */
+/*   z-index: -1; */
+/*   color: var(--pop-teal); */
+/*   font-family: var(--font-stack-hand); */
+/*   font-size: clamp(2rem, 6vw, 4rem); */
+/*   font-weight: 800; */
+/*   line-height: 1; */
+/*   content: "〰"; */
+/* } */
 
 .game-hype-play::before {
   top: 0.7rem;
@@ -1551,6 +1686,42 @@ textarea {
 }
 
 @media (max-width: 767px) {
+  .game-hype-current-countdown {
+    position: absolute;
+    z-index: 25;
+    top: auto;
+    bottom: -1.8rem;
+    left: -2.2rem;
+    line-height: 1;
+    scale: 0.6;
+  }
+  .game-hype-prize-card {
+    position: absolute;
+    z-index: 35;
+    top: -1rem;
+    bottom: auto;
+    right: -1.3rem;
+    left: auto;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.08rem;
+    width: fit-content;
+    margin: 0;
+    padding: 0.45rem 0.2rem;
+    border: var(--ink-w) solid var(--ink);
+    border-radius: 0.5rem;
+    background: var(--pop-blue);
+    color: var(--ink);
+    line-height: 1.05;
+    text-align: center;
+    rotate: 3.5deg;
+    scale: 0.8;
+  }
+  .game-hype-stickers {
+    animation: game-hype-drift-mobile 7s ease-in-out infinite;
+  }
+
   .game-hype-card {
     display: grid;
     grid-template-columns: minmax(0, 1fr);

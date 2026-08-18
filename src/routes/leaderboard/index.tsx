@@ -174,15 +174,6 @@ export default function Leaderboard() {
   const isDay7 = () =>
     selectedDay() === 7 && (selectedGame()?.gameType === "vote" || !selectedGame());
 
-  // Auto-set tab to tester if currently selected game is in tester preview and no query override
-  createEffect(() => {
-    const g = selectedGame();
-    if (g && g.status === "tester" && isTesterOrAdmin() && !searchParams.view) {
-      setViewMode("tester");
-      setSearchParams({ day: selectedDay(), view: "tester" }, { replace: true });
-    }
-  });
-
   const [pending, startTransition] = useTransition();
   const [sharing, setSharing] = createSignal(false);
   const [page, setPage] = createSignal(1);
@@ -424,7 +415,7 @@ export default function Leaderboard() {
                   startTransition(() => {
                     setPage(1);
                     setViewMode("main");
-                    setSearchParams({ day: selectedDay() }, { replace: true });
+                    setSearchParams({ day: selectedDay(), view: undefined }, { replace: true });
                   })
                 }
                 class={`px-2.5 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${

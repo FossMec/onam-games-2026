@@ -634,6 +634,13 @@ export default function GamePage() {
 
   return (
     <main class="container space-y-6 py-6">
+      <A
+        href={`/games?day=${game()?.day ?? 1}`}
+        class="btn-ghost inline-flex items-center gap-2 text-sm font-extrabold"
+      >
+        <ChevronLeft size={16} strokeWidth={2.5} />
+        Back to games
+      </A>
       <Title>{game()?.title ?? "Game"} - Onam Games</Title>
 
       <Show when={game() === undefined}>
@@ -736,6 +743,7 @@ export default function GamePage() {
             isTesterWindow={false}
             preview
             releaseAt={game()!.releaseAt}
+            endAt={game()!.endAt}
             busy={false}
             startLabel=""
             onStart={() => undefined}
@@ -763,6 +771,7 @@ export default function GamePage() {
               isCatchUp={isCatchUp()}
               isTesterWindow={game()!.status === "tester"}
               releaseAt={game()!.releaseAt}
+              endAt={game()!.endAt}
               busy={busy()}
               startLabel={startLabel()}
               onStart={openHowTo}
@@ -1322,6 +1331,7 @@ function StartPanel(props: {
    */
   preview?: boolean;
   releaseAt: string | null;
+  endAt: string | null;
   busy: boolean;
   startLabel: string;
   onStart: () => void;
@@ -1430,6 +1440,18 @@ function StartPanel(props: {
               </p>
             </div>
             <p class="comment">read the rules now, save the seconds later.</p>
+          </Show>
+
+          <Show when={!props.preview && props.endAt}>
+            <div
+              class="mx-auto max-w-sm rounded-lg p-3 text-center"
+              style={{ background: "var(--paper-3)", border: "var(--ink-w) solid var(--ink)" }}
+            >
+              <p class="font-display text-sm font-extrabold uppercase tracking-wide">
+                Time left to play
+              </p>
+              <Countdown target={new Date(props.endAt!)} doneLabel="Game closed" />
+            </div>
           </Show>
 
           {/* One call to action, whichever one actually applies. */}

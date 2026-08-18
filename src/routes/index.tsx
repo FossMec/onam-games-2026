@@ -34,7 +34,7 @@ const DAY_POPS = [
 ];
 
 const statusSticker: Record<string, { label: string; pop: string }> = {
-  live: { label: "Live now", pop: "var(--pop-teal)" },
+  live: { label: "Live now", pop: "var(--pop-pink)" },
   tester: { label: "Tester access", pop: "var(--pop-purple)" },
   preview: { label: "Opens soon", pop: "var(--pop-yellow)" },
   upcoming: { label: "Locked", pop: "var(--paper-3)" },
@@ -596,6 +596,10 @@ export default function Home() {
             const isDay7 = current.day === 7;
             const targetHref = isDay7 ? "/code-a-pookalam/vote" : `/games/${current.slug}`;
             const playHref = me() ? targetHref : "/auth/signin";
+            const arenaHref = `/games?day=${current.day}`;
+            const openHref = me()
+              ? arenaHref
+              : `/auth/signin?next=${encodeURIComponent(arenaHref)}`;
             const canPlay = current.status === "live" || current.status === "tester";
 
             return (
@@ -612,11 +616,11 @@ export default function Home() {
                 <article
                   role="link"
                   tabIndex={0}
-                  onClick={() => navigate(canPlay ? playHref : "/games")}
+                  onClick={() => navigate(arenaHref)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
-                      navigate(canPlay ? playHref : "/games");
+                      navigate(arenaHref);
                     }
                   }}
                   class={`game-hype-current ${DAY_POPS[(current.day - 1) % DAY_POPS.length]} relative overflow-hidden rounded-lg border-1 border-[var(--ink)] p-3 pb-4 space-y-3 sm:p-4 sm:pb-5 sm:space-y-4`}
@@ -685,7 +689,7 @@ export default function Home() {
                               "font-family": "var(--font-stack-display)",
                             }}
                           >
-                            Day {current.day} · Daily Challenge
+                            Day {current.day} · Mini Game
                           </span>
                         </div>
                         <span class="sticker" style={{ "--pop": sticker.pop }}>
@@ -702,12 +706,26 @@ export default function Home() {
                       </h3>
 
                       <div class="pt-3">
+                        <Show
+                          when={
+                            current.endAt &&
+                            (current.status === "live" || current.status === "tester")
+                          }
+                        >
+                          <div class="game-hype-current-countdown flex items-center justify-center gap-1.5 text-xs font-black uppercase tracking-wider">
+                            <Countdown
+                              target={new Date(current.endAt!)}
+                              doneLabel="Game closed"
+                              compact
+                            />
+                          </div>
+                        </Show>
                         <A
-                          href="/games"
+                          href={openHref}
                           class="btn-brand px-4 py-2 text-sm"
                           onClick={(event) => event.stopPropagation()}
                         >
-                          Open now <span aria-hidden="true">→</span>
+                          Go to Games
                         </A>
                       </div>
 
@@ -757,6 +775,15 @@ export default function Home() {
                 </article>
 
                 <div class="game-hype-stage relative z-10 mt-3 md:mt-0">
+                  <div class="game-hype-prize-card" aria-label="Daily prize">
+                    <span class="game-hype-prize-kicker">Daily challenge prize</span>
+                    <strong>Win ₹200</strong>
+                    <span>
+                      {current.gameType === "jump"
+                        ? "most height reached wins"
+                        : "fastest verified finish wins"}
+                    </span>
+                  </div>
                   <div class="game-hype-copy relative z-20  font-[var(--font-stack-hand)]">
                     <h3>
                       The FOSS you love was made by people like you.
@@ -835,7 +862,9 @@ export default function Home() {
                             >
                               <div
                                 class="relative aspect-square w-10 overflow-hidden rounded bg-[var(--paper-2)] sm:w-12 lg:w-full"
-                                style={{ border: "var(--ink-w) solid var(--ink)" }}
+                                style={{
+                                  border: "var(--ink-w) solid var(--ink)",
+                                }}
                               >
                                 <img
                                   src={gameImageForType(item.gameType)}
@@ -847,7 +876,9 @@ export default function Home() {
                                   <span class="absolute inset-0 grid place-items-center">
                                     <span
                                       class="grid h-5 w-5 place-items-center rounded-full bg-[var(--paper-2)]"
-                                      style={{ border: "var(--ink-w) solid var(--ink)" }}
+                                      style={{
+                                        border: "var(--ink-w) solid var(--ink)",
+                                      }}
                                     >
                                       <Lock size={10} strokeWidth={2.5} />
                                     </span>

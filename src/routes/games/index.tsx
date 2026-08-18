@@ -339,6 +339,13 @@ export default function GamesPage() {
                           </A>
                         </Show>
 
+                        <Show when={!locked && !previewing && current.endAt}>
+                          <div class="card card-plain flex flex-col items-center justify-center gap-1 p-3 text-center">
+                            <p class="comment text-sm">Time left to play today</p>
+                            <Countdown target={new Date(current.endAt!)} doneLabel="Game closed" />
+                          </div>
+                        </Show>
+
                         <Show when={current.status === "live" || current.status === "tester"}>
                           <A
                             href={playHref}
