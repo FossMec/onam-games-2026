@@ -16,6 +16,7 @@ import {
   adminRemoveLeaderboardEntry,
   adminResetTesterAttempts,
   adminResetGameAttempts,
+  adminResetUserAttempts,
   adminSetTesterActive,
   adminSetUserBanLevel,
   adminSetUserRole,
@@ -59,6 +60,10 @@ export async function resetTesterAttemptsAction(
 
 export async function resetGameAttemptsAction(gameIds: string[]) {
   return adminResetGameAttempts(gameIds);
+}
+
+export async function resetUserAttemptsAction(userId: string, gameId?: string) {
+  return adminResetUserAttempts(userId, gameId);
 }
 
 export async function listUsers(page = 0) {

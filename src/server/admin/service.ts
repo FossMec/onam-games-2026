@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import {
   activityLogs,
   appSettings,
@@ -434,7 +434,37 @@ export async function adminResetGameAttempts(gameIds: string[]) {
     .select({ id: gameAttempts.id })
     .from(gameAttempts)
     .innerJoin(users, eq(users.id, gameAttempts.userId))
-    .where(and(inArray(gameAttempts.gameId, gameIds), eq(users.role, "tester")));
+    .where(
+      and(
+        inArray(gameAttempts.gameId, gameIds),
+        or(eq(users.role, "tester"), eq(users.role, "admin")),
+      ),
+    );
+  if (matching.length === 0) return 0;
+  const attemptIds = matching.map((attempt) => attempt.id);
+  await db.delete(dailyLeaderboard).where(inArray(dailyLeaderboard.attemptId, attemptIds));
+  await db.delete(gameAttempts).where(inArray(gameAttempts.id, attemptIds));
+  return matching.length;
+}
+
+/** Delete attempts for one privileged user, optionally limited to one game. */
+export async function adminResetUserAttempts(userId: string, gameId?: string) {
+  await requireAdmin();
+  const db = getDb();
+  const [user] = await db
+    .select({ role: users.role })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!user || (user.role !== "tester" && user.role !== "admin")) {
+    throw new Error("Only tester or admin data can be reset here");
+  }
+  const conditions = [eq(gameAttempts.userId, userId)];
+  if (gameId) conditions.push(eq(gameAttempts.gameId, gameId));
+  const matching = await db
+    .select({ id: gameAttempts.id })
+    .from(gameAttempts)
+    .where(and(...conditions));
   if (matching.length === 0) return 0;
   const attemptIds = matching.map((attempt) => attempt.id);
   await db.delete(dailyLeaderboard).where(inArray(dailyLeaderboard.attemptId, attemptIds));

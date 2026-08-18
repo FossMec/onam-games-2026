@@ -62,6 +62,12 @@ export const settingsRegistry: SettingDef[] = [
     defaultValue: true,
   },
   {
+    key: "access.tester_real_leaderboard",
+    group: "access",
+    description: "Hide tester and admin results from the player leaderboard",
+    defaultValue: true,
+  },
+  {
     key: "enforce_one_user_per_device",
     group: "anti-cheat",
     description: "Block a second account on a device already bound to another account",

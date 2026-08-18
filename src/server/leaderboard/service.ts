@@ -72,8 +72,11 @@ export async function getDailyLeaderboard(
   const safePageSize = Math.min(100, Math.max(1, pageSize));
   const offset = (safePage - 1) * safePageSize;
 
-  const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
-  const ranked = rankedBoard(db, gameId, viewerRole, viewMode, metric, isTesterModeEnabled);
+  const hideTestersFromPlayerBoard = await getSetting<boolean>(
+    "access.tester_real_leaderboard",
+    true,
+  );
+  const ranked = rankedBoard(db, gameId, viewerRole, viewMode, metric, hideTestersFromPlayerBoard);
   const inSlice = and(
     sql`${ranked.rank} > ${offset}`,
     sql`${ranked.rank} <= ${offset + safePageSize}`,
@@ -137,7 +140,7 @@ function rankedBoard(
   viewerRole: ViewerRole,
   viewMode: "main" | "tester",
   metric: GameMetric,
-  isTesterModeEnabled = true,
+  hideTestersFromPlayerBoard = true,
 ) {
   return db.$with("ranked").as(
     db
@@ -172,7 +175,7 @@ function rankedBoard(
       })
       .from(dailyLeaderboard)
       .innerJoin(users, eq(users.id, dailyLeaderboard.userId))
-      .where(and(...boardConditions(gameId, viewerRole, viewMode, isTesterModeEnabled))),
+      .where(and(...boardConditions(gameId, viewerRole, viewMode, hideTestersFromPlayerBoard))),
   );
 }
 
@@ -180,17 +183,14 @@ function boardConditions(
   gameId: string,
   viewerRole: ViewerRole,
   viewMode: "main" | "tester",
-  isTesterModeEnabled = true,
+  hideTestersFromPlayerBoard = true,
 ) {
-  /*
-   * When tester_mode is disabled (real-player test mode), testers & admins play
-   * with 1 attempt like normal players and appear directly on the main leaderboard.
-   */
-  const roleFilter = !isTesterModeEnabled
-    ? undefined
-    : viewerRole === "player" || viewMode === "main"
-      ? and(ne(users.role, "tester"), ne(users.role, "admin"))
-      : or(eq(users.role, "tester"), eq(users.role, "admin"));
+  const roleFilter =
+    viewMode === "tester"
+      ? or(eq(users.role, "tester"), eq(users.role, "admin"))
+      : hideTestersFromPlayerBoard
+        ? and(ne(users.role, "tester"), ne(users.role, "admin"))
+        : undefined;
 
   const conditions = [
     eq(dailyLeaderboard.gameId, gameId),
@@ -229,9 +229,12 @@ export async function getMyStanding(
     .where(eq(games.id, gameId))
     .limit(1);
   const metric: GameMetric = game ? (getGameDefByType(game.gameType)?.metric ?? "time") : "time";
-  const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
+  const hideTestersFromPlayerBoard = await getSetting<boolean>(
+    "access.tester_real_leaderboard",
+    true,
+  );
   const viewMode = viewerRole === "player" ? "main" : "tester";
-  const ranked = rankedBoard(db, gameId, viewerRole, viewMode, metric, isTesterModeEnabled);
+  const ranked = rankedBoard(db, gameId, viewerRole, viewMode, metric, hideTestersFromPlayerBoard);
   const [row] = await db
     .with(ranked)
     .select()

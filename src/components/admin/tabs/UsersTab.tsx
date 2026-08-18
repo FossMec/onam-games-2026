@@ -1,7 +1,7 @@
 import { CheckCircle, Search, ShieldAlert, X } from "lucide-solid";
 import { For, Show, createMemo, createSignal } from "solid-js";
 import { setUserBanLevel, setUserRole } from "~/server/admin/actions";
-import { TesterAttemptReset } from "~/components/admin/TesterAttemptReset";
+import { UserAttemptReset } from "~/components/admin/UserAttemptReset";
 
 export interface UserRow {
   id: string;
@@ -139,13 +139,6 @@ export function UsersTab(props: UsersTabProps) {
           {filteredUsers().length} / {props.users.length} Users
         </div>
       </div>
-
-      <TesterAttemptReset
-        users={props.users}
-        games={props.games}
-        onReload={props.onReload}
-        onNotify={props.onNotify}
-      />
 
       {/* Filter & Search Bar */}
       <div class="card card-plain p-3 bg-[var(--paper-2)] space-y-3">
@@ -382,6 +375,15 @@ export function UsersTab(props: UsersTabProps) {
                         >
                           {isBanned() ? "Adjust / Unban" : "Ban User"}
                         </button>
+                        <Show when={u.role === "tester" || u.role === "admin"}>
+                          <UserAttemptReset
+                            userId={u.id}
+                            userName={u.name}
+                            games={props.games}
+                            onReload={props.onReload}
+                            onNotify={props.onNotify}
+                          />
+                        </Show>
                       </td>
                     </tr>
                   );

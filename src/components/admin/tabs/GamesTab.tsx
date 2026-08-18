@@ -50,18 +50,25 @@ export function GamesTab(props: GamesTabProps) {
   const [resetGameId, setResetGameId] = createSignal("");
 
   const resetGameAttempts = async () => {
+    const allGames = resetGameId() === "__all__";
     const game = props.games.find((item) => item.id === resetGameId());
-    if (!game) return;
+    if (!game && !allGames) return;
     if (
       !confirm(
-        `Permanently delete tester attempts and leaderboard rows for Day ${game.day}: ${game.title}?`,
+        allGames
+          ? "Permanently delete tester attempts and leaderboard rows for every game?"
+          : `Permanently delete tester attempts and leaderboard rows for Day ${game!.day}: ${game!.title}?`,
       )
     )
       return;
     setBusy(true);
     try {
-      const count = await resetGameAttemptsAction([game.id]);
-      props.onNotify(`Cleared ${count} attempt${count === 1 ? "" : "s"} for ${game.title}`);
+      const count = await resetGameAttemptsAction(
+        allGames ? props.games.map((item) => item.id) : [game!.id],
+      );
+      props.onNotify(
+        `Cleared ${count} tester attempt${count === 1 ? "" : "s"}${allGames ? " across all games" : ` for ${game!.title}`}`,
+      );
       setResetGameId("");
       props.onReload();
     } catch (err) {
@@ -180,8 +187,8 @@ export function GamesTab(props: GamesTabProps) {
       <div class="card card-plain p-4 space-y-2 bg-[var(--pop-yellow)]/30">
         <h3 class="font-black">Reset Game Data</h3>
         <p class="text-xs font-semibold opacity-80">
-          Permanently deletes tester attempts and leaderboard rows for the selected game. Normal
-          player data is never touched.
+          Permanently deletes tester/admin test attempts and leaderboard rows. Normal player data is
+          never touched.
         </p>
         <div class="flex flex-wrap gap-2">
           <select
@@ -190,6 +197,7 @@ export function GamesTab(props: GamesTabProps) {
             onChange={(e) => setResetGameId(e.currentTarget.value)}
           >
             <option value="">Select a game</option>
+            <option value="__all__">All games</option>
             <For each={props.games}>
               {(game) => (
                 <option value={game.id}>
@@ -204,7 +212,7 @@ export function GamesTab(props: GamesTabProps) {
             disabled={busy() || !resetGameId()}
             onClick={resetGameAttempts}
           >
-            Clear tester attempts for game
+            Clear tester/admin attempts
           </button>
         </div>
       </div>
