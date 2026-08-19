@@ -16,6 +16,8 @@ export function PookalamBalloons() {
   const [balloon, setBalloon] = createSignal<{ left: number; color: string } | null>(null);
   const [popped, setPopped] = createSignal(false);
   const [pageHeight, setPageHeight] = createSignal(0);
+  /** Set to true when the admin has disabled balloons site-wide. */
+  const [disabled, setDisabled] = createSignal(false);
   let spawnTimer: ReturnType<typeof setTimeout> | undefined;
   let removeTimer: ReturnType<typeof setTimeout> | undefined;
   let balloonLayer: HTMLDivElement | undefined;
@@ -45,6 +47,7 @@ export function PookalamBalloons() {
   };
 
   const schedule = () => {
+    if (disabled()) return;
     if (
       (pookalamDailyLimit() > 0 && spawnedToday() >= Math.ceil(pookalamDailyLimit() / 5)) ||
       !canCollectPookalamBalloon()
@@ -53,6 +56,7 @@ export function PookalamBalloons() {
     spawnTimer = setTimeout(
       () => {
         spawnTimer = undefined;
+        if (disabled()) return;
         if (
           (pookalamDailyLimit() > 0 && spawnedToday() >= Math.ceil(pookalamDailyLimit() / 5)) ||
           !canCollectPookalamBalloon()
@@ -95,7 +99,7 @@ export function PookalamBalloons() {
   createEffect(() => {
     if (location.pathname.startsWith("/games/")) {
       stop();
-    } else if (!balloon() && !spawnTimer) {
+    } else if (!disabled() && !balloon() && !spawnTimer) {
       schedule();
     }
   });
@@ -110,6 +114,20 @@ export function PookalamBalloons() {
   });
 
   onMount(() => {
+    // Read the admin disable flag once at startup. A failure here is not fatal
+    // — balloons just keep running, which is the safe default.
+    fetch("/api/pookalam/state")
+      .then((r) => r.json())
+      .then((state) => {
+        if (state?.disableBalloons) {
+          setDisabled(true);
+          stop();
+        }
+      })
+      .catch(() => {
+        /* ignore — balloons run by default */
+      });
+
     const measure = () => {
       if (!balloonLayer) return;
       const previousHeight = balloonLayer.style.height;
@@ -132,7 +150,7 @@ export function PookalamBalloons() {
     // down below the cap must kick the scheduler back to life.
     const handleCreditsChanged = () => {
       if (location.pathname.startsWith("/games/")) return;
-      if (!balloon() && !spawnTimer) schedule();
+      if (!disabled() && !balloon() && !spawnTimer) schedule();
     };
     window.addEventListener(POOKALAM_CREDITS_EVENT, handleCreditsChanged);
     onCleanup(() => {

@@ -65,6 +65,10 @@ export function CollabPookalam() {
   const [loaded, setLoaded] = createSignal(false);
   const [drawing, setDrawing] = createSignal(false);
   const [showHowTo, setShowHowTo] = createSignal(false);
+  /** Canvas is view-only (admin killed drawing). */
+  const [disableDrawing, setDisableDrawing] = createSignal(false);
+  /** Wish bubbles + composer are hidden (admin killed comments). */
+  const [disableComments, setDisableComments] = createSignal(false);
 
   // Wishes state (pool of up to 30 loaded once, smoothly rotated locally on client)
   const [messagePool, setMessagePool] = createSignal<CollabMessageItem[]>([]);
@@ -322,6 +326,8 @@ export function CollabPookalam() {
       setCanPlace(state.canPlace);
       setAllowance(state.dailyFlowers);
       setPookalamDailyLimit(state.dailyFlowers);
+      setDisableDrawing(!!state.disableDrawing);
+      setDisableComments(!!state.disableComments);
       initBucket();
 
       // If default picked flower is already capped, select first available
@@ -965,7 +971,7 @@ export function CollabPookalam() {
       </div>
 
       {/* ---------------- Mobile Playful Scattered Mini Wishes (Non-overlapping) ---------------- */}
-      <Show when={mobileWishes().length > 0}>
+      <Show when={!disableComments() && mobileWishes().length > 0}>
         <div class="lg:hidden w-full flex items-center justify-center gap-2 py-0.5 px-1 overflow-x-auto scrollbar-none">
           <For each={mobileWishes()}>
             {(msg, idx) => (
@@ -986,17 +992,19 @@ export function CollabPookalam() {
       <div class="flex items-center justify-center gap-2.5 lg:gap-3.5 w-full max-w-full relative">
         {/* Far Left Margin: Outer Floating Tilted Speech Bubbles (Desktop Only) */}
         <div class="hidden xl:flex flex-col items-end gap-3.5 shrink-0 w-44 self-center pointer-events-auto z-20 pr-1">
-          <For each={leftOuterMessages()}>
-            {(msg, idx) => (
-              <WishBubble
-                msg={msg}
-                onLike={toggleLike}
-                onDelete={deleteWish}
-                isAdmin={isAdmin()}
-                index={idx() * 2}
-              />
-            )}
-          </For>
+          <Show when={!disableComments()}>
+            <For each={leftOuterMessages()}>
+              {(msg, idx) => (
+                <WishBubble
+                  msg={msg}
+                  onLike={toggleLike}
+                  onDelete={deleteWish}
+                  isAdmin={isAdmin()}
+                  index={idx() * 2}
+                />
+              )}
+            </For>
+          </Show>
         </div>
 
         {/* Left Toolbar: Desktop Vertical Poov Brushes */}
@@ -1163,7 +1171,28 @@ export function CollabPookalam() {
               The shared pookalam is closed right now.
             </p>
           </Show>
-          <Show when={loaded() && open() && !canPlace()}>
+          {/* Celebration banner shown when drawing is locked post-event */}
+          <Show when={loaded() && disableDrawing()}>
+            <div
+              class="w-full max-w-[480px] text-center px-4 py-3 rounded space-y-0.5"
+              style={{
+                background: "var(--pop-yellow)",
+                border: "var(--ink-w-bold) solid var(--ink)",
+              }}
+            >
+              <p
+                class="font-black text-sm leading-snug m-0"
+                style={{ "font-family": "var(--font-stack-display)", color: "var(--ink)" }}
+              >
+                This pookalam was built together. 🌸
+              </p>
+              <p class="text-[11px] font-semibold m-0" style={{ color: "var(--ink)" }}>
+                With your support, the community crafted this beautiful pookalam — every petal
+                placed by a friend of FOSS MEC.
+              </p>
+            </div>
+          </Show>
+          <Show when={loaded() && open() && !disableDrawing() && !canPlace()}>
             <p class="font-semibold text-xs mt-1 text-center">
               <a
                 href="/auth/signin"
@@ -1184,7 +1213,7 @@ export function CollabPookalam() {
           </Show>
 
           {/* ---------------- User Wish Composer / Status (Visible when window limit reached or for Admins) ---------------- */}
-          <Show when={canPlace() && (left() <= 0 || isAdmin())}>
+          <Show when={!disableComments() && canPlace() && (left() <= 0 || isAdmin())}>
             <div
               class="card card-plain p-2.5 rounded w-full max-w-[480px] space-y-1.5 transition-all text-left"
               style={{
@@ -1357,17 +1386,19 @@ export function CollabPookalam() {
 
         {/* Far Right Margin: Outer Floating Tilted Speech Bubbles (Desktop Only) */}
         <div class="hidden xl:flex flex-col items-start gap-3.5 shrink-0 w-44 self-center pointer-events-auto z-20 pl-1">
-          <For each={rightOuterMessages()}>
-            {(msg, idx) => (
-              <WishBubble
-                msg={msg}
-                onLike={toggleLike}
-                onDelete={deleteWish}
-                isAdmin={isAdmin()}
-                index={idx() * 2 + 1}
-              />
-            )}
-          </For>
+          <Show when={!disableComments()}>
+            <For each={rightOuterMessages()}>
+              {(msg, idx) => (
+                <WishBubble
+                  msg={msg}
+                  onLike={toggleLike}
+                  onDelete={deleteWish}
+                  isAdmin={isAdmin()}
+                  index={idx() * 2 + 1}
+                />
+              )}
+            </For>
+          </Show>
         </div>
       </div>
 

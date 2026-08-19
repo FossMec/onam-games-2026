@@ -8,6 +8,7 @@ import {
   adminGetMetrics,
   adminListActivity,
   adminListAttempts,
+  adminListCollabMessages,
   adminListGames,
   adminListSettings,
   adminListSuspicious,
@@ -25,6 +26,7 @@ import {
   adminVoidAttempt,
 } from "~/server/admin/service";
 import { requireAdmin } from "~/server/auth/service";
+import { deleteCollabMessage } from "~/server/pookalam/comments";
 
 export async function getAdminDashboard() {
   await requireAdmin();
@@ -159,4 +161,13 @@ export async function updateGame(id: string, patch: Parameters<typeof adminUpdat
 
 export async function deleteGame(id: string) {
   await adminDeleteGame(id);
+}
+
+export async function listCollabMessagesAction(page = 0) {
+  return adminListCollabMessages(30, Math.max(0, page) * 30);
+}
+
+export async function adminDeleteCollabMessageAction(messageId: string) {
+  await requireAdmin();
+  return deleteCollabMessage(messageId);
 }

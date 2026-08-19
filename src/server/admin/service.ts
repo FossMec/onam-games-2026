@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import {
   activityLogs,
   appSettings,
+  collabMessages,
   dailyLeaderboard,
   devices,
   gameAttempts,
@@ -18,6 +19,7 @@ import { requireAdmin } from "~/server/auth/service";
 import type { BanLevel } from "~/server/auth/bans";
 import { setBanLevel } from "~/server/auth/bans";
 import { ensureDefaultSettings } from "~/server/settings/defaults";
+import { ensureMessageTables } from "~/server/pookalam/comments";
 
 export async function adminListUsers(limit = 100, offset = 0) {
   await requireAdmin();
@@ -470,4 +472,30 @@ export async function adminResetUserAttempts(userId: string, gameId?: string) {
   await db.delete(dailyLeaderboard).where(inArray(dailyLeaderboard.attemptId, attemptIds));
   await db.delete(gameAttempts).where(inArray(gameAttempts.id, attemptIds));
   return matching.length;
+}
+
+/**
+ * List all community Onam wishes for admin moderation.
+ * Returns messages newest-first across all day keys with pagination.
+ */
+export async function adminListCollabMessages(limit = 30, offset = 0) {
+  await requireAdmin();
+  await ensureMessageTables();
+  const db = getDb();
+
+  return db
+    .select({
+      id: collabMessages.id,
+      dayKey: collabMessages.dayKey,
+      userId: collabMessages.userId,
+      userName: collabMessages.userName,
+      userAvatar: collabMessages.userAvatar,
+      message: collabMessages.message,
+      likesCount: collabMessages.likesCount,
+      createdAt: collabMessages.createdAt,
+    })
+    .from(collabMessages)
+    .orderBy(desc(collabMessages.createdAt))
+    .limit(limit)
+    .offset(offset);
 }

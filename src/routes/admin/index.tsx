@@ -5,7 +5,9 @@ import { Show, Suspense, createSignal } from "solid-js";
 import { AdminTabs, type AdminTabId } from "~/components/admin/AdminTabs";
 import { PookalamGallery } from "~/components/admin/PookalamGallery";
 import { PookalamReview } from "~/components/admin/PookalamReview";
+import { PookalamAnimationExport } from "~/components/admin/PookalamAnimationExport";
 import { AttemptsTab } from "~/components/admin/tabs/AttemptsTab";
+import { CollabWishesTab } from "~/components/admin/tabs/CollabWishesTab";
 import { GamesTab } from "~/components/admin/tabs/GamesTab";
 import { LogsTab } from "~/components/admin/tabs/LogsTab";
 import { OverviewTab } from "~/components/admin/tabs/OverviewTab";
@@ -18,6 +20,7 @@ import {
   adminActivity,
   adminAttempts,
   adminBlockedIps,
+  adminCollabMessages,
   adminDashboard,
   adminSettings,
   adminSuspicious,
@@ -57,6 +60,9 @@ export default function Admin() {
   });
   const activity = createAsync(() =>
     activeTab() === "logs" ? adminActivity(page()) : Promise.resolve(null),
+  );
+  const collabMessages = createAsync(() =>
+    activeTab() === "pookalam" ? adminCollabMessages(page()) : Promise.resolve(null),
   );
 
   const data = createAsync(async () => {
@@ -288,15 +294,15 @@ export default function Admin() {
                   </Show>
                 </Show>
 
-                {/* 8. Code-a-Pookalam Review Tab */}
+                {/* 8. Code-a-Pookalam Review & Collab Management Tab */}
                 <Show when={activeTab() === "pookalam"}>
                   {(() => {
-                    const [pookalamSub, setPookalamSub] = createSignal<"review" | "gallery">(
-                      "review",
-                    );
+                    const [pookalamSub, setPookalamSub] = createSignal<
+                      "review" | "gallery" | "wishes" | "animation"
+                    >("review");
                     return (
                       <div class="space-y-5">
-                        <div class="inline-flex rounded-md border-2 border-[var(--ink)] p-0.5 bg-[var(--paper)]">
+                        <div class="inline-flex rounded-md border-2 border-[var(--ink)] p-0.5 bg-[var(--paper)] flex-wrap gap-1">
                           <button
                             type="button"
                             onClick={() => setPookalamSub("review")}
@@ -319,6 +325,28 @@ export default function Admin() {
                           >
                             Shortlisting gallery
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => setPookalamSub("wishes")}
+                            class={`px-3 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
+                              pookalamSub() === "wishes"
+                                ? "bg-[var(--pop-pink)] text-[var(--ink)]"
+                                : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                            }`}
+                          >
+                            Community Wishes
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPookalamSub("animation")}
+                            class={`px-3 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
+                              pookalamSub() === "animation"
+                                ? "bg-[var(--pop-purple)] text-[var(--ink)]"
+                                : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                            }`}
+                          >
+                            Animation Export
+                          </button>
                         </div>
 
                         <Show when={pookalamSub() === "review"}>
@@ -328,6 +356,18 @@ export default function Admin() {
                         <Show when={pookalamSub() === "gallery"}>
                           {/* The same anonymous gallery the testers judge in. */}
                           <PookalamGallery />
+                        </Show>
+                        <Show when={pookalamSub() === "wishes"}>
+                          <Show when={collabMessages()} fallback={<TabLoading />}>
+                            <CollabWishesTab
+                              messages={collabMessages()!}
+                              onReload={revalidateAfter(ADMIN_QUERY_KEYS.collabMessages)}
+                              onNotify={showNotification}
+                            />
+                          </Show>
+                        </Show>
+                        <Show when={pookalamSub() === "animation"}>
+                          <PookalamAnimationExport />
                         </Show>
                       </div>
                     );

@@ -220,6 +220,41 @@ const SETTINGS_META: Record<string, SettingMetadata> = {
     explanation:
       "How far from a perfect 1:1 square an uploaded render may be. Checked in the browser before upload and again on the server. 5% allows a few stray pixels while still refusing a screenshot.",
   },
+
+  // Collab Pookalam controls
+  "collab.open": {
+    label: "Collab Pookalam Open",
+    type: "boolean",
+    explanation:
+      "Master switch: when off, no one can place flowers and strokes are rejected server-side. Toggle this first if you need an emergency lock.",
+  },
+  "collab.daily_flowers": {
+    label: "Daily Flower Allowance",
+    type: "number",
+    unit: "flowers/day",
+    min: 1,
+    max: 500,
+    explanation:
+      "How many flowers each visitor may place per day (tracked in the browser). Raise this on a quiet night to encourage participation.",
+  },
+  "collab.disable_drawing": {
+    label: "Disable Collab Drawing (Read-Only)",
+    type: "boolean",
+    explanation:
+      "Locks the community canvas to view-only and shows a post-event celebration banner. The finished pookalam stays visible — visitors just can't place new flowers.",
+  },
+  "collab.disable_balloons": {
+    label: "Disable Pookalam Balloons",
+    type: "boolean",
+    explanation:
+      "Stops the floating balloon popups from spawning across the site. Credits already earned are kept; existing token buckets are unaffected.",
+  },
+  "collab.disable_comments": {
+    label: "Disable Community Wishes",
+    type: "boolean",
+    explanation:
+      "Hides all community Onam wish bubbles and the wish composer box. Existing wishes are preserved in the database and can still be managed from the admin panel.",
+  },
 };
 
 const GROUP_LABELS: Record<string, { label: string; icon: typeof Settings }> = {
@@ -230,6 +265,7 @@ const GROUP_LABELS: Record<string, { label: string; icon: typeof Settings }> = {
   social: { label: "Social & Links", icon: MessageCircle },
   hunt: { label: "Day-6 Treasure Hunt", icon: Sparkles },
   pookalam: { label: "Day-7 Code-a-Pookalam", icon: Sparkles },
+  collab: { label: "Collab Community Pookalam", icon: Sparkles },
 };
 
 export function SettingsTab(props: SettingsTabProps) {

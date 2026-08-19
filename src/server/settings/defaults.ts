@@ -225,6 +225,30 @@ export const settingsRegistry: SettingDef[] = [
     description: "Flowers each person may place per day (enforced in the browser)",
     defaultValue: 30,
   },
+  {
+    key: "collab.disable_drawing",
+    group: "collab",
+    /**
+     * Flips the canvas to read-only and shows a celebration banner. Use this
+     * after the event closes to preserve the finished artwork while still
+     * letting visitors see what the community built together.
+     */
+    description:
+      "Lock the community canvas to view-only and show the post-event celebration banner",
+    defaultValue: false,
+  },
+  {
+    key: "collab.disable_balloons",
+    group: "collab",
+    description: "Stop pookalam credit balloons from spawning across the site",
+    defaultValue: false,
+  },
+  {
+    key: "collab.disable_comments",
+    group: "collab",
+    description: "Hide community Onam wishes and the wish composer box",
+    defaultValue: false,
+  },
 ];
 
 /** Inserts any missing default settings so the app always has sane config. */

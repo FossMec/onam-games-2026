@@ -9,6 +9,7 @@ import {
   listActivity,
   listAttemptsAction,
   listBlockedIpsAction,
+  listCollabMessagesAction,
   listSettings,
   listSuspicious,
   listTesters,
@@ -117,6 +118,7 @@ export const adminTesters = query(listTesters, "admin-testers");
 export const adminSuspicious = query(listSuspicious, "admin-suspicious");
 export const adminBlockedIps = query(listBlockedIpsAction, "admin-blocked-ips");
 export const adminActivity = query(listActivity, "admin-activity");
+export const adminCollabMessages = query(listCollabMessagesAction, "admin-collab-messages");
 
 /**
  * The keys a console write should drop. `revalidate` matches by prefix, so
@@ -131,6 +133,7 @@ export const ADMIN_QUERY_KEYS = {
   suspicious: "admin-suspicious",
   blockedIps: "admin-blocked-ips",
   activity: "admin-activity",
+  collabMessages: "admin-collab-messages",
 } as const;
 
 /** Returns an `onReload` callback that revalidates exactly the given keys. */

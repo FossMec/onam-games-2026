@@ -1,4 +1,5 @@
 import {
+  bigserial,
   boolean,
   customType,
   date,
@@ -8,6 +9,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  smallint,
   text,
   timestamp,
   unique,
@@ -572,6 +574,34 @@ export const collabPookalam = pgTable("collab_pookalam", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Per-stroke diff log for animation replay.
+ *
+ * Every successfully written cell appends one row: which slot changed, to what
+ * flower, and when. This is the minimal information needed to replay the
+ * communal canvas's growth as a time-lapse after the festival. There is no
+ * foreign key on `collab_pookalam` because the grid is a singleton identified
+ * by the string key "community" and we never delete these rows.
+ *
+ * Size: even at 2500 cells × 10 000 overwrites the table is ≤25 M rows at
+ * ~36 bytes each — about 900 MB worst-case. A BRIN index on `placed_at` keeps
+ * sequential scans fast and is essentially free to maintain.
+ *
+ * `flower_id = 0` records an erasure so the replay is accurate.
+ */
+export const collabPookalamDiffs = pgTable(
+  "collab_pookalam_diffs",
+  {
+    id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    /** Grid cell index, 0 – 2499. */
+    cellIndex: smallint("cell_index").notNull(),
+    /** Flower placed (0 = erased). */
+    flowerId: smallint("flower_id").notNull(),
+    placedAt: timestamp("placed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("collab_pookalam_diffs_placed_at_idx").on(t.placedAt)],
+);
 
 /**
  * Daily communal wishes / comments on the shared pookalam.

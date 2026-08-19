@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
-import { collabPookalam } from "~/server/db/schema";
+import { collabPookalam, collabPookalamDiffs } from "~/server/db/client";
 import { getSettings } from "~/server/settings/service";
 import {
   CELL_COUNT,
@@ -32,6 +32,13 @@ export interface CollabState {
   /** Browser-enforced allowance, from settings. */
   dailyFlowers: number;
   canPlace: boolean;
+
+  /** When true, canvas is view-only and shows the celebration banner. */
+  disableDrawing: boolean;
+  /** When true, floating balloons are suppressed site-wide. */
+  disableBalloons: boolean;
+  /** When true, wish bubbles and the composer are hidden. */
+  disableComments: boolean;
 }
 
 /**
@@ -41,12 +48,27 @@ export function istDayKey(now: Date = new Date()): string {
   return new Date(now.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
 }
 
-async function getConfig(): Promise<{ open: boolean; dailyFlowers: number }> {
-  const values = await getSettings(["collab.open", "collab.daily_flowers"]);
+async function getConfig(): Promise<{
+  open: boolean;
+  dailyFlowers: number;
+  disableDrawing: boolean;
+  disableBalloons: boolean;
+  disableComments: boolean;
+}> {
+  const values = await getSettings([
+    "collab.open",
+    "collab.daily_flowers",
+    "collab.disable_drawing",
+    "collab.disable_balloons",
+    "collab.disable_comments",
+  ]);
   const limit = Number(values.get("collab.daily_flowers"));
   return {
     open: values.get("collab.open") !== false,
     dailyFlowers: Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 30,
+    disableDrawing: values.get("collab.disable_drawing") === true,
+    disableBalloons: values.get("collab.disable_balloons") === true,
+    disableComments: values.get("collab.disable_comments") === true,
   };
 }
 
@@ -79,6 +101,29 @@ async function ensureCommunityGrid() {
   return created;
 }
 
+let diffsTableInitPromise: Promise<void> | null = null;
+
+export async function ensureDiffsTable(): Promise<void> {
+  if (diffsTableInitPromise) return diffsTableInitPromise;
+  const db = getDb();
+  diffsTableInitPromise = (async () => {
+    try {
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS collab_pookalam_diffs (
+          id BIGSERIAL PRIMARY KEY,
+          cell_index SMALLINT NOT NULL,
+          flower_id SMALLINT NOT NULL,
+          placed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS collab_pookalam_diffs_placed_at_idx ON collab_pookalam_diffs(placed_at);
+      `);
+    } catch {
+      /* ignore if already created */
+    }
+  })();
+  return diffsTableInitPromise;
+}
+
 function encode(row: { dayKey: string; cells: Uint8Array; placed: number }): CollabDay {
   return { dayKey: row.dayKey, cells: toBase64(row.cells), placed: row.placed };
 }
@@ -91,7 +136,10 @@ export async function getCollabState(signedIn: boolean): Promise<CollabState> {
     open: config.open,
     today: encode(today),
     dailyFlowers: config.dailyFlowers,
-    canPlace: config.open && signedIn,
+    canPlace: config.open && signedIn && !config.disableDrawing,
+    disableDrawing: config.disableDrawing,
+    disableBalloons: config.disableBalloons,
+    disableComments: config.disableComments,
   };
 }
 
@@ -199,6 +247,8 @@ export async function placeStroke(
   const written: number[] = [];
   let placed = 0;
   const seen = new Set<number>();
+  /** Cells that landed, collected for the diff log. */
+  const diffRows: { cellIndex: number; flowerId: number }[] = [];
 
   for (const cell of cells.slice(0, MAX_STROKE)) {
     if (!isValidIndex(cell.index) || !isValidFlower(cell.flowerId)) continue;
@@ -210,6 +260,7 @@ export async function placeStroke(
     if (next !== null) {
       written.push(cell.index);
       placed = next;
+      diffRows.push({ cellIndex: cell.index, flowerId: cell.flowerId });
     }
   }
 
@@ -220,6 +271,16 @@ export async function placeStroke(
     .from(collabPookalam)
     .where(eq(collabPookalam.dayKey, COMMUNITY_GRID_KEY))
     .limit(1);
+
+  // Batch-insert diff rows for animation replay. Fire-and-forget after the
+  // grid read-back; a failure here must not break the stroke response.
+  if (diffRows.length > 0) {
+    void ensureDiffsTable()
+      .then(() => getDb().insert(collabPookalamDiffs).values(diffRows))
+      .catch((err) => {
+        console.warn("[collab] diff insert failed:", err?.message ?? err);
+      });
+  }
 
   return {
     written,
