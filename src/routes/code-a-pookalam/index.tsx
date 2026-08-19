@@ -1,4 +1,4 @@
-import { Title } from "@solidjs/meta";
+import { Meta, Title } from "@solidjs/meta";
 import { createAsync } from "@solidjs/router";
 import type { RouteDefinition } from "@solidjs/router";
 import { Pencil } from "lucide-solid";
@@ -125,6 +125,32 @@ export default function CodeAPookalam() {
   return (
     <main class="container space-y-12 py-6">
       <Title>{POOKALAM.title} - Onam Games</Title>
+      <Meta
+        name="description"
+        content="Design a pookalam flower carpet purely with code — Canvas, SVG, CSS, Python, shaders, or p5.js. Submit by Day 6 for ₹3,000 in podium prizes, with community ELO voting on Day 7. Onam Games by FOSSMEC."
+      />
+      <Meta property="og:title" content={`${POOKALAM.title} - Onam Games`} />
+      <Meta
+        property="og:description"
+        content="Design a pookalam flower carpet purely with code — Canvas, SVG, CSS, Python, shaders, or p5.js. Submit by Day 6 for ₹3,000 in podium prizes, with community ELO voting on Day 7. Onam Games by FOSSMEC."
+      />
+      <Meta property="og:url" content="https://foss-onam.onrender.com/code-a-pookalam" />
+      <Meta
+        property="og:image"
+        content="https://foss-onam.onrender.com/images/code-a-pookalam-og.webp"
+      />
+      <Meta property="og:image:type" content="image/webp" />
+      <Meta property="og:image:width" content="1376" />
+      <Meta property="og:image:height" content="768" />
+      <Meta name="twitter:title" content={`${POOKALAM.title} - Onam Games`} />
+      <Meta
+        name="twitter:description"
+        content="Design a pookalam flower carpet purely with code — Canvas, SVG, CSS, Python, shaders, or p5.js. Submit by Day 6 for ₹3,000 in podium prizes, with community ELO voting on Day 7. Onam Games by FOSSMEC."
+      />
+      <Meta
+        name="twitter:image"
+        content="https://foss-onam.onrender.com/images/code-a-pookalam-og.webp"
+      />
 
       <Show when={pageReady()} fallback={<LoadingScreen compact />}>
         {/* ------------------------------------------------------------- HERO */}

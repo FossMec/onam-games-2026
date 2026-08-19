@@ -816,16 +816,23 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
 
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "left";
-  const markSize = fitSize(ctx, "FOSS × ONAM", 620, "logo", 76, 48);
+  const markSize = fitSize(ctx, "ONAM GAMES", 620, "logo", 76, 48);
   ctx.font = font("logo", markSize);
+  const markWidth = ctx.measureText("ONAM GAMES").width;
   ctx.fillStyle = POP.yellow;
-  ctx.fillText("FOSS × ONAM", 254 + markSize * 0.06, 146 + markSize * 0.07);
+  ctx.fillText("ONAM GAMES", 254 + markSize * 0.06, 146 + markSize * 0.07);
   ctx.fillStyle = INK;
-  ctx.fillText("FOSS × ONAM", 254, 146);
+  ctx.fillText("ONAM GAMES", 254, 146);
+
+  ctx.font = font("mono", 22, 700);
+  ctx.fillStyle = INK_SOFT;
+  ctx.textAlign = "right";
+  ctx.fillText("BY FOSSMEC", 254 + markWidth, 182);
+  ctx.textAlign = "left";
 
   ctx.font = font("mono", 30, 700);
   ctx.fillStyle = INK_SOFT;
-  ctx.fillText(`DAY ${data.day} · ${data.gameTitle.toUpperCase()}`, 256, 200);
+  ctx.fillText(`DAY ${data.day} · ${data.gameTitle.toUpperCase()}`, 256, 228);
 
   ctx.font = font("display", 27, 800);
   ctx.fillStyle = TEAL_DEEP;
@@ -899,7 +906,6 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   const showCollege = !data.options?.hideCollege && !!data.college?.trim();
   const showBranch = !data.options?.hideBranch && !!data.branch;
   const showBatch = !data.options?.hideBatch && !!data.batch && data.batch !== "na";
-  const showInsta = !data.options?.hideInstagram && !!data.instagram?.trim();
 
   const collegeText = showCollege ? data.college!.trim() : "";
   const branchBatchParts: string[] = [];
@@ -912,7 +918,6 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
     branchBatchParts.push(data.batch!.startsWith("2") ? `Batch ${data.batch}` : data.batch!);
   }
   const branchBatchText = branchBatchParts.join(" · ");
-  const instaText = showInsta ? `@${data.instagram!.trim()}` : "";
   const hasAvatar = !!avatarImg;
   const name = data.playerName.trim().toUpperCase() || "PLAYER";
 
@@ -1115,16 +1120,6 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
     inkedText(ctx, "FOR FUN", medallionCx, medallionCy + 44, PAPER_2, 8);
   }
   ctx.restore();
-
-  // =========================================================================
-  // 3. Instagram Handle: Placed BELOW the Panel Card, Right-Aligned
-  // =========================================================================
-  if (instaText) {
-    const iSize = fitSize(ctx, instaText, chipW * 0.5, "display", 38, 20, 800);
-    ctx.font = font("display", iSize, 800);
-    ctx.textAlign = "right";
-    inkedText(ctx, instaText, panel.x + panel.w - 10, panel.y + panel.h + 46, PAPER_2, 6);
-  }
 
   /* ---- 8. meme sticker (Priority #4: ALWAYS the festival comic meme) ---- */
   if (memeImg) {

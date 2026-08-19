@@ -182,7 +182,7 @@ export function Nav() {
   return (
     <>
       <header
-        class="sticky top-0 z-30 w-full backdrop-blur-md"
+        class="sticky top-0 z-48 w-full backdrop-blur-md"
         style={{
           background: "color-mix(in srgb, var(--paper) 92%, transparent)",
           "border-bottom": "var(--ink-w) solid var(--ink)",

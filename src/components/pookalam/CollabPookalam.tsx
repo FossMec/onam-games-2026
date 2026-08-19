@@ -129,6 +129,13 @@ export function CollabPookalam() {
     } catch {
       /* storage disabled: state remains valid for this mount */
     }
+    // Any bucket change (placement, refund, pop, or time refill) can cross the
+    // "full vs collectable" boundary the balloon scheduler is gated on, so tell
+    // it to re-check. The handler in this component only re-reads the stored
+    // bucket, so this is idempotent - no loop.
+    window.dispatchEvent(
+      new CustomEvent<number>(POOKALAM_CREDITS_EVENT, { detail: Math.floor(next.credits) }),
+    );
   };
 
   const refillBucket = (input: TokenBucket): TokenBucket => {

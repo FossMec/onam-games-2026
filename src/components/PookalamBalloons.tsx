@@ -1,6 +1,7 @@
 import { useLocation } from "@solidjs/router";
 import { Show, createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import {
+  POOKALAM_CREDITS_EVENT,
   addPookalamCredits,
   canCollectPookalamBalloon,
   pookalamDailyLimit,
@@ -126,9 +127,18 @@ export function PookalamBalloons() {
     const observer = new ResizeObserver(measure);
     observer.observe(document.body);
     window.addEventListener("resize", measure);
+    // Credits changed (spend, refund, pop, or time refill): re-evaluate the
+    // rain. A bucket that was full on load never armed a timer, so spending
+    // down below the cap must kick the scheduler back to life.
+    const handleCreditsChanged = () => {
+      if (location.pathname.startsWith("/games/")) return;
+      if (!balloon() && !spawnTimer) schedule();
+    };
+    window.addEventListener(POOKALAM_CREDITS_EVENT, handleCreditsChanged);
     onCleanup(() => {
       observer.disconnect();
       window.removeEventListener("resize", measure);
+      window.removeEventListener(POOKALAM_CREDITS_EVENT, handleCreditsChanged);
       measurePage = undefined;
     });
   });

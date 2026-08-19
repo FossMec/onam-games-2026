@@ -1,4 +1,4 @@
-import { Title } from "@solidjs/meta";
+import { Meta, Title } from "@solidjs/meta";
 import { A, createAsync, useSearchParams } from "@solidjs/router";
 import type { RouteDefinition } from "@solidjs/router";
 import {
@@ -297,6 +297,26 @@ export default function Leaderboard() {
       }}
     >
       <Title>Daily Leaderboard - Onam Games</Title>
+      <Meta
+        name="description"
+        content="Live daily leaderboard for Onam Games by FOSSMEC. Rank in each of the six daily mini-games, beat the crowd, and win daily ₹200 cash prizes all festival week."
+      />
+      <Meta property="og:title" content="Daily Leaderboard - Onam Games" />
+      <Meta
+        property="og:description"
+        content="Live daily leaderboard for Onam Games by FOSSMEC. Rank in each of the six daily mini-games, beat the crowd, and win daily ₹200 cash prizes all festival week."
+      />
+      <Meta property="og:url" content="https://foss-onam.onrender.com/leaderboard" />
+      <Meta property="og:image" content="https://foss-onam.onrender.com/images/lb-og.webp" />
+      <Meta property="og:image:type" content="image/webp" />
+      <Meta property="og:image:width" content="1376" />
+      <Meta property="og:image:height" content="768" />
+      <Meta name="twitter:title" content="Daily Leaderboard - Onam Games" />
+      <Meta
+        name="twitter:description"
+        content="Live daily leaderboard for Onam Games by FOSSMEC. Rank in each of the six daily mini-games, beat the crowd, and win daily ₹200 cash prizes all festival week."
+      />
+      <Meta name="twitter:image" content="https://foss-onam.onrender.com/images/lb-og.webp" />
 
       {/* Desktop Inked Sidebar: Festival Meme (Failure is not an Option<T>) + Share Card Widget on the right margin */}
       <aside class="hidden 2xl:flex flex-col gap-3 absolute left-[calc(100%+2rem)] top-6 w-68 pointer-events-auto">

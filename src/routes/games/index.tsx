@@ -1,4 +1,4 @@
-import { Title } from "@solidjs/meta";
+import { Meta, Title } from "@solidjs/meta";
 import { A, createAsync, useSearchParams } from "@solidjs/router";
 import type { RouteDefinition } from "@solidjs/router";
 import { ChevronLeft, ChevronRight, HelpCircle, Lock } from "lucide-solid";
@@ -75,6 +75,26 @@ export default function GamesPage() {
   return (
     <main class="container space-y-8 py-6">
       <Title>Daily Mini-Games Arena - Onam Games</Title>
+      <Meta
+        name="description"
+        content="Play a fun new mini-game every evening at Onam Games by FOSSMEC — six daily puzzle challenges across the festival week, with ₹200 daily bounties and a ₹5K+ prize pool."
+      />
+      <Meta property="og:title" content="Daily Mini-Games Arena - Onam Games" />
+      <Meta
+        property="og:description"
+        content="Play a fun new mini-game every evening at Onam Games by FOSSMEC — six daily puzzle challenges across the festival week, with ₹200 daily bounties and a ₹5K+ prize pool."
+      />
+      <Meta property="og:url" content="https://foss-onam.onrender.com/games" />
+      <Meta property="og:image" content="https://foss-onam.onrender.com/images/games-og.webp" />
+      <Meta property="og:image:type" content="image/webp" />
+      <Meta property="og:image:width" content="1376" />
+      <Meta property="og:image:height" content="768" />
+      <Meta name="twitter:title" content="Daily Mini-Games Arena - Onam Games" />
+      <Meta
+        name="twitter:description"
+        content="Play a fun new mini-game every evening at Onam Games by FOSSMEC — six daily puzzle challenges across the festival week, with ₹200 daily bounties and a ₹5K+ prize pool."
+      />
+      <Meta name="twitter:image" content="https://foss-onam.onrender.com/images/games-og.webp" />
 
       {/* Header Banner */}
       <section
