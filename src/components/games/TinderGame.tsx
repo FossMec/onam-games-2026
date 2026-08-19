@@ -101,10 +101,11 @@ function hash(seed: string): number {
 /**
  * The card's colour and its joke distance. Hashed from the id, which is the
  * only thing the browser has - there is no way for this to leak the answer
- * because the answer is not here to leak.
+ * because the answer is not here to leak. The unsigned shift keeps the
+ * distance positive: a "-14 km away" would just read as a broken game.
  */
 const cardPop = (id: string) => POPS[hash(id) % POPS.length];
-const cardDistance = (id: string) => 1 + ((hash(id) >> 5) % 40);
+const cardDistance = (id: string) => 1 + ((hash(id) >>> 5) % 40);
 
 export function TinderGame(props: TinderGameProps) {
   const byId = createMemo(() => new Map(props.cards.map((c) => [c.id, c])));

@@ -102,7 +102,8 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
     .orderBy(desc(gameAttempts.attemptNumber));
 
   const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
-  const effectiveUnlimitedRole = isTesterModeEnabled && input.role !== "player";
+  const isTester = (input.role === "tester" || input.role === "admin") && isTesterModeEnabled;
+  const effectiveUnlimitedRole = isTester;
 
   // Resume an open attempt: same seed in, same instance out. The timer keeps
   // running from the original `startedAt`, so a refresh is never a reset.
@@ -124,11 +125,14 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
     };
   }
   /*
-   * Testers, admins, and players on closed games play without a run limit if tester mode is enabled.
-   * Closed games are in free-play practice mode and do not count towards active leaderboards.
+   * Testers and admins play without a run limit when tester mode is on.
+   * Closed games are accessible to testers when tester mode is on.
    */
   const isClosed = game.status === "closed";
-  const unlimited = effectiveUnlimitedRole || isClosed;
+  if (isClosed && !isTester) {
+    throw new HttpError(403, "This daily game has ended");
+  }
+  const unlimited = isTester;
   const used = prior.length;
   if (!unlimited && used >= def.maxAttempts) {
     throw new HttpError(
@@ -142,6 +146,9 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
   const { view } = def.generate(seed, game.difficulty, game.assets as GameAssets);
   const attemptNumber = (prior[0]?.attemptNumber ?? 0) + 1;
   const now = new Date();
+  const releaseAtDate = game.releaseAt ? new Date(game.releaseAt) : null;
+  const startedAt =
+    def.metric === "fcfs" && releaseAtDate && releaseAtDate <= now ? releaseAtDate : now;
 
   const [attempt] = await db
     .insert(gameAttempts)
@@ -152,7 +159,7 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
       seed,
       attemptNumber,
       initialStateHash: sha256(JSON.stringify(view)),
-      startedAt: now,
+      startedAt,
       status: "in_progress",
       ip: input.ip,
       userAgent: input.userAgent,

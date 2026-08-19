@@ -1,17 +1,19 @@
 import { Meta, Title } from "@solidjs/meta";
-import { A, createAsync, useSearchParams } from "@solidjs/router";
+import { A, createAsync, useNavigate, useSearchParams } from "@solidjs/router";
 import type { RouteDefinition } from "@solidjs/router";
 import { ChevronLeft, ChevronRight, HelpCircle, Lock } from "lucide-solid";
-import { For, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 
-import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
-import { SpriteScatter } from "~/components/art/SpriteScatter";
 import { Countdown } from "~/components/Countdown";
 import { LoadingScreen } from "~/components/LoadingScreen";
-import { gamesList, viewer } from "~/lib/queries";
+import { FairPlayModal, hasAcknowledgedFairPlay } from "~/components/games/FairPlayModal";
+import { HowToPlayModal } from "~/components/games/HowToPlay";
+import { clearAttempt, getStoredAttempt, storeAttempt } from "~/lib/game-session";
+import { gamesList, myAttempt as myAttemptQuery, viewer } from "~/lib/queries";
 import { teaserIcon } from "~/lib/game-teasers";
 import { gameImageForType } from "~/lib/img";
+import type { GameCard } from "~/server/games/service";
 
 const DAY_POPS = [
   "pop-yellow",
@@ -28,7 +30,7 @@ const statusSticker: Record<string, { label: string; pop: string }> = {
   tester: { label: "Tester access", pop: "var(--pop-purple)" },
   preview: { label: "Opens soon", pop: "var(--pop-yellow)" },
   upcoming: { label: "Locked", pop: "var(--paper-3)" },
-  closed: { label: "Catch up", pop: "var(--pop-blue)" },
+  closed: { label: "Ended", pop: "var(--paper-3)" },
 };
 
 /**
@@ -45,20 +47,37 @@ export const route = {
 } satisfies RouteDefinition;
 
 export default function GamesPage() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const games = createAsync(() => gamesList());
   const me = createAsync(() => viewer());
+
+  const [showFairPlay, setShowFairPlay] = createSignal(false);
+  const [activeModalGame, setActiveModalGame] = createSignal<GameCard | null>(null);
+  const [busy, setBusy] = createSignal(false);
+  const [error, setError] = createSignal("");
 
   const fullSchedule = () => games() ?? [];
 
   const activeGame = () => {
     const list = fullSchedule();
     if (list.length === 0) return null;
-    const requested = Number(searchParams.day);
-    if (!Number.isNaN(requested) && requested >= 1 && requested <= 7) {
-      const match = list.find((g) => g.day === requested);
-      if (match) return match;
+
+    // 1. If explicit game slug is requested via ?game= or ?slug=
+    const requestedSlug = searchParams.game || searchParams.slug;
+    if (typeof requestedSlug === "string" && requestedSlug) {
+      const matchSlug = list.find((g) => g.slug === requestedSlug);
+      if (matchSlug) return matchSlug;
     }
+
+    // 2. If day is requested via ?day=
+    const requestedDay = Number(searchParams.day);
+    if (!Number.isNaN(requestedDay) && requestedDay >= 1 && requestedDay <= 7) {
+      const matchDay = list.find((g) => g.day === requestedDay);
+      if (matchDay) return matchDay;
+    }
+
+    // 3. Fallback to live, preview, or first game
     const live = list.find((g) => g.status === "live" || g.status === "tester");
     if (live) return live;
     const preview = list.find((g) => g.status === "preview");
@@ -66,10 +85,109 @@ export default function GamesPage() {
     return list[0];
   };
 
+  const currentAttempt = createAsync(async () => {
+    const slug = activeGame()?.slug;
+    if (!slug || !me()) return null;
+    return myAttemptQuery(slug);
+  });
+
+  const isRunning = () => {
+    const g = activeGame();
+    if (!g) return false;
+    if (g.status === "closed" && !g.testerMode) return false;
+    const a = currentAttempt();
+    if (a) {
+      return a.status === "in_progress";
+    }
+    const stored = getStoredAttempt(g.slug);
+    return !!stored;
+  };
+
+  const isCompleted = () => {
+    const a = currentAttempt();
+    if (!a) return false;
+    return a.status === "submitted" && a.attemptsRemaining === 0 && !a.unlimited;
+  };
+
+  const handlePlayClick = (game: GameCard) => {
+    if (!me()) {
+      window.location.href = `/auth/signin?next=${encodeURIComponent(`/games?day=${game.day}&game=${game.slug}`)}`;
+      return;
+    }
+    if (!me()!.onboardingCompleted) {
+      navigate(
+        `/onboarding?next=${encodeURIComponent(`/games?day=${game.day}&game=${game.slug}`)}`,
+      );
+      return;
+    }
+
+    // If game has an active run or is completed, jump straight into arena without rules modal
+    if (
+      getStoredAttempt(game.slug) ||
+      currentAttempt()?.status === "in_progress" ||
+      isCompleted()
+    ) {
+      navigate(`/games/${game.slug}`);
+      return;
+    }
+
+    setError("");
+    setActiveModalGame(game);
+    if (!hasAcknowledgedFairPlay()) {
+      setShowFairPlay(true);
+    }
+  };
+
+  const startAndLaunch = async () => {
+    const game = activeModalGame();
+    if (!game) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/game/${game.slug}/start`, { method: "POST" });
+      const data = (await res.json()) as {
+        attemptToken?: string;
+        startedAt?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.attemptToken || !data.startedAt) {
+        setError(data.error ?? "Failed to start attempt");
+        clearAttempt(game.slug);
+        return;
+      }
+      storeAttempt(game.slug, {
+        attemptToken: data.attemptToken,
+        startedAt: data.startedAt,
+      });
+      setActiveModalGame(null);
+      navigate(`/games/${game.slug}`);
+    } catch {
+      setError("Network hiccup - please check your connection.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const selectedDay = () => activeGame()?.day ?? 1;
 
+  const gamesForActiveDay = () => {
+    const dayNum = selectedDay();
+    return fullSchedule().filter((g) => g.day === dayNum);
+  };
+
+  const selectGame = (dayNum: number, gameSlug?: string) => {
+    setSearchParams(
+      {
+        day: dayNum,
+        ...(gameSlug ? { game: gameSlug } : {}),
+      },
+      { replace: true, scroll: false },
+    );
+  };
+
   const selectDay = (dayNum: number) => {
-    setSearchParams({ day: dayNum }, { replace: true, scroll: false });
+    const match = fullSchedule().find((g) => g.day === dayNum);
+    selectGame(dayNum, match?.slug);
   };
 
   return (
@@ -97,57 +215,57 @@ export default function GamesPage() {
       <Meta name="twitter:image" content="https://foss-onam.onrender.com/images/games-og.webp" />
 
       {/* Header Banner */}
-      <section
-        class="relative overflow-hidden rounded-lg px-4 py-8 text-center sm:px-6 sm:py-10 space-y-4"
-        style={{
-          border: "var(--ink-w-bold) solid var(--ink)",
-          background: "var(--paper-2)",
-        }}
-      >
-        <Confetti seed="games-hero" count={8} opacity={0.4} animate />
-        <SpriteScatter
-          seed="games-hero-sprites"
-          count={5}
-          pool={[
-            "maveli-laptop",
-            "tux-king",
-            "sadya-leaf",
-            "octocat-garland",
-            "arch-crown",
-            "ferris-crab",
-            "gopher-king",
-          ]}
-          minSize={32}
-          maxSize={48}
-          opacity={0.85}
-          animate
-        />
-
-        <div class="art-over space-y-3 max-w-3xl mx-auto">
-          <div class="flex justify-center">
-            <span class="badge" style={{ "--pop": "var(--pop-teal)" }}>
-              ₹200 Daily Cash Bounties · 7 Days of Challenges
-            </span>
-          </div>
-
-          <div class="flex items-center justify-center gap-3">
-            <SpriteIcon name="maveli-laptop" size={38} animate="float" interactive />
-            <h1
-              class="wordmark tracking-wider m-0"
-              data-text="DAILY GAMES ARENA"
-              style={{ "font-size": "clamp(1.5rem, 6vw, 3.25rem)" }}
-            >
-              DAILY GAMES ARENA
-            </h1>
-            <SpriteIcon name="tux-king" size={38} animate="float" delay={1.2} interactive />
-          </div>
-
-          <p class="mx-auto max-w-xl text-sm sm:text-base font-semibold leading-relaxed">
-            One fresh mini-game unlocks every evening! Solve fast to top that day's verified
-            leaderboard and win cash bounties. Same puzzle, same seed, 100% fair.
-          </p>
-        </div>
-      </section>
+      {/* <section */}
+      {/*   class="relative overflow-hidden rounded-lg px-4 py-8 text-center sm:px-6 sm:py-10 space-y-4" */}
+      {/*   style={{ */}
+      {/*     border: "var(--ink-w-bold) solid var(--ink)", */}
+      {/*     background: "var(--paper-2)", */}
+      {/*   }} */}
+      {/* > */}
+      {/*   <Confetti seed="games-hero" count={8} opacity={0.4} animate /> */}
+      {/*   <SpriteScatter */}
+      {/*     seed="games-hero-sprites" */}
+      {/*     count={5} */}
+      {/*     pool={[ */}
+      {/*       "maveli-laptop", */}
+      {/*       "tux-king", */}
+      {/*       "sadya-leaf", */}
+      {/*       "octocat-garland", */}
+      {/*       "arch-crown", */}
+      {/*       "ferris-crab", */}
+      {/*       "gopher-king", */}
+      {/*     ]} */}
+      {/*     minSize={32} */}
+      {/*     maxSize={48} */}
+      {/*     opacity={0.85} */}
+      {/*     animate */}
+      {/*   /> */}
+      {/**/}
+      {/*   <div class="art-over space-y-3 max-w-3xl mx-auto"> */}
+      {/*     <div class="flex justify-center"> */}
+      {/*       <span class="badge" style={{ "--pop": "var(--pop-teal)" }}> */}
+      {/*         ₹200 Daily Cash Bounties · 7 Days of Challenges */}
+      {/*       </span> */}
+      {/*     </div> */}
+      {/**/}
+      {/*     <div class="flex items-center justify-center gap-3"> */}
+      {/*       <SpriteIcon name="maveli-laptop" size={38} animate="float" interactive /> */}
+      {/*       <h1 */}
+      {/*         class="wordmark tracking-wider m-0" */}
+      {/*         data-text="DAILY GAMES ARENA" */}
+      {/*         style={{ "font-size": "clamp(1.5rem, 6vw, 3.25rem)" }} */}
+      {/*       > */}
+      {/*         DAILY GAMES ARENA */}
+      {/*       </h1> */}
+      {/*       <SpriteIcon name="tux-king" size={38} animate="float" delay={1.2} interactive /> */}
+      {/*     </div> */}
+      {/**/}
+      {/*     <p class="mx-auto max-w-xl text-sm sm:text-base font-semibold leading-relaxed"> */}
+      {/*       One fresh mini-game unlocks every evening! Solve fast to top that day's verified */}
+      {/*       leaderboard and win cash bounties. Same puzzle, same seed, 100% fair. */}
+      {/*     </p> */}
+      {/*   </div> */}
+      {/* </section> */}
 
       {/* Main Arena Showcase */}
       <Show when={games()} fallback={<LoadingScreen compact message="Loading games arena…" />}>
@@ -207,6 +325,47 @@ export default function GamesPage() {
                     </a>
                   </div>
                 </div>
+
+                {/* Multi-game switcher for days with more than 1 challenge */}
+                <Show when={gamesForActiveDay().length > 1}>
+                  <div
+                    class="flex rounded p-0.5 gap-1"
+                    style={{
+                      background: "var(--paper-3)",
+                      border: "var(--ink-w) solid var(--ink)",
+                    }}
+                  >
+                    <For each={gamesForActiveDay()}>
+                      {(g) => {
+                        const isCurrent =
+                          g.slug === activeGame()?.slug || g.id === activeGame()?.id;
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => selectGame(g.day, g.slug)}
+                            class="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded text-xs font-black transition-colors cursor-pointer text-center outline-none"
+                            style={
+                              isCurrent
+                                ? {
+                                    background: "var(--pop-yellow)",
+                                    border: "var(--ink-w) solid var(--ink)",
+                                    color: "var(--ink)",
+                                  }
+                                : {
+                                    background: "transparent",
+                                    border: "var(--ink-w) solid transparent",
+                                    color: "var(--ink-soft)",
+                                  }
+                            }
+                          >
+                            <SpriteIcon name={teaserIcon(g)} size={14} />
+                            <span class="truncate">{g.title}</span>
+                          </button>
+                        );
+                      }}
+                    </For>
+                  </div>
+                </Show>
 
                 {/* Showcase Card */}
                 <article
@@ -362,42 +521,94 @@ export default function GamesPage() {
                         <Show when={!locked && !previewing && current.endAt}>
                           <div class="card card-plain flex flex-col items-center justify-center gap-1 p-3 text-center">
                             <p class="comment text-sm">Time left to play today</p>
-                            <Countdown target={new Date(current.endAt!)} doneLabel="Game closed" />
+                            <Countdown
+                              target={new Date(current.endAt!)}
+                              doneLabel="Game closed"
+                              compact
+                            />
                           </div>
                         </Show>
 
                         <Show when={current.status === "live" || current.status === "tester"}>
-                          <A
-                            href={playHref}
-                            class="btn-brand w-full text-center text-lg py-3 block"
+                          <Show
+                            when={isDay7}
+                            fallback={
+                              <button
+                                type="button"
+                                onClick={() => handlePlayClick(current)}
+                                disabled={busy()}
+                                class="btn-brand w-full text-center text-lg py-3 block font-black cursor-pointer"
+                              >
+                                <Show when={me()} fallback={`Sign in & Play Day ${current.day} →`}>
+                                  {busy() && activeModalGame()?.slug === current.slug
+                                    ? "Starting…"
+                                    : isRunning()
+                                      ? `Resume Day ${current.day} Challenge →`
+                                      : isCompleted()
+                                        ? `View Day ${current.day} Board & Score →`
+                                        : (currentAttempt()?.attemptsUsed ?? 0) > 0
+                                          ? `Play Day ${current.day} (Attempt ${(currentAttempt()?.attemptsUsed ?? 0) + 1}) →`
+                                          : `Play Day ${current.day} Now →`}
+                                </Show>
+                              </button>
+                            }
                           >
-                            <Show
-                              when={me()}
-                              fallback={
-                                isDay7
-                                  ? "Sign in to Vote in ELO Showdown →"
-                                  : `Sign in & Play Day ${current.day} →`
-                              }
+                            <A
+                              href={playHref}
+                              class="btn-brand w-full text-center text-lg py-3 block font-black"
                             >
-                              {isDay7 ? "Vote in ELO Showdown →" : `Play Day ${current.day} Now →`}
-                            </Show>
-                          </A>
+                              <Show when={me()} fallback="Sign in to Vote in ELO Showdown →">
+                                Vote in ELO Showdown →
+                              </Show>
+                            </A>
+                          </Show>
                         </Show>
 
                         <Show when={current.status === "closed"}>
-                          <A
-                            href={playHref}
-                            class="btn-ghost w-full text-center text-base py-2.5 block"
+                          <Show
+                            when={
+                              (me()?.role === "tester" || me()?.role === "admin") &&
+                              current.testerMode
+                            }
+                            fallback={
+                              <A
+                                href={isDay7 ? "/code-a-pookalam/vote" : `/games/${current.slug}`}
+                                class="btn-ghost w-full text-center text-base py-2.5 block"
+                              >
+                                <Show
+                                  when={isDay7}
+                                  fallback={`View Day ${current.day} Board & Score →`}
+                                >
+                                  View Final Results →
+                                </Show>
+                              </A>
+                            }
                           >
                             <Show
-                              when={me()}
+                              when={isDay7}
                               fallback={
-                                isDay7 ? "Sign in to View Results →" : "Sign in to Play Catch-up →"
+                                <button
+                                  type="button"
+                                  onClick={() => handlePlayClick(current)}
+                                  disabled={busy()}
+                                  class="btn-accent w-full text-center text-base py-2.5 block font-black cursor-pointer"
+                                >
+                                  {busy() && activeModalGame()?.slug === current.slug
+                                    ? "Starting…"
+                                    : isRunning()
+                                      ? `Resume Day ${current.day} Challenge →`
+                                      : `Play Day ${current.day} (Tester Access) →`}
+                                </button>
                               }
                             >
-                              {isDay7 ? "View Results →" : `Play Catch-up (Unranked) →`}
+                              <A
+                                href="/code-a-pookalam/vote"
+                                class="btn-accent w-full text-center text-base py-2.5 block font-black"
+                              >
+                                View Final Results →
+                              </A>
                             </Show>
-                          </A>
+                          </Show>
                         </Show>
                       </div>
                     </div>
@@ -415,20 +626,21 @@ export default function GamesPage() {
                   <div class="scrollbar-none -mx-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-7 sm:overflow-visible sm:px-0">
                     <For each={fullSchedule()}>
                       {(item) => {
-                        const isSelected = item.day === selectedDay();
+                        const isSelected =
+                          item.slug && activeGame()?.slug
+                            ? item.slug === activeGame()?.slug
+                            : item.day === selectedDay();
                         const isLock = item.status === "upcoming";
                         const st = statusSticker[item.status] ?? statusSticker.upcoming;
 
                         return (
                           <button
                             type="button"
-                            onClick={() => selectDay(item.day)}
-                            class={`card w-[7.5rem] shrink-0 snap-start sm:w-auto p-2 text-center flex flex-col items-center justify-between gap-1.5 cursor-pointer ${
-                              DAY_POPS[(item.day - 1) % DAY_POPS.length]
-                            } ${
+                            onClick={() => selectGame(item.day, item.slug)}
+                            class={`flex flex-col items-center gap-1.5 p-2 rounded-lg text-center transition-all cursor-pointer select-none shrink-0 w-24 sm:w-auto ${
                               isSelected
-                                ? "ring-4 ring-[var(--ink)] shadow-none font-bold"
-                                : "opacity-85 hover:opacity-100"
+                                ? "pop-yellow shadow-md scale-[1.02]"
+                                : "bg-[var(--paper-2)] opacity-85 hover:opacity-100"
                             }`}
                             style={{
                               border: isSelected
@@ -436,30 +648,21 @@ export default function GamesPage() {
                                 : "var(--ink-w) solid var(--ink)",
                             }}
                           >
-                            <span
-                              class="text-[11px] font-extrabold uppercase tracking-wider"
-                              style={{
-                                "font-family": "var(--font-stack-display)",
-                              }}
-                            >
+                            <span class="text-xs font-black uppercase tracking-wider">
                               Day {item.day}
                             </span>
 
                             <div
-                              class="w-12 h-12 xs:w-14 xs:h-14 sm:w-16 sm:h-16 rounded aspect-square overflow-hidden bg-[var(--paper-3)] shrink-0 relative flex items-center justify-center"
+                              class="w-12 h-12 rounded-lg overflow-hidden border border-[var(--ink)] bg-[var(--paper-3)] shrink-0 relative"
                               style={{
-                                border: "var(--ink-w) solid var(--ink)",
+                                filter: isLock ? "grayscale(100%)" : "none",
                               }}
                             >
                               <Show
                                 when={!isLock}
                                 fallback={
-                                  <div class="relative w-full h-full flex items-center justify-center">
-                                    <img
-                                      src={gameImageForType(item.gameType)}
-                                      alt="Locked preview"
-                                      class="absolute inset-0 w-full h-full object-cover blur-sm opacity-40 grayscale"
-                                    />
+                                  <div class="w-full h-full grid place-items-center bg-[var(--paper-3)] relative">
+                                    <div class="absolute inset-0 opacity-20 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:6px_6px]" />
                                     <div class="relative z-10 w-6 h-6 rounded-full bg-[var(--paper-2)] border border-[var(--ink)] grid place-items-center text-[var(--ink)]">
                                       <Lock size={12} strokeWidth={2.5} />
                                     </div>
@@ -528,15 +731,58 @@ export default function GamesPage() {
           <div class="card pop-pink space-y-1.5">
             <div class="flex items-center gap-2">
               <SpriteIcon name="sadya-leaf" size={24} interactive />
-              <h3 class="font-black text-base m-0">3. Catch-Up Play</h3>
+              <h3 class="font-black text-base m-0">3. Daily Sprints</h3>
             </div>
             <p class="text-xs font-semibold leading-relaxed text-muted m-0">
-              Missed earlier days? All past games stay open in unranked practice mode all festival
-              long!
+              Each puzzle has a strict 24-hour competition window. Solve before the daily deadline
+              to lock in your score and rank!
             </p>
           </div>
         </div>
       </section>
+
+      {/* Fair Play Modal */}
+      <Show when={showFairPlay()}>
+        <FairPlayModal
+          onAccept={() => {
+            setShowFairPlay(false);
+          }}
+          onClose={() => {
+            setShowFairPlay(false);
+            setActiveModalGame(null);
+          }}
+        />
+      </Show>
+
+      {/* How to Play Modal with Start Button */}
+      <Show when={activeModalGame() && !showFairPlay()}>
+        <HowToPlayModal
+          gameType={activeModalGame()!.gameType}
+          title={activeModalGame()!.title}
+          steps={activeModalGame()!.howTo}
+          startLabel={busy() ? "STARTING…" : "START THE CLOCK"}
+          busy={busy()}
+          onStart={() => void startAndLaunch()}
+          onClose={() => setActiveModalGame(null)}
+        />
+      </Show>
+
+      {/* Error Banner */}
+      <Show when={error()}>
+        <div class="fixed bottom-4 right-4 z-50 max-w-sm card pop-red space-y-2 shadow-xl">
+          <div class="flex items-start gap-3">
+            <SpriteIcon name="papad-face" size={32} animate="wobble" alt="" />
+            <p class="flex-1 font-semibold text-sm">{error()}</p>
+          </div>
+          <button
+            type="button"
+            class="btn-ghost text-xs py-1 w-full cursor-pointer"
+            onClick={() => setError("")}
+          >
+            Dismiss
+          </button>
+        </div>
+      </Show>
     </main>
   );
 }

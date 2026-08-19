@@ -433,7 +433,7 @@ export default function Home() {
                 liveGame()
                   ? liveGame()!.day === 7
                     ? "/code-a-pookalam/vote"
-                    : `/games/${liveGame()!.slug}`
+                    : `/games?day=${liveGame()!.day}&game=${liveGame()!.slug}`
                   : "/games"
               }
               class="btn-brand inline-flex items-center gap-1.5 w-full sm:w-auto justify-center whitespace-nowrap"
@@ -595,9 +595,11 @@ export default function Home() {
             const sticker = statusSticker[current.status] ?? statusSticker.upcoming;
             const teaser = current.teaser ?? "A mystery game";
             const isDay7 = current.day === 7;
-            const targetHref = isDay7 ? "/code-a-pookalam/vote" : `/games/${current.slug}`;
-            const playHref = me() ? targetHref : "/auth/signin";
-            const arenaHref = `/games?day=${current.day}`;
+            const arenaHref = `/games?day=${current.day}&game=${current.slug}`;
+            const targetHref = isDay7 ? "/code-a-pookalam/vote" : arenaHref;
+            const playHref = me()
+              ? targetHref
+              : `/auth/signin?next=${encodeURIComponent(targetHref)}`;
             const openHref = me()
               ? arenaHref
               : `/auth/signin?next=${encodeURIComponent(arenaHref)}`;

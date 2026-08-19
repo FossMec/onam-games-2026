@@ -353,14 +353,16 @@ export function JigsawGame(props: JigsawGameProps) {
 
   return (
     <div class="mx-auto flex h-full w-full flex-col justify-between space-y-2 text-center">
-      <div class="flex shrink-0 flex-wrap items-center justify-between gap-2">
-        <span class="badge" style={{ "--pop": "var(--pop-blue)" }}>
-          {count() - groupCount() + 1}/{count()} joined
-        </span>
-        <span class="badge" style={{ "--pop": "var(--paper-3)" }}>
-          {solved() ? "done" : "drag pieces together"}
-        </span>
-      </div>
+      <Show when={!props.disabled}>
+        <div class="flex shrink-0 flex-wrap items-center justify-between gap-2">
+          <span class="badge" style={{ "--pop": "var(--pop-blue)" }}>
+            {count() - groupCount() + 1}/{count()} joined
+          </span>
+          <span class="badge" style={{ "--pop": "var(--paper-3)" }}>
+            {solved() ? "done" : "drag pieces together"}
+          </span>
+        </div>
+      </Show>
 
       <div
         ref={(el) => (board = el)}
@@ -412,9 +414,11 @@ export function JigsawGame(props: JigsawGameProps) {
         </For>
       </div>
 
-      <p class="comment shrink-0 text-xs sm:text-sm">
-        drag a piece onto its neighbour - when they fit they lock together and move as one.
-      </p>
+      <Show when={!props.disabled}>
+        <p class="comment shrink-0 text-xs sm:text-sm">
+          drag a piece onto its neighbour - when they fit they lock together and move as one.
+        </p>
+      </Show>
     </div>
   );
 }

@@ -568,29 +568,31 @@ export function WendGame(props: WendGameProps) {
         </For>
       </div>
 
-      <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
-        <p class="comment">every tile belongs to exactly one word. tap a word to release.</p>
-        <div class="flex gap-2">
-          <button
-            type="button"
-            class="btn-ghost text-xs px-3 py-1"
-            onClick={undo}
-            disabled={props.disabled || (path().length === 0 && found().length === 0)}
-          >
-            Undo
-          </button>
-          <button
-            type="button"
-            class="btn-ghost text-xs px-3 py-1"
-            onClick={reset}
-            disabled={props.disabled || (path().length === 0 && found().length === 0)}
-          >
-            Reset
-          </button>
+      <Show when={!props.disabled}>
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <p class="comment">every tile belongs to exactly one word. tap a word to release.</p>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              class="btn-ghost text-xs px-3 py-1"
+              onClick={undo}
+              disabled={props.disabled || (path().length === 0 && found().length === 0)}
+            >
+              Undo
+            </button>
+            <button
+              type="button"
+              class="btn-ghost text-xs px-3 py-1"
+              onClick={reset}
+              disabled={props.disabled || (path().length === 0 && found().length === 0)}
+            >
+              Reset
+            </button>
+          </div>
         </div>
-      </div>
+      </Show>
 
-      <Show when={flash()}>
+      <Show when={flash() && !props.disabled}>
         <p class="comment">{flash()}</p>
       </Show>
     </div>

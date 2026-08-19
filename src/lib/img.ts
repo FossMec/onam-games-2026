@@ -13,7 +13,6 @@
  *   game cards   `w-full sm:w-64 md:w-72` - 288px at desktop, a phone's width
  *                on mobile. Sources were 600px and, for four of them, 1024px.
  *   memes        a content column, never past ~480px. Sources were ~512px.
- *   marks        `ProjectMark` draws these at up to 148px.
  *
  * Two candidates each, so a phone does not pay for a desktop card.
  */
@@ -60,12 +59,6 @@ const COMIC_SRC = import.meta.glob<string>("~/assets/images/comics/*.webp", {
 
 const LOOSE_SRC = import.meta.glob<string>("~/assets/images/*.webp", {
   query: { w: 560, format: "webp", quality: 90 },
-  import: "default",
-  eager: true,
-});
-
-const MARK_SRC = import.meta.glob<string>("~/assets/images/marks/*.webp", {
-  query: { w: 296, format: "webp", quality: 88 },
   import: "default",
   eager: true,
 });
@@ -136,7 +129,6 @@ export const gameImageForType = (gameType: string) =>
 
 export const memeImage = (ref: string) => lookup(MEME_SRC, basename(ref));
 export const memeImageSrcset = (ref: string) => lookup(MEME_SRCSET, basename(ref));
-export const markImage = (ref: string) => lookup(MARK_SRC, basename(ref));
 export const comicImage = (ref: string) => lookup(COMIC_SRC, basename(ref));
 export const comicImageSrcset = (ref: string) => lookup(COMIC_SRCSET, basename(ref));
 /** Odd one-off art living directly in `assets/images`. */

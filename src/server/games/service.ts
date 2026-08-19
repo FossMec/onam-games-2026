@@ -43,6 +43,8 @@ export interface GameCard {
   maxAttempts: number;
   /** Public asset references only. Never puzzle data. */
   assets: unknown;
+  /** Whether tester mode is currently enabled system-wide. */
+  testerMode?: boolean;
 }
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
@@ -205,6 +207,7 @@ function toCard(
     testerReleaseAt: Date | null;
     status: GameStatus;
   },
+  testerMode: boolean = true,
 ): GameCard {
   const def = getGameDefByType(game.gameType);
   return {
@@ -226,6 +229,7 @@ function toCard(
     metric: def?.metric ?? "time",
     maxAttempts: def?.maxAttempts ?? 1,
     assets: game.assetsJson,
+    testerMode,
   };
 }
 
@@ -281,8 +285,11 @@ export async function getGamesList(viewerRole: ViewerRole): Promise<GameCard[]> 
   // The schedule settings do not depend on the rows, so the two go out
   // together rather than one after the other.
   const [rows, settings] = await Promise.all([publishedGameRows(), getScheduleSettings()]);
+  const testerMode = settings.testerMode !== false;
   const cards = await Promise.all(
-    rows.map(async (game) => toCard(game, await resolveSchedule(game, viewerRole, settings))),
+    rows.map(async (game) =>
+      toCard(game, await resolveSchedule(game, viewerRole, settings), testerMode),
+    ),
   );
   const list = cards.map((card) => (card.status === "upcoming" ? maskCard(card) : card));
 
@@ -303,7 +310,7 @@ export async function getGamesList(viewerRole: ViewerRole): Promise<GameCard[]> 
     const day7ReleaseAt = anchor?.releaseAt
       ? new Date(new Date(anchor.releaseAt).getTime() + (7 - anchor.day) * DAY_MS).toISOString()
       : null;
-    list.push(day7Card((await getConfig()).voting, day7ReleaseAt));
+    list.push(day7Card((await getConfig()).voting, day7ReleaseAt, testerMode));
   }
   return list;
 }
@@ -319,7 +326,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * on its last day. Without a configured window it stays "upcoming" - the card
  * must never claim it is live when the admin has not set it up.
  */
-function day7Card(voting: PhaseState, derivedReleaseAt: string | null): GameCard {
+function day7Card(
+  voting: PhaseState,
+  derivedReleaseAt: string | null,
+  testerMode: boolean = true,
+): GameCard {
   const opensAt = voting.opensAt;
   const releaseAt = opensAt?.toISOString() ?? derivedReleaseAt;
   let status: GameStatus = "upcoming";
@@ -349,6 +360,7 @@ function day7Card(voting: PhaseState, derivedReleaseAt: string | null): GameCard
     testerReleaseAt: null,
     status,
     assets: null,
+    testerMode,
   };
 }
 
@@ -362,7 +374,11 @@ export async function getGameBySlug(
   const [rows, settings] = await Promise.all([publishedGameRows(), getScheduleSettings()]);
   const game = rows.find((row) => row.slug === slug);
   if (!game) return null;
-  const card = toCard(game, await resolveSchedule(game, viewerRole, settings));
+  const card = toCard(
+    game,
+    await resolveSchedule(game, viewerRole, settings),
+    settings.testerMode !== false,
+  );
   /*
    * Masked here too, but the slug is left intact: the caller already typed it,
    * so blanking it would only break the page they are looking at. Everything

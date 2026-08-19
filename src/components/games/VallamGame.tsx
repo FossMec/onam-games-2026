@@ -524,14 +524,16 @@ export function VallamGame(props: VallamGameProps) {
         </For>
       </div>
 
-      <div class="flex items-center justify-between gap-2">
-        <p class="comment">
-          the vallam only moves sideways. everything else is someone else's problem.
-        </p>
-        <button type="button" class="btn-ghost" onClick={reset} disabled={props.disabled}>
-          Reset
-        </button>
-      </div>
+      <Show when={!props.disabled}>
+        <div class="flex items-center justify-between gap-2">
+          <p class="comment">
+            the vallam only moves sideways. everything else is someone else's problem.
+          </p>
+          <button type="button" class="btn-ghost" onClick={reset}>
+            Reset
+          </button>
+        </div>
+      </Show>
     </div>
   );
 }
