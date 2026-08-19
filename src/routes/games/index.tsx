@@ -1,8 +1,8 @@
 import { Meta, Title } from "@solidjs/meta";
-import { A, createAsync, useNavigate, useSearchParams } from "@solidjs/router";
+import { A, createAsync, revalidate, useNavigate, useSearchParams } from "@solidjs/router";
 import type { RouteDefinition } from "@solidjs/router";
 import { ChevronLeft, ChevronRight, HelpCircle, Lock } from "lucide-solid";
-import { createSignal, For, Show } from "solid-js";
+import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { Countdown } from "~/components/Countdown";
@@ -10,7 +10,7 @@ import { LoadingScreen } from "~/components/LoadingScreen";
 import { FairPlayModal, hasAcknowledgedFairPlay } from "~/components/games/FairPlayModal";
 import { HowToPlayModal } from "~/components/games/HowToPlay";
 import { clearAttempt, getStoredAttempt, storeAttempt } from "~/lib/game-session";
-import { gamesList, myAttempt as myAttemptQuery, viewer } from "~/lib/queries";
+import { gameBySlug, gamesList, myAttempt as myAttemptQuery, viewer } from "~/lib/queries";
 import { teaserIcon } from "~/lib/game-teasers";
 import { gameImageForType } from "~/lib/img";
 import type { GameCard } from "~/server/games/service";
@@ -109,6 +109,95 @@ export default function GamesPage() {
     return a.status === "submitted" && a.attemptsRemaining === 0 && !a.unlimited;
   };
 
+  // Schedule exact revalidation when a locked/preview game flips to live.
+  // Works without hover/tick drift — critical for mobile where hover never fires.
+  const handleReleaseFlip = () => {
+    // slight jitter avoids thundering herd when many phones hit at 19:00:00.000
+    const jitter = Math.floor(Math.random() * 700);
+    setTimeout(() => void revalidate("games"), jitter + 250);
+  };
+
+  // Warm only today's game chunk — upcoming games stay masked and their JS never leaves the server.
+  const warmChunkForType = (type: string) => {
+    switch (type) {
+      case "tinder":
+        return import("~/components/games/TinderGame");
+      case "jigsaw":
+        return import("~/components/games/JigsawGame");
+      case "wend":
+        return import("~/components/games/WendGame");
+      case "unblock":
+        return import("~/components/games/VallamGame");
+      case "jump":
+        return import("~/components/games/JumpGame");
+      default:
+        return Promise.resolve();
+    }
+  };
+
+  // Prewarm arena data + chunk when game card enters view (mobile: no hover).
+  // Hover alone is useless on touch devices, so we trigger on view + touch.
+  // Also warms the JS chunk for *this* game only — future games' JS is never prefetched.
+  const prewarmArena = (slug: string) => {
+    if (!slug) return;
+    const g = fullSchedule().find((x) => x.slug === slug);
+    // Never warm upcoming — keeps future JS off the wire
+    if (g && g.status === "upcoming") return;
+    void gameBySlug(slug);
+    void myAttemptQuery(slug);
+    if (g?.gameType) {
+      void warmChunkForType(g.gameType);
+      const img = new Image();
+      img.src = gameImageForType(g.gameType);
+    }
+  };
+  let arenaPrewarmed = "";
+
+  createEffect(() => {
+    const g = activeGame();
+    if (!g?.releaseAt) return;
+    if (g.status !== "upcoming" && g.status !== "preview") return;
+    const target = new Date(g.releaseAt).getTime();
+    const delay = target - Date.now();
+    if (delay <= 0) {
+      handleReleaseFlip();
+      return;
+    }
+    // Only schedule if within 2min — avoids long timers on idle tabs
+    if (delay > 2 * 60_000) return;
+    const id = setTimeout(handleReleaseFlip, delay + 300);
+    onCleanup(() => clearTimeout(id));
+  });
+
+  // When locked card comes into view and is about to open, prewarm.
+  // Also revalidate on tab resume (mobile background -> foreground).
+  createEffect(() => {
+    const g = activeGame();
+    if (!g?.slug || g.status === "closed") return;
+    // viewport prewarm: if game will open within 60s, warm now
+    if (g.releaseAt) {
+      const ms = new Date(g.releaseAt).getTime() - Date.now();
+      if (ms > 0 && ms < 60_000 && arenaPrewarmed !== g.slug) {
+        arenaPrewarmed = g.slug;
+        prewarmArena(g.slug);
+      }
+    }
+    // If already live/tester and in viewport, warm as well for instant tap
+    if ((g.status === "live" || g.status === "tester") && arenaPrewarmed !== g.slug) {
+      arenaPrewarmed = g.slug;
+      prewarmArena(g.slug);
+    }
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        const cur = activeGame();
+        if (cur?.status === "upcoming" || cur?.status === "preview") void revalidate("games");
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    onCleanup(() => document.removeEventListener("visibilitychange", onVisible));
+  });
+
   const handlePlayClick = (game: GameCard) => {
     if (!me()) {
       window.location.href = `/auth/signin?next=${encodeURIComponent(`/games?day=${game.day}&game=${game.slug}`)}`;
@@ -144,6 +233,9 @@ export default function GamesPage() {
     setBusy(true);
     setError("");
     try {
+      // Ensure today's game JS is downloaded before the server clock starts.
+      // Otherwise `startedAt` ticks while the phone still fetches the chunk (1-2s waste).
+      await warmChunkForType(game.gameType);
       const res = await fetch(`/api/game/${game.slug}/start`, { method: "POST" });
       const data = (await res.json()) as {
         attemptToken?: string;
@@ -488,7 +580,11 @@ export default function GamesPage() {
                         <Show when={locked && current.releaseAt}>
                           <div class="card card-plain flex flex-col items-center justify-center gap-2 p-3 text-center">
                             <p class="comment text-sm">Unlocks in</p>
-                            <Countdown target={new Date(current.releaseAt!)} compact />
+                            <Countdown
+                              target={new Date(current.releaseAt!)}
+                              compact
+                              onDone={handleReleaseFlip}
+                            />
                           </div>
                         </Show>
 
@@ -507,7 +603,10 @@ export default function GamesPage() {
                               when={current.releaseAt}
                               fallback={<p class="font-extrabold">Later today</p>}
                             >
-                              <Countdown target={new Date(current.releaseAt!)} />
+                              <Countdown
+                                target={new Date(current.releaseAt!)}
+                                onDone={handleReleaseFlip}
+                              />
                             </Show>
                           </div>
                           <A
@@ -524,6 +623,7 @@ export default function GamesPage() {
                             <Countdown
                               target={new Date(current.endAt!)}
                               doneLabel="Game closed"
+                              onDone={handleReleaseFlip}
                               compact
                             />
                           </div>
@@ -536,6 +636,9 @@ export default function GamesPage() {
                               <button
                                 type="button"
                                 onClick={() => handlePlayClick(current)}
+                                onMouseEnter={() => prewarmArena(current.slug)}
+                                onTouchStart={() => prewarmArena(current.slug)}
+                                onFocus={() => prewarmArena(current.slug)}
                                 disabled={busy()}
                                 class="btn-brand w-full text-center text-lg py-3 block font-black cursor-pointer"
                               >

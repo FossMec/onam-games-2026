@@ -16,6 +16,8 @@ interface CountdownProps {
   doneLabel?: string;
   /** Drop the days box when a release is hours away. */
   compact?: boolean;
+  /** Called once when the countdown reaches zero. */
+  onDone?: () => void;
 }
 
 function pad(value: number): string {
@@ -52,6 +54,13 @@ export function Countdown(props: CountdownProps) {
   createEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     onCleanup(() => clearInterval(timer));
+  });
+
+  // Fire onDone exactly once when countdown hits zero (mobile-friendly, no hover needed).
+  createEffect((prevDone?: boolean) => {
+    const done = props.target.getTime() - now() <= 0;
+    if (done && !prevDone) props.onDone?.();
+    return done;
   });
 
   const diff = () => Math.max(0, props.target.getTime() - now());

@@ -1,28 +1,41 @@
 import { Title } from "@solidjs/meta";
 import { A, createAsync, useNavigate, useParams, revalidate } from "@solidjs/router";
+import type { RouteDefinition } from "@solidjs/router";
 import { ChevronLeft } from "lucide-solid";
-import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+import { lazy, Show, Suspense, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 
 import { ShoutBurst } from "~/components/art/Burst";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { LoadingScreen } from "~/components/LoadingScreen";
 import { HowToPlayModal } from "~/components/games/HowToPlay";
-import {
-  JigsawGame,
-  type JigsawProgress,
-  type JigsawViewData,
-} from "~/components/games/JigsawGame";
-import { JumpGame, type JumpViewData } from "~/components/games/JumpGame";
-import {
-  TinderGame,
-  type TinderCardView,
-  type TinderProgress,
-} from "~/components/games/TinderGame";
+import type { JigsawProgress, JigsawViewData } from "~/components/games/JigsawGame";
+import type { JumpViewData } from "~/components/games/JumpGame";
+import type { TinderCardView, TinderProgress } from "~/components/games/TinderGame";
 import { TinderRecap } from "~/components/games/TinderRecap";
 import { ShareCard, ShareCardModal } from "~/components/games/ShareCard";
 import { WinModal } from "~/components/games/WinModal";
-import { VallamGame, type VallamMove, type VallamViewData } from "~/components/games/VallamGame";
-import { WendGame, type Cell as WendCell, type WendViewData } from "~/components/games/WendGame";
+import type { VallamMove, VallamViewData } from "~/components/games/VallamGame";
+import type { Cell as WendCell, WendViewData } from "~/components/games/WendGame";
+
+// Each game is its own chunk — visiting Day 3 never downloads Day 5's Jump engine.
+// Masking in `server/games/service.ts:253` hides `gameType` for `upcoming`, but
+// chunk splitting ensures even the JS for future days never reaches the browser
+// until that day is live/preview (gameType becomes truthy).
+const JigsawGame = lazy(() =>
+  import("~/components/games/JigsawGame").then((m) => ({ default: m.JigsawGame })),
+);
+const JumpGame = lazy(() =>
+  import("~/components/games/JumpGame").then((m) => ({ default: m.JumpGame })),
+);
+const TinderGame = lazy(() =>
+  import("~/components/games/TinderGame").then((m) => ({ default: m.TinderGame })),
+);
+const VallamGame = lazy(() =>
+  import("~/components/games/VallamGame").then((m) => ({ default: m.VallamGame })),
+);
+const WendGame = lazy(() =>
+  import("~/components/games/WendGame").then((m) => ({ default: m.WendGame })),
+);
 import { getMyRecap } from "~/server/games/actions";
 import {
   gameBySlug,
@@ -41,8 +54,33 @@ import {
   getStoredAttempt,
   saveFinished,
   saveProgress,
+  storeAttempt,
 } from "~/lib/game-session";
 import { SHOUT_COLOR, moodForResult, shout } from "~/lib/shouts";
+
+export const route = {
+  preload: ({ params }: any) => {
+    void gameBySlug(params.slug);
+    void myAttemptQuery(params.slug);
+  },
+} satisfies RouteDefinition;
+
+function warmChunkForGameType(type: string) {
+  switch (type) {
+    case "tinder":
+      return import("~/components/games/TinderGame");
+    case "jigsaw":
+      return import("~/components/games/JigsawGame");
+    case "wend":
+      return import("~/components/games/WendGame");
+    case "unblock":
+      return import("~/components/games/VallamGame");
+    case "jump":
+      return import("~/components/games/JumpGame");
+    default:
+      return Promise.resolve();
+  }
+}
 
 type GameView =
   | { kind: "tinder"; cards: TinderCardView[] }
@@ -108,6 +146,7 @@ export default function GameArenaPage() {
   const [showHowTo, setShowHowTo] = createSignal(false);
   const [view, setView] = createSignal<GameView | null>(null);
   const [restored, setRestored] = createSignal<unknown>(null);
+  const [jumpScore, setJumpScore] = createSignal(0);
   const [finishedBoard, setFinishedBoard] = createSignal<{
     view: GameView;
     submission: unknown;
@@ -130,6 +169,7 @@ export default function GameArenaPage() {
       setResult(null);
       setView(null);
       setRestored(null);
+      setJumpScore(0);
       setFinishedBoard(null);
       setCelebrating(false);
       setShowHowTo(false);
@@ -149,6 +189,10 @@ export default function GameArenaPage() {
         setStartedAt(new Date(stored.startedAt).getTime());
         setNow(Date.now());
         setRestored(getProgress(stored.attemptToken));
+        // Warm today's chunk in parallel with view fetch — both race, not sequential.
+        // Timer already ticking from hub's `startedAt`, so chunk+view overlap saves 1-2s.
+        const g = game();
+        if (g?.gameType) void warmChunkForGameType(g.gameType);
         void fetchAttemptView(stored.attemptToken);
       }
     }
@@ -176,6 +220,14 @@ export default function GameArenaPage() {
     }
   };
 
+  // As soon as we know today's gameType, warm its chunk — don't wait for view fetch.
+  // `upcoming` stays masked (gameType=""), so future days' JS never loads.
+  createEffect(() => {
+    const g = game();
+    if (!g?.gameType || g.status === "upcoming") return;
+    void warmChunkForGameType(g.gameType);
+  });
+
   createEffect(() => {
     if (startedAt() === null) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -184,6 +236,13 @@ export default function GameArenaPage() {
 
   const elapsed = () =>
     startedAt() === null ? 0 : Math.max(0, Math.floor((now() - startedAt()!) / 1000));
+
+  // Hunt is FCFS — rank by wall-clock since release, not since click. Show time since releaseAt.
+  const huntElapsed = () => {
+    const r = game()?.releaseAt;
+    if (!r) return elapsed();
+    return Math.max(0, Math.floor((now() - new Date(r).getTime()) / 1000));
+  };
 
   const traceWord = async (cells: WendCell[]): Promise<string | null> => {
     const token = attemptToken();
@@ -245,6 +304,41 @@ export default function GameArenaPage() {
       });
     } catch {
       setError("Network hiccup - submission did not land. Check connection and try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Jump is unlimited — let players immediately start another climb from the end card.
+  const playAgain = async () => {
+    if (busy()) return;
+    setBusy(true);
+    setError("");
+    try {
+      await warmChunkForGameType("jump");
+      const res = await fetch(`/api/game/${slug()}/start`, { method: "POST" });
+      const data = (await res.json()) as {
+        attemptToken?: string;
+        startedAt?: string;
+        view?: GameView;
+        error?: string;
+      };
+      if (!res.ok || !data.attemptToken || !data.startedAt || !data.view) {
+        setError(data.error ?? "Failed to start new run");
+        return;
+      }
+      storeAttempt(slug(), { attemptToken: data.attemptToken, startedAt: data.startedAt });
+      setAttemptToken(data.attemptToken);
+      setStartedAt(new Date(data.startedAt).getTime());
+      setNow(Date.now());
+      setView(data.view);
+      setJumpScore(0);
+      setResult(null);
+      setCelebrating(false);
+      setError("");
+      void revalidate("my-attempt");
+    } catch {
+      setError("Network hiccup - could not start new run.");
     } finally {
       setBusy(false);
     }
@@ -393,6 +487,11 @@ export default function GameArenaPage() {
     const landed = settledResult();
     const user = me();
     if (!g || !user || !landed?.valid) return null;
+    // Jump is unlimited — share always shows the personal best, not the last climb.
+    const bestAtt = myAttempt();
+    const shareScore = g.gameType === "jump" ? (bestAtt?.bestScore ?? landed.score) : landed.score;
+    const shareDuration =
+      g.gameType === "jump" ? (bestAtt?.bestDurationMs ?? landed.durationMs) : landed.durationMs;
     return {
       playerName: user.name,
       avatarUrl: user.avatarUrl,
@@ -407,8 +506,8 @@ export default function GameArenaPage() {
       gameType: g.gameType,
       day: g.day,
       metric: landed.metric,
-      durationMs: landed.durationMs,
-      score: landed.score,
+      durationMs: shareDuration,
+      score: shareScore,
       rank: standing()?.rank ?? null,
       fieldSize: standing()?.fieldSize ?? null,
       afterDeadline: landed.afterDeadline,
@@ -439,7 +538,11 @@ export default function GameArenaPage() {
               title={game()!.title}
               status={game()!.status}
               isTester={isTester()}
-              elapsed={attemptToken() ? elapsed() : null}
+              gameType={game()!.gameType}
+              elapsed={
+                attemptToken() ? (game()!.gameType === "hunt" ? huntElapsed() : elapsed()) : null
+              }
+              liveScore={game()!.gameType === "jump" ? jumpScore() : null}
               onHowTo={(game()!.howTo?.length ?? 0) > 0 ? () => setShowHowTo(true) : undefined}
             />
           </div>
@@ -484,15 +587,17 @@ export default function GameArenaPage() {
                   when={tinderCards()}
                   fallback={<p class="font-semibold">Dealing the deck…</p>}
                 >
-                  <TinderGame
-                    slug={slug()}
-                    attemptToken={attemptToken()!}
-                    cards={tinderCards()!}
-                    disabled={busy()}
-                    initialProgress={restored() as TinderProgress | null}
-                    onProgress={persist}
-                    onFinish={(submission) => finish(submission)}
-                  />
+                  <Suspense fallback={<p class="font-semibold">Dealing the deck…</p>}>
+                    <TinderGame
+                      slug={slug()}
+                      attemptToken={attemptToken()!}
+                      cards={tinderCards()!}
+                      disabled={busy()}
+                      initialProgress={restored() as TinderProgress | null}
+                      onProgress={persist}
+                      onFinish={(submission) => finish(submission)}
+                    />
+                  </Suspense>
                 </Show>
               </Show>
 
@@ -501,39 +606,45 @@ export default function GameArenaPage() {
                   when={jigsawView()}
                   fallback={<p class="font-semibold">Cutting the pookalam…</p>}
                 >
-                  <JigsawGame
-                    view={jigsawView()!}
-                    startedAt={startedAt() ?? Date.now()}
-                    disabled={busy()}
-                    initialProgress={restored() as JigsawProgress | null}
-                    onProgress={persist}
-                    onFinish={(submission) => finish(submission)}
-                  />
+                  <Suspense fallback={<p class="font-semibold">Cutting the pookalam…</p>}>
+                    <JigsawGame
+                      view={jigsawView()!}
+                      startedAt={startedAt() ?? Date.now()}
+                      disabled={busy()}
+                      initialProgress={restored() as JigsawProgress | null}
+                      onProgress={persist}
+                      onFinish={(submission) => finish(submission)}
+                    />
+                  </Suspense>
                 </Show>
               </Show>
 
               <Show when={isWend()}>
                 <Show when={wendView()} fallback={<p class="font-semibold">Shuffling letters…</p>}>
-                  <WendGame
-                    view={wendView()!}
-                    disabled={busy()}
-                    initialFound={(restored() as { found?: WendFound[] } | null)?.found}
-                    onProgress={(found) => persist({ found })}
-                    onTrace={traceWord}
-                    onFinish={(submission) => finish(submission)}
-                  />
+                  <Suspense fallback={<p class="font-semibold">Shuffling letters…</p>}>
+                    <WendGame
+                      view={wendView()!}
+                      disabled={busy()}
+                      initialFound={(restored() as { found?: WendFound[] } | null)?.found}
+                      onProgress={(found) => persist({ found })}
+                      onTrace={traceWord}
+                      onFinish={(submission) => finish(submission)}
+                    />
+                  </Suspense>
                 </Show>
               </Show>
 
               <Show when={isVallam()}>
                 <Show when={vallamView()} fallback={<p class="font-semibold">Launching boats…</p>}>
-                  <VallamGame
-                    view={vallamView()!}
-                    disabled={busy()}
-                    initialMoves={(restored() as { moves?: VallamMove[] } | null)?.moves}
-                    onProgress={(moves) => persist({ moves })}
-                    onFinish={(submission) => finish(submission)}
-                  />
+                  <Suspense fallback={<p class="font-semibold">Launching boats…</p>}>
+                    <VallamGame
+                      view={vallamView()!}
+                      disabled={busy()}
+                      initialMoves={(restored() as { moves?: VallamMove[] } | null)?.moves}
+                      onProgress={(moves) => persist({ moves })}
+                      onFinish={(submission) => finish(submission)}
+                    />
+                  </Suspense>
                 </Show>
               </Show>
 
@@ -544,11 +655,15 @@ export default function GameArenaPage() {
                   fallback={<p class="font-semibold">Waking Maveli…</p>}
                 >
                   {(current) => (
-                    <JumpGame
-                      view={current}
-                      disabled={busy()}
-                      onFinish={(submission) => finish(submission)}
-                    />
+                    <Suspense fallback={<p class="font-semibold">Waking Maveli…</p>}>
+                      <JumpGame
+                        view={current}
+                        disabled={busy()}
+                        bestScore={myAttempt()?.bestScore ?? null}
+                        onScore={setJumpScore}
+                        onFinish={(submission) => finish(submission)}
+                      />
+                    </Suspense>
                   )}
                 </Show>
               </Show>
@@ -573,33 +688,39 @@ export default function GameArenaPage() {
 
                 <div class="w-full flex items-center justify-center">
                   <Show when={finishedKind() === "wend"}>
-                    <WendGame
-                      view={finishedBoard()!.view as WendViewData}
-                      disabled
-                      initialFound={
-                        (finishedBoard()!.submission as { found?: WendFound[] } | null)?.found
-                      }
-                      onFinish={() => undefined}
-                    />
+                    <Suspense fallback={<p class="font-semibold">Loading board…</p>}>
+                      <WendGame
+                        view={finishedBoard()!.view as WendViewData}
+                        disabled
+                        initialFound={
+                          (finishedBoard()!.submission as { found?: WendFound[] } | null)?.found
+                        }
+                        onFinish={() => undefined}
+                      />
+                    </Suspense>
                   </Show>
                   <Show when={finishedKind() === "vallam"}>
-                    <VallamGame
-                      view={finishedBoard()!.view as VallamViewData}
-                      disabled
-                      initialMoves={
-                        (finishedBoard()!.submission as { moves?: VallamMove[] } | null)?.moves
-                      }
-                      onFinish={() => undefined}
-                    />
+                    <Suspense fallback={<p class="font-semibold">Loading board…</p>}>
+                      <VallamGame
+                        view={finishedBoard()!.view as VallamViewData}
+                        disabled
+                        initialMoves={
+                          (finishedBoard()!.submission as { moves?: VallamMove[] } | null)?.moves
+                        }
+                        onFinish={() => undefined}
+                      />
+                    </Suspense>
                   </Show>
                   <Show when={finishedKind() === "jigsaw"}>
-                    <JigsawGame
-                      view={finishedBoard()!.view as JigsawViewData}
-                      startedAt={0}
-                      disabled
-                      initialProgress={jigsawFinishedProgress()}
-                      onFinish={() => undefined}
-                    />
+                    <Suspense fallback={<p class="font-semibold">Loading board…</p>}>
+                      <JigsawGame
+                        view={finishedBoard()!.view as JigsawViewData}
+                        startedAt={0}
+                        disabled
+                        initialProgress={jigsawFinishedProgress()}
+                        onFinish={() => undefined}
+                      />
+                    </Suspense>
                   </Show>
                   <Show when={isTinder() && tinderFinishedCards()}>
                     <TinderRecap
@@ -618,6 +739,27 @@ export default function GameArenaPage() {
                     style={{ "border-top": "var(--ink-w) dashed var(--ink)" }}
                   >
                     <ResultFigures result={settledResult()!} />
+                    <Show
+                      when={
+                        isJump() &&
+                        (settledResult()!.isPersonalBest
+                          ? (settledResult()!.score ?? 0)
+                          : (myAttempt()?.bestScore ?? settledResult()!.score ?? 0)) > 0
+                      }
+                    >
+                      <p class="text-sm font-extrabold">
+                        Best:{" "}
+                        {(
+                          (settledResult()!.isPersonalBest
+                            ? settledResult()!.score
+                            : (myAttempt()?.bestScore ?? settledResult()!.score)) ?? 0
+                        ).toLocaleString("en-IN")}{" "}
+                        m
+                        <Show when={settledResult()!.isPersonalBest}>
+                          <span style={{ color: "var(--pop-teal)" }}> · New Best!</span>
+                        </Show>
+                      </p>
+                    </Show>
                     <Show when={!settledResult()!.valid}>
                       <p class="font-semibold text-sm" style={{ color: "var(--pop-red)" }}>
                         {settledResult()!.reason ?? "This run was not accepted."}
@@ -630,6 +772,16 @@ export default function GameArenaPage() {
                     </Show>
 
                     <div class="flex flex-wrap items-center justify-center gap-2 pt-2">
+                      <Show when={isJump()}>
+                        <button
+                          type="button"
+                          class="btn-brand px-5 py-2.5 text-sm font-black cursor-pointer"
+                          disabled={busy()}
+                          onClick={() => void playAgain()}
+                        >
+                          {busy() ? "Starting…" : "Play Again →"}
+                        </button>
+                      </Show>
                       <Show when={shareData()}>
                         <button
                           type="button"
@@ -682,7 +834,32 @@ export default function GameArenaPage() {
           seed={attemptKey()}
           valid={result()!.valid}
           reason={result()!.reason}
-          figures={<ResultFigures result={result()!} />}
+          figures={
+            <div class="space-y-1">
+              <ResultFigures result={result()!} />
+              <Show
+                when={
+                  isJump() &&
+                  (result()!.isPersonalBest
+                    ? (result()!.score ?? 0)
+                    : (myAttempt()?.bestScore ?? result()!.score ?? 0)) > 0
+                }
+              >
+                <p class="text-sm font-extrabold">
+                  Best:{" "}
+                  {(
+                    (result()!.isPersonalBest
+                      ? result()!.score
+                      : (myAttempt()?.bestScore ?? result()!.score)) ?? 0
+                  ).toLocaleString("en-IN")}{" "}
+                  m
+                  <Show when={result()!.isPersonalBest}>
+                    <span style={{ color: "var(--pop-teal)" }}> · New Best!</span>
+                  </Show>
+                </p>
+              </Show>
+            </div>
+          }
           share={shareData() ? <ShareCard data={shareData()!} compact /> : undefined}
           afterDeadline={result()!.afterDeadline}
           isPersonalBest={result()!.isPersonalBest}
@@ -713,6 +890,8 @@ function GameBar(props: {
   status: string;
   isTester?: boolean;
   elapsed: number | null;
+  gameType?: string;
+  liveScore?: number | null;
   onHowTo?: () => void;
 }) {
   const chip = () =>
@@ -765,18 +944,34 @@ function GameBar(props: {
           </span>
         }
       >
-        <div
-          class="flex items-center gap-1.5 px-3 py-1 rounded-full font-mono text-sm font-black tabular-nums"
-          style={{
-            background: "var(--paper-2)",
-            border: "var(--ink-w) solid var(--ink)",
-          }}
+        <Show
+          when={props.gameType === "jump"}
+          fallback={
+            <div
+              class="flex items-center gap-1.5 px-3 py-1 rounded-full font-mono text-sm font-black tabular-nums"
+              style={{
+                background: "var(--paper-2)",
+                border: "var(--ink-w) solid var(--ink)",
+              }}
+            >
+              <span class="inline-block h-2 w-2 rounded-full bg-[var(--pop-teal)] animate-pulse" />
+              <span>
+                {Math.floor(props.elapsed! / 60)}:{String(props.elapsed! % 60).padStart(2, "0")}
+              </span>
+            </div>
+          }
         >
-          <span class="inline-block h-2 w-2 rounded-full bg-[var(--pop-teal)] animate-pulse" />
-          <span>
-            {Math.floor(props.elapsed! / 60)}:{String(props.elapsed! % 60).padStart(2, "0")}
-          </span>
-        </div>
+          <div
+            class="flex items-center gap-1.5 px-3 py-1 rounded-full font-mono text-sm font-black tabular-nums"
+            style={{
+              background: "var(--pop-yellow)",
+              border: "var(--ink-w) solid var(--ink)",
+            }}
+          >
+            <span class="inline-block h-2 w-2 rounded-full bg-[var(--pop-yellow)] animate-pulse" />
+            <span>{(props.liveScore ?? 0).toLocaleString("en-IN")} m</span>
+          </div>
+        </Show>
       </Show>
 
       <Show when={props.onHowTo}>

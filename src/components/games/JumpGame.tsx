@@ -34,6 +34,8 @@ export interface JumpViewData {
 export interface JumpGameProps {
   view: JumpViewData;
   onFinish: (submission: { inputs: number[] }) => void;
+  onScore?: (score: number) => void;
+  bestScore?: number | null;
   disabled?: boolean;
   /** Optional target height in meters to finish practice trials early */
   targetY?: number;
@@ -520,7 +522,9 @@ export function JumpGame(props: JumpGameProps) {
             state.frame >= MAX_FRAMES ||
             (props.targetY && state.maxY >= props.targetY)
           ) {
-            setScore(Math.floor(state.maxY));
+            const finalScore = Math.floor(state.maxY);
+            setScore(finalScore);
+            props.onScore?.(finalScore);
             render();
             cancelAnimationFrame(frameHandle);
             finish();
@@ -530,7 +534,9 @@ export function JumpGame(props: JumpGameProps) {
       }
       if (steps === MAX_CATCHUP_STEPS) accumulator = 0;
 
-      setScore(Math.floor(state.maxY));
+      const nextScore = Math.floor(state.maxY);
+      setScore(nextScore);
+      props.onScore?.(nextScore);
       setBalloonSeconds(Math.ceil(state.balloonFrames / FPS));
       render();
     };
@@ -685,6 +691,11 @@ export function JumpGame(props: JumpGameProps) {
               <p class="shout" style={{ color: "var(--pop-yellow)" }}>
                 CLIMB TO ONAM
               </p>
+              <Show when={(props.bestScore ?? 0) > 0}>
+                <p class="text-sm font-black" style={{ color: "var(--pop-yellow)" }}>
+                  Best: {(props.bestScore ?? 0).toLocaleString("en-IN")} m
+                </p>
+              </Show>
               <p class="text-xs sm:text-sm font-semibold">
                 Tilt your phone to steer · Tap to start
               </p>
