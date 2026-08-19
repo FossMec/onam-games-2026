@@ -14,6 +14,9 @@ import { PookalamInteractiveCanvas } from "~/components/pookalam/PookalamInterac
 import { POOKALAM } from "~/lib/event-content";
 import { pookalamState } from "~/lib/queries";
 
+import { PookalamNoFluff } from "~/components/pookalam/PookalamNoFluff";
+import { WhatIsCodeAPookalam, type ViewMode } from "~/components/pookalam/WhatIsCodeAPookalam";
+
 // The studio shell is SSR-rendered so the hero has its full height immediately.
 // Its canvas remains blank until the component's onMount callback starts the
 // browser-only drawing loop.
@@ -119,6 +122,7 @@ export default function CodeAPookalam() {
   // page content may render during that pass. `pageReady` flips the moment
   // hydration finishes and the interactive content takes over.
   const [pageReady, setPageReady] = createSignal(false);
+  const [viewMode, setViewMode] = createSignal<ViewMode>("road");
   onMount(() => setPageReady(true));
   const mine = () => state()?.mine ?? null;
 
@@ -238,7 +242,7 @@ export default function CodeAPookalam() {
 
             {/* The handoff: from playing with a pookalam to building one. */}
             <div class="pt-1">
-              <PookalamHeroInvite />
+              <PookalamHeroInvite onSelectMode={setViewMode} />
             </div>
 
             <Show when={!state()?.phases.submissions.closesAt}>
@@ -321,60 +325,156 @@ export default function CodeAPookalam() {
           </section>
         </Show>
 
-        {/* ---------------------------------------------------- PRIZES & BOUNTIES */}
-        <Section title="Prizes & Bounties" id="prizes" confettiSeed="cap-prizes" confettiCount={5}>
-          <div class="grid sm:grid-cols-3 gap-3">
-            <div class="card pop-yellow flex items-center gap-3.5">
-              <SpriteIcon name="tux-king" size={38} animate="wobble" interactive class="shrink-0" />
-              <div>
-                <p class="text-xs uppercase font-extrabold text-muted">1st Place Champion</p>
-                <p class="text-xl font-black font-display">₹1,500 Cash</p>
+        {/* ---------------------------------------------------- PRIZES & BOUNTIES PODIUM */}
+        <Section
+          title="Podium Prizes & Bounties"
+          id="prizes"
+          confettiSeed="cap-prizes"
+          confettiCount={5}
+        >
+          {/* Desktop 3-Step Podium (2nd Place -> 1st Place Champion -> 3rd Place) */}
+          <div class="hidden sm:grid sm:grid-cols-3 sm:items-end gap-3 pt-4">
+            {/* 2nd Place */}
+            <div
+              class="card pop-teal relative overflow-hidden flex flex-col items-center text-center p-4 space-y-2 h-44 justify-between"
+              style={{
+                border: "var(--ink-w-bold) solid var(--ink)",
+              }}
+            >
+              <div class="space-y-1">
+                <span class="sticker text-[9px]" style={{ "--pop": "var(--paper-2)" }}>
+                  #2 Runner Up
+                </span>
+                <p class="m-0 text-2xl font-black font-display text-[var(--ink)]">₹1,000</p>
+                <p class="m-0 text-xs font-extrabold uppercase tracking-wide text-muted">
+                  Podium Cash
+                </p>
+              </div>
+              <SpriteIcon name="ferris-crab" size={38} animate="float" interactive />
+            </div>
+
+            {/* 1st Place Champion (Tallest) */}
+            <div
+              class="card pop-yellow relative overflow-hidden flex flex-col items-center text-center p-5 space-y-2 h-56 justify-between"
+              style={{
+                border: "var(--ink-w-bold) solid var(--ink)",
+                "border-bottom-width": "6px",
+              }}
+            >
+              <div class="space-y-1">
+                <span class="sticker text-[10px]" style={{ "--pop": "var(--pop-pink)" }}>
+                  👑 #1 Champion
+                </span>
+                <p class="m-0 text-3xl font-black font-display text-[var(--ink)]">₹1,500</p>
+                <p class="m-0 text-xs font-black uppercase tracking-wider text-muted">
+                  First Place Cash
+                </p>
+              </div>
+              <SpriteIcon name="tux-king" size={48} animate="wobble" interactive />
+            </div>
+
+            {/* 3rd Place */}
+            <div
+              class="card pop-pink relative overflow-hidden flex flex-col items-center text-center p-4 space-y-2 h-36 justify-between"
+              style={{
+                border: "var(--ink-w-bold) solid var(--ink)",
+              }}
+            >
+              <div class="space-y-1">
+                <span class="sticker text-[9px]" style={{ "--pop": "var(--paper-2)" }}>
+                  #3 Podium
+                </span>
+                <p class="m-0 text-xl font-black font-display text-[var(--ink)]">₹500</p>
+                <p class="m-0 text-xs font-extrabold uppercase tracking-wide text-muted">
+                  Podium Cash
+                </p>
+              </div>
+              <SpriteIcon name="gopher-king" size={34} animate="float" interactive />
+            </div>
+          </div>
+
+          {/* Mobile Stacked Podium Cards */}
+          <div class="space-y-2.5 sm:hidden">
+            <div
+              class="card pop-yellow p-3.5 flex items-center justify-between gap-3"
+              style={{ border: "var(--ink-w-bold) solid var(--ink)" }}
+            >
+              <div class="flex items-center gap-3">
+                <SpriteIcon
+                  name="tux-king"
+                  size={38}
+                  animate="wobble"
+                  interactive
+                  class="shrink-0"
+                />
+                <div>
+                  <span class="sticker text-[9px]" style={{ "--pop": "var(--pop-pink)" }}>
+                    👑 1st Place Champion
+                  </span>
+                  <p class="text-xl font-black font-display m-0">₹1,500 Cash</p>
+                </div>
               </div>
             </div>
 
-            <div class="card pop-teal flex items-center gap-3.5">
-              <SpriteIcon
-                name="ferris-crab"
-                size={38}
-                animate="float"
-                interactive
-                class="shrink-0"
-              />
-              <div>
-                <p class="text-xs uppercase font-extrabold text-muted">2nd Place Podium</p>
-                <p class="text-xl font-black font-display">₹1,000 Cash</p>
+            <div
+              class="card pop-teal p-3 flex items-center justify-between gap-3"
+              style={{ border: "var(--ink-w) solid var(--ink)" }}
+            >
+              <div class="flex items-center gap-3">
+                <SpriteIcon
+                  name="ferris-crab"
+                  size={34}
+                  animate="float"
+                  interactive
+                  class="shrink-0"
+                />
+                <div>
+                  <span class="sticker text-[9px]" style={{ "--pop": "var(--paper-2)" }}>
+                    2nd Place Podium
+                  </span>
+                  <p class="text-lg font-black font-display m-0">₹1,000 Cash</p>
+                </div>
               </div>
             </div>
 
-            <div class="card pop-pink flex items-center gap-3.5">
-              <SpriteIcon
-                name="gopher-king"
-                size={38}
-                animate="float"
-                interactive
-                class="shrink-0"
-              />
-              <div>
-                <p class="text-xs uppercase font-extrabold text-muted">3rd Place Podium</p>
-                <p class="text-xl font-black font-display">₹500 Cash</p>
+            <div
+              class="card pop-pink p-3 flex items-center justify-between gap-3"
+              style={{ border: "var(--ink-w) solid var(--ink)" }}
+            >
+              <div class="flex items-center gap-3">
+                <SpriteIcon
+                  name="gopher-king"
+                  size={32}
+                  animate="float"
+                  interactive
+                  class="shrink-0"
+                />
+                <div>
+                  <span class="sticker text-[9px]" style={{ "--pop": "var(--paper-2)" }}>
+                    3rd Place Podium
+                  </span>
+                  <p class="text-lg font-black font-display m-0">₹500 Cash</p>
+                </div>
               </div>
             </div>
           </div>
         </Section>
 
-        {/* ------------------------------------------------------------- THE ROAD
-         * Everything that used to be four parallel sections - how it works, the
-         * rules, the judging pillars, last year's gallery and the six tutorial
-         * tracks - now lives inside the stop where it is actually needed. A page
-         * of parallel cards asked the reader to work out the order; the road
-         * hands it to them.
-         */}
-        <Suspense fallback={<RoadPlaceholder />}>
-          <PookalamRoad
-            hasEntry={Boolean(mine())}
-            closesAt={state()?.phases.submissions.closesAt ?? null}
-          />
-        </Suspense>
+        {/* ---------------------------------------------------- WHAT IS CODE-A-POOKALAM & VIEW SELECTOR */}
+        <WhatIsCodeAPookalam viewMode={viewMode()} onToggleViewMode={(mode) => setViewMode(mode)} />
+
+        {/* ---------------------------------------------------- THE ROAD vs NO-FLUFF FAST TRACK */}
+        <Show
+          when={viewMode() === "road"}
+          fallback={<PookalamNoFluff hasEntry={Boolean(mine())} />}
+        >
+          <Suspense fallback={<RoadPlaceholder />}>
+            <PookalamRoad
+              hasEntry={Boolean(mine())}
+              closesAt={state()?.phases.submissions.closesAt ?? null}
+            />
+          </Suspense>
+        </Show>
 
         {/* ---------------------------------- NOT INTERESTED IN CODING? BUILD THE SHARED POOKALAM */}
         <section

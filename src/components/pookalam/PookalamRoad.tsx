@@ -3,9 +3,9 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Code2,
   Copy,
   ExternalLink,
-  FastForward,
   RotateCcw,
   Send,
   Sparkles,
@@ -113,7 +113,7 @@ const END_Y = 78;
  */
 const DETOUR_Y = (3 * 40 + 3 * 52 + END_Y) / 8;
 
-/** Backtick spans become inline code, the way they read in the source copy. */
+/** Backtick spans become inline code pills, preserved as unbroken pills on mobile. */
 function Inline(props: { text: string }) {
   const parts = () => props.text.split(/`([^`]+)`/g);
   return (
@@ -121,13 +121,10 @@ function Inline(props: { text: string }) {
       {(part, i) =>
         i() % 2 === 1 ? (
           <code
-            class="rounded px-1 py-0.5 font-mono text-[0.9em]"
+            class="inline-block whitespace-nowrap rounded px-1.5 py-0.2 font-mono text-[0.88em] leading-tight align-baseline"
             style={{
               background: "var(--paper-3)",
-              border: "1px solid var(--ink)",
-              // Pinned, not inherited: these chips also sit inside the dark
-              // terminal card, where inheriting its cream text made cream on
-              // cream.
+              border: "1.5px solid var(--ink)",
               color: "var(--ink)",
             }}
           >
@@ -152,13 +149,15 @@ function RoadLeg(props: {
   detour?: JSX.Element;
 }) {
   const path = (x: Record<Side, number>) =>
-    `M ${x[props.from]} 0 C ${x[props.from]} 40, ${x[props.to]} 52, ${x[props.to]} ${END_Y}`;
+    props.label !== undefined
+      ? `M ${x[props.from]} -5 C ${x[props.from]} 40, ${x[props.to]} 52, ${x[props.to]} ${END_Y}`
+      : `M ${x[props.from]} -5 C ${x[props.from]} 40, ${x[props.to]} 60, ${x[props.to]} 100`;
 
   const Curve = (curveProps: { x: Record<Side, number> }) => (
     <svg
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
-      class="block h-full w-full"
+      class="block h-full w-full overflow-hidden"
       aria-hidden="true"
     >
       <path
@@ -166,7 +165,7 @@ function RoadLeg(props: {
         fill="none"
         stroke="var(--ink)"
         stroke-width="18"
-        stroke-linecap="round"
+        stroke-linecap="butt"
         vector-effect="non-scaling-stroke"
       />
       <path
@@ -174,7 +173,7 @@ function RoadLeg(props: {
         fill="none"
         stroke={props.walked ? `var(--${props.pop})` : "var(--paper-3)"}
         stroke-width="12"
-        stroke-linecap="round"
+        stroke-linecap="butt"
         vector-effect="non-scaling-stroke"
       />
       <path
@@ -190,7 +189,10 @@ function RoadLeg(props: {
   );
 
   return (
-    <div class="relative h-24 sm:h-32" aria-hidden={props.label === undefined ? "true" : undefined}>
+    <div
+      class={`relative h-20 sm:h-28 -mt-4 sm:-mt-4 ${props.label === undefined ? "-mb-4 sm:-mb-5" : ""}`}
+      aria-hidden={props.label === undefined ? "true" : undefined}
+    >
       <div class="absolute inset-0 sm:hidden">
         <Curve x={X_MOBILE} />
       </div>
@@ -318,12 +320,12 @@ function StepsSwipe(props: { steps: string[]; pop: string }) {
 
 function StepsChecklist(props: { steps: string[]; pop: string }) {
   return (
-    <ol class="m-0 list-none space-y-2 p-0">
+    <ol class="m-0 list-none space-y-2.5 p-0">
       <For each={props.steps}>
         {(step, i) => (
           <li class="flex items-start gap-2.5">
             <span
-              class="anim-pop grid h-7 w-7 shrink-0 place-items-center rounded-full font-display text-sm font-black"
+              class="anim-pop grid h-6 w-6 sm:h-7 sm:w-7 shrink-0 place-items-center rounded-full font-display text-xs sm:text-sm font-black"
               style={{
                 border: "var(--ink-w) solid var(--ink)",
                 background: `var(--${props.pop})`,
@@ -332,7 +334,7 @@ function StepsChecklist(props: { steps: string[]; pop: string }) {
             >
               {i() + 1}
             </span>
-            <span class="pt-0.5 text-sm font-semibold leading-relaxed sm:text-base">
+            <span class="pt-0.5 text-xs sm:text-sm font-semibold leading-relaxed">
               <Inline text={step} />
             </span>
           </li>
@@ -361,7 +363,7 @@ function Steps(props: { stop: RoadStop }) {
 
 function StepsTerminal(props: { steps: string[] }) {
   return (
-    <div class="inked overflow-hidden rounded" style={{ background: "#181511" }}>
+    <div class="inked overflow-hidden rounded bg-[#181511]">
       <div
         class="flex items-center gap-1.5 px-3 py-1.5"
         style={{
@@ -377,7 +379,7 @@ function StepsTerminal(props: { steps: string[] }) {
       <ol class="m-0 list-none space-y-1.5 p-3">
         <For each={props.steps}>
           {(step) => (
-            <li class="flex items-start gap-2 font-mono text-[13px] leading-relaxed text-[#fbf3e4]">
+            <li class="flex items-start gap-2 font-mono text-xs sm:text-[13px] leading-relaxed text-[#fbf3e4]">
               <span class="shrink-0 font-black text-[var(--pop-teal)]">❯</span>
               <span>
                 <Inline text={step} />
@@ -413,7 +415,7 @@ function PetalDial() {
 
   return (
     <div class="flex items-center gap-3">
-      <svg viewBox="0 0 100 100" class="h-24 w-24 shrink-0" aria-hidden="true">
+      <svg viewBox="0 0 100 100" class="h-20 w-20 sm:h-24 sm:w-24 shrink-0" aria-hidden="true">
         <For each={dots()}>
           {(d) => (
             <circle
@@ -427,10 +429,10 @@ function PetalDial() {
           )}
         </For>
       </svg>
-      <p class="m-0 font-mono text-sm font-bold">
+      <p class="m-0 font-mono text-xs sm:text-sm font-bold">
         petals = <span class="font-black text-[var(--pop-teal-deep)]">{counts[step()]}</span>
         <br />
-        <span class="text-xs text-muted">one number. that is the difference.</span>
+        <span class="text-[11px] text-muted">one number. that is the difference.</span>
       </p>
     </div>
   );
@@ -463,12 +465,6 @@ function PaletteVisual() {
 
 /**
  * The "ask an AI" block, on every stop.
- *
- * AI is explicitly allowed in this contest, and a first-year with a chatbot
- * open is not cheating - they are doing what every working developer does. What
- * they usually lack is the question. So each stop ships the prompt that gets a
- * useful answer for *that* stop, and says plainly what to use it for: explaining
- * the thing you just read, not generating an entry you did not write.
  */
 const AI_TABS = [
   { label: "ChatGPT", href: "https://chatgpt.com/" },
@@ -476,8 +472,9 @@ const AI_TABS = [
   { label: "Claude", href: "https://claude.ai/new" },
 ];
 
-function AskAi(props: { prompt: string }) {
+function AskAi(props: { prompt: string; index?: number }) {
   const [copied, setCopied] = createSignal(false);
+  const isCompact = () => (props.index ?? 0) > 0;
 
   const copy = () => {
     void navigator.clipboard.writeText(props.prompt);
@@ -487,17 +484,20 @@ function AskAi(props: { prompt: string }) {
 
   return (
     <details class="group">
-      <summary class="btn-ghost inline-flex cursor-pointer list-none items-center gap-1.5 text-sm">
-        <Sparkles size={14} class="shrink-0" />
-        <span>Ask an AI to explain this stop</span>
-        <ChevronDown size={14} class="shrink-0 transition-transform group-open:rotate-180" />
+      <summary
+        class={`btn-ghost inline-flex cursor-pointer list-none items-center gap-1.5 ${
+          isCompact() ? "text-xs px-2.5 py-1" : "text-xs sm:text-sm px-3 py-1.5"
+        }`}
+      >
+        <Sparkles size={isCompact() ? 13 : 14} class="shrink-0 text-[var(--pop-yellow-deep)]" />
+        <span>{isCompact() ? "Ask AI about this stop" : "Ask an AI to explain this stop"}</span>
+        <ChevronDown size={13} class="shrink-0 transition-transform group-open:rotate-180" />
       </summary>
 
       <div class="space-y-2 pt-2.5">
-        <p class="m-0 text-sm font-semibold leading-relaxed">
-          Open a chatbot in a new tab, paste this, and ask follow-up questions until it makes sense.
-          Using AI to <span class="font-black">understand</span> things is the whole point; using it
-          to generate an entry you did not write scores nothing, because originality is judged.
+        <p class="m-0 text-xs sm:text-sm font-semibold leading-relaxed">
+          Open a chatbot in a new tab, paste this prompt, and ask follow-up questions until it makes
+          sense. Using AI to <span class="font-black">understand</span> concepts is encouraged!
         </p>
 
         <div
@@ -547,25 +547,28 @@ function AskAi(props: { prompt: string }) {
   );
 }
 
-/**
- * The sticky note pinned to every stop.
- *
- * The road tracks whether you finished a stop; it cannot track "my radius is
- * 140 and the teal ring looked wrong" or "ask Aravind about git tomorrow".
- * Those are the things people actually lose between sessions, so each stop gets
- * somewhere to write them - saved to this browser, seen by nobody.
- */
 function StickyNote(props: { stopId: string; index: number }) {
   const [text, setText] = createSignal("");
   const [saved, setSaved] = createSignal(false);
+  let textareaEl: HTMLTextAreaElement | undefined;
 
-  onMount(() => setText(readRoadNotes()[props.stopId] ?? ""));
+  const adjustHeight = () => {
+    if (!textareaEl) return;
+    textareaEl.style.height = "auto";
+    textareaEl.style.height = `${Math.max(textareaEl.scrollHeight, 38)}px`;
+  };
+
+  onMount(() => {
+    const savedText = readRoadNotes()[props.stopId] ?? "";
+    setText(savedText);
+    adjustHeight();
+  });
 
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const onInput = (value: string) => {
+  const onInput = (e: InputEvent & { currentTarget: HTMLTextAreaElement }) => {
+    const value = e.currentTarget.value;
     setText(value);
-    // Written straight through, but the "saved" flash is debounced so it does
-    // not strobe on every keystroke.
+    adjustHeight();
     const notes = readRoadNotes();
     notes[props.stopId] = value;
     writeRoadNotes(notes);
@@ -577,40 +580,47 @@ function StickyNote(props: { stopId: string; index: number }) {
 
   return (
     <div
-      class="relative w-full max-w-xs shrink-0 p-2.5 pt-4"
+      onClick={() => textareaEl?.focus()}
+      class="relative w-full sm:w-auto sm:min-w-[280px] sm:max-w-[440px] md:min-w-[340px] flex-1 p-2.5 pt-3 cursor-text"
       style={{
         background: "var(--pop-yellow)",
         border: "var(--ink-w) solid var(--ink)",
         "border-radius": "0.25rem",
-        transform: props.index % 2 === 0 ? "rotate(-1.5deg)" : "rotate(1.5deg)",
+        transform: props.index % 2 === 0 ? "rotate(-0.75deg)" : "rotate(0.75deg)",
       }}
     >
-      {/* the tape */}
       <span
-        class="absolute -top-2 left-1/2 h-4 w-14 -translate-x-1/2"
+        class="absolute -top-1.5 left-1/2 h-3.5 w-12 -translate-x-1/2 pointer-events-none"
         style={{
           background: "var(--paper-3)",
-          border: "2px solid var(--ink)",
-          transform: "translateX(-50%) rotate(-3deg)",
+          border: "1.5px solid var(--ink)",
+          transform: "translateX(-50%) rotate(-2deg)",
         }}
         aria-hidden="true"
       />
       <textarea
-        class="block w-full resize-none bg-transparent leading-snug outline-none"
+        ref={(el) => (textareaEl = el)}
+        class="block w-full resize-none bg-transparent outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 border-0 focus:border-0 shadow-none placeholder:text-[var(--ink)]/45 cursor-text px-1 py-0.5"
         style={{
           "font-family": "var(--font-stack-hand)",
-          "font-size": "1.05rem",
-          "font-weight": "700",
+          "font-size": "1.2rem",
+          "font-weight": "500",
+          "line-height": "1.4",
           color: "var(--ink)",
-          "min-height": "4.5rem",
+          "caret-color": "var(--ink)",
+          "min-height": "2.4rem",
+          outline: "none",
+          border: "none",
+          "box-shadow": "none",
         }}
         placeholder="note to self… (where you got to, what broke, what to try next)"
         value={text()}
-        onInput={(e) => onInput(e.currentTarget.value)}
+        onInput={onInput}
         aria-label="Your note for this stop"
+        rows={1}
       />
-      <p class="m-0 text-right font-mono text-[10px] font-bold opacity-70">
-        {saved() ? "saved to this browser" : "saves as you type"}
+      <p class="m-0 text-right font-mono text-[9px] font-bold opacity-70 select-none">
+        {saved() ? "saved ✓" : "saves as you type"}
       </p>
     </div>
   );
@@ -644,7 +654,7 @@ function SelfRating(props: { stopId: string }) {
               aria-label={word}
               aria-pressed={score() === i() + 1}
               title={word}
-              class="grid h-8 w-8 place-items-center rounded-full font-display text-xs font-black"
+              class="grid h-8 w-8 place-items-center rounded-full font-display text-xs font-black cursor-pointer"
               style={{
                 border: "var(--ink-w) solid var(--ink)",
                 background: score() >= i() + 1 ? "var(--pop-pink)" : "var(--paper-2)",
@@ -656,7 +666,7 @@ function SelfRating(props: { stopId: string }) {
         </For>
       </div>
       <Show when={score() > 0}>
-        <span class="comment text-sm">{RATING_WORDS[score() - 1]}</span>
+        <span class="comment text-xs">{RATING_WORDS[score() - 1]}</span>
       </Show>
     </div>
   );
@@ -685,7 +695,7 @@ function PrizeCard(props: { name?: string }) {
   ];
 
   return (
-    <div class="card card-plain space-y-2.5 bg-surface">
+    <div class="card card-plain space-y-2.5 bg-surface p-3">
       <p class="m-0 font-display text-base font-black">
         {props.name ? `${props.name}, this is what you're playing for` : "What you're playing for"}
       </p>
@@ -710,9 +720,9 @@ function PrizeCard(props: { name?: string }) {
         </For>
       </div>
 
-      <p class="comment m-0 text-sm">
-        somebody wins that for a picture they made with code. no reason it can't be a first-year who
-        started this week - the voting screen never shows a name, only the pookalam.
+      <p class="comment m-0 text-xs sm:text-sm">
+        Podium winners take cash prizes via UPI. Voting screen never reveals names — only the
+        artwork.
       </p>
     </div>
   );
@@ -729,14 +739,14 @@ function StopPayload(props: { stop: RoadStop; name?: string; interactiveReady: b
 
       <Show when={props.stop.payload === "tutorials"}>
         <details class="group" onToggle={(event) => setTutorialOpen(event.currentTarget.open)}>
-          <summary class="btn-ghost inline-flex cursor-pointer list-none items-center gap-1.5 text-sm">
-            <ChevronDown size={15} class="shrink-0 transition-transform group-open:rotate-180" />
-            <span>Six examples with starter code (any language counts)</span>
+          <summary class="btn-ghost inline-flex cursor-pointer list-none items-center gap-1.5 text-xs sm:text-sm font-bold">
+            <SpriteIcon name="terminal-star" size={18} interactive class="shrink-0" />
+            <span>View six starter examples with code</span>
           </summary>
           <Show
             when={props.interactiveReady && tutorialOpen()}
             fallback={
-              <p class="comment m-0 pt-2.5 text-sm">
+              <p class="comment m-0 pt-2 text-xs">
                 Six starter examples load when you open this panel.
               </p>
             }
@@ -751,14 +761,14 @@ function StopPayload(props: { stop: RoadStop; name?: string; interactiveReady: b
       <Show when={props.stop.payload === "studio"}>
         <a
           href="#studio"
-          class="btn-ghost inline-flex items-center gap-2 text-sm"
+          class="btn-ghost inline-flex items-center gap-2 text-xs sm:text-sm"
           onClick={(e) => {
             e.preventDefault();
             scrollToAnchor("studio");
           }}
         >
           <SpriteIcon name="concentric-pookalam" size={18} />
-          <span>Open the studio up top and steal a palette</span>
+          <span>Open the studio up top and test colors</span>
         </a>
       </Show>
 
@@ -778,16 +788,6 @@ function StopPayload(props: { stop: RoadStop; name?: string; interactiveReady: b
     </>
   );
 }
-
-const PILLAR_PLAIN: Record<string, string> = {
-  "Visual Quality & Polish": "Does it look good? Colours that sit together, edges that are clean.",
-  "Technical Complexity & Craft":
-    "Did the code do the work - loops and maths - or did you place every shape by hand?",
-  "Originality & Concept":
-    "Did you try something of your own instead of the first idea everybody has?",
-  "Closeness to Real Pookalam": "Would someone at home look at it and call it a pookalam?",
-  "Open-Source & Reproducibility": "Can we clone your repo, run it, and get your picture back?",
-};
 
 const ENTRY_CHECKS = [
   {
@@ -833,7 +833,7 @@ function EntryChecker() {
               type="button"
               onClick={() => flip(check.id)}
               aria-pressed={isOn(check.id)}
-              class="flex items-start gap-2.5 rounded p-2.5 text-left"
+              class="flex items-start gap-2.5 rounded p-2.5 text-left cursor-pointer"
               style={{
                 border: "var(--ink-w) solid var(--ink)",
                 background: isOn(check.id) ? "var(--pop-teal)" : "var(--paper-2)",
@@ -851,63 +851,21 @@ function EntryChecker() {
                 </Show>
               </span>
               <span>
-                <span class="block text-sm font-black leading-tight">{check.label}</span>
-                <span class="block text-xs font-semibold text-muted">{check.hint}</span>
+                <span class="block text-xs sm:text-sm font-black leading-tight">{check.label}</span>
+                <span class="block text-[11px] font-semibold text-muted leading-snug">
+                  {check.hint}
+                </span>
               </span>
             </button>
           )}
         </For>
       </div>
 
-      <p class="comment m-0 text-sm">
-        <Show
-          when={allSet()}
-          fallback={`${ticked().length} of 4 - the other ${ENTRY_CHECKS.length - ticked().length} get entries pulled every year.`}
-        >
-          all four. nothing can disqualify you now. go and win it.
+      <p class="comment m-0 text-xs">
+        <Show when={allSet()} fallback={`${ticked().length} of 4 checks verified.`}>
+          All 4 checks verified! Ready to submit.
         </Show>
       </p>
-    </div>
-  );
-}
-
-function JudgingPillars() {
-  const [open, setOpen] = createSignal<string | null>(POOKALAM.judging[0].name);
-  const pops = ["pop-yellow", "pop-teal", "pop-blue", "pop-purple", "pop-pink"];
-
-  return (
-    <div class="space-y-2">
-      <div class="flex flex-wrap gap-1.5">
-        <For each={POOKALAM.judging}>
-          {(criterion, i) => (
-            <button
-              type="button"
-              onClick={() => setOpen(open() === criterion.name ? null : criterion.name)}
-              class="badge cursor-pointer text-[10px]"
-              style={{
-                "--pop":
-                  open() === criterion.name
-                    ? `var(--${pops[i() % pops.length]})`
-                    : "var(--paper-2)",
-              }}
-              aria-pressed={open() === criterion.name}
-            >
-              {criterion.name}
-            </button>
-          )}
-        </For>
-      </div>
-
-      <Show when={POOKALAM.judging.find((c) => c.name === open())}>
-        {(criterion) => (
-          <div class="anim-pop card card-plain bg-surface p-3">
-            <p class="m-0 text-sm font-black">{PILLAR_PLAIN[criterion().name]}</p>
-            <p class="m-0 pt-1 text-xs font-semibold text-muted">{criterion().body}</p>
-          </div>
-        )}
-      </Show>
-
-      <p class="comment m-0 text-sm">nobody wins all five. pick the two you care about.</p>
     </div>
   );
 }
@@ -916,23 +874,6 @@ function RulesPayload() {
   return (
     <div class="space-y-3">
       <EntryChecker />
-      <JudgingPillars />
-      <details class="group">
-        <summary class="flex cursor-pointer list-none items-center gap-1.5 text-sm font-black">
-          <ChevronDown size={15} class="shrink-0 transition-transform group-open:rotate-180" />
-          <span>The full rulebook, word for word</span>
-        </summary>
-        <ul class="m-0 list-none space-y-2 p-0 pt-2">
-          <For each={POOKALAM.rules}>
-            {(rule) => (
-              <li class="flex items-start gap-2 text-sm font-semibold leading-relaxed">
-                <span class="shrink-0 font-black text-[var(--pop-pink)]">▸</span>
-                <span>{rule}</span>
-              </li>
-            )}
-          </For>
-        </ul>
-      </details>
     </div>
   );
 }
@@ -941,7 +882,7 @@ function CodePreview(props: { snippet: string }) {
   return (
     <pre
       class="inked m-0 overflow-x-auto whitespace-pre-wrap break-words rounded bg-[#181511] p-3 font-mono text-[13px] leading-relaxed text-[#fbf3e4]"
-      style={{ "min-height": "12rem" }}
+      style={{ "min-height": "10rem" }}
     >
       {props.snippet}
     </pre>
@@ -972,7 +913,8 @@ function StopCard(props: {
       class={`scroll-mt-28 ${props.side === "left" ? "sm:mr-auto" : "sm:ml-auto"} w-full sm:w-[92%]`}
     >
       <div
-        class={`card ${props.stop.pop} relative space-y-4 overflow-clip ${props.done ? "opacity-90" : ""} ${props.active ? "ring-4 ring-[var(--ink)]" : ""}`}
+        class={`card ${props.stop.pop} relative space-y-3.5 sm:space-y-4 overflow-clip ${props.done ? "opacity-90" : ""}`}
+        style={{ border: "var(--ink-w-bold) solid var(--ink)" }}
       >
         <Halftone opacity={0.09} />
 
@@ -994,202 +936,227 @@ function StopCard(props: {
           <span class="font-mono text-xs font-bold text-muted">{props.stop.minutes}</span>
         </div>
 
-        <div class="art-over space-y-2">
+        <div class="art-over space-y-1.5">
           <h3
             class="pop-label m-0 max-w-full"
             style={{
               "--pop": `var(--${props.stop.pop})`,
               "--tilt": props.index % 2 === 0 ? "-2deg" : "1.5deg",
-              "font-size": "clamp(1.45rem, 6vw, 2.1rem)",
+              "font-size": "clamp(1.35rem, 5.5vw, 2rem)",
             }}
           >
             {props.index + 1}. {props.stop.title}
           </h3>
-          <p class="comment text-sm sm:text-base">
+          <p class="comment text-xs sm:text-sm m-0">
             {props.name ? props.stop.hookNamed.replace("{name}", props.name) : props.stop.hook}
           </p>
         </div>
 
-        <Show when={props.stop.code?.sandbox} fallback={<Steps stop={props.stop} />}>
-          <div class="art-over space-y-1.5">
-            <Show
-              when={props.interactiveReady}
-              fallback={
-                <div class="space-y-3">
-                  <Steps stop={props.stop} />
-                  <CodePreview snippet={props.stop.code!.snippet} />
-                  <p class="comment m-0 text-xs">
-                    The editable runner loads after the page is interactive.
-                  </p>
-                </div>
-              }
-            >
-              <PookalamSandbox
-                snippet={props.stop.code!.snippet}
-                intro={<Steps stop={props.stop} />}
-                showAnimate={props.stop.day === "Day 4"}
-              />
-            </Show>
-          </div>
-        </Show>
-
-        <Show when={props.stop.code && !props.stop.code.sandbox}>
-          <div class="art-over space-y-1.5">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <span class="text-xs font-black uppercase tracking-wider text-muted">
-                {props.stop.code!.label}
-              </span>
-              <button
-                type="button"
-                onClick={() => copy(props.stop.code!.snippet)}
-                class="btn-ghost min-h-0 px-2.5 py-1 text-xs"
+        {/* Main Content Area (Full width, zero horizontal squeeze) */}
+        <div class="art-over space-y-3.5 sm:space-y-4">
+          <Show
+            when={props.stop.code?.sandbox}
+            fallback={
+              <div>
+                <Steps stop={props.stop} />
+              </div>
+            }
+          >
+            <div class="space-y-1.5">
+              <Show
+                when={props.interactiveReady}
+                fallback={
+                  <div class="space-y-3">
+                    <Steps stop={props.stop} />
+                    <CodePreview snippet={props.stop.code!.snippet} />
+                    <p class="comment m-0 text-xs">
+                      The editable runner loads after the page is interactive.
+                    </p>
+                  </div>
+                }
               >
-                <Show
-                  when={copied()}
-                  fallback={
-                    <>
-                      <Copy size={12} />
-                      <span>Copy</span>
-                    </>
-                  }
-                >
-                  <span>Copied!</span>
-                </Show>
-              </button>
+                <PookalamSandbox
+                  snippet={props.stop.code!.snippet}
+                  intro={<Steps stop={props.stop} />}
+                  showAnimate={props.stop.day === "Day 4"}
+                />
+              </Show>
             </div>
-            <pre class="inked select-text overflow-x-auto rounded bg-[#181511] p-3 font-mono text-[13px] text-[#fbf3e4]">
-              <code>{props.stop.code!.snippet}</code>
-            </pre>
-          </div>
-        </Show>
+          </Show>
 
-        <Show when={props.stop.visual === "petal-dial"}>
-          <div class="art-over">
-            <PetalDial />
-          </div>
-        </Show>
-        <Show when={props.stop.visual === "palette"}>
-          <div class="art-over">
-            <PaletteVisual />
-          </div>
-        </Show>
-
-        <div class="art-over">
-          <AskAi prompt={props.stop.aiPrompt} />
-        </div>
-
-        <Show when={props.stop.links}>
-          <div class="art-over flex flex-wrap items-center gap-1.5">
-            <span class="text-xs font-black uppercase tracking-wider text-muted">learn more:</span>
-            <For each={props.stop.links}>
-              {(link) => (
-                <a
-                  href={link.href}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  class="badge inline-flex items-center gap-1 text-[10px] no-underline"
-                  title={link.note}
+          <Show when={props.stop.code && !props.stop.code.sandbox}>
+            <div class="space-y-1.5 pt-1">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <span class="text-xs font-black uppercase tracking-wider text-muted">
+                  {props.stop.code!.label}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => copy(props.stop.code!.snippet)}
+                  class="btn-ghost min-h-0 px-2.5 py-1 text-xs cursor-pointer"
                 >
-                  <ExternalLink size={11} class="shrink-0" />
-                  <span>{link.label}</span>
-                </a>
-              )}
-            </For>
+                  <Show
+                    when={copied()}
+                    fallback={
+                      <>
+                        <Copy size={12} />
+                        <span>Copy</span>
+                      </>
+                    }
+                  >
+                    <span>Copied!</span>
+                  </Show>
+                </button>
+              </div>
+              <pre class="inked select-text overflow-x-auto rounded bg-[#181511] p-3 font-mono text-xs sm:text-[13px] text-[#fbf3e4] m-0">
+                <code>{props.stop.code!.snippet}</code>
+              </pre>
+            </div>
+          </Show>
+
+          <Show when={props.stop.visual === "petal-dial"}>
+            <div class="pt-1">
+              <PetalDial />
+            </div>
+          </Show>
+          <Show when={props.stop.visual === "palette"}>
+            <div class="pt-1">
+              <PaletteVisual />
+            </div>
+          </Show>
+
+          <div class="pt-2">
+            <AskAi prompt={props.stop.aiPrompt} index={props.index} />
           </div>
-        </Show>
 
-        <div class="art-over">
-          <StopPayload
-            stop={props.stop}
-            name={props.name}
-            interactiveReady={props.interactiveReady}
-          />
-        </div>
-
-        <Show when={props.stop.more}>
-          <details class="art-over group">
-            <summary class="flex cursor-pointer list-none items-center gap-1.5 text-sm font-black">
-              <ChevronDown size={15} class="shrink-0 transition-transform group-open:rotate-180" />
-              <span>Why this works</span>
-            </summary>
-            <div class="space-y-2 pt-2">
-              <For each={props.stop.more}>
-                {(para) => (
-                  <p class="m-0 text-sm font-semibold leading-relaxed">
-                    <Inline text={para} />
-                  </p>
+          <Show when={props.stop.links}>
+            <div class="flex flex-wrap items-center gap-1.5 pt-1">
+              <span class="text-xs font-black uppercase tracking-wider text-muted">
+                learn more:
+              </span>
+              <For each={props.stop.links}>
+                {(link) => (
+                  <a
+                    href={link.href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    class="badge inline-flex items-center gap-1 text-[10px] no-underline"
+                    title={link.note}
+                  >
+                    <ExternalLink size={11} class="shrink-0" />
+                    <span>{link.label}</span>
+                  </a>
                 )}
               </For>
             </div>
-          </details>
-        </Show>
-
-        <Show when={props.stop.levelUp}>
-          <div
-            class="art-over flex items-start gap-2 rounded p-2.5"
-            style={{
-              border: "var(--ink-w) dashed var(--ink)",
-              background: "var(--paper-3)",
-            }}
-          >
-            <SpriteIcon name="arch-crown" size={20} interactive class="mt-0.5 shrink-0" />
-            <p class="m-0 text-sm font-semibold leading-relaxed">
-              <span class="font-black uppercase tracking-wide">Knew that already? </span>
-              <Inline text={props.stop.levelUp!} />
-            </p>
-          </div>
-        </Show>
-
-        <Show when={props.done}>
-          <div
-            class="art-over anim-pop flex items-start gap-2.5 rounded p-3"
-            style={{
-              border: "var(--ink-w) solid var(--ink)",
-              background: `var(--${props.stop.pop})`,
-            }}
-          >
-            <SpriteIcon name="burst-heart" size={22} animate="pulse" class="mt-0.5 shrink-0" />
-            <p class="m-0 text-sm font-bold leading-relaxed">
-              <span class="font-black">
-                {props.name ? `Nice one, ${props.name}. ` : "Nice one. "}
-              </span>
-              {props.stop.praise}
-            </p>
-          </div>
-        </Show>
-
-        <div class="art-over flex flex-col gap-3 pt-1 sm:flex-row sm:items-start sm:justify-between">
-          <Show when={props.done} fallback={<span />}>
-            <SelfRating stopId={props.stop.id} />
           </Show>
-          <StickyNote stopId={props.stop.id} index={props.index} />
+
+          <div class="pt-1">
+            <StopPayload
+              stop={props.stop}
+              name={props.name}
+              interactiveReady={props.interactiveReady}
+            />
+          </div>
+
+          <Show when={props.stop.more || props.stop.levelUp}>
+            <details class="group pt-1">
+              <summary class="flex cursor-pointer list-none items-center gap-1.5 text-xs sm:text-sm font-black">
+                <ChevronDown
+                  size={14}
+                  class="shrink-0 transition-transform group-open:rotate-180"
+                />
+                <span>Deep dive & Level-up tips</span>
+              </summary>
+              <div class="space-y-3 pt-2">
+                <Show when={props.stop.more}>
+                  <For each={props.stop.more}>
+                    {(para) => (
+                      <p class="m-0 text-xs sm:text-sm font-semibold leading-relaxed">
+                        <Inline text={para} />
+                      </p>
+                    )}
+                  </For>
+                </Show>
+
+                <Show when={props.stop.levelUp}>
+                  <div
+                    class="flex items-start gap-2 rounded p-2.5"
+                    style={{
+                      border: "var(--ink-w) dashed var(--ink)",
+                      background: "var(--paper-3)",
+                    }}
+                  >
+                    <SpriteIcon name="arch-crown" size={20} interactive class="mt-0.5 shrink-0" />
+                    <p class="m-0 text-xs sm:text-sm font-semibold leading-relaxed">
+                      <span class="font-black uppercase tracking-wide">Level Up Challenge: </span>
+                      <Inline text={props.stop.levelUp!} />
+                    </p>
+                  </div>
+                </Show>
+              </div>
+            </details>
+          </Show>
+
+          <Show when={props.done}>
+            <div
+              class="anim-pop flex items-start gap-2.5 rounded p-3"
+              style={{
+                border: "var(--ink-w) solid var(--ink)",
+                background: `var(--${props.stop.pop})`,
+              }}
+            >
+              <SpriteIcon name="burst-heart" size={22} animate="pulse" class="mt-0.5 shrink-0" />
+              <p class="m-0 text-xs sm:text-sm font-bold leading-relaxed">
+                <span class="font-black">
+                  {props.name ? `Nice work, ${props.name}! ` : "Nice work! "}
+                </span>
+                {props.stop.praise}
+              </p>
+            </div>
+          </Show>
+
+          {/* Compact Notes & Rating in Normal Flow (Zero overlap, compact footprint) */}
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2.5  ">
+            <SelfRating stopId={props.stop.id} />
+            <StickyNote stopId={props.stop.id} index={props.index} />
+          </div>
         </div>
 
-        <div class="art-over relative flex flex-wrap items-center justify-between gap-2 pt-1">
+        <div class="art-over relative flex flex-wrap items-center justify-between gap-2 pt-2 ">
           <button
             type="button"
             onClick={props.onToggle}
-            class="btn-ghost relative z-10 min-h-0 gap-2 px-3 py-2 text-sm"
+            class="btn-brand relative z-10 min-h-0 gap-2 px-3.5 py-2 text-xs sm:text-sm font-black cursor-pointer"
             style={props.done ? { background: `var(--${props.stop.pop})` } : undefined}
             aria-pressed={props.done}
           >
-            <Show when={props.done} fallback={<span>Mark this done</span>}>
-              <Check size={15} strokeWidth={3} />
-              <span>Done</span>
+            <Show
+              when={props.done}
+              fallback={
+                <>
+                  <span>Mark Step Completed</span>
+                  <Check size={14} strokeWidth={3} />
+                </>
+              }
+            >
+              <Check size={15} strokeWidth={3.5} />
+              <span>Completed!</span>
             </Show>
           </button>
 
           <Show when={ROAD_STOPS[props.index + 1]}>
             {(next) => (
               <a
-                href={`#${next().id}`}
-                class="text-sm font-black text-muted underline decoration-dashed underline-offset-4"
+                href={`?section=${next().id}`}
+                class="btn-ghost min-h-0 px-3 py-2 text-xs sm:text-sm font-black inline-flex items-center gap-1 cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault();
                   scrollToAnchor(next().id);
                 }}
               >
-                next stop →
+                <span>Next Stop</span>
+                <ChevronRight size={15} strokeWidth={3} />
               </a>
             )}
           </Show>
@@ -1213,26 +1180,65 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
   const [done, setDone] = createSignal<string[]>([]);
   const [roadCursor, setRoadCursor] = createSignal(0);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [navOffset, setNavOffset] = createSignal(64);
 
   onMount(() => {
+    const updateNavOffset = () => {
+      const header = document.querySelector("header");
+      if (header) {
+        setNavOffset(header.getBoundingClientRect().height);
+      }
+    };
+    updateNavOffset();
+    window.addEventListener("resize", updateNavOffset);
+    onCleanup(() => window.removeEventListener("resize", updateNavOffset));
+
     const progress = readRoadProgress();
     setDone(progress);
     const firstOpen = ROAD_STOPS.findIndex((stop) => !progress.includes(stop.id));
     setRoadCursor(firstOpen >= 0 ? firstOpen : ROAD_STOPS.length - 1);
     setInteractiveReady(true);
 
-    // Exact moment the sentinel touches the sticky top navbar offset
+    const requested = Array.isArray(searchParams.section)
+      ? searchParams.section[0]
+      : searchParams.section;
+    if (requested && ROAD_STOPS.some((stop) => stop.id === requested)) {
+      setRoadCursor(ROAD_STOPS.findIndex((stop) => stop.id === requested));
+    }
+
     if (sentinelEl) {
-      const topOffset = window.innerWidth >= 640 ? "64px" : "96px";
       const observer = new IntersectionObserver(
         ([entry]) => {
           setIsStuck(!entry.isIntersecting);
         },
-        { rootMargin: `-${topOffset} 0px 0px 0px`, threshold: 0 },
+        { rootMargin: `-${navOffset() + 8}px 0px 0px 0px`, threshold: 0 },
       );
       observer.observe(sentinelEl);
       onCleanup(() => observer.disconnect());
     }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        const id = visible?.target.id;
+        if (id) {
+          const index = ROAD_STOPS.findIndex((stop) => stop.id === id);
+          if (index >= 0 && index !== roadCursor()) {
+            setRoadCursor(index);
+            setSearchParams({ section: id }, { replace: true, scroll: false });
+          }
+        }
+      },
+      { rootMargin: "-15% 0px -55% 0px", threshold: 0 },
+    );
+
+    for (const stop of ROAD_STOPS) {
+      const element = document.getElementById(stop.id);
+      if (element) observer.observe(element);
+    }
+    onCleanup(() => observer.disconnect());
   });
 
   const isDone = (id: string) => done().includes(id);
@@ -1257,32 +1263,6 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
     setSearchParams({ section: id }, { replace: true, scroll: false });
   };
 
-  onMount(() => {
-    const requested = Array.isArray(searchParams.section)
-      ? searchParams.section[0]
-      : searchParams.section;
-    if (requested && ROAD_STOPS.some((stop) => stop.id === requested)) {
-      setRoadCursor(ROAD_STOPS.findIndex((stop) => stop.id === requested));
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        const id = visible?.target.id;
-        if (id) setActiveStop(id);
-      },
-      { rootMargin: "-18% 0px -62% 0px", threshold: 0 },
-    );
-
-    for (const stop of ROAD_STOPS) {
-      const element = document.getElementById(stop.id);
-      if (element) observer.observe(element);
-    }
-    onCleanup(() => observer.disconnect());
-  });
-
   const nextStop = createMemo(() => ROAD_STOPS.find((s) => !isDone(s.id)) ?? null);
   const allDone = createMemo(() => doneCount() === ROAD_STOPS.length);
 
@@ -1299,172 +1279,195 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
   const walked = (index: number) => index === 0 || isDone(ROAD_STOPS[index - 1].id);
 
   return (
-    <section id="road" class="relative scroll-mt-28">
-      {/* 1. Sentinel to trigger the EXACT moment sticky engages */}
+    <section id="road" class="relative scroll-mt-28 space-y-4">
+      {/* Sentinel for sticky intersection */}
       <div
-        ref={(element) => (sentinelEl = element)}
-        class="pointer-events-none h-px w-full -mb-px opacity-0"
+        ref={(el) => (sentinelEl = el)}
+        class="pointer-events-none -mt-4 h-1 w-full opacity-0"
         aria-hidden="true"
       />
 
-      {/* 2. Single Unified Sticky Container */}
+      {/* Morphing Sticky Road Header */}
       <div
-        class={`sticky z-40 mb-3 overflow-hidden transition-all duration-300 ${
+        class={`sticky z-30 card overflow-hidden transition-all duration-300 ease-in-out ${
           isStuck()
-            ? "top-[6rem] sm:top-16 card p-2.5 shadow-lg"
-            : "top-[6rem] sm:top-16 card pop-teal space-y-3.5"
+            ? "card-plain bg-[var(--paper-2)] px-3 py-1.5 sm:px-3.5 sm:py-2 mb-1.5 space-y-1"
+            : "pop-teal p-4 sm:p-5 space-y-3.5"
         }`}
-        style={isStuck() ? { background: "var(--paper-2)" } : undefined}
+        style={{
+          top: `${navOffset() + 6}px`,
+          border: "var(--ink-w-bold) solid var(--ink)",
+        }}
       >
-        <Show when={!isStuck()}>
+        {/* Decorative Halftone & Confetti (Only when unstuck) */}
+        <div
+          class={`pointer-events-none transition-opacity duration-300 ${
+            isStuck() ? "opacity-0 h-0 overflow-hidden" : "opacity-100"
+          }`}
+        >
+          <Halftone opacity={0.06} />
           <Confetti seed="road-head" count={6} animate opacity={0.35} />
-        </Show>
+        </div>
 
-        <div class="art-over">
-          {/* Hero View - Hidden the moment it sticks */}
-          <Show when={!isStuck()}>
-            <div class="space-y-3.5">
-              <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-                <div class="min-w-0 space-y-1">
-                  <span class="sticker text-[10px]" style={{ "--pop": "var(--pop-yellow)" }}>
-                    nine stops · one week · zero experience required
-                  </span>
-                  <h2
-                    class="wordmark m-0 leading-tight"
-                    data-text="THE POOKALAM ROAD"
-                    style={{ "font-size": "clamp(1.3rem, 5vw, 2.2rem)" }}
-                  >
-                    THE POOKALAM ROAD
-                  </h2>
-                  <p class="m-0 font-mono text-sm font-bold text-muted">
-                    {firstName() ? `${firstName()} · ` : ""}
-                    {doneCount()} of {ROAD_STOPS.length} stops cleared
-                  </p>
-                </div>
-
-                <div class="flex flex-wrap items-center gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
-                  <Show when={nextStop()}>
-                    {(stop) => (
-                      <a
-                        href={`#${stop().id}`}
-                        class="btn-brand min-h-0 justify-center px-3 py-2 text-center text-sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          scrollToAnchor(stop().id);
-                        }}
-                      >
-                        {doneCount() === 0 ? "Start walking" : "Back to where I stopped"}
-                      </a>
-                    )}
-                  </Show>
-
-                  <a
-                    href="#judging"
-                    class="btn-ghost min-h-0 justify-center gap-1.5 px-3 py-2 text-center text-sm"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      scrollToAnchor("judging");
-                    }}
-                  >
-                    <FastForward size={14} class="shrink-0" />
-                    <span>I know this, just the rules</span>
-                  </a>
-
-                  <Show when={doneCount() > 0}>
-                    <button
-                      type="button"
-                      onClick={reset}
-                      class="btn-ghost min-h-0 justify-center gap-1.5 px-2.5 py-2 text-sm"
-                      title="Clear my progress"
+        <div class={`art-over ${isStuck() ? "space-y-1" : "space-y-2.5"}`}>
+          <Show
+            when={isStuck()}
+            fallback={
+              <div class="space-y-3">
+                <div class="flex flex-col gap-2.5 sm:flex-row sm:items-end sm:justify-between">
+                  <div class="min-w-0 space-y-1">
+                    <span class="sticker text-[10px]" style={{ "--pop": "var(--pop-yellow)" }}>
+                      9 Interactive Stops · Zero Experience Required
+                    </span>
+                    <h2
+                      class="wordmark m-0 leading-tight"
+                      data-text="THE POOKALAM ROAD"
+                      style={{ "font-size": "clamp(1.3rem, 5vw, 2.2rem)" }}
                     >
-                      <RotateCcw size={13} />
-                      <span>Start over</span>
-                    </button>
-                  </Show>
+                      THE POOKALAM ROAD
+                    </h2>
+                    <p class="m-0 font-mono text-sm font-bold text-muted">
+                      {firstName() ? `${firstName()} · ` : ""}
+                      {doneCount()} of {ROAD_STOPS.length} stops cleared
+                    </p>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-2">
+                    <Show when={nextStop()}>
+                      {(stop) => (
+                        <a
+                          href={`?section=${stop().id}`}
+                          class="btn-brand min-h-0 justify-center px-3.5 py-2 text-center text-sm font-black"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            scrollToAnchor(stop().id);
+                          }}
+                        >
+                          {doneCount() === 0 ? "Start Walking" : "Resume Step"}
+                        </a>
+                      )}
+                    </Show>
+
+                    <Show when={doneCount() > 0}>
+                      <button
+                        type="button"
+                        onClick={reset}
+                        class="btn-ghost min-h-0 justify-center gap-1.5 px-2.5 py-2 text-sm font-black"
+                        title="Clear my progress"
+                      >
+                        <RotateCcw size={13} />
+                        <span>Start Over</span>
+                      </button>
+                    </Show>
+                  </div>
                 </div>
-              </div>
 
-              <div class="flex gap-1">
-                <For each={ROAD_STOPS}>
-                  {(stop) => (
-                    <div
-                      class="h-3 flex-1 rounded-full"
-                      style={{
-                        border: "var(--ink-w) solid var(--ink)",
-                        background: isDone(stop.id) ? `var(--${stop.pop})` : "var(--paper-3)",
-                      }}
-                      aria-hidden="true"
-                    />
-                  )}
-                </For>
-              </div>
-
-              <p class="comment text-sm">
-                days are a suggestion, not a rule. some walk this whole road in one evening, some
-                take the week, and every stop has a shortcut for people who already know that bit.
-              </p>
-            </div>
-          </Show>
-
-          {/* Mini View - Appears the moment it touches the sticky top offset */}
-          <Show when={isStuck()}>
-            <div class="flex items-center justify-between gap-3">
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-muted sm:text-xs">
-                  <span>{ROAD_STOPS[roadCursor()].day}</span>
-                  <span aria-hidden="true">·</span>
-                  <span>
-                    {doneCount()}/{ROAD_STOPS.length} cleared
-                  </span>
-                </div>
-                <p class="m-0 truncate text-xs font-black sm:text-sm">
-                  {ROAD_STOPS[roadCursor()].title}
-                </p>
+                {/* Progress Bar */}
                 <div
-                  class="mt-1 flex gap-0.5"
+                  class="flex gap-1"
                   role="progressbar"
                   aria-label={`${doneCount()} of ${ROAD_STOPS.length} stops cleared`}
-                  aria-valuenow={doneCount()}
-                  aria-valuemin={0}
-                  aria-valuemax={ROAD_STOPS.length}
                 >
                   <For each={ROAD_STOPS}>
-                    {(stop) => (
-                      <span
-                        class="h-1.5 min-w-0 flex-1 rounded-full"
+                    {(stop, i) => (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveStop(stop.id);
+                          scrollToAnchor(stop.id);
+                        }}
+                        class="h-3 min-w-0 flex-1 rounded-full transition-all cursor-pointer hover:opacity-80"
                         style={{
+                          border: "var(--ink-w) solid var(--ink)",
                           background: isDone(stop.id) ? `var(--${stop.pop})` : "var(--paper-3)",
                         }}
+                        aria-label={`Stop ${i() + 1}: ${stop.title}`}
+                        title={`Stop ${i() + 1}: ${stop.title}`}
                       />
                     )}
                   </For>
                 </div>
+
+                <p class="comment text-xs sm:text-sm m-0">
+                  Work at your own pace! Follow the steps below or use the navigation controls to
+                  jump between stops.
+                </p>
+              </div>
+            }
+          >
+            {/* Ultra-Slim Stuck Compact State */}
+            <div class="space-y-1">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex min-w-0 items-center gap-1.5">
+                  <span
+                    class="shrink-0 rounded px-1.5 py-0.2 font-mono text-[9.5px] font-black uppercase text-[var(--ink)]"
+                    style={{
+                      background: `var(--${ROAD_STOPS[roadCursor()].pop})`,
+                      border: "1.5px solid var(--ink)",
+                    }}
+                  >
+                    {ROAD_STOPS[roadCursor()].day} · {roadCursor() + 1}/9
+                  </span>
+                  <p class="m-0 truncate text-xs font-black sm:text-sm text-[var(--ink)]">
+                    {ROAD_STOPS[roadCursor()].title}
+                  </p>
+                </div>
+
+                <div class="flex shrink-0 items-center gap-2">
+                  <span class="hidden font-mono text-[10px] font-extrabold text-muted sm:inline">
+                    {doneCount()}/{ROAD_STOPS.length} done
+                  </span>
+                  <div class="flex items-center gap-1">
+                    <button
+                      type="button"
+                      class="grid h-5 w-5 place-items-center rounded bg-[var(--paper)] text-[var(--ink)] disabled:opacity-30 cursor-pointer hover:bg-[var(--paper-3)]"
+                      style={{ border: "1.5px solid var(--ink)" }}
+                      disabled={roadCursor() === 0}
+                      onClick={() => moveRoadCursor(-1)}
+                      aria-label="Previous stop"
+                      title="Previous stop"
+                    >
+                      <ChevronLeft size={11} strokeWidth={3} />
+                    </button>
+                    <button
+                      type="button"
+                      class="grid h-5 w-5 place-items-center rounded bg-[var(--paper)] text-[var(--ink)] disabled:opacity-30 cursor-pointer hover:bg-[var(--paper-3)]"
+                      style={{ border: "1.5px solid var(--ink)" }}
+                      disabled={roadCursor() === ROAD_STOPS.length - 1}
+                      onClick={() => moveRoadCursor(1)}
+                      aria-label="Next stop"
+                      title="Next stop"
+                    >
+                      <ChevronRight size={11} strokeWidth={3} />
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              {/* Prev / Next buttons */}
-              <div class="flex shrink-0 items-center gap-1">
-                <button
-                  type="button"
-                  class="grid h-7 w-7 place-items-center rounded-md bg-[var(--paper)] text-[var(--ink)] disabled:invisible"
-                  style={{ border: "var(--ink-w) solid var(--ink)" }}
-                  disabled={roadCursor() === 0}
-                  onClick={() => moveRoadCursor(-1)}
-                  aria-label="Previous pookalam road stop"
-                  title="Previous stop"
-                >
-                  <ChevronLeft size={15} strokeWidth={2.5} />
-                </button>
-                <button
-                  type="button"
-                  class="grid h-7 w-7 place-items-center rounded-md bg-[var(--paper)] text-[var(--ink)] disabled:invisible"
-                  style={{ border: "var(--ink-w) solid var(--ink)" }}
-                  disabled={roadCursor() === ROAD_STOPS.length - 1}
-                  onClick={() => moveRoadCursor(1)}
-                  aria-label="Next pookalam road stop"
-                  title="Next stop"
-                >
-                  <ChevronRight size={15} strokeWidth={2.5} />
-                </button>
+              {/* Slim progress micro-bar */}
+              <div
+                class="flex gap-0.5"
+                role="progressbar"
+                aria-label={`${doneCount()} of ${ROAD_STOPS.length} stops cleared`}
+              >
+                <For each={ROAD_STOPS}>
+                  {(stop, idx) => (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveStop(stop.id);
+                        scrollToAnchor(stop.id);
+                      }}
+                      class={`h-1 min-w-0 flex-1 rounded-full transition-all cursor-pointer ${
+                        idx() === roadCursor() ? "ring-1 ring-[var(--ink)]" : ""
+                      }`}
+                      style={{
+                        background: isDone(stop.id) ? `var(--${stop.pop})` : "var(--paper-3)",
+                      }}
+                      title={`Stop ${idx() + 1}: ${stop.title}`}
+                    />
+                  )}
+                </For>
               </div>
             </div>
           </Show>
@@ -1487,6 +1490,41 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
                 ) : undefined
               }
             />
+
+            <Show when={index() === 2}>
+              <div
+                class="card card-plain p-3 sm:p-4 my-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-left"
+                style={{
+                  border: "var(--ink-w) dashed var(--ink)",
+                  background: "var(--paper-2)",
+                }}
+              >
+                <div class="space-y-0.5">
+                  <div class="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-muted">
+                    <Code2 size={14} class="text-[var(--pop-teal-deep)]" />
+                    <span>Interactive Canvas Track</span>
+                  </div>
+                  <p class="m-0 text-xs sm:text-sm font-semibold text-[var(--ink)]">
+                    From now on, we use <span class="font-bold">HTML5 Canvas & JavaScript</span> to
+                    build our pookalam step by step. Follow along if you'd like to learn, or skip
+                    ahead if you are building in Python, GLSL, or another stack.
+                  </p>
+                </div>
+
+                <a
+                  href="#git-setup"
+                  class="btn-ghost min-h-0 text-xs font-black inline-flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scrollToAnchor("git-setup");
+                  }}
+                >
+                  <span>Skip to Git & Submit (Stop 6)</span>
+                  <ChevronRight size={13} />
+                </a>
+              </div>
+            </Show>
+
             <StopCard
               stop={stop}
               index={index()}

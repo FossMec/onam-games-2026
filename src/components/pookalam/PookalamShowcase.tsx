@@ -1,4 +1,4 @@
-import { Braces, Copy, Eye, Sparkles, X } from "lucide-solid";
+import { Braces, Copy, Download, Eye, Sparkles, X } from "lucide-solid";
 import { Show, createSignal, onCleanup, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
 
@@ -71,6 +71,81 @@ function ShowcaseDialog(props: { onClose: () => void }) {
     void navigator.clipboard.writeText(SHOWCASE_SNIPPET);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const downloadShowcaseTemplate = () => {
+    const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Code-a-Pookalam</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: #fbf3e4;
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 1.5rem;
+    }
+    h1 { margin-bottom: 0.5rem; color: #22202b; font-size: 1.5rem; font-weight: 900; }
+    p { margin-bottom: 1.25rem; color: #555; font-size: 0.9rem; max-width: 600px; text-align: center; }
+    canvas {
+      background: #181511;
+      border: 4px solid #22202b;
+      border-radius: 8px;
+      max-width: 90vw;
+      max-height: 90vw;
+      aspect-ratio: 1 / 1;
+    }
+    .controls { margin-top: 1.25rem; display: flex; gap: 0.75rem; }
+    button {
+      padding: 0.6rem 1.25rem;
+      font-weight: 900;
+      font-size: 0.9rem;
+      background: #f5c443;
+      color: #22202b;
+      border: 3px solid #22202b;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌸 My Code-a-Pookalam</h1>
+  <p>Open this file in any browser or editor. Customize the rings and geometry to make it your own!</p>
+  <canvas id="pookalam" width="1024" height="1024"></canvas>
+  <div class="controls">
+    <button onclick="downloadRender()">Download Square PNG (1024×1024)</button>
+  </div>
+  <script>
+    const canvas = document.getElementById("pookalam");
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width;
+    const H = canvas.height;
+
+${SHOWCASE_SNIPPET}
+
+    function downloadRender() {
+      const link = document.createElement("a");
+      link.download = "my-pookalam-1024.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    }
+  </script>
+</body>
+</html>`;
+    const blob = new Blob([fullHtml], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "index.html";
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -181,6 +256,25 @@ function ShowcaseDialog(props: { onClose: () => void }) {
           Everyone on this page can copy this one, so it scores nothing on originality. Read it,
           take the parts you like, and build a pookalam that is yours.
         </p>
+
+        {/* Download starter index.html template */}
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1 border-t border-[var(--ink)]/10">
+          <p class="m-0 text-xs font-semibold text-muted">
+            Struggling to start from a blank canvas? Download this starter{" "}
+            <code class="font-mono bg-[var(--paper-2)] px-1 py-0.5 rounded border border-[var(--ink)]">
+              index.html
+            </code>{" "}
+            template as a foundation, and build your own custom artwork on top of it.
+          </p>
+          <button
+            type="button"
+            onClick={downloadShowcaseTemplate}
+            class="btn-ghost min-h-0 text-xs font-bold inline-flex items-center gap-1.5 shrink-0 cursor-pointer whitespace-nowrap"
+          >
+            <Download size={13} />
+            <span>Download starter index.html</span>
+          </button>
+        </div>
       </div>
     </div>
   );

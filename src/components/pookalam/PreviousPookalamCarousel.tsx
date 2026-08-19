@@ -187,8 +187,16 @@ export function PreviousPookalamCarousel() {
         }
       `}</style>
 
-      {/* Infinite Seamless Scrolling Marquee without hover transform/scale or shadows */}
-      <div class="relative w-full overflow-hidden py-2 select-none [mask-image:linear-gradient(to_right,transparent,black_4%,black_96%,transparent)]">
+      {/* Infinite Seamless Scrolling Marquee with crisp 28px symmetrical edge feathering */}
+      <div
+        class="relative w-full overflow-hidden py-2 select-none"
+        style={{
+          "mask-image":
+            "linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent)",
+          "-webkit-mask-image":
+            "linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent)",
+        }}
+      >
         <div class="pookalam-marquee flex gap-4">
           <For each={[...PREVIOUS_GALLERY, ...PREVIOUS_GALLERY]}>
             {(item) => (

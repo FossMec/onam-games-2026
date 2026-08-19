@@ -170,10 +170,12 @@ draw();`;
             see-through textarea on top. Both use identical type and wrapping so
             the caret lands where the glyphs are. */}
         <div class="space-y-3">
-          <Show when={props.intro}>{props.intro}</Show>
+          <Show when={props.intro}>
+            <div class="pb-1">{props.intro}</div>
+          </Show>
 
           <details
-            class="group block"
+            class="group block pt-2 sm:pt-0"
             open={codeOpen()}
             onToggle={(event) => setCodeOpen(event.currentTarget.open)}
           >
@@ -249,13 +251,12 @@ draw();`;
           </details>
         </div>
 
-        {/* the result, pinned so it stays on screen while you scroll a long
-            snippet - pressing Run has to visibly do something */}
+        {/* On desktop: sticky column on right. On mobile: static container below/near Run controls */}
         <div
           ref={(el) => {
             resultRef = el;
           }}
-          class="order-first sticky top-[10.75rem] z-10 space-y-2 self-start rounded bg-[var(--paper-2)] p-1 sm:order-none sm:top-36"
+          class="relative space-y-2 self-start rounded bg-[var(--paper-2)] p-2 sm:sticky sm:top-36 sm:p-1"
         >
           <iframe
             title="Your pookalam code, running"

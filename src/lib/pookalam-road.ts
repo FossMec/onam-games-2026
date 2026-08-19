@@ -108,36 +108,37 @@ export const ROAD_STOPS: RoadStop[] = [
   {
     id: "see-it",
     day: "Day 1",
-    title: "Look at what you're making",
-    hook: "Scroll. That is the whole stop. Enjoy it while it lasts.",
-    hookNamed: "Scroll, {name}. That is the whole stop - enjoy it while it lasts.",
+    title: "Explore What's Possible",
+    hook: "See how real students turned simple geometry into stunning flower carpets.",
+    hookNamed: "See how real students turned simple geometry into stunning flower carpets, {name}.",
     steps: [
-      "Scroll the gallery below. All students, last year, same contest.",
-      "Pick two you love and one you think you could actually manage.",
-      "Note that no name appears on the voting screen. Not yours, not theirs.",
+      "Browse the student gallery below — every design was generated purely with code.",
+      "Notice how simple shapes (circles, ellipses, arcs) layer together to build intricate floral art.",
+      "Remember: All submissions are judged anonymously on Day 7, so everyone competes on equal footing.",
     ],
-    form: "swipe",
+    form: "checklist",
     more: [
-      "A pookalam is a flower carpet: rings of petals around a centre, one shape repeated until it turns into a flower. Coding one means writing the instructions instead of sitting on the floor at 6am placing petals by hand.",
-      "Day 7 voting is anonymous - two pookalams side by side, pick one. No profile, no follower count, no college. A first attempt and a final-year's attempt get judged the same way, by strangers, on the picture alone.",
+      "A pookalam is a traditional Kerala pookalam: concentric rings of flower petals radiating outward from a central point. In Code-a-Pookalam, your code acts as the artist's hand, placing petals mathematically on a digital canvas.",
+      "Day 7 voting is completely blind: two pookalams appear side by side without names, colleges, or profiles. First-year beginners and senior developers are judged purely by the beauty and originality of their artwork.",
     ],
     links: [
       {
-        label: "Wikipedia · Pookkalam",
+        label: "Wikipedia · Pookkalam Tradition",
         href: "https://en.wikipedia.org/wiki/Pookkalam",
-        note: "what it is, and why Onam has one",
+        note: "Cultural history and floral patterns",
       },
       {
-        label: "The Coding Train",
+        label: "The Coding Train · Creative Coding",
         href: "https://thecodingtrain.com/",
-        note: "beginner creative-coding videos",
+        note: "Fun beginner videos on creative mathematics",
       },
     ],
     aiPrompt:
-      "I am a first-year student. Explain what an Onam pookalam is, what makes one look good, and list 5 simple ways a beginner could draw one using code. Keep it under 200 words.",
+      "I am a beginner student wanting to design an Onam flower carpet (pookalam) using code. Explain the basic anatomy of a pookalam (concentric rings, radial symmetry, petal shapes) and suggest 3 easy approaches for a beginner using HTML Canvas or Python.",
     praise:
-      "You know what you are building now, and you have seen that students made every one of these. That is a better start than most people get.",
-    levelUp: "Find the one thing nobody tried last year. That gap is your entry.",
+      "Now you know what a coded pookalam looks like! Every single entry in last year's gallery was built step by step, just like you are doing today.",
+    levelUp:
+      "Spot a pattern or geometric idea that nobody tried last year — that unique twist is your winning entry.",
     pop: "pop-yellow",
     sprite: "concentric-pookalam",
     payload: "past-work",
@@ -146,47 +147,43 @@ export const ROAD_STOPS: RoadStop[] = [
   {
     id: "pick-a-tool",
     day: "Day 1",
-    title: "Pick one tool, ignore the rest",
-    hook: "You leave with an empty file you can draw in.",
-    hookNamed: "you leave this stop with an empty file you can draw in.",
+    title: "Choose Your Creative Medium",
+    hook: "Pick one language or tool that fits your skill level, and stick with it.",
+    hookNamed: "Pick one language or tool that fits your skill level, {name}, and stick with it.",
     steps: [
-      "Any language works. The tracks below are examples, not a menu.",
-      "Never installed anything? Use the browser - press F12, you already have it.",
-      "Did Python in class? Use turtle. Same lab exercise, better prize.",
-      "Whatever you pick, stay on it. Switching on Day 4 is how this goes wrong.",
+      "Zero setup? Open any browser and code with HTML5 Canvas or SVG — no installation required.",
+      "Know some Python? Use Python's built-in `turtle` module — visual, fast, and beginner-friendly.",
+      "Into generative art? Try p5.js, GLSL Shaders, or Processing for advanced math and effects.",
+      "Golden rule: Pick one tool today and stick with it throughout the week for the best results.",
     ],
-    form: "swipe",
+    form: "checklist",
     more: [
-      "Switching tools halfway through the week is the most popular way this goes wrong, and it has never once produced a better pookalam. Which tool you use matters far less than the hours you put into one of them.",
-      "The six tracks below are the ones people reached for last year - they are starting points, not a list of allowed options. C, Java, Rust, a spreadsheet, a plotter, whatever you have: if code produced the picture, it counts, and nobody gets points for picking a harder language.",
+      "Switching tools mid-week often slows down progress. The best results come from mastering the creative possibilities of one tool, whether that is pure browser Canvas, Python Turtle, or SVG paths.",
+      "Any language or tool is valid as long as code generates your render. Whether you write in JavaScript, Python, C++, Rust, or GLSL, the judges evaluate the final rendered image and the reproducibility of your code.",
     ],
     links: [
       {
-        label: "MDN · Canvas tutorial",
+        label: "MDN · Canvas Tutorial",
         href: "https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial",
-        note: "the browser track, from zero",
+        note: "Start drawing in HTML5 Canvas from scratch",
       },
       {
-        label: "Python turtle docs",
+        label: "Python Turtle Documentation",
         href: "https://docs.python.org/3/library/turtle.html",
-        note: "the one from first-year lab",
+        note: "Standard library visual drawing",
       },
       {
-        label: "Trinket · Python in a browser",
-        href: "https://trinket.io/python",
-        note: "if you cannot install Python",
-      },
-      {
-        label: "p5.js · get started",
+        label: "p5.js · Getting Started",
         href: "https://p5js.org/tutorials/get-started/",
-        note: "creative coding, very friendly",
+        note: "Creative coding library for JavaScript",
       },
     ],
     aiPrompt:
-      "I want to make an Onam pookalam - a round flower carpet - out of code, and I have barely written any code before. Compare doing it in the browser with HTML canvas against doing it in Python turtle: which one gets something on my screen tonight? Then give me the few lines I need to start.",
-    praise: "Decision made. Deciding was the hard part of today - everything after this is typing.",
+      "I am a beginner wanting to make an algorithmic Onam pookalam. Compare HTML5 Canvas vs Python Turtle for a complete beginner, and provide a 10-line starter template for the one you recommend.",
+    praise:
+      "Tool selected! Deciding on your weapon of choice is step one — now let's draw your first shape.",
     levelUp:
-      "Shaders, WebGL, Manim, Graphviz, PostScript, a pen plotter, a Minecraft world - anything that renders counts, and the weirder the medium the better the README reads.",
+      "Want an exotic challenge? Explore GLSL fragment shaders, Manim mathematical animations, or Graphviz radial diagrams for extra technical craft.",
     pop: "pop-teal",
     sprite: "terminal-star",
     payload: "tutorials",
@@ -195,42 +192,43 @@ export const ROAD_STOPS: RoadStop[] = [
   {
     id: "first-shape",
     day: "Day 2",
-    title: "Draw one circle",
-    hook: "One shape on screen. Yes, that is today's entire goal.",
-    hookNamed: "One shape on screen. Yes, that is today's entire goal.",
+    title: "Draw Your First Shape",
+    hook: "One line of code puts a circle on the screen. That is today's entire milestone.",
+    hookNamed:
+      "One line of code puts a circle on the screen, {name}. That is today's entire milestone.",
     steps: [
-      "Look right - that circle came from the code on the left.",
-      "Change the 60 to 140 and press Run.",
-      'Change the colour to "#5FBFA8" and press Run again.',
-      "That is it. You just drew with code. Close the laptop.",
+      "Look at the editor: `ctx.arc(x, y, radius, startAngle, endAngle)` defines a circle.",
+      "Change the radius number `60` to `120` and click 'Run it' to watch it grow.",
+      "Change the `ctx.fillStyle` color hex to `#5FBFA8` and click 'Run it' again.",
+      "Congratulations! You just wrote and executed procedural graphic code.",
     ],
     form: "checklist",
     code: {
-      label: "your first drawing - edit it, run it",
+      label: "your first circle — edit the values and click Run",
       sandbox: true,
-      snippet: `// ctx is your brush. W and H are the canvas size.
+      snippet: `// ctx is your digital brush. W and H are the canvas width & height.
 ctx.beginPath();
-ctx.arc(W / 2, H / 2, 60, 0, Math.PI * 2);  // x, y, radius
+ctx.arc(W / 2, H / 2, 60, 0, Math.PI * 2);  // (centerX, centerY, radius, 0, 360°)
 ctx.fillStyle = "#F5C443";
 ctx.fill();`,
     },
     more: [
-      "Everybody wants to skip to the pretty part and everybody regrets it. The moment a computer draws one dot because you told it to, the entire rest of this road is repetition of that.",
-      "The same code works in your own browser: press F12 on any page, open the Console tab, make a canvas and paste it. Broke something? Reset puts the snippet back - you cannot damage anything here.",
+      "Every complex flower carpet is built from fundamental 2D shapes: circles, ellipses, and curved paths. Once you know how to draw and color one circle, the rest of the pookalam is repeating shapes with mathematical precision.",
+      "The exact same code runs in any standard web page or browser devtools console. If you make a typo, clicking 'Reset' restores the working snippet instantly.",
     ],
     links: [
       {
-        label: "MDN · drawing shapes",
+        label: "MDN · Drawing 2D Shapes",
         href: "https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Drawing_shapes",
-        note: "arcs, rectangles, paths",
+        note: "Circles, rectangles, and custom paths",
       },
     ],
     aiPrompt:
-      'I am making a pookalam out of code and this is my first line of it: ctx.beginPath(); ctx.arc(180, 180, 60, 0, Math.PI * 2); ctx.fillStyle = "#F5C443"; ctx.fill(); Explain every word and number in it to somebody who has never written code. What do I change to move it or make it bigger?',
+      "Explain how `ctx.arc(x, y, radius, 0, Math.PI * 2)` works in HTML5 Canvas to a beginner. How do I change its position, outline thickness, and fill color?",
     praise:
-      "You just made a computer draw something because you told it to. Every pookalam on this page started with exactly that, and so does every app you have ever used.",
+      "You just commanded the computer to draw a geometric shape! Every masterpiece on this site started with that exact line of code.",
     levelUp:
-      "Skip ahead and build the pipeline instead: one 2000×2000 offscreen canvas, one `render(seed)`, one export call. Future-you at 11:47pm on Day 6 says thanks.",
+      "Try adding a stroke border with `ctx.strokeStyle = '#22202B'` and `ctx.lineWidth = 4` to give your circle a bold comic-book outline.",
     pop: "pop-blue",
     sprite: "pookalam-flower",
     minutes: "10 min",
@@ -238,35 +236,36 @@ ctx.fill();`,
   {
     id: "make-it-round",
     day: "Day 3",
-    title: "Make it go round",
-    hook: "One petal becomes twelve. This is the whole trick.",
-    hookNamed: "One petal becomes twelve. This is the whole trick.",
+    title: "Create a Radial Petal Ring",
+    hook: "Use a simple loop to place petals in a perfect 360° circle around the center.",
+    hookNamed:
+      "Use a simple loop to place petals in a perfect 360° circle around the center, {name}.",
     steps: [
-      "One loop, twelve turns, one petal each turn. That is the ring on the right.",
-      "Those are leaves, not dots - `ellipse` takes a length and a width.",
-      "Change `petals` to 6. Run. Then 24. Then 60.",
-      "Change `radius` to 60, then 160. Watch the ring breathe.",
+      "A loop runs from 0 to `petals`. Each iteration rotates the canvas by `(2 * Math.PI) / petals`.",
+      "Try changing `petals` to `6`, `18`, or `36` in the editor and click 'Run it'.",
+      "Change `radius` to `70` or `140` to see how the ring contracts and expands.",
+      "Notice how alternating colors with `i % 2 === 0` creates a two-tone floral pattern.",
     ],
     form: "checklist",
     visual: "petal-dial",
     code: {
-      label: "twelve leaves in a ring - change a number, run it",
+      label: "12 petals in a radial ring — change values and click Run",
       sandbox: true,
       snippet: `const petals = 12;
 const radius = 110;
 
 for (let i = 0; i < petals; i++) {
   ctx.save();
-  ctx.translate(W / 2, H / 2);              // work from the centre
-  ctx.rotate((i * 2 * Math.PI) / petals);   // turn a bit, every time
+  ctx.translate(W / 2, H / 2);              // Move origin to canvas center
+  ctx.rotate((i * 2 * Math.PI) / petals);   // Rotate step-by-step around 360°
 
   ctx.beginPath();
-  ctx.ellipse(radius, 0, 36, 14, 0, 0, Math.PI * 2);  // a leaf: long, thin
+  ctx.ellipse(radius, 0, 36, 14, 0, 0, Math.PI * 2);  // Petal ellipse: length & width
 
   if (i % 2 === 0) {
-    ctx.fillStyle = "#E76F51";
+    ctx.fillStyle = "#E76F51";             // Chethi Orange
   } else {
-    ctx.fillStyle = "#F5C443";
+    ctx.fillStyle = "#F5C443";             // Marigold Yellow
   }
   ctx.fill();
 
@@ -274,27 +273,27 @@ for (let i = 0; i < petals; i++) {
 }`,
     },
     more: [
-      "cos and sin are the two from the class everyone thought was pointless. Walk around a circle in equal steps and they hand you the x and y of each step. That is all the maths on this entire road - there is none after this stop.",
-      "`translate` moves the pen to the centre, `rotate` turns the whole canvas a little, and the leaf is always drawn in the same place - the canvas does the arranging. `save` and `restore` put things back so the next petal starts clean.",
+      "Radial symmetry is the mathematical foundation of pookalam art. By using `ctx.translate` to center our coordinate system and `ctx.rotate` inside a loop, the computer handles all the trigonometry automatically.",
+      "`ctx.save()` and `ctx.restore()` save the canvas state before rotation and restore it afterward, so each petal is drawn cleanly relative to the center.",
     ],
     links: [
       {
-        label: "Polar coordinates, visually",
+        label: "Visual Polar Coordinates Guide",
         href: "https://www.mathsisfun.com/polar-cartesian-coordinates.html",
-        note: "angle + radius → x, y",
+        note: "Converting angles and radii into 2D coordinates",
       },
       {
-        label: "Generative Artistry",
+        label: "Generative Artistry Tutorials",
         href: "https://generativeartistry.com/tutorials/",
-        note: "short tutorials, huge idea supply",
+        note: "Beginner-friendly radial art patterns",
       },
     ],
     aiPrompt:
-      "A pookalam is one petal repeated around a circle. Explain how to work out where each petal goes, to somebody whose last maths class was in school. Include a 10-line example that places 12 petals in a ring, and explain the line that calculates the angle.",
+      "Explain how `ctx.translate` and `ctx.rotate` work together inside a `for` loop in HTML5 Canvas to distribute 12 petal shapes evenly in a circle.",
     praise:
-      "You wrote a loop with maths inside it. That is real programming - the same repeat-a-thing idea behind games, animations and most of what you will build later.",
+      "You wrote an algorithmic loop that generates radial floral geometry. That is real creative coding!",
     levelUp:
-      "Swap the ellipse for a bezier petal (`moveTo` + two `bezierCurveTo`) and you get a real chethi petal instead of a leaf. Same loop, far better shape.",
+      "Replace `ctx.ellipse` with two quadratic bezier curves (`quadraticCurveTo`) to draw pointed lotus and jasmine petals.",
     pop: "pop-purple",
     sprite: "git-nodes",
     minutes: "20 min",
@@ -302,26 +301,27 @@ for (let i = 0; i < petals; i++) {
   {
     id: "rings-and-colour",
     day: "Day 4",
-    title: "Rings, colour, taste",
-    hook: "Your ring becomes a pookalam. This is the fun day.",
-    hookNamed: "Your ring becomes a pookalam, {name}. This is the fun day.",
+    title: "Layer Multiple Rings & Colors",
+    hook: "Stack concentric layers of petals with vibrant Onam colors to build your full flower carpet.",
+    hookNamed:
+      "Stack concentric layers of petals with vibrant Onam colors, {name}, to build your full carpet.",
     steps: [
-      "Same ring as yesterday, four times over. Each line of `rings` is one ring.",
-      "A line is: how many petals, how far out, how long, how wide.",
-      "Hit Run twice. `Math.random()` picks the colours, so every run is new.",
-      "Add a line of your own. Delete one. Change the colours. Run after each.",
+      "Each entry in the `rings` array defines one layer: [petalCount, distance, length, width].",
+      "Click 'Run it' multiple times — notice how random palette selection creates fresh combinations.",
+      "Add a new ring definition to the array or customize petal dimensions.",
+      "Incorporate authentic floral shades: Marigold Yellow, Saffron, Rose Pink, and Tulsi Green.",
     ],
     form: "checklist",
     visual: "palette",
     code: {
-      label: "four rings, random colours - hit Run twice",
+      label: "concentric pookalam layers — click Run to test new palettes",
       sandbox: true,
-      snippet: `ctx.fillStyle = "#1A0826";            // the dark ground
+      snippet: `ctx.fillStyle = "#1A0826";            // Dark festive background
 ctx.fillRect(0, 0, W, H);
 
 const colours = ["#E63946", "#F4A261", "#2A9D8F", "#F5C443", "#9C82D4"];
 
-// one line per ring: petals, distance out, petal length, petal width
+// Ring specs: [petalCount, distanceFromCenter, petalLength, petalWidth]
 const rings = [
   [24, 150, 38, 13],
   [16, 108, 34, 17],
@@ -335,13 +335,12 @@ for (let r = 0; r < rings.length; r++) {
   const long = rings[r][2];
   const wide = rings[r][3];
 
-  // one random colour for the whole ring - this is why every run differs
-  const colour = colours[Math.floor(Math.random() * colours.length)];
+  const colour = colours[r % colours.length];
 
   for (let i = 0; i < petals; i++) {
     ctx.save();
     ctx.translate(W / 2, H / 2);
-    ctx.rotate((i * 2 * Math.PI) / petals + r);   // + r nudges each ring round
+    ctx.rotate((i * 2 * Math.PI) / petals + r * 0.2); // Offset rotation per ring
     ctx.beginPath();
     ctx.ellipse(radius, 0, long, wide, 0, 0, Math.PI * 2);
     ctx.fillStyle = colour;
@@ -350,35 +349,33 @@ for (let r = 0; r < rings.length; r++) {
   }
 }
 
-// the lamp in the middle
+// Center lamp (Nilavilakku glow)
 ctx.beginPath();
 ctx.arc(W / 2, H / 2, 20, 0, Math.PI * 2);
 ctx.fillStyle = "#FFFFFF";
 ctx.fill();`,
     },
     more: [
-      "`Math.random()` is doing the same job as the Randomize button in the studio at the top of this page - your twenty lines and that whole panel are the same idea, and yours took an evening. Keeping the palette fixed and randomising only which ring gets which colour is why it still looks deliberate rather than like a paint accident.",
-      "Everything that makes a pookalam is in that table: ring count, spacing, petal shape and colour. Adding a ring is one line, and that is the point - the code stays small while the picture gets complicated.",
-      "Colour is where most entries are won and lost, and it is worth stealing rather than inventing: pull four colours off a photo of a real pookalam. Six rings is plenty - more rings is not the same as better.",
+      "Layering concentric rings from outside-in or inside-out gives your pookalam depth. A solid dark background creates strong contrast that makes the flower petal colors pop.",
+      "Curating a tight 4-to-5 color palette (e.g. warm golds, oranges, teal accents, and deep plum) produces far more professional results than using random rainbow hues.",
     ],
     links: [
       {
-        label: "Coolors · palette generator",
+        label: "Coolors · Color Palette Generator",
         href: "https://coolors.co/",
-        note: "steal a palette in 30 seconds",
+        note: "Explore and pick harmonious color palettes",
       },
       {
-        label: "MDN · ellipse()",
+        label: "MDN · Canvas Ellipse Method",
         href: "https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/ellipse",
-        note: "the leaf shape, explained",
+        note: "Reference documentation for drawing ellipses",
       },
     ],
     aiPrompt:
-      "Here is my code that draws rings of petals: [paste yours]. Give me 5 small changes that would make it look more like a real Onam pookalam - petal shapes instead of dots, better colours, a border, something in the centre. Keep each change under 10 lines and explain it in plain words.",
-    praise:
-      "There is a pookalam on your screen and your code made it. Send it to someone. Seriously, right now.",
+      "Here is my pookalam code: [paste your snippet]. Suggest 3 curated traditional Onam color palettes with hex codes, and show how to add a decorative outer border ring.",
+    praise: "Look at that! You have a complete, multi-layered pookalam generated entirely by code.",
     levelUp:
-      "Chevron outer border, a nilavilakku centre, `globalCompositeOperation` for petal overlap, or a seeded RNG so one program makes a different pookalam every run.",
+      "Add a geometric star motif, interlaced ribbons, or a nilavilakku flame in the center for high artistic points.",
     pop: "pop-pink",
     sprite: "muthukuda",
     payload: "studio",
@@ -387,40 +384,39 @@ ctx.fill();`,
   {
     id: "git",
     day: "Day 5",
-    title: "Save your work with git",
-    hook: "An undo button that never expires.",
-    hookNamed: "{name} this undo button that never expires.",
+    title: "Track Your Project with Git",
+    hook: "Set up version control so your progress is safely saved at every milestone.",
+    hookNamed:
+      "Set up version control, {name}, so your progress is safely saved at every milestone.",
     steps: [
-      "Check you have it: `git --version`.",
-      "In your project folder: `git init`.",
-      '`git add .`, then `git commit -m "first pookalam"`.',
-      "Do that again every time something works.",
+      "Verify git is installed in your terminal: `git --version`.",
+      "Initialize your pookalam project repository: `git init`.",
+      "Stage and save your first snapshot: `git add .` then `git commit -m 'Initial pookalam design'`.",
+      "Make a new commit whenever you add a new ring, tweak colors, or polish a shape.",
     ],
-    // No code block here on purpose - the terminal above *is* the commands.
-    // Printing them twice was the stop reading as a manual.
     form: "terminal",
     more: [
-      "git takes a snapshot of your folder whenever you ask. Each snapshot is a commit and you can return to any of them, forever. That is genuinely the whole idea - everything frightening about git is people arguing over branching strategies, which you can ignore this week.",
-      "Ruined everything? `git checkout .` throws away changes since the last commit. That safety net is the entire reason to commit often instead of once at the end.",
+      "Git takes point-in-time snapshots of your code. If an experimental change breaks your drawing, you can revert back to your last working commit instantly with zero data loss.",
+      "Frequent, descriptive commits show judges your genuine creative development process and demonstrate good software engineering practice.",
     ],
     links: [
       {
-        label: "GitHub · git cheat sheet",
+        label: "GitHub · Git Cheat Sheet",
         href: "https://education.github.com/git-cheat-sheet-education.pdf",
-        note: "one page, print it",
+        note: "Essential Git commands on one handy page",
       },
       {
-        label: "Oh Shit, Git!?!",
+        label: "Oh Shit, Git!?! Guide",
         href: "https://ohshitgit.com/",
-        note: "for when you break it",
+        note: "Simple fixes for common Git mistakes",
       },
     ],
     aiPrompt:
-      "Explain git to a complete beginner in under 150 words: what a commit is, what git add does, and the four commands I need to save a project. No branches, no merging, no jargon.",
+      "Explain the 4 basic Git commands (`git init`, `git add .`, `git commit -m`, `git status`) to a student who has never used version control before. Keep it simple and clear.",
     praise:
-      "Your work is safe forever, and you can use git on every project after this one. That skill outlives Onam by about forty years.",
+      "Your project is version-controlled! Git is one of the most vital tools in all of software development, and you are using it like a pro.",
     levelUp:
-      "Tag the commit that produced your final render and say so in the README. A judge being able to run the exact code behind the picture is worth real points.",
+      "Tag your final submission commit (`git tag v1.0.0`) so judges know exactly which revision produced your uploaded image.",
     pop: "pop-teal",
     sprite: "git-branch",
     minutes: "15 min",
@@ -428,49 +424,49 @@ ctx.fill();`,
   {
     id: "github",
     day: "Day 5",
-    title: "Push it up, with a LICENSE",
-    hook: "A link you can paste into the form. Also your first open-source repo.",
-    hookNamed: "A link you can paste into the form - and your first open-source repo.",
+    title: "Publish to GitHub with a License",
+    hook: "Publish your repository online with an open-source license to fulfill the competition criteria.",
+    hookNamed: "Publish your repository online with an open-source license, {name}.",
     steps: [
-      "GitHub account → New repository → Public → tick nothing else.",
-      "Paste the three commands GitHub shows you.",
-      "Add file → new file → name it `LICENSE` → pick MIT from the templates.",
-      "Add a README.md: how to run it, and what you were going for.",
+      "Create a new Public repository on GitHub (or GitLab/Codeberg). Do not add extra files yet.",
+      "Connect and push your local repository using GitHub's 3 terminal commands.",
+      "Add a `LICENSE` file in the repo root (choose standard MIT, Apache 2.0, or GPLv3).",
+      "Write a short `README.md` explaining what your code does and how judges can run it.",
     ],
     form: "terminal",
     code: {
-      label: "GitHub prints these right after you create the repo",
-      snippet: `git remote add origin https://github.com/YOUR-NAME/pookalam.git
+      label: "run these in your terminal after creating the GitHub repository",
+      snippet: `git remote add origin https://github.com/YOUR_USERNAME/pookalam-2026.git
 git branch -M main
 git push -u origin main`,
     },
     more: [
-      "The LICENSE is not paperwork, it is the rule that makes this a FOSS event: without one nobody is legally allowed to use or learn from your code, and the entry is not valid. MIT, Apache 2.0, GPLv3, BSD and Unlicense all count.",
-      "The README decides whether a judge sees your work or only a screenshot of it. Two honest lines beat a template with nothing filled in.",
+      "An open-source LICENSE is a strict requirement of the competition. It legally allows others to view, learn from, and run your code in true FOSS spirit. MIT or GPLv3 is recommended.",
+      "A clean README explaining setup instructions (e.g. 'Open index.html in any browser' or 'Run python pookalam.py') ensures judges can reproduce your render effortlessly.",
     ],
     links: [
       {
-        label: "GitHub · create a repo",
+        label: "GitHub · Create a Repo Guide",
         href: "https://docs.github.com/en/get-started/quickstart/create-a-repo",
-        note: "official, step by step",
+        note: "Official step-by-step repository setup",
       },
       {
-        label: "choosealicense.com",
+        label: "Choose an Open Source License",
         href: "https://choosealicense.com/",
-        note: "pick one in a minute",
+        note: "Compare MIT, Apache 2.0, and GPLv3 in 1 minute",
       },
       {
-        label: "makeareadme.com",
+        label: "Make a Clean README",
         href: "https://www.makeareadme.com/",
-        note: "what to actually write",
+        note: "Template for documenting your project",
       },
     ],
     aiPrompt:
-      "Walk me through putting an existing folder on GitHub as a public repository, step by step, including adding an MIT LICENSE file and a short README. I have never used GitHub and I am on Windows.",
+      "Generate a clean, beginner-friendly README.md template for an open-source Code-a-Pookalam submission. Include sections for Project Description, Technologies Used, How to Run, and License (MIT).",
     praise:
-      "You have a public open-source repository with your name on it. That link belongs on your CV from today.",
+      "You have a live, public open-source project on GitHub with a real license. That is a permanent portfolio piece you can showcase on your resume!",
     levelUp:
-      "A GitHub Action that regenerates the render on every push, output committed. Reproducibility is a judging pillar and almost nobody bothers.",
+      "Add GitHub Pages or a live web demo link so anyone can view and interact with your pookalam in one click.",
     pop: "pop-yellow",
     sprite: "octocat-garland",
     minutes: "20 min",
@@ -478,37 +474,33 @@ git push -u origin main`,
   {
     id: "judging",
     day: "Day 6",
-    title: "What the judges look at",
-    hook: "Read this now, not at 11:50pm on Day 6.",
-    hookNamed: "Read this now. Not at 11:50pm on Day 6.",
+    title: "Verify Rules & Scoring Criteria",
+    hook: "Review the 4 submission rules and 5 judging pillars before the Day 6 midnight deadline.",
+    hookNamed:
+      "Review the 4 submission rules and 5 judging pillars, {name}, before the Day 6 deadline.",
     steps: [
-      "Square image - equal width and height, or the upload refuses it.",
-      "No name, handle, watermark or logo anywhere in it.",
-      "Public repo, with a LICENSE file in it.",
-      "The picture has to be something your code made.",
+      "Check that your rendered image is strictly 1:1 square (e.g. 1024×1024 px).",
+      "Ensure zero watermarks, names, handles, or signatures on the artwork (voting is blind).",
+      "Verify that your GitHub repository is Public and contains an open-source LICENSE.",
+      "Confirm that your source code is executable and directly produces the uploaded render.",
     ],
-    form: "swipe",
+    form: "checklist",
     more: [
-      "Two of those are about the file you upload, and both are far easier to get right the first time than to redo at midnight while everyone else eats payasam.",
-      "The pillars below are not a checklist to sweep. Nobody wins all five, and a simple pookalam with clean code and an honest README beats an elaborate one nobody can run.",
+      "Submissions are evaluated on 5 key pillars: Visual Polish, Technical Craft, Originality, Real Pookalam Spirit, and Open-Source Quality. You don't need to master all 5 — pick your strengths and shine!",
+      "Day 7 Community Voting uses an anonymous pairwise Elo ranking system. The community evaluates designs purely on artistic and visual merit without knowing the author.",
     ],
     links: [
       {
-        label: "What open source means",
+        label: "The Open Source Definition",
         href: "https://opensource.org/osd",
-        note: "the definition your LICENSE points at",
-      },
-      {
-        label: "choosealicense.com",
-        href: "https://choosealicense.com/",
-        note: "pick one in under a minute",
+        note: "The principles behind open source software",
       },
     ],
     aiPrompt:
-      "Here is my pookalam code and its output description: [paste yours]. Judge it honestly against these five criteria - visual quality, technical craft, originality, resemblance to a real pookalam, and how easily somebody could clone and run it. Tell me the two weakest ones and how to fix them.",
-    praise: "You know exactly what is being judged. Nothing left on Day 6 can surprise you.",
+      "Here is my pookalam source code: [paste your code]. Critique my design against the 5 Code-a-Pookalam judging pillars (Visual Quality, Technical Craft, Originality, Cultural Closeness, and Documentation). What are 2 quick improvements I can make before submitting?",
+    praise: "Pre-submission verification complete! Nothing can disqualify you now.",
     levelUp:
-      "Originality is the pillar with the most room left in it. Everyone optimises polish; almost nobody submits a concept.",
+      "Focus on storytelling and originality — unique motifs, subtle procedural randomness, or clever symmetry will stand out in the Day 7 voting arena.",
     pop: "pop-blue",
     sprite: "nilavilakku",
     payload: "rules",
@@ -517,40 +509,40 @@ git push -u origin main`,
   {
     id: "submit",
     day: "Day 6",
-    title: "Export a square PNG, submit",
-    hook: "You're in the competition.",
-    hookNamed: "{name}, you're in the competition.",
+    title: "Export Render & Submit",
+    hook: "Save your high-resolution square image and submit your repository link to the competition.",
+    hookNamed: "Save your high-resolution image and submit your repository link, {name}!",
     steps: [
-      "Make sure the canvas is square, then run the export line below.",
-      "Give it a title - no names in it, voting is anonymous.",
-      "Paste the repo link, attach the PNG, submit.",
-      "Improve it afterwards. Edits stay open until Day 6 midnight.",
+      "Export your canvas or graphic as a square PNG file (1024×1024 or higher recommended).",
+      "Head to the submit portal, paste your public repository URL, and upload the render image.",
+      "Provide a catchy title and brief notes about your creative and algorithmic approach.",
+      "Submit! You can continue making edits and improvements right up until Day 6 midnight.",
     ],
     form: "checklist",
     code: {
-      label: "download your canvas as a PNG",
-      snippet: `const a = document.createElement("a");
-a.download = "pookalam.png";
-a.href = c.toDataURL("image/png");
-a.click();`,
+      label: "1-click snippet to download canvas as a square PNG",
+      snippet: `const link = document.createElement("a");
+link.download = "my-pookalam-2026.png";
+link.href = canvas.toDataURL("image/png");
+link.click();`,
     },
     more: [
-      "Python turtle can save with `turtle.getcanvas().postscript(...)`, and an honest screenshot cropped square is completely fine too. Minimum 320×320, resized down to 1024, so bigger is better.",
-      "A submitted average pookalam beats a magnificent one that missed the deadline by ten minutes. This happens to somebody every single year. Do not let it be you.",
+      "In Python Turtle, export with `turtle.getcanvas().postscript(file='pookalam.ps')` or take a clean square screenshot.",
+      "Submit early! Submissions can be updated anytime before the deadline. An early submission guarantees your spot in the review queue.",
     ],
     links: [
       {
         label: "MDN · canvas.toDataURL()",
         href: "https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL",
-        note: "canvas → image file",
+        note: "How to export an HTML5 Canvas to an image file",
       },
     ],
     aiPrompt:
-      "I made a pookalam with code and have to submit it as a square picture. How do I save what is on my canvas as a PNG at 2000x2000, and how do I check the file is exactly square before I upload it?",
+      "How do I export an HTML5 Canvas drawing as a clean, high-resolution 1024x1024 PNG image in JavaScript without blurry edges?",
     praise:
-      "You entered a coding competition. A week ago you may not have written a single line of code, and now you have finished something and handed it in.",
+      "You officially completed and submitted your Code-a-Pookalam entry! Celebrate what you've built — see you in the Day 7 Community Arena!",
     levelUp:
-      "Render at 2000×2000 and let the downscale do your anti-aliasing. Costs nothing, reads visibly crisper beside a 600px screenshot.",
+      "Share your open-source repository with friends and on social media using #OnamGames and #CodeAPookalam after voting concludes!",
     pop: "pop-red",
     sprite: "floppy-onam",
     payload: "submit",
