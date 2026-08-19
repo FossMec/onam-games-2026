@@ -344,6 +344,11 @@ a {
   color: var(--ink);
 }
 
+.sticky-note textarea::selection {
+  background: var(--pop-pink) !important;
+  color: var(--ink) !important;
+}
+
 :focus-visible {
   outline: var(--ink-w-bold) solid var(--pop-blue);
   outline-offset: 2px;

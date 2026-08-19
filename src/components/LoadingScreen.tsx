@@ -53,7 +53,7 @@ export function LoadingScreen(props: { message?: string; compact?: boolean; clas
       <div class="relative flex items-center justify-center mb-3">
         {/* Animated Halftone Comic Bubble */}
         <div
-          class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-3 border-[var(--ink)] shadow-[4px_4px_0px_var(--ink)] flex items-center justify-center transition-colors duration-300 relative overflow-hidden"
+          class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-3 border-[var(--ink)]  flex items-center justify-center transition-colors duration-300 relative overflow-hidden"
           style={{ background: current().pop }}
         >
           {/* Halftone dot pattern overlay */}

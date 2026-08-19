@@ -550,12 +550,13 @@ function AskAi(props: { prompt: string; index?: number }) {
 function StickyNote(props: { stopId: string; index: number }) {
   const [text, setText] = createSignal("");
   const [saved, setSaved] = createSignal(false);
+  const [isFocused, setIsFocused] = createSignal(false);
   let textareaEl: HTMLTextAreaElement | undefined;
 
   const adjustHeight = () => {
     if (!textareaEl) return;
     textareaEl.style.height = "auto";
-    textareaEl.style.height = `${Math.max(textareaEl.scrollHeight, 38)}px`;
+    textareaEl.style.height = `${Math.max(textareaEl.scrollHeight + 6, 56)}px`;
   };
 
   onMount(() => {
@@ -580,8 +581,13 @@ function StickyNote(props: { stopId: string; index: number }) {
 
   return (
     <div
-      onClick={() => textareaEl?.focus()}
-      class="relative w-full sm:w-auto sm:min-w-[280px] sm:max-w-[440px] md:min-w-[340px] flex-1 p-2.5 pt-3 cursor-text"
+      onClick={(e) => {
+        setIsFocused(true);
+        if (e.target !== textareaEl) {
+          textareaEl?.focus();
+        }
+      }}
+      class="sticky-note relative w-full sm:w-auto sm:min-w-[280px] sm:max-w-[440px] md:min-w-[340px] flex-1 px-3 pt-4 pb-2.5 cursor-text"
       style={{
         background: "var(--pop-yellow)",
         border: "var(--ink-w) solid var(--ink)",
@@ -590,7 +596,7 @@ function StickyNote(props: { stopId: string; index: number }) {
       }}
     >
       <span
-        class="absolute -top-1.5 left-1/2 h-3.5 w-12 -translate-x-1/2 pointer-events-none"
+        class="absolute -top-2 left-1/2 h-3.5 w-12 -translate-x-1/2 pointer-events-none"
         style={{
           background: "var(--paper-3)",
           border: "1.5px solid var(--ink)",
@@ -600,26 +606,38 @@ function StickyNote(props: { stopId: string; index: number }) {
       />
       <textarea
         ref={(el) => (textareaEl = el)}
-        class="block w-full resize-none bg-transparent outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 border-0 focus:border-0 shadow-none placeholder:text-[var(--ink)]/45 cursor-text px-1 py-0.5"
+        class="block w-full resize-none bg-transparent outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 border-0 focus:border-0 shadow-none placeholder:text-[var(--ink)]/45 cursor-text p-0 m-0"
         style={{
           "font-family": "var(--font-stack-hand)",
-          "font-size": "1.2rem",
+          "font-size": "1.25rem",
           "font-weight": "500",
-          "line-height": "1.4",
-          color: "var(--ink)",
-          "caret-color": "var(--ink)",
-          "min-height": "2.4rem",
+          "line-height": "1.45",
+          color: "var(--ink, #161616)",
+          "caret-color": "#161616",
+          "min-height": "3.5rem",
+          "field-sizing": "content",
+          overflow: "hidden",
+          "scrollbar-width": "none",
+          "-ms-overflow-style": "none",
           outline: "none",
           border: "none",
           "box-shadow": "none",
+          cursor: "text",
         }}
-        placeholder="note to self… (where you got to, what broke, what to try next)"
+        placeholder={
+          isFocused() ? "" : "note to self… (where you got to, what broke, what to try next)"
+        }
         value={text()}
         onInput={onInput}
+        onFocus={() => {
+          setIsFocused(true);
+          adjustHeight();
+        }}
+        onBlur={() => setIsFocused(false)}
         aria-label="Your note for this stop"
-        rows={1}
+        rows={2}
       />
-      <p class="m-0 text-right font-mono text-[9px] font-bold opacity-70 select-none">
+      <p class="m-0 text-right font-mono text-[9px] font-bold opacity-70 select-none pt-0.5">
         {saved() ? "saved ✓" : "saves as you type"}
       </p>
     </div>
@@ -1287,19 +1305,19 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
         aria-hidden="true"
       />
 
-      {/* Morphing Sticky Road Header */}
+      {/* Single Unified Sticky Road Card (Animates expansion & shrinking) */}
       <div
         class={`sticky z-30 card overflow-hidden transition-all duration-300 ease-in-out ${
           isStuck()
-            ? "card-plain bg-[var(--paper-2)] px-3 py-1.5 sm:px-3.5 sm:py-2 mb-1.5 space-y-1"
-            : "pop-teal p-4 sm:p-5 space-y-3.5"
+            ? "card-plain bg-[var(--paper-2)] px-2.5 py-1 sm:px-3 sm:py-1.5 mb-1 shadow-none"
+            : "pop-teal p-4 sm:p-5 space-y-3"
         }`}
         style={{
           top: `${navOffset() + 6}px`,
           border: "var(--ink-w-bold) solid var(--ink)",
         }}
       >
-        {/* Decorative Halftone & Confetti (Only when unstuck) */}
+        {/* Decorative Halftone & Confetti (Only when expanded) */}
         <div
           class={`pointer-events-none transition-opacity duration-300 ${
             isStuck() ? "opacity-0 h-0 overflow-hidden" : "opacity-100"
@@ -1309,168 +1327,174 @@ export function PookalamRoad(props: { hasEntry?: boolean; closesAt?: string | nu
           <Confetti seed="road-head" count={6} animate opacity={0.35} />
         </div>
 
-        <div class={`art-over ${isStuck() ? "space-y-1" : "space-y-2.5"}`}>
-          <Show
-            when={isStuck()}
-            fallback={
-              <div class="space-y-3">
-                <div class="flex flex-col gap-2.5 sm:flex-row sm:items-end sm:justify-between">
-                  <div class="min-w-0 space-y-1">
-                    <span class="sticker text-[10px]" style={{ "--pop": "var(--pop-yellow)" }}>
-                      9 Interactive Stops · Zero Experience Required
-                    </span>
-                    <h2
-                      class="wordmark m-0 leading-tight"
-                      data-text="THE POOKALAM ROAD"
-                      style={{ "font-size": "clamp(1.3rem, 5vw, 2.2rem)" }}
-                    >
-                      THE POOKALAM ROAD
-                    </h2>
-                    <p class="m-0 font-mono text-sm font-bold text-muted">
-                      {firstName() ? `${firstName()} · ` : ""}
-                      {doneCount()} of {ROAD_STOPS.length} stops cleared
-                    </p>
-                  </div>
+        <div class={`art-over ${isStuck() ? "space-y-0.5" : "space-y-1.5 sm:space-y-2"}`}>
+          {/* Top Bar Row (Morphs from simple banner header to compact active-stop HUD) */}
+          <div class="flex items-center justify-between gap-1.5">
+            {/* Left: Sticker & Compact Stop Title */}
+            <div class="min-w-0 flex items-center gap-1.5">
+              <span
+                class="shrink-0 rounded px-1 py-0.2 font-mono text-[9px] font-black uppercase text-[var(--ink)] transition-colors duration-300"
+                style={{
+                  background: isStuck()
+                    ? `var(--${ROAD_STOPS[roadCursor()].pop})`
+                    : "var(--pop-yellow)",
+                  border: "1px solid var(--ink)",
+                }}
+              >
+                {isStuck()
+                  ? `${ROAD_STOPS[roadCursor()].day} · ${roadCursor() + 1}/9`
+                  : "9 Interactive Stops · Zero Experience Required"}
+              </span>
 
-                  <div class="flex flex-wrap items-center gap-2">
-                    <Show when={nextStop()}>
-                      {(stop) => (
-                        <a
-                          href={`?section=${stop().id}`}
-                          class="btn-brand min-h-0 justify-center px-3.5 py-2 text-center text-sm font-black"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            scrollToAnchor(stop().id);
-                          }}
-                        >
-                          {doneCount() === 0 ? "Start Walking" : "Resume Step"}
-                        </a>
-                      )}
-                    </Show>
+              {/* Compact Stop Title (Smoothly reveals when stuck) */}
+              <p
+                class={`m-0 truncate font-black text-[var(--ink)] transition-all duration-300 ${
+                  isStuck()
+                    ? "text-xs max-w-xs opacity-100 translate-x-0"
+                    : "max-w-0 opacity-0 -translate-x-2 overflow-hidden pointer-events-none"
+                }`}
+              >
+                {ROAD_STOPS[roadCursor()].title}
+              </p>
+            </div>
 
-                    <Show when={doneCount() > 0}>
-                      <button
-                        type="button"
-                        onClick={reset}
-                        class="btn-ghost min-h-0 justify-center gap-1.5 px-2.5 py-2 text-sm font-black"
-                        title="Clear my progress"
-                      >
-                        <RotateCcw size={13} />
-                        <span>Start Over</span>
-                      </button>
-                    </Show>
-                  </div>
-                </div>
+            {/* Right: Stuck Compact Chevrons & Done Counter */}
+            <div
+              class={`flex shrink-0 items-center gap-1 transition-all duration-300 ${
+                isStuck()
+                  ? "max-w-xs opacity-100 scale-100"
+                  : "max-w-0 opacity-0 overflow-hidden pointer-events-none scale-90"
+              }`}
+            >
+              <span class="hidden font-mono text-[9.5px] font-extrabold text-muted sm:inline whitespace-nowrap mr-0.5">
+                {doneCount()}/{ROAD_STOPS.length} done
+              </span>
+              <button
+                type="button"
+                class="grid h-4.5 w-4.5 place-items-center rounded bg-[var(--paper)] text-[var(--ink)] disabled:opacity-30 cursor-pointer hover:bg-[var(--paper-3)]"
+                style={{ border: "1px solid var(--ink)" }}
+                disabled={roadCursor() === 0}
+                onClick={() => moveRoadCursor(-1)}
+                aria-label="Previous stop"
+                title="Previous stop"
+              >
+                <ChevronLeft size={10} strokeWidth={3} />
+              </button>
+              <button
+                type="button"
+                class="grid h-4.5 w-4.5 place-items-center rounded bg-[var(--paper)] text-[var(--ink)] disabled:opacity-30 cursor-pointer hover:bg-[var(--paper-3)]"
+                style={{ border: "1px solid var(--ink)" }}
+                disabled={roadCursor() === ROAD_STOPS.length - 1}
+                onClick={() => moveRoadCursor(1)}
+                aria-label="Next stop"
+                title="Next stop"
+              >
+                <ChevronRight size={10} strokeWidth={3} />
+              </button>
+            </div>
+          </div>
 
-                {/* Progress Bar */}
-                <div
-                  class="flex gap-1"
-                  role="progressbar"
-                  aria-label={`${doneCount()} of ${ROAD_STOPS.length} stops cleared`}
-                >
-                  <For each={ROAD_STOPS}>
-                    {(stop, i) => (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveStop(stop.id);
-                          scrollToAnchor(stop.id);
-                        }}
-                        class="h-3 min-w-0 flex-1 rounded-full transition-all cursor-pointer hover:opacity-80"
-                        style={{
-                          border: "var(--ink-w) solid var(--ink)",
-                          background: isDone(stop.id) ? `var(--${stop.pop})` : "var(--paper-3)",
-                        }}
-                        aria-label={`Stop ${i() + 1}: ${stop.title}`}
-                        title={`Stop ${i() + 1}: ${stop.title}`}
-                      />
-                    )}
-                  </For>
-                </div>
-
-                <p class="comment text-xs sm:text-sm m-0">
-                  Work at your own pace! Follow the steps below or use the navigation controls to
-                  jump between stops.
-                </p>
-              </div>
-            }
+          {/* Expanded Big Wordmark & Actions (Smooth CSS Grid Collapse) */}
+          <div
+            class={`grid transition-all duration-300 ease-in-out ${
+              isStuck()
+                ? "grid-rows-[0fr] opacity-0 pointer-events-none"
+                : "grid-rows-[1fr] opacity-100"
+            }`}
           >
-            {/* Ultra-Slim Stuck Compact State */}
-            <div class="space-y-1">
-              <div class="flex items-center justify-between gap-2">
-                <div class="flex min-w-0 items-center gap-1.5">
-                  <span
-                    class="shrink-0 rounded px-1.5 py-0.2 font-mono text-[9.5px] font-black uppercase text-[var(--ink)]"
-                    style={{
-                      background: `var(--${ROAD_STOPS[roadCursor()].pop})`,
-                      border: "1.5px solid var(--ink)",
-                    }}
+            <div class="overflow-hidden">
+              <div class="flex flex-col gap-2.5 sm:flex-row sm:items-end sm:justify-between pt-1 pb-1">
+                <div class="min-w-0 space-y-0.5">
+                  <h2
+                    class="wordmark m-0 leading-tight"
+                    data-text="THE POOKALAM ROAD"
+                    style={{ "font-size": "clamp(1.3rem, 5vw, 2.2rem)" }}
                   >
-                    {ROAD_STOPS[roadCursor()].day} · {roadCursor() + 1}/9
-                  </span>
-                  <p class="m-0 truncate text-xs font-black sm:text-sm text-[var(--ink)]">
-                    {ROAD_STOPS[roadCursor()].title}
+                    THE POOKALAM ROAD
+                  </h2>
+                  <p class="m-0 font-mono text-sm font-bold text-muted">
+                    {firstName() ? `${firstName()} · ` : ""}
+                    {doneCount()} of {ROAD_STOPS.length} stops cleared
                   </p>
                 </div>
 
-                <div class="flex shrink-0 items-center gap-2">
-                  <span class="hidden font-mono text-[10px] font-extrabold text-muted sm:inline">
-                    {doneCount()}/{ROAD_STOPS.length} done
-                  </span>
-                  <div class="flex items-center gap-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <Show when={nextStop()}>
+                    {(stop) => (
+                      <a
+                        href={`?section=${stop().id}`}
+                        class="btn-brand min-h-0 justify-center px-3.5 py-1.5 text-center text-sm font-black whitespace-nowrap"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          scrollToAnchor(stop().id);
+                        }}
+                      >
+                        {doneCount() === 0 ? "Start Walking" : "Resume Step"}
+                      </a>
+                    )}
+                  </Show>
+
+                  <Show when={doneCount() > 0}>
                     <button
                       type="button"
-                      class="grid h-5 w-5 place-items-center rounded bg-[var(--paper)] text-[var(--ink)] disabled:opacity-30 cursor-pointer hover:bg-[var(--paper-3)]"
-                      style={{ border: "1.5px solid var(--ink)" }}
-                      disabled={roadCursor() === 0}
-                      onClick={() => moveRoadCursor(-1)}
-                      aria-label="Previous stop"
-                      title="Previous stop"
+                      onClick={reset}
+                      class="btn-ghost min-h-0 justify-center gap-1.5 px-2.5 py-1.5 text-sm font-black whitespace-nowrap"
+                      title="Clear my progress"
                     >
-                      <ChevronLeft size={11} strokeWidth={3} />
+                      <RotateCcw size={13} />
+                      <span>Start Over</span>
                     </button>
-                    <button
-                      type="button"
-                      class="grid h-5 w-5 place-items-center rounded bg-[var(--paper)] text-[var(--ink)] disabled:opacity-30 cursor-pointer hover:bg-[var(--paper-3)]"
-                      style={{ border: "1.5px solid var(--ink)" }}
-                      disabled={roadCursor() === ROAD_STOPS.length - 1}
-                      onClick={() => moveRoadCursor(1)}
-                      aria-label="Next stop"
-                      title="Next stop"
-                    >
-                      <ChevronRight size={11} strokeWidth={3} />
-                    </button>
-                  </div>
+                  </Show>
                 </div>
               </div>
-
-              {/* Slim progress micro-bar */}
-              <div
-                class="flex gap-0.5"
-                role="progressbar"
-                aria-label={`${doneCount()} of ${ROAD_STOPS.length} stops cleared`}
-              >
-                <For each={ROAD_STOPS}>
-                  {(stop, idx) => (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveStop(stop.id);
-                        scrollToAnchor(stop.id);
-                      }}
-                      class={`h-1 min-w-0 flex-1 rounded-full transition-all cursor-pointer ${
-                        idx() === roadCursor() ? "ring-1 ring-[var(--ink)]" : ""
-                      }`}
-                      style={{
-                        background: isDone(stop.id) ? `var(--${stop.pop})` : "var(--paper-3)",
-                      }}
-                      title={`Stop ${idx() + 1}: ${stop.title}`}
-                    />
-                  )}
-                </For>
-              </div>
             </div>
-          </Show>
+          </div>
+
+          {/* Continuous Progress Bar (Morphs between h-3 and h-1) */}
+          <div
+            class="flex gap-0.5 sm:gap-1 transition-all duration-300"
+            role="progressbar"
+            aria-label={`${doneCount()} of ${ROAD_STOPS.length} stops cleared`}
+          >
+            <For each={ROAD_STOPS}>
+              {(stop, i) => (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveStop(stop.id);
+                    scrollToAnchor(stop.id);
+                  }}
+                  class={`min-w-0 flex-1 rounded-full transition-all duration-300 cursor-pointer ${
+                    isStuck()
+                      ? `h-1 ${i() === roadCursor() ? "ring-1 ring-[var(--ink)]" : ""}`
+                      : "h-3 hover:opacity-80"
+                  }`}
+                  style={{
+                    border: isStuck() ? "none" : "var(--ink-w) solid var(--ink)",
+                    background: isDone(stop.id) ? `var(--${stop.pop})` : "var(--paper-3)",
+                  }}
+                  aria-label={`Stop ${i() + 1}: ${stop.title}`}
+                  title={`Stop ${i() + 1}: ${stop.title}`}
+                />
+              )}
+            </For>
+          </div>
+
+          {/* Comment text (Smooth CSS Grid Collapse) */}
+          <div
+            class={`grid transition-all duration-300 ease-in-out ${
+              isStuck()
+                ? "grid-rows-[0fr] opacity-0 pointer-events-none"
+                : "grid-rows-[1fr] opacity-100"
+            }`}
+          >
+            <div class="overflow-hidden">
+              <p class="comment text-xs sm:text-sm m-0 pt-0.5">
+                Work at your own pace! Follow the steps below or use the navigation controls to jump
+                between stops.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
