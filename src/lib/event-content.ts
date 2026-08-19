@@ -48,99 +48,118 @@ export const EVENT = {
   registerNote: "Sign in with Google. Takes about eleven seconds.",
 
   about: {
-    title: "About Onam Games",
-    headline: "Seven days of games, code, and celebration",
-    description:
-      "Onam Games is the inaugural open-source festival created by FOSS MEC (Model Engineering College), expanding our annual Code-a-Pookalam competition into a full week of celebrations. We bring together students, developers, and puzzle enthusiasts for 6 daily mini-games, algorithmic pookalam design, and collaborative community art - celebrating Onam through code.",
-    features: [
-      {
-        title: "6 Daily Puzzle Challenges",
-        icon: "maveli-laptop" as SpriteName,
-        pop: "pop-yellow",
-        body: "A fresh mini-game unlocks each day. Complete the challenge to win daily ₹200 cash bounties.",
-      },
-      {
-        title: "Code-a-Pookalam Contest",
-        icon: "pookalam-flower" as SpriteName,
-        pop: "pop-teal",
-        body: "Design a flower carpet purely with code (Canvas, SVG, or CSS). Compete for ₹3,000 podium prizes judged by peer ELO voting.",
-      },
-      {
-        title: "Live Community Pookalam",
-        icon: "sadya-leaf" as SpriteName,
-        pop: "pop-pink",
-        body: "Pick authentic flower petals and post wishes on the real-time collaborative canvas.",
-      },
-      {
-        title: "100% Free & Open Source",
-        icon: "foss-mec-badge" as SpriteName,
-        pop: "pop-purple",
-        body: "Free entry for everyone with ₹5,000+ total prize pool. Built by FOSS MEC and fully open source under GPLv3.",
-      },
-    ],
-    auth: {
-      title: "Why Sign in with Google?",
-      body: "Google Sign-In is used solely for secure account authentication: saving your puzzle solve times, tracking daily prize eligibility, and verifying contest submissions. We do not request or access any private files, contacts, or sensitive data.",
+    title: "About Onam Games & FOSS MEC",
+    games: {
+      title: "About Onam Games",
+      headline: "Seven days of games, code, and celebration",
+      description:
+        "Onam Games is the inaugural open-source festival created by FOSS MEC (Model Engineering College), expanding our annual Code-a-Pookalam competition into a full week of celebrations. We bring together students, developers, and puzzle enthusiasts for 6 daily mini-games, algorithmic pookalam design, and collaborative community art - celebrating Onam through code.",
+      features: [
+        {
+          title: "6 Daily Puzzle Challenges",
+          icon: "maveli-laptop" as SpriteName,
+          pop: "pop-yellow",
+          body: "A fresh mini-game unlocks each evening. Complete the challenge fast to top that day's board.",
+        },
+        {
+          title: "Code-a-Pookalam Contest",
+          icon: "pookalam-flower" as SpriteName,
+          pop: "pop-teal",
+          body: "Design a flower carpet purely with code (Canvas, SVG, CSS, Python). Judged by peer ELO voting.",
+        },
+        {
+          title: "Live Community Pookalam",
+          icon: "sadya-leaf" as SpriteName,
+          pop: "pop-pink",
+          body: "Pick authentic flower petals and post wishes on the real-time collaborative canvas.",
+        },
+        {
+          title: "100% Free & Open Source",
+          icon: "foss-mec-badge" as SpriteName,
+          pop: "pop-purple",
+          body: "Free entry for everyone with transparent rules. Built by FOSS MEC and 100% open source.",
+        },
+      ],
+    },
+    fossMec: {
+      title: "About FOSS MEC",
+      headline: "Free & Open Source Cell · MEC Kochi",
+      description:
+        "FOSSMEC, the Free and Open Source Cell at Model Engineering College Kochi, is a dynamic student-led organization dedicated to advocating the widespread adoption of free and open-source software (FOSS). Through engaging workshops and training programs, we empower individuals with cutting-edge expertise, enabling them to embrace FOSS, remain informed of advancements, and explore promising career prospects. Join our vibrant community and unlock the endless possibilities of FOSS today.",
+      features: [
+        {
+          title: "100+ Events Conducted",
+          icon: "terminal-star" as SpriteName,
+          pop: "pop-yellow",
+          body: "Hands-on workshops, hackathons, and technical bootcamps.",
+        },
+        {
+          title: "FOSS from Day One",
+          icon: "osi-logo" as SpriteName,
+          pop: "pop-teal",
+          body: "Unwavering advocacy for free software and community-led tooling.",
+        },
+      ],
+      link: "https://foss.mec.ac.in",
     },
   },
 
   howItWorks: [
     {
-      title: "A game a day",
-      body: "One new mini-game unlocks every evening. Solve it fast to top that day's board.",
+      title: "A new puzzle unlocks daily",
+      body: "One fresh mini-game drops every evening. Solve it fast to race against the clock.",
     },
     {
-      title: "Code-a-Pookalam",
-      body: "Create an intricate pookalam purely using code (HTML Canvas, SVG, or CSS). Submissions stay open all week!",
+      title: "One ranked shot per game",
+      body: "Same seed, same puzzle for everyone. The timer ticks server-side once you hit Start.",
     },
     {
-      title: "Everyone gets the same puzzle",
-      body: "Same seed, same puzzle, same difficulty for all players. Zero unfair advantages.",
+      title: "Code-a-Pookalam all week",
+      body: "Create an intricate floral carpet purely using code (HTML Canvas, SVG, CSS, Shaders or Python).",
     },
     {
-      title: "One shot per game",
-      body: "You only get one official ranked run per game once you hit Start. Make every second count.",
+      title: "Community Elo voting arena",
+      body: "On Day 7, top pookalams battle in peer match-ups where the whole community votes to decide winners.",
     },
     {
-      title: "The clock does not stop",
-      body: "Refresh, close the tab, throw your phone - the timer keeps ticking server-side. Finish the run you started.",
-    },
-    {
-      title: "Daily cash prizes",
-      body: "Top the daily leaderboard each evening to take home ₹200 cash for that day's challenge.",
-    },
-    {
-      title: "Code-a-Pookalam contest",
-      body: "Code-a-Pookalam winners take home ₹1,500 (1st), ₹1,000 (2nd), and ₹500 (3rd) in cash prizes!",
-    },
-    {
-      title: "Fair play & server verification",
+      title: "Verified fair rankings",
       body: "All moves and solve times are cryptographically verified on the backend. Pure skill only.",
     },
   ],
 
-  scoring: {
-    title: "Daily Competition Rankings",
-    body: "Each day is an independent race against the clock. The player with the fastest verified solve time (or highest score in arcade mode) takes that day's ₹200 cash prize!",
-    aside: "seven days, seven independent chances to win",
-  },
-
   prizes: [
     {
-      rank: "Daily Game Champions (7 Days)",
-      detail: "₹200 cash each day - Awarded to the #1 verified player for that day's challenge",
+      amount: "₹200 / Day",
+      rank: "Daily Game Champions",
+      detail:
+        "Awarded to the #1 verified player with the fastest solve time each day (7 days total).",
+      pop: "pop-yellow",
+      icon: "tux-king" as SpriteName,
+      badge: "7 Winners",
     },
     {
+      amount: "₹1,500",
       rank: "Code-a-Pookalam 1st Place",
-      detail: "₹1,500 cash prize - Crowned best algorithmic coded pookalam",
+      detail: "Crowned champion algorithmic coded pookalam decided by Day 7 community ELO arena.",
+      pop: "pop-teal",
+      icon: "pookalam-flower" as SpriteName,
+      badge: "Grand Winner",
     },
     {
+      amount: "₹1,000 & ₹500",
       rank: "Code-a-Pookalam 2nd & 3rd",
-      detail: "₹1,000 (2nd) & ₹500 (3rd) - Podium runners-up cash prizes",
+      detail: "Podium cash prizes for standout generative pookalam submissions.",
+      pop: "pop-pink",
+      icon: "gopher-king" as SpriteName,
+      badge: "Podium Runners-up",
     },
     {
+      amount: "₹200",
       rank: "Best Voter Bounty",
-      detail: "₹200 for the sharpest eyes - spot the best pookalam and it's yours!",
+      detail: "Awarded to the sharpest eyes on Day 7 pairwise pookalam matchmaking voting.",
+      pop: "pop-purple",
+      icon: "nilavilakku" as SpriteName,
+      badge: "Community Jury",
     },
   ],
 

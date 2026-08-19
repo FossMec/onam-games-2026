@@ -8,7 +8,7 @@ import { Countdown } from "~/components/Countdown";
 import { LoadingScreen } from "~/components/LoadingScreen";
 import { MaveliLetter } from "~/components/MaveliLetter";
 import { CollabPookalam } from "~/components/pookalam/CollabPookalam";
-import { Bubble, Burst, Halftone } from "~/components/art/Burst";
+import { Burst, Halftone } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { SpriteScatter } from "~/components/art/SpriteScatter";
@@ -190,6 +190,7 @@ export default function Home() {
   };
 
   const [selectedDay, setSelectedDay] = createSignal<number>(parseQueryDay() ?? 1);
+  const [aboutTab, setAboutTab] = createSignal<"games" | "fossmec">("games");
 
   const currentActiveDay = () => {
     const list = games();
@@ -898,18 +899,13 @@ export default function Home() {
         </Show>
       </Section>
 
-      {/* ------------------------------------------------- collaborative pookalam */}
+      {/* ------------------------------------------- 4. community pookalam */}
       <Section
-        title="The shared pookalam"
-        id="shared-pookalam"
+        title="Community Pookalam"
+        id="community-pookalam"
         confettiSeed="collab-sec"
         confettiCount={4}
       >
-        {/*
-          Same treatment as the Code-a-Pookalam card above it — a flat pop
-          fill, thick ink, halftone, confetti. Blue rather than pink so the two
-          pookalam sections read as siblings without reading as duplicates.
-        */}
         <div
           class="relative overflow-hidden rounded-lg p-2 sm:p-3 md:p-3.5"
           style={{
@@ -917,21 +913,8 @@ export default function Home() {
             background: "var(--pop-blue)",
           }}
         >
-          {/*
-            Halftone only, no confetti.
-
-            Every other card here gets both, but this one is mostly a canvas
-            somebody is trying to aim at. Scattered shapes drifting around the
-            edge of a drawing surface read as marks on the drawing.
-          */}
           <Halftone opacity={0.12} />
 
-          {/*
-            The gutters either side of the canvas are the only place decoration
-            can go without landing on somebody's drawing, so the confetti and
-            the sprites live there and nowhere else. Hidden below `lg`, where
-            there are no gutters to fill.
-          */}
           <div
             class="pointer-events-none absolute inset-y-0 left-0 hidden w-28 overflow-hidden lg:block"
             aria-hidden="true"
@@ -973,16 +956,6 @@ export default function Home() {
           </div>
 
           <div class="art-over space-y-3">
-            {/*
-              The pitch, not a description.
-
-              "One grid, everyone's flowers" was accurate and completely inert —
-              it told you the mechanic and gave you no reason to care. What
-              makes this worth a tap is that it is the one thing on the site
-              nobody owns: your flowers sit next to a stranger's forever, and
-              the picture is only good if enough people show up. That is worth
-              saying out loud, in the voice the rest of the site uses.
-            */}
             <div class="text-center space-y-1 pb-1 max-w-4xl mx-auto">
               <h2
                 class="m-0 font-black leading-[0.95] text-2xl sm:text-3xl md:text-4xl"
@@ -1002,151 +975,340 @@ export default function Home() {
         </div>
       </Section>
 
-      {/* ------------------------------------------------------- Explore Daily Games Card */}
+      {/* --------------------------------------------- 5. prizes & rewards */}
+      <Section title="Prizes & Rewards" id="prizes" confettiSeed="prizes-sec" confettiCount={6}>
+        {/* Comic Prize Hype Banner - Mobile Compact */}
+        <div
+          class="relative overflow-hidden rounded-xl p-3 sm:p-4"
+          style={{
+            border: "var(--ink-w) solid var(--ink)",
+            background: "var(--paper-2)",
+          }}
+        >
+          <Halftone opacity={0.09} />
+          <div class="art-over flex flex-row items-center justify-between gap-2.5 sm:gap-4">
+            {/* Left Copy Block */}
+            <div class="space-y-1 sm:space-y-1.5 text-left flex-1 min-w-0">
+              <div class="flex flex-wrap items-center gap-1 sm:gap-1.5">
+                <span
+                  class="sticker text-[9px] sm:text-xs font-black uppercase"
+                  style={{ "--pop": "var(--pop-yellow)" }}
+                >
+                  Daily Cash
+                </span>
+                <span
+                  class="badge text-[9px] sm:text-xs font-black uppercase"
+                  style={{ "--pop": "var(--pop-teal)" }}
+                >
+                  Instant UPI
+                </span>
+                <span
+                  class="badge text-[9px] sm:text-xs font-black uppercase"
+                  style={{ "--pop": "var(--pop-pink)" }}
+                >
+                  ₹5,000+ Pool
+                </span>
+              </div>
 
-      {/* ---------------------------------------------------------- prizes */}
-      <Section title="Prizes & Rewards" confettiSeed="prizes-sec" confettiCount={6}>
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-lg bg-[var(--paper-2)] border-2 border-[var(--ink)]">
-          <div class="space-y-1 text-center sm:text-left">
-            <p
-              class="font-extrabold text-lg sm:text-xl"
-              style={{ "font-family": "var(--font-stack-display)" }}
-            >
-              Celebrate this Onam with fossmec and earn big
-            </p>
-            <p class="text-xs sm:text-sm font-semibold" style={{ color: "var(--ink-soft)" }}>
-              Daily mini-game cash winners · ₹3,000 Code-a-Pookalam podium · Lucky voter bounties!
-            </p>
+              <h3
+                class="text-base sm:text-2xl md:text-3xl font-black text-[var(--ink)] m-0 leading-tight"
+                style={{ "font-family": "var(--font-stack-display)" }}
+              >
+                ₹5,000+ in festival bounties.
+              </h3>
+
+              <p
+                class="text-xs sm:text-base font-bold leading-tight sm:leading-snug text-[var(--ink)] m-0"
+                style={{ "font-family": "var(--font-stack-hand)" }}
+              >
+                "Solve puzzles, write shader math, top the leaderboard. Pure festival bounties paid
+                straight to UPI."
+              </p>
+
+              <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 pt-0.5 text-[10px] sm:text-xs font-mono font-bold text-[var(--ink-soft)]">
+                <span class="inline-flex items-center gap-1">
+                  <span class="text-[var(--pop-red)]">▸</span> 7 daily sprints
+                </span>
+                <span class="inline-flex items-center gap-1">
+                  <span class="text-[var(--pop-teal-deep)]">▸</span> ₹3K Pookalam podium
+                </span>
+              </div>
+            </div>
+
+            {/* Right Meme Graphic */}
+            <div class="relative shrink-0 flex flex-col items-center">
+              <div
+                class="relative rounded p-1 sm:p-1.5 bg-[var(--paper-3)]"
+                style={{ border: "var(--ink-w) solid var(--ink)" }}
+              >
+                <img
+                  src={memeImage("meme-celebrate.webp")}
+                  alt="Celebrate Onam with FOSS MEC Meme"
+                  class="w-16 sm:w-28 md:w-32 h-auto object-contain select-none block"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+            </div>
           </div>
-          <img
-            src={memeImage("meme-celebrate.webp")}
-            alt="Celebrate Onam with FOSS MEC Meme"
-            class="w-28 sm:w-36 h-auto object-contain select-none shrink-0"
-            loading="lazy"
-            decoding="async"
-          />
         </div>
 
-        <div class="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+        {/* 4 Noticeable, Compact 2-per-row Cards on Mobile */}
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
           <For each={EVENT.prizes}>
-            {(prize, index) => {
-              const prizeIcons = [
-                "tux-king",
-                "pookalam-flower",
-                "gopher-king",
-                "nilavilakku",
-                "burst-yellow",
-              ] as const;
-              const pIcon = prizeIcons[index() % prizeIcons.length];
-              return (
-                <div class={`card ${DAY_POPS[index() % DAY_POPS.length]} flex items-start gap-3`}>
-                  <SpriteIcon name={pIcon} size={36} animate="wobble" interactive class="mt-0.5" />
+            {(prize) => (
+              <div
+                class={`card ${prize.pop} flex flex-col justify-between gap-1.5 sm:gap-2.5 p-2.5 sm:p-3.5`}
+                style={{ border: "var(--ink-w) solid var(--ink)" }}
+              >
+                <div class="space-y-1 sm:space-y-1.5">
+                  <div class="flex items-center justify-between gap-1">
+                    <span
+                      class="sticker text-[8.5px] sm:text-[10px] font-black uppercase px-1 py-0.2"
+                      style={{ "--pop": "var(--paper)" }}
+                    >
+                      {prize.badge}
+                    </span>
+                    <SpriteIcon name={prize.icon} size={20} class="shrink-0" />
+                  </div>
                   <div>
-                    <p class="font-extrabold text-base">{prize.rank}</p>
-                    <p class="text-sm font-semibold pt-0.5" style={{ color: "var(--ink-soft)" }}>
-                      {prize.detail}
+                    <p
+                      class="text-base sm:text-2xl font-black tabular-nums leading-none tracking-tight text-[var(--ink)] m-0"
+                      style={{ "font-family": "var(--font-stack-display)" }}
+                    >
+                      {prize.amount}
                     </p>
+                    <h3 class="text-xs sm:text-sm font-black text-[var(--ink)] pt-1 m-0 leading-tight">
+                      {prize.rank}
+                    </h3>
                   </div>
                 </div>
-              );
-            }}
+                <p class="text-[10px] sm:text-xs font-semibold leading-tight text-[var(--ink-soft)] m-0 line-clamp-2">
+                  {prize.detail}
+                </p>
+              </div>
+            )}
           </For>
         </div>
       </Section>
 
-      {/* ---------------------------------------------------- royal letter from maveli */}
-      <Section
-        title="A Letter from the King to the Prajakal"
-        id="maveli-letter"
-        confettiSeed="maveli-sec"
-        confettiCount={4}
-      >
-        <MaveliLetter />
-      </Section>
-
-      {/* ---------------------------------------------------- About Onam Games & Purpose */}
+      {/* --------------------------- 6. about onam games and foss mec */}
       <Section title={EVENT.about.title} id="about" confettiSeed="about-sec" confettiCount={5}>
-        <div class="space-y-4">
-          {/* Main Overview Banner */}
-          <div class="card card-plain p-4 sm:p-5 flex flex-col sm:flex-row items-center gap-4 bg-[var(--paper-2)]">
-            <SpriteIcon
-              name="foss-mec-badge"
-              size={56}
-              animate="wobble"
-              interactive
-              class="shrink-0"
-            />
-            <div class="space-y-1 text-center sm:text-left">
-              <h3
-                class="text-lg sm:text-xl font-black text-[var(--ink)] m-0"
-                style={{ "font-family": "var(--font-stack-display)" }}
-              >
-                {EVENT.about.headline}
-              </h3>
-              <p class="text-xs sm:text-sm font-semibold text-[var(--ink-soft)] leading-relaxed m-0">
-                {EVENT.about.description}
-              </p>
-            </div>
-          </div>
-
-          {/* 4 Feature Panels Grid */}
-          <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <For each={EVENT.about.features}>
-              {(feat) => (
-                <div class={`card ${feat.pop} flex flex-col justify-between gap-2 p-3.5`}>
-                  <div class="flex items-center gap-2.5">
-                    <SpriteIcon
-                      name={feat.icon}
-                      size={32}
-                      animate="float"
-                      interactive
-                      class="shrink-0"
-                    />
-                    <h4
-                      class="text-sm font-black text-[var(--ink)] m-0 leading-tight"
-                      style={{ "font-family": "var(--font-stack-display)" }}
-                    >
-                      {feat.title}
-                    </h4>
-                  </div>
-                  <p class="text-xs font-semibold text-[var(--ink-soft)] leading-snug m-0">
-                    {feat.body}
-                  </p>
-                </div>
-              )}
-            </For>
-          </div>
-
-          {/* Authentication & Privacy Note */}
-          <div
-            class="card card-plain p-3.5 sm:p-4 rounded-lg flex items-start gap-3"
-            style={{
-              background: "var(--paper)",
-              border: "var(--ink-w) solid var(--ink)",
-            }}
+        {/* Mobile Segmented Tab Switcher */}
+        <div
+          class="flex rounded p-0.5 gap-1 mb-2 md:hidden"
+          style={{ background: "var(--paper-3)", border: "var(--ink-w) solid var(--ink)" }}
+        >
+          <button
+            type="button"
+            onClick={() => setAboutTab("games")}
+            class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-black transition-colors cursor-pointer text-center outline-none focus:outline-none"
+            style={
+              aboutTab() === "games"
+                ? {
+                    background: "var(--pop-yellow)",
+                    border: "var(--ink-w) solid var(--ink)",
+                    color: "var(--ink)",
+                  }
+                : {
+                    background: "transparent",
+                    border: "var(--ink-w) solid transparent",
+                    color: "var(--ink-soft)",
+                  }
+            }
           >
-            <div class="w-8 h-8 rounded-full bg-[var(--pop-teal)] border-2 border-[var(--ink)] grid place-items-center text-xs font-black shrink-0 mt-0.5">
-              ✓
+            <SpriteIcon name="maveli-laptop" size={14} />
+            <span>About Onam Games</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setAboutTab("fossmec")}
+            class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-black transition-colors cursor-pointer text-center outline-none focus:outline-none"
+            style={
+              aboutTab() === "fossmec"
+                ? {
+                    background: "var(--pop-teal)",
+                    border: "var(--ink-w) solid var(--ink)",
+                    color: "var(--ink)",
+                  }
+                : {
+                    background: "transparent",
+                    border: "var(--ink-w) solid transparent",
+                    color: "var(--ink-soft)",
+                  }
+            }
+          >
+            <SpriteIcon name="foss-mec-badge" size={14} />
+            <span>About FOSS MEC</span>
+          </button>
+        </div>
+
+        {/* 2-Column Desktop Grid / Tabbed Mobile View */}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+          {/* Left: About Onam Games */}
+          <div
+            class={`card card-plain p-4 sm:p-5 flex flex-col justify-between space-y-3.5 bg-[var(--paper-2)] ${
+              aboutTab() === "games" ? "block" : "hidden md:flex"
+            }`}
+            style={{ border: "var(--ink-w) solid var(--ink)" }}
+          >
+            <div class="space-y-3">
+              <div class="flex items-center gap-3">
+                <SpriteIcon
+                  name="maveli-laptop"
+                  size={42}
+                  animate="wobble"
+                  interactive
+                  class="shrink-0"
+                />
+                <div>
+                  <span
+                    class="sticker text-[10px] uppercase font-black"
+                    style={{ "--pop": "var(--pop-yellow)" }}
+                  >
+                    Festival Lore
+                  </span>
+                  <h3
+                    class="text-lg sm:text-xl font-black text-[var(--ink)] m-0 leading-tight pt-0.5"
+                    style={{ "font-family": "var(--font-stack-display)" }}
+                  >
+                    {EVENT.about.games.title}
+                  </h3>
+                </div>
+              </div>
+              <p class="text-xs sm:text-sm font-semibold text-[var(--ink-soft)] leading-relaxed m-0">
+                {EVENT.about.games.description}
+              </p>
             </div>
-            <div class="space-y-0.5">
-              <p class="font-extrabold text-xs sm:text-sm text-[var(--ink)] m-0">
-                {EVENT.about.auth.title}
+            <div class="pt-2 flex flex-wrap items-center gap-2 border-t border-[var(--ink)]/15">
+              <A href="/games" class="btn-brand text-xs px-3 py-1.5">
+                Explore Daily Games →
+              </A>
+              <A href="/code-a-pookalam" class="btn-ghost text-xs px-3 py-1.5">
+                Code-a-Pookalam
+              </A>
+            </div>
+          </div>
+
+          {/* Right: About FOSS MEC */}
+          <div
+            class={`card card-plain p-4 sm:p-5 flex flex-col justify-between space-y-3.5 bg-[var(--paper-2)] ${
+              aboutTab() === "fossmec" ? "block" : "hidden md:flex"
+            }`}
+            style={{ border: "var(--ink-w) solid var(--ink)" }}
+          >
+            <div class="space-y-3">
+              <div class="flex items-center gap-3">
+                <SpriteIcon
+                  name="foss-mec-badge"
+                  size={42}
+                  animate="wobble"
+                  interactive
+                  class="shrink-0"
+                />
+                <div>
+                  <span
+                    class="sticker text-[10px] uppercase font-black"
+                    style={{ "--pop": "var(--pop-teal)" }}
+                  >
+                    Organizers
+                  </span>
+                  <h3
+                    class="text-lg sm:text-xl font-black text-[var(--ink)] m-0 leading-tight pt-0.5"
+                    style={{ "font-family": "var(--font-stack-display)" }}
+                  >
+                    {EVENT.about.fossMec.title}
+                  </h3>
+                </div>
+              </div>
+              <p class="text-xs sm:text-sm font-semibold text-[var(--ink-soft)] leading-relaxed m-0">
+                {EVENT.about.fossMec.description}
               </p>
-              <p class="text-xs font-medium text-[var(--ink-soft)] leading-relaxed m-0">
-                {EVENT.about.auth.body}
-              </p>
+            </div>
+
+            <div class="pt-2 flex flex-wrap items-center gap-2 border-t border-[var(--ink)]/15">
+              <a
+                href={EVENT.about.fossMec.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn-brand text-xs px-3 py-1.5 inline-flex items-center gap-1.5"
+              >
+                <span>Visit foss.mec.ac.in</span>
+                <span>↗</span>
+              </a>
+              <A href="#faq" class="btn-ghost text-xs px-3 py-1.5">
+                How to Join FOSS MEC
+              </A>
             </div>
           </div>
         </div>
+
+        {/* 4 Feature Badges Grid Below */}
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 pt-1">
+          <For each={EVENT.about.games.features}>
+            {(feat) => (
+              <div
+                class={`card ${feat.pop} p-2.5 sm:p-3 space-y-1`}
+                style={{ border: "var(--ink-w) solid var(--ink)" }}
+              >
+                <div class="flex items-center gap-1.5">
+                  <SpriteIcon name={feat.icon} size={20} class="shrink-0" />
+                  <h4
+                    class="text-xs sm:text-sm font-black text-[var(--ink)] m-0 leading-tight"
+                    style={{ "font-family": "var(--font-stack-display)" }}
+                  >
+                    {feat.title}
+                  </h4>
+                </div>
+                <p class="text-[11px] sm:text-xs font-semibold text-[var(--ink-soft)] leading-snug m-0">
+                  {feat.body}
+                </p>
+              </div>
+            )}
+          </For>
+        </div>
       </Section>
 
-      {/* ---------------------------------------------------- how it works (8 items) */}
-      <Section title="How it works" id="how-it-works" confettiSeed="how-sec" confettiCount={5}>
-        {/* Swipeable row on a phone, grid from `sm` - see `.swipe-rail`. */}
-        <div class="swipe-rail">
+      {/* ---------------------------------------------------- 7. fair play */}
+      <Section title="Fair Play" id="fair-play" confettiSeed="fairplay-sec" confettiCount={4}>
+        <div
+          class="card card-plain p-4 sm:p-5 space-y-3 bg-[var(--paper-2)]"
+          style={{ border: "var(--ink-w) solid var(--ink)" }}
+        >
+          <div class="flex items-center gap-2.5">
+            <SpriteIcon name="tux-king" size={32} animate="wobble" interactive />
+            <h3
+              class="text-sm sm:text-base font-black text-[var(--ink)] m-0"
+              style={{ "font-family": "var(--font-stack-display)" }}
+            >
+              Play fair. Keep the festival fun for everyone.
+            </h3>
+          </div>
+          <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 list-none p-0 m-0">
+            <For each={EVENT.rules}>
+              {(rule) => (
+                <li
+                  class="flex items-start gap-2 text-xs sm:text-sm font-semibold p-2.5 rounded-lg bg-[var(--paper)]"
+                  style={{ border: "var(--ink-w) solid var(--ink)" }}
+                >
+                  <span class="font-black text-[var(--pop-red)] leading-none text-base">▸</span>
+                  <span class="leading-snug">{rule}</span>
+                </li>
+              )}
+            </For>
+          </ul>
+        </div>
+      </Section>
+
+      {/* ------------------------------------------------- 8. how it works */}
+      <Section title="How It Works" id="how-it-works" confettiSeed="how-sec" confettiCount={5}>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
           <For each={EVENT.howItWorks}>
             {(step, index) => (
-              <div class="card card-plain flex flex-col gap-2.5 justify-between">
+              <div
+                class="card card-plain p-3.5 sm:p-4 flex flex-col justify-between gap-2.5 bg-[var(--paper-2)]"
+                style={{ border: "var(--ink-w) solid var(--ink)" }}
+              >
                 <div class="flex items-start gap-3">
                   <div class="relative h-10 w-10 shrink-0">
                     <Burst color="var(--pop-yellow)" seed={`how-${index()}`} spikes={10} />
@@ -1157,12 +1319,11 @@ export default function Home() {
                       {index() + 1}
                     </span>
                   </div>
-                  <div>
-                    <p class="font-extrabold text-base">{step.title}</p>
-                    <p
-                      class="text-xs sm:text-sm font-semibold pt-1"
-                      style={{ color: "var(--ink-soft)" }}
-                    >
+                  <div class="space-y-0.5">
+                    <p class="font-extrabold text-sm sm:text-base text-[var(--ink)] m-0">
+                      {step.title}
+                    </p>
+                    <p class="text-xs sm:text-sm font-semibold text-[var(--ink-soft)] leading-snug m-0">
                       {step.body}
                     </p>
                   </div>
@@ -1173,46 +1334,22 @@ export default function Home() {
         </div>
       </Section>
 
-      {/* --------------------------------------------------------- scoring */}
-      <Section
-        title={EVENT.scoring.title}
-        id="scoring"
-        confettiSeed="scoring-sec"
-        confettiCount={4}
-      >
-        <Bubble color="var(--pop-teal)">
-          <p class="font-semibold">{EVENT.scoring.body}</p>
-        </Bubble>
-        <p class="comment">{EVENT.scoring.aside}</p>
-      </Section>
-
-      {/* ----------------------------------------------------------- rules */}
-      <Section title="Fair play" confettiSeed="fairplay-sec" confettiCount={4}>
-        <ul class="card card-plain space-y-2">
-          <For each={EVENT.rules}>
-            {(rule) => (
-              <li class="flex gap-2 font-semibold">
-                <span style={{ color: "var(--pop-red)" }}>▸</span>
-                <span>{rule}</span>
-              </li>
-            )}
-          </For>
-        </ul>
-      </Section>
-
-      {/* ------------------------------------------------------------- faq */}
-      <Section title="Questions" confettiSeed="faq-sec" confettiCount={4}>
-        <div class="space-y-3">
+      {/* ---------------------------------------------------- 9. questions */}
+      <Section title="Questions & FAQ" id="faq" confettiSeed="faq-sec" confettiCount={4}>
+        <div class="space-y-1.5 sm:space-y-2">
           <For each={EVENT.faq}>
             {(item) => (
-              <details class="card card-plain">
+              <details
+                class="rounded-lg bg-[var(--paper-2)] transition-colors open:bg-[var(--paper)] overflow-hidden"
+                style={{ border: "var(--ink-w) solid var(--ink)" }}
+              >
                 <summary
-                  class="cursor-pointer text-lg font-extrabold"
+                  class="cursor-pointer text-xs sm:text-sm font-extrabold px-3 py-2 sm:px-3.5 sm:py-2.5 select-none leading-snug"
                   style={{ "font-family": "var(--font-stack-display)" }}
                 >
                   {item.q}
                 </summary>
-                <p class="pt-2 font-semibold" style={{ color: "var(--ink-soft)" }}>
+                <p class="px-3 pb-2.5 sm:px-3.5 sm:pb-3 pt-1 text-xs sm:text-sm font-semibold leading-relaxed text-[var(--ink-soft)] m-0 border-t border-[var(--ink)]/15">
                   {item.a}
                 </p>
               </details>
@@ -1221,9 +1358,20 @@ export default function Home() {
         </div>
       </Section>
 
-      {/* -------------------------------------------------------- Comics Teaser Section */}
+      {/* -------------------------------------------- 10. letter from maveli */}
+      <Section
+        title="A Letter from the King to the Prajakal"
+        id="maveli-letter"
+        confettiSeed="maveli-sec"
+        confettiCount={4}
+      >
+        <MaveliLetter />
+      </Section>
+
+      {/* ------------------------------------------------------- 11. comics */}
       <section
-        class="card pop-teal p-6 sm:p-8 relative overflow-hidden text-center sm:text-left shadow-sm"
+        id="comics"
+        class="card pop-teal p-5 sm:p-7 relative overflow-hidden text-center sm:text-left shadow-sm scroll-mt-28"
         style={{ border: "var(--ink-w-bold) solid var(--ink)" }}
       >
         <Confetti seed="comics-teaser" count={8} opacity={0.4} animate />
@@ -1249,7 +1397,7 @@ export default function Home() {
               Tired of reading all these? Want to read some comics?
             </h2>
 
-            <p class="text-xs sm:text-sm font-semibold text-[var(--ink)]/85 leading-relaxed">
+            <p class="text-xs sm:text-sm font-semibold text-[var(--ink)]/85 leading-relaxed m-0">
               Step into the hilarious comic multiverse of Maveli in Paathalam, Tux with Onam Sadya,
               and Arch-user boat racers. 100% open-source festival laughs!
             </p>
@@ -1286,7 +1434,7 @@ export default function Home() {
 
             <A
               href="/comics"
-              class="relative  cursor-pointer hidden xs:block"
+              class="relative cursor-pointer hidden xs:block"
               title="Read Comics Vault"
             >
               <div
@@ -1308,10 +1456,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* -------------------------------------------------------- last CTA */}
+      {/* -------------------------------------------------------- subtle final CTA */}
       <Show when={!me()}>
         <section
-          class="relative overflow-hidden rounded-lg p-8 text-center"
+          class="relative overflow-hidden rounded-lg p-6 sm:p-8 text-center"
           style={{
             border: "var(--ink-w-bold) solid var(--ink)",
             background: "var(--pop-yellow)",
@@ -1327,15 +1475,19 @@ export default function Home() {
             opacity={0.88}
             animate
           />
-          <div class="art-over space-y-3">
+          <div class="art-over space-y-2.5">
             <div class="flex justify-center">
-              <SpriteIcon name="foss-mec-badge" size={60} animate="float" interactive />
+              <SpriteIcon name="foss-mec-badge" size={54} animate="float" interactive />
             </div>
-            <h2 class="text-3xl">Still reading?</h2>
-            <p class="font-semibold">The leaderboard isn't going to lose to you on its own.</p>
-            <A href="/auth/signin" class="btn-ghost">
-              Sign in with Google
-            </A>
+            <h2 class="text-2xl sm:text-3xl font-black m-0">Still reading?</h2>
+            <p class="font-semibold text-xs sm:text-sm m-0">
+              The leaderboard isn't going to lose to you on its own.
+            </p>
+            <div class="pt-1">
+              <A href="/auth/signin" class="btn-ghost text-xs sm:text-sm">
+                Sign in with Google
+              </A>
+            </div>
           </div>
         </section>
       </Show>

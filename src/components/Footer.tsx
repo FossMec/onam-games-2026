@@ -143,8 +143,7 @@ export function Footer() {
         </div>
 
         <p class="comment text-base">
-          free as in freedom, free as in payasam. licensed under GPLv3 - fork the repo, not Maveli's
-          moustache.
+          free as in freedom, free as in FOSS Onam Games. fork the repo, not Maveli's moustache.
         </p>
 
         <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
