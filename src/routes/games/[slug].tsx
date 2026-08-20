@@ -444,6 +444,17 @@ export default function GameArenaPage() {
       myAttempt()?.status === "submitted" ||
       result() !== null);
 
+  // A closed game the player never entered has no personal board to show.
+  // Rather than silently bouncing back to the hub (the old behavior), we stay
+  // put and render a "you didn't play this one" card. Testers can still start a
+  // closed game, so they are excluded and keep the redirect-to-hub path.
+  const hasNoAttempt = () =>
+    game()?.status === "closed" &&
+    !isTester() &&
+    myAttempt()?.status === "none" &&
+    !attemptToken() &&
+    !hasFinishedRun();
+
   createEffect(() => {
     const g = game();
     const user = me();
@@ -454,6 +465,8 @@ export default function GameArenaPage() {
       navigate(`/games?day=${g?.day ?? 1}&game=${slug()}`, { replace: true });
       return;
     }
+
+    if (hasNoAttempt()) return;
 
     if (!attemptToken() && !hasFinishedRun()) {
       navigate(`/games?day=${g?.day ?? 1}&game=${slug()}`, { replace: true });
@@ -559,6 +572,27 @@ export default function GameArenaPage() {
                 <A href="/leaderboard" class="btn-ghost inline-block">
                   View leaderboard
                 </A>
+              </div>
+            </Show>
+
+            <Show when={!banState()?.blocksPlay && hasNoAttempt()}>
+              <div class="card pop-yellow w-full max-w-sm space-y-4 pt-6">
+                <SpriteIcon name="papad-face" size={56} animate="wobble" />
+                <div class="space-y-1">
+                  <p class="text-lg font-black">You didn't play this one</p>
+                  <p class="comment text-sm">
+                    Day {game()!.day} has closed and you never started a run, so there's no board or
+                    score to show here.
+                  </p>
+                </div>
+                <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
+                  <A href={`/games?day=${game()!.day}`} class="btn-ghost px-5 py-2.5 text-sm">
+                    Back to Hub
+                  </A>
+                  <A href="/leaderboard" class="btn-ghost px-4 py-2.5 text-sm">
+                    See how others did →
+                  </A>
+                </div>
               </div>
             </Show>
 

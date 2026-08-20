@@ -680,7 +680,11 @@ export default function GamesPage() {
                               >
                                 <Show
                                   when={isDay7}
-                                  fallback={`View Day ${current.day} Board & Score →`}
+                                  fallback={
+                                    currentAttempt()?.status === "submitted"
+                                      ? `View Day ${current.day} Board & Score →`
+                                      : `View Day ${current.day} →`
+                                  }
                                 >
                                   View Final Results →
                                 </Show>
