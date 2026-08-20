@@ -16,3 +16,4 @@ mode = "smart"
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "5eb4ab7a271b462187c2945486c8739a"
+localConnectionString = "postgresql://postgres:postgres@127.0.0.1:54322/postgres"

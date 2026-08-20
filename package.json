@@ -20,6 +20,7 @@
     "sprites:vallam": "python3 scripts/process-vallam-sprites.py",
     "verify:anticheat": "tsx scripts/verify-anticheat.ts",
     "analyze:cheaters": "tsx scripts/analyze-cheaters.ts",
+    "preview:cf": "wrangler pages dev dist",
     "deploy": "wrangler pages deploy dist"
   },
   "dependencies": {

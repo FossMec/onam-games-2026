@@ -1,6 +1,4 @@
-import crypto from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
+import { createHash } from "node:crypto";
 import defaultHashesData from "./profanity-hashes.json";
 import { getServerEnv } from "~/server/env";
 
@@ -9,7 +7,7 @@ import { getServerEnv } from "~/server/env";
  *
  * Safe for open-source: Uses precomputed cryptographic SHA-256 hashes committed in git
  * (`profanity-hashes.json`) so zero vulgarity or plaintext wordlists appear in git history.
- * Optionally supplements with `config/profanity-dictionary.json` or `PROFANITY_DICTIONARY_JSON`.
+ * Optionally supplements with `PROFANITY_DICTIONARY_JSON` env variable.
  */
 
 interface ProfanityConfig {
@@ -21,7 +19,7 @@ interface ProfanityConfig {
 let cachedConfig: ProfanityConfig | null = null;
 
 function sha256(str: string): string {
-  return crypto.createHash("sha256").update(str).digest("hex");
+  return createHash("sha256").update(str).digest("hex");
 }
 
 function loadConfig(): ProfanityConfig {
@@ -33,7 +31,7 @@ function loadConfig(): ProfanityConfig {
   const blockedHashes = new Set<string>(defaultHashesData?.hashes || []);
   const blockedWords: string[] = [];
 
-  // 1. Try loading from environment variable (optional)
+  // Try loading additional words/hashes from environment variable (optional)
   const profanityEnv = getServerEnv("PROFANITY_DICTIONARY_JSON");
   if (profanityEnv) {
     try {
@@ -55,31 +53,6 @@ function loadConfig(): ProfanityConfig {
     } catch {
       /* ignore env parse error */
     }
-  }
-
-  // 2. Try loading from local git-ignored dictionary file (optional)
-  try {
-    const configPath = path.resolve(process.cwd(), "config", "profanity-dictionary.json");
-    if (fs.existsSync(configPath)) {
-      const content = fs.readFileSync(configPath, "utf-8");
-      const parsed = JSON.parse(content);
-      if (Array.isArray(parsed?.blocked)) {
-        for (const w of parsed.blocked) {
-          if (typeof w === "string") {
-            blockedWords.push(w.toLowerCase().trim());
-            blockedHashes.add(sha256(w.toLowerCase().trim()));
-            blockedHashes.add(sha256(normalizeWord(w)));
-          }
-        }
-      }
-      if (Array.isArray(parsed?.whitelist)) {
-        for (const w of parsed.whitelist) {
-          if (typeof w === "string") whitelist.add(w.toLowerCase().trim());
-        }
-      }
-    }
-  } catch {
-    /* fallback */
   }
 
   cachedConfig = { whitelist, blockedHashes, blockedWords };
