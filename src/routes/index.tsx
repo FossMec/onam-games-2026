@@ -1,4 +1,4 @@
-import { Title } from "@solidjs/meta";
+import { Link, Meta, Title } from "@solidjs/meta";
 import {
   A,
   createAsync,
@@ -18,6 +18,7 @@ import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { SpriteScatter } from "~/components/art/SpriteScatter";
 import { EVENT, POOKALAM } from "~/lib/event-content";
+import { SITE_URL } from "~/lib/site";
 
 import { gamesList, shell } from "~/lib/queries";
 import { teaserIcon } from "~/lib/game-teasers";
@@ -253,6 +254,27 @@ export default function Home() {
   return (
     <main class="container space-y-9 py-4 sm:space-y-14 sm:py-6">
       <Title>{EVENT.name}</Title>
+      <Meta
+        name="description"
+        content="Onam Games by FOSSMEC: Seven days, 6 daily puzzle games with rewards, Code-a-Pookalam, and a community flower carpet."
+      />
+      <Meta property="og:title" content={EVENT.name} />
+      <Meta
+        property="og:description"
+        content="Onam Games by FOSSMEC: Seven days, 6 daily puzzle games with rewards, Code-a-Pookalam, and a community flower carpet."
+      />
+      <Meta property="og:url" content={`${SITE_URL}/`} />
+      <Meta property="og:image" content={`${SITE_URL}/images/og-image.webp`} />
+      <Meta property="og:image:type" content="image/webp" />
+      <Meta property="og:image:width" content="1376" />
+      <Meta property="og:image:height" content="768" />
+      <Meta name="twitter:title" content={EVENT.name} />
+      <Meta
+        name="twitter:description"
+        content="Onam Games by FOSSMEC: Seven days, 6 daily puzzle games with rewards, Code-a-Pookalam, and a community flower carpet."
+      />
+      <Meta name="twitter:image" content={`${SITE_URL}/images/og-image.webp`} />
+      <Link rel="canonical" href={`${SITE_URL}/`} />
 
       {/* ------------------------------------------------------------- hero */}
       <section

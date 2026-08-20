@@ -1,4 +1,4 @@
-import { Link, Meta, MetaProvider, Title } from "@solidjs/meta";
+import { Link, Meta, MetaProvider } from "@solidjs/meta";
 import { Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { ErrorBoundary, Show, Suspense } from "solid-js";
@@ -11,7 +11,6 @@ import { ShortlistNotice } from "./components/pookalam/ShortlistNotice";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { InkFilter } from "./components/art/InkFilter";
 import { PookalamBalloons } from "./components/PookalamBalloons";
-import { SITE_URL } from "./lib/site";
 import "./app.css";
 
 export default function App() {
@@ -19,17 +18,11 @@ export default function App() {
     <Router
       root={(props) => (
         <MetaProvider>
-          <Title>Onam Games by FOSSMEC</Title>
-          <Meta
-            name="description"
-            content="Onam Games by FOSSMEC: Seven days, 6 daily puzzle games with rewards, Code-a-Pookalam, and a community flower carpet."
-          />
           <Meta name="author" content="Dijith Dinesh" />
           <Meta name="creator" content="Dijith Dinesh" />
           <Meta name="application-name" content="Onam Games" />
           <Meta property="og:site_name" content="Onam Games" />
           <Meta property="og:type" content="website" />
-          <Meta property="og:url" content={`${SITE_URL}/`} />
           <Show
             when={
               import.meta.env.VITE_GOOGLE_SITE_VERIFICATION ||
@@ -38,25 +31,9 @@ export default function App() {
           >
             {(token) => <Meta name="google-site-verification" content={token()} />}
           </Show>
-          <Meta property="og:title" content="Onam Games by FOSSMEC" />
-          <Meta
-            property="og:description"
-            content="Onam Games by FOSSMEC: Seven days, 6 daily puzzle games with rewards, Code-a-Pookalam, and a community flower carpet."
-          />
-          <Meta property="og:image" content={`${SITE_URL}/images/og-image.webp`} />
-          <Meta property="og:image:type" content="image/webp" />
-          <Meta property="og:image:width" content="1376" />
-          <Meta property="og:image:height" content="768" />
           <Meta name="twitter:card" content="summary_large_image" />
           <Meta name="twitter:site" content="@fossmec" />
           <Meta name="twitter:creator" content="@fossmec" />
-          <Meta name="twitter:title" content="Onam Games by FOSSMEC" />
-          <Meta
-            name="twitter:description"
-            content="Onam Games by FOSSMEC: Seven days, 6 daily puzzle games with rewards, Code-a-Pookalam, and a community flower carpet."
-          />
-          <Meta name="twitter:image" content={`${SITE_URL}/images/og-image.webp`} />
-          <Link rel="canonical" href={`${SITE_URL}/`} />
           <Link rel="icon" type="image/svg+xml" href="/logo.svg" />
           {/*
             No 512x512 `rel="icon"` here. Browsers were fetching the 34 KB

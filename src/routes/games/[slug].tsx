@@ -1,7 +1,8 @@
-import { Title } from "@solidjs/meta";
+import { Link, Meta, Title } from "@solidjs/meta";
 import { A, createAsync, useNavigate, useParams, revalidate } from "@solidjs/router";
 import type { RouteDefinition } from "@solidjs/router";
 import { ChevronLeft } from "lucide-solid";
+import { SITE_URL } from "~/lib/site";
 import {
   lazy,
   Show,
@@ -585,7 +586,42 @@ export default function GameArenaPage() {
       class="fixed inset-0 z-50 flex flex-col overflow-hidden select-none bg-[var(--paper)]"
       style={{ "touch-action": "manipulation" }}
     >
-      <Title>{game()?.title ?? "Game"} - Onam Games</Title>
+      <Title>
+        {game()?.title ? `${game()!.title} - Onam Games` : "Play Mini-Game - Onam Games"}
+      </Title>
+      <Meta
+        name="description"
+        content={
+          game()?.teaser || game()?.tagline || "Play daily mini-games on Onam Games by FOSSMEC."
+        }
+      />
+      <Meta
+        property="og:title"
+        content={game()?.title ? `${game()!.title} - Onam Games` : "Play Mini-Game - Onam Games"}
+      />
+      <Meta
+        property="og:description"
+        content={
+          game()?.teaser || game()?.tagline || "Play daily mini-games on Onam Games by FOSSMEC."
+        }
+      />
+      <Meta property="og:url" content={`${SITE_URL}/games/${params.slug}`} />
+      <Meta property="og:image" content={`${SITE_URL}/images/games-og.webp`} />
+      <Meta property="og:image:type" content="image/webp" />
+      <Meta property="og:image:width" content="1376" />
+      <Meta property="og:image:height" content="768" />
+      <Meta
+        name="twitter:title"
+        content={game()?.title ? `${game()!.title} - Onam Games` : "Play Mini-Game - Onam Games"}
+      />
+      <Meta
+        name="twitter:description"
+        content={
+          game()?.teaser || game()?.tagline || "Play daily mini-games on Onam Games by FOSSMEC."
+        }
+      />
+      <Meta name="twitter:image" content={`${SITE_URL}/images/games-og.webp`} />
+      <Link rel="canonical" href={`${SITE_URL}/games/${params.slug}`} />
 
       <Show when={game() === undefined}>
         <div class="m-auto text-center">

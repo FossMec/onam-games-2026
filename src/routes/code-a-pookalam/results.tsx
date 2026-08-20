@@ -1,4 +1,4 @@
-import { Title } from "@solidjs/meta";
+import { Link, Meta, Title } from "@solidjs/meta";
 import { createAsync } from "@solidjs/router";
 import { Crown, Gavel } from "lucide-solid";
 import { For, Show } from "solid-js";
@@ -7,6 +7,7 @@ import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { POOKALAM } from "~/lib/event-content";
 import { pookalamResults } from "~/lib/queries";
+import { SITE_URL } from "~/lib/site";
 
 /**
  * Final standings, and the only place a pookalam is ever shown next to its
@@ -31,6 +32,27 @@ export default function PookalamResults() {
   return (
     <main class="container space-y-8 py-6">
       <Title>Results - {POOKALAM.title}</Title>
+      <Meta
+        name="description"
+        content={`Final winners and standings for ${POOKALAM.title} at Onam Games by FOSSMEC.`}
+      />
+      <Meta property="og:title" content={`Results - ${POOKALAM.title}`} />
+      <Meta
+        property="og:description"
+        content={`Final winners and standings for ${POOKALAM.title} at Onam Games by FOSSMEC.`}
+      />
+      <Meta property="og:url" content={`${SITE_URL}/code-a-pookalam/results`} />
+      <Meta property="og:image" content={`${SITE_URL}/images/code-a-pookalam-og.webp`} />
+      <Meta property="og:image:type" content="image/webp" />
+      <Meta property="og:image:width" content="1376" />
+      <Meta property="og:image:height" content="768" />
+      <Meta name="twitter:title" content={`Results - ${POOKALAM.title}`} />
+      <Meta
+        name="twitter:description"
+        content={`Final winners and standings for ${POOKALAM.title} at Onam Games by FOSSMEC.`}
+      />
+      <Meta name="twitter:image" content={`${SITE_URL}/images/code-a-pookalam-og.webp`} />
+      <Link rel="canonical" href={`${SITE_URL}/code-a-pookalam/results`} />
 
       <a
         href="/code-a-pookalam"
