@@ -23,11 +23,16 @@ export async function POST({ request }: APIEvent) {
       return Response.json({ error: "Please enter an answer." }, { status: 400 });
     }
 
-    const result = await submitHuntAnswer(user.id, answer, {
-      ip: meta.ip,
-      deviceId,
-      userAgent: meta.userAgent,
-    });
+    const result = await submitHuntAnswer(
+      user.id,
+      answer,
+      {
+        ip: meta.ip,
+        deviceId,
+        userAgent: meta.userAgent,
+      },
+      user.role,
+    );
 
     return Response.json(result);
   } catch (error) {

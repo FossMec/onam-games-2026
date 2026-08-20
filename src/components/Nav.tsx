@@ -104,6 +104,14 @@ function ProfileMenu(props: {
                       Admin
                     </span>
                   </Show>
+                  <Show when={props.me.role === "tester"}>
+                    <span
+                      class="badge text-[9px] py-0 px-1.5 uppercase font-black"
+                      style={{ "--pop": "var(--pop-teal)" }}
+                    >
+                      Tester
+                    </span>
+                  </Show>
                 </div>
                 <p
                   class="text-xs truncate flex items-center gap-1 font-mono"
@@ -150,6 +158,15 @@ function ProfileMenu(props: {
               >
                 <SpriteIcon name="arch-crown" size={13} />
                 <span>Admin Panel</span>
+              </A>
+            </Show>
+            <Show when={props.me.role === "tester"}>
+              <A
+                href="/admin"
+                class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-[var(--pop-teal)]/20 transition-colors text-[var(--pop-teal-deep)] font-extrabold"
+              >
+                <SpriteIcon name="concentric-pookalam" size={13} />
+                <span>Review Panel</span>
               </A>
             </Show>
             <button

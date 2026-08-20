@@ -5,7 +5,7 @@ import { getUserHuntState } from "~/server/games/hunt/service";
 export async function GET() {
   try {
     const user = await requireCurrentUser();
-    const state = await getUserHuntState(user.id);
+    const state = await getUserHuntState(user.id, user.role);
     return Response.json(state);
   } catch (error) {
     if (error instanceof HttpError) {

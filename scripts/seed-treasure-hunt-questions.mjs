@@ -1,6 +1,7 @@
 // Seeds or updates treasure hunt questions from scripts/treasure-hunt-questions.json
 //
 // Usage: node --env-file=.env scripts/seed-treasure-hunt-questions.mjs
+// Destructive: clears existing questions + progress and re-inserts (non-production use).
 import fs from "node:fs";
 import path from "node:path";
 import postgres from "postgres";
@@ -16,7 +17,13 @@ if (!fs.existsSync(jsonPath)) {
 const raw = fs.readFileSync(jsonPath, "utf8");
 const questions = JSON.parse(raw);
 
-console.log(`Seeding ${questions.length} treasure hunt questions...`);
+console.log(
+  `Seeding ${questions.length} treasure hunt questions (destructive — clearing existing)...`,
+);
+
+// Clear progress first due to FK (current_question_id -> hunt_questions.id ON DELETE SET NULL)
+await sql`delete from user_hunt_progress`;
+await sql`delete from hunt_questions`;
 
 for (const q of questions) {
   await sql`

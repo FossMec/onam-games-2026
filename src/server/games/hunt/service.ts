@@ -3,15 +3,22 @@ import { getDb } from "~/server/db/client";
 import { huntQuestions, userHuntProgress, type HuntQuestion } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
 import { logActivity } from "~/server/anti-cheat/log";
+import { getSetting } from "~/server/settings/service";
+import type { ViewerRole } from "~/server/games/service";
 
 const RATE_LIMIT_MS = 60_000;
+
+/** True for 6-char alphanumeric token (e.g. 3X91A4). No dashes/specials. */
+export function isTokenAnswer(answer: string): boolean {
+  return /^[A-Za-z0-9]{6}$/.test(answer.trim());
+}
 
 export function normalizeAnswer(val: string): string {
   return val
     .trim()
-    .toLowerCase()
-    .replace(/^ssh\s+/i, "")
-    .replace(/[^a-z0-9@._-]/gi, "");
+    .toUpperCase()
+    .replace(/^SSH\s+/i, "")
+    .replace(/[^A-Z0-9@._-]/gi, "");
 }
 
 function checkAnswerMatch(submitted: string, expected: string): boolean {
@@ -65,31 +72,41 @@ function pickNextQuestion(
   return unsolved[0];
 }
 
+export type HuntInputType = "token" | "answer";
+
 export interface HuntPublicState {
   currentQuestion: {
     id: string;
-    slug: string;
     title: string;
     hintHtml: string;
     difficulty: string;
     orderIndex: number;
+    inputType: HuntInputType;
+    // Opaque flag for special client behavior (e.g. treasure balloon) — avoids leaking slug/hint
+    isBalloon?: boolean;
   } | null;
   solvedQuestionIds: string[];
   solvedCount: number;
   totalQuestionsCount: number;
   allQuestions: {
     id: string;
-    slug: string;
     title: string;
     difficulty: string;
     orderIndex: number;
+    inputType: HuntInputType;
+    hintHtml?: string;
+    isBalloon?: boolean;
   }[];
   completed: boolean;
   completedAt: string | null;
   cooldownRemainingSec: number;
+  isTesterMode?: boolean;
 }
 
-export async function getUserHuntState(userId: string): Promise<HuntPublicState> {
+export async function getUserHuntState(
+  userId: string,
+  role: ViewerRole = "player",
+): Promise<HuntPublicState> {
   const db = getDb();
 
   const allActive = await db
@@ -97,6 +114,9 @@ export async function getUserHuntState(userId: string): Promise<HuntPublicState>
     .from(huntQuestions)
     .where(eq(huntQuestions.active, true))
     .orderBy(huntQuestions.orderIndex);
+
+  const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
+  const isTesterMode = (role === "tester" || role === "admin") && isTesterModeEnabled;
 
   let [progress] = await db
     .select()
@@ -150,15 +170,19 @@ export async function getUserHuntState(userId: string): Promise<HuntPublicState>
     ? allActive.find((q) => q.id === progress.currentQuestionId)
     : null;
 
+  // Internal: detect balloon question without exposing slug/answer to client
+  const isBalloonQuestion = (q: HuntQuestion) => q.slug === "hunt-c2d5a7f9";
+
   return {
     currentQuestion: currentQ
       ? {
           id: currentQ.id,
-          slug: currentQ.slug,
           title: currentQ.title,
           hintHtml: currentQ.hintHtml,
           difficulty: currentQ.difficulty,
           orderIndex: currentQ.orderIndex,
+          inputType: (isTokenAnswer(currentQ.answer) ? "token" : "answer") as HuntInputType,
+          ...(isBalloonQuestion(currentQ) ? { isBalloon: true as const } : {}),
         }
       : null,
     solvedQuestionIds: progress.solvedQuestionIds ?? [],
@@ -166,14 +190,21 @@ export async function getUserHuntState(userId: string): Promise<HuntPublicState>
     totalQuestionsCount: allActive.length,
     allQuestions: allActive.map((q) => ({
       id: q.id,
-      slug: q.slug,
       title: q.title,
       difficulty: q.difficulty,
       orderIndex: q.orderIndex,
+      inputType: (isTokenAnswer(q.answer) ? "token" : "answer") as HuntInputType,
+      ...(isTesterMode
+        ? {
+            hintHtml: q.hintHtml,
+            ...(isBalloonQuestion(q) ? { isBalloon: true as const } : {}),
+          }
+        : {}),
     })),
     completed: !!progress.completedAt,
     completedAt: progress.completedAt?.toISOString() ?? null,
     cooldownRemainingSec,
+    ...(isTesterMode ? { isTesterMode: true as const } : {}),
   };
 }
 
@@ -190,6 +221,7 @@ export async function submitHuntAnswer(
   userId: string,
   rawAnswer: string,
   meta: { ip?: string; deviceId?: string; userAgent?: string } = {},
+  role: ViewerRole = "player",
 ): Promise<HuntSubmitResult> {
   const db = getDb();
 
@@ -211,6 +243,9 @@ export async function submitHuntAnswer(
 
   const now = Date.now();
 
+  const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
+  const isTesterMode = (role === "tester" || role === "admin") && isTesterModeEnabled;
+
   // 60-second rate limit
   if (progress.lastSubmittedAt) {
     const elapsed = now - new Date(progress.lastSubmittedAt).getTime();
@@ -220,57 +255,111 @@ export async function submitHuntAnswer(
         valid: false,
         reason: `Rate limit hit. Please wait ${waitSec}s before submitting again.`,
         cooldownRemainingSec: waitSec,
-        state: await getUserHuntState(userId),
+        state: await getUserHuntState(userId, role),
       };
     }
   }
 
   if (progress.completedAt || !progress.currentQuestionId) {
-    return {
-      valid: false,
-      reason: "You have already completed all available treasures in the hunt!",
-      cooldownRemainingSec: 0,
-      state: await getUserHuntState(userId),
-    };
+    // In tester mode, completedAt may be null but all treasures could already be solved
+    const solvedSetEarly = new Set(progress.solvedQuestionIds ?? []);
+    const hasUnsolved = allActive.some((q) => !solvedSetEarly.has(q.id));
+    if (!hasUnsolved) {
+      return {
+        valid: false,
+        reason: "You have already completed all available treasures in the hunt!",
+        cooldownRemainingSec: 0,
+        state: await getUserHuntState(userId, role),
+      };
+    }
+    if (!isTesterMode) {
+      return {
+        valid: false,
+        reason: "You have already completed all available treasures in the hunt!",
+        cooldownRemainingSec: 0,
+        state: await getUserHuntState(userId, role),
+      };
+    }
   }
 
-  const currentQ = allActive.find((q) => q.id === progress.currentQuestionId);
-  if (!currentQ) {
-    throw new HttpError(404, "Active question not found");
-  }
+  let currentQ: HuntQuestion | undefined;
+  if (isTesterMode) {
+    const solvedSet = new Set(progress.solvedQuestionIds ?? []);
+    const unsolved = allActive.filter((q) => !solvedSet.has(q.id));
+    currentQ = unsolved.find((q) => checkAnswerMatch(rawAnswer, q.answer));
+    // Fallback to currentQuestionId if answer matches that specifically (allows precise tester debug)
+    if (!currentQ) {
+      currentQ = allActive.find((q) => q.id === progress.currentQuestionId);
+      if (currentQ && !checkAnswerMatch(rawAnswer, currentQ.answer)) {
+        currentQ = undefined;
+      }
+    }
+    if (!currentQ) {
+      // No unsolved matches — treat as wrong answer for the current question for logging
+      const fallbackQ = allActive.find((q) => q.id === progress.currentQuestionId) ?? unsolved[0];
+      if (!fallbackQ) throw new HttpError(404, "Active question not found");
+      await db
+        .update(userHuntProgress)
+        .set({ lastSubmittedAt: new Date(), updatedAt: new Date() })
+        .where(eq(userHuntProgress.id, progress.id));
 
-  const isCorrect = checkAnswerMatch(rawAnswer, currentQ.answer);
+      await logActivity({
+        userId,
+        deviceId: meta.deviceId,
+        ip: meta.ip,
+        eventType: "hunt_answer_wrong",
+        meta: {
+          questionId: fallbackQ.id,
+          questionSlug: fallbackQ.slug,
+          submitted: rawAnswer.slice(0, 100),
+          testerMode: true,
+        },
+      });
 
-  if (!isCorrect) {
-    // Cooldown is applied ONLY on failed attempts
-    await db
-      .update(userHuntProgress)
-      .set({ lastSubmittedAt: new Date(), updatedAt: new Date() })
-      .where(eq(userHuntProgress.id, progress.id));
+      return {
+        valid: false,
+        reason: "That is not the right token. Look closely at the hint!",
+        cooldownRemainingSec: Math.ceil(RATE_LIMIT_MS / 1000),
+        state: await getUserHuntState(userId, role),
+      };
+    }
+  } else {
+    currentQ = allActive.find((q) => q.id === progress.currentQuestionId);
+    if (!currentQ) {
+      throw new HttpError(404, "Active question not found");
+    }
+    if (!checkAnswerMatch(rawAnswer, currentQ.answer)) {
+      // Cooldown is applied ONLY on failed attempts
+      await db
+        .update(userHuntProgress)
+        .set({ lastSubmittedAt: new Date(), updatedAt: new Date() })
+        .where(eq(userHuntProgress.id, progress.id));
 
-    await logActivity({
-      userId,
-      deviceId: meta.deviceId,
-      ip: meta.ip,
-      eventType: "hunt_answer_wrong",
-      meta: {
-        questionId: currentQ.id,
-        questionSlug: currentQ.slug,
-        submitted: rawAnswer.slice(0, 100),
-      },
-    });
+      await logActivity({
+        userId,
+        deviceId: meta.deviceId,
+        ip: meta.ip,
+        eventType: "hunt_answer_wrong",
+        meta: {
+          questionId: currentQ.id,
+          questionSlug: currentQ.slug,
+          submitted: rawAnswer.slice(0, 100),
+        },
+      });
 
-    return {
-      valid: false,
-      reason: "That is not the right token. Look closely at the hint!",
-      cooldownRemainingSec: Math.ceil(RATE_LIMIT_MS / 1000),
-      state: await getUserHuntState(userId),
-    };
+      return {
+        valid: false,
+        reason: "That is not the right token. Look closely at the hint!",
+        cooldownRemainingSec: Math.ceil(RATE_LIMIT_MS / 1000),
+        state: await getUserHuntState(userId, role),
+      };
+    }
   }
 
   // Correct answer! Reset any past cooldown and proceed immediately
+  if (!currentQ) throw new HttpError(404, "Active question not found");
   const solvedSet = new Set(progress.solvedQuestionIds ?? []);
-  solvedSet.add(currentQ.id);
+  solvedSet.add(currentQ!.id);
   const updatedSolvedList = Array.from(solvedSet);
 
   const nextQ = pickNextQuestion(allActive, solvedSet);
@@ -294,18 +383,18 @@ export async function submitHuntAnswer(
     ip: meta.ip,
     eventType: isComplete ? "hunt_completed" : "hunt_answer_correct",
     meta: {
-      questionId: currentQ.id,
-      questionSlug: currentQ.slug,
+      questionId: currentQ!.id,
+      questionSlug: currentQ!.slug,
       totalSolved: updatedSolvedList.length,
       isComplete,
     },
   });
 
-  const nextState = await getUserHuntState(userId);
+  const nextState = await getUserHuntState(userId, role);
 
   return {
     valid: true,
-    solvedQuestionId: currentQ.id,
+    solvedQuestionId: currentQ!.id,
     isComplete,
     cooldownRemainingSec: 0,
     state: nextState,
