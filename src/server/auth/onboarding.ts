@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { logSuspicious } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
 import { users } from "~/server/db/schema";
 import { getSupabaseAdmin } from "~/server/supabase/client";
@@ -49,7 +50,13 @@ export const onboardingSchema = z
     batch: z.enum(batchValues).optional(),
     div: z.enum(divValues).optional(),
     instagramHandle: optionalTrimmed(3, 30, /^[a-zA-Z0-9._]+$/),
-    whatsappNumber: optionalTrimmed(10, 15, /^\+?[0-9]+$/),
+    whatsappNumber: z
+      .string()
+      .trim()
+      .regex(
+        /^(?:\+91[-\s]?|91[-\s]?|0)?[6-9]\d{9}$/,
+        "Enter a valid 10-digit Indian mobile number (e.g. 9876543210)",
+      ),
   })
   .superRefine((val, ctx) => {
     if (val.occupation === "student") {
@@ -101,15 +108,40 @@ export type OnboardingInput = z.infer<typeof onboardingSchema>;
 
 export async function completeOnboarding(input: OnboardingInput): Promise<void> {
   const user = await requireCurrentUser();
+  const normalizedPhone = (input.whatsappNumber || "").replace(/\D/g, "").slice(-10);
   const normalized: OnboardingInput = {
     ...input,
     occupation: input.occupation || "student",
     instagramHandle: input.instagramHandle?.trim().replace(/^@+/, "") || undefined,
-    whatsappNumber: input.whatsappNumber?.replace(/[\s\-()]/g, "") || undefined,
+    whatsappNumber: normalizedPhone,
   };
   const parsed = onboardingSchema.parse(normalized);
   const branch = parsed.branch ?? null;
-  await getDb()
+  const db = getDb();
+
+  // Check if phone number was already used on another account
+  if (parsed.whatsappNumber) {
+    const existingWithPhone = await db
+      .select({ id: users.id, email: users.email })
+      .from(users)
+      .where(eq(users.whatsappNumber, parsed.whatsappNumber))
+      .limit(1);
+
+    if (existingWithPhone[0] && existingWithPhone[0].id !== user.id) {
+      await logSuspicious({
+        userId: user.id,
+        eventType: "duplicate_phone_number",
+        severity: "warn",
+        actionTaken: "flag",
+        details: {
+          otherUserId: existingWithPhone[0].id,
+          phone: parsed.whatsappNumber,
+        },
+      });
+    }
+  }
+
+  await db
     .update(users)
     .set({
       occupation: parsed.occupation ?? "student",

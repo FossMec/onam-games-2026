@@ -4,6 +4,11 @@ export interface RequestMeta {
   ip: string;
   country: string | null;
   city: string | null;
+  region: string | null;
+  postalCode: string | null;
+  asn: string | null;
+  asOrg: string | null;
+  timezone: string | null;
   userAgent: string;
 }
 
@@ -24,5 +29,11 @@ export function getRequestMeta(): RequestMeta {
     null;
   const city =
     headers?.get("cf-ipcity") ?? headers?.get("x-city") ?? headers?.get("x-vercel-ip-city") ?? null;
-  return { ip, country, city, userAgent };
+  const region = headers?.get("cf-region") ?? headers?.get("x-region") ?? null;
+  const postalCode = headers?.get("cf-postal-code") ?? null;
+  const asn = headers?.get("cf-as-number") ?? null;
+  const asOrg = headers?.get("cf-asorganization") ?? null;
+  const timezone = headers?.get("cf-timezone") ?? null;
+
+  return { ip, country, city, region, postalCode, asn, asOrg, timezone, userAgent };
 }

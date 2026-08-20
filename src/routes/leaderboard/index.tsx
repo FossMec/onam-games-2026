@@ -22,6 +22,7 @@ import {
   createMemo,
   createSignal,
   onCleanup,
+  onMount,
   useTransition,
 } from "solid-js";
 import { Confetti } from "~/components/art/Confetti";
@@ -224,7 +225,7 @@ export default function Leaderboard() {
     };
   });
 
-  createEffect(() => {
+  onMount(() => {
     const timer = setInterval(() => {
       setNow(Date.now());
       if (document.visibilityState === "visible") {

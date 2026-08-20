@@ -1,8 +1,13 @@
 import { Title } from "@solidjs/meta";
-import { A, createAsync, useNavigate, useSearchParams } from "@solidjs/router";
-import type { RouteDefinition } from "@solidjs/router";
+import {
+  A,
+  createAsync,
+  useNavigate,
+  useSearchParams,
+  type RouteDefinition,
+} from "@solidjs/router";
 import { BookOpen, Clock, Lock, Zap } from "lucide-solid";
-import { For, Show, createEffect, createSignal } from "solid-js";
+import { For, Show, createMemo, createSignal } from "solid-js";
 
 import { Countdown } from "~/components/Countdown";
 import { LoadingScreen } from "~/components/LoadingScreen";
@@ -189,7 +194,7 @@ export default function Home() {
     return null;
   };
 
-  const [selectedDay, setSelectedDay] = createSignal<number>(parseQueryDay() ?? 1);
+  const selectedDay = createMemo(() => parseQueryDay() ?? currentActiveDay());
   const [aboutTab, setAboutTab] = createSignal<"games" | "fossmec">("games");
 
   const currentActiveDay = () => {
@@ -217,17 +222,6 @@ export default function Home() {
   const liveGame = () =>
     games()?.find((g) => g.day === currentActiveDay()) ??
     games()?.find((g) => g.status === "live" || g.status === "tester");
-
-  // Auto-focus on active day or URL parameter
-  createEffect(() => {
-    const q = parseQueryDay();
-    if (q) {
-      setSelectedDay(q);
-    } else {
-      const day = currentActiveDay();
-      setSelectedDay(day);
-    }
-  });
 
   // The full seven days come straight from the API. Day 7 is the pookalam vote,
   // which the schedule builder appends server-side, so no local card is needed.

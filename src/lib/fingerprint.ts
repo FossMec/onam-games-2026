@@ -1,4 +1,5 @@
 import FingerprintJS, { type Agent } from "@fingerprintjs/fingerprintjs";
+import { getMultiStoreSync, setMultiStoreSync } from "./multi-store";
 
 export interface FingerprintSignals {
   persistentId: string;
@@ -9,6 +10,7 @@ export interface FingerprintSignals {
   language: string;
   languages: string;
   screen: string;
+  availScreen: string;
   timezone: string;
   timezoneOffset: number;
   hardwareConcurrency: number | null;
@@ -16,17 +18,21 @@ export interface FingerprintSignals {
   maxTouchPoints: number;
   canvas: string | null;
   webgl: string | null;
+  webglVendor: string | null;
+  webglRenderer: string | null;
   fonts: string | null;
   plugins: string;
   cookiesEnabled: boolean;
   doNotTrack: string;
   webdriver: boolean;
   audio: string | null;
+  mathFingerprint: string | null;
   storageEstimate: number | null;
   /** Device capability, browser-independent (mobile/touch vs desktop). */
   pointer: string;
   hover: string;
   colorGamut: string;
+  hdrSupport: boolean;
   /** Real local IP leaked via WebRTC (null when mDNS-obfuscated). */
   localIp: string | null;
   /** True when the browser obfuscated its ICE host candidate (mDNS). */
@@ -50,6 +56,15 @@ export interface FingerprintResult {
 const PERSISTENT_ID_KEY = "og_device_id";
 let ephemeralId: string | null = null;
 
+function fnv1a(str: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16);
+}
+
 function fallbackUuid(): string {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
@@ -67,39 +82,154 @@ function newId(): string {
 }
 
 /**
- * Safari (esp. iOS private mode) throws on localStorage writes, and some
- * browsers block it entirely. Fall back through sessionStorage and finally an
- * in-memory id so we never return a shared "unknown" that collides across
- * devices (which would cause false multi-account flags).
+ * Resilient multi-storage ID lookup and recovery across localStorage,
+ * sessionStorage, document.cookie, and IndexedDB.
  */
 function persistentId(): { id: string; stability: FingerprintSignals["idStability"] } {
+  let id = getMultiStoreSync(PERSISTENT_ID_KEY);
+  if (id && id.length >= 10) {
+    // Re-heal across all available stores
+    setMultiStoreSync(PERSISTENT_ID_KEY, id);
+    return { id, stability: "persistent" };
+  }
+
+  id = newId();
   try {
-    let id = localStorage.getItem(PERSISTENT_ID_KEY);
-    if (!id) {
-      id = newId();
-      localStorage.setItem(PERSISTENT_ID_KEY, id);
-      try {
-        indexedDB.open("og-device", 1);
-      } catch {
-        // best effort
-      }
-    }
+    setMultiStoreSync(PERSISTENT_ID_KEY, id);
     return { id, stability: "persistent" };
   } catch {
-    // localStorage unavailable (Safari private mode etc.)
+    // fallback
   }
-  try {
-    let id = sessionStorage.getItem(PERSISTENT_ID_KEY);
-    if (!id) {
-      id = newId();
-      sessionStorage.setItem(PERSISTENT_ID_KEY, id);
-    }
-    return { id, stability: "session" };
-  } catch {
-    // sessionStorage unavailable too
-  }
+
   if (!ephemeralId) ephemeralId = newId();
   return { id: ephemeralId, stability: "ephemeral" };
+}
+
+/**
+ * Direct Canvas fingerprint combining text metrics, gradients, shadows, and emoji rendering.
+ */
+function generateDirectCanvasFingerprint(): string | null {
+  try {
+    if (typeof document === "undefined") return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = 240;
+    canvas.height = 60;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "#f60";
+    ctx.fillRect(10, 1, 62, 20);
+
+    ctx.fillStyle = "#069";
+    ctx.font = "11pt no-real-font-123";
+    ctx.fillText("FOSS Onam 2026 🌸 \ud83d\ude03 \ud83c\uddee\ud83c\uddf3", 2, 15);
+    ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+    ctx.font = "14pt Arial, sans-serif";
+    ctx.fillText("Kerala Open Source <canvas>", 4, 45);
+
+    const grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
+    grad.addColorStop(0, "rgba(255,0,0,0.5)");
+    grad.addColorStop(0.5, "rgba(0,255,0,0.5)");
+    grad.addColorStop(1, "rgba(0,0,255,0.5)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 50, canvas.width, 10);
+
+    return fnv1a(canvas.toDataURL());
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Direct WebGL probing for unmasked hardware renderer strings.
+ */
+function probeWebGL(): { vendor: string | null; renderer: string | null; combined: string | null } {
+  try {
+    if (typeof document === "undefined") return { vendor: null, renderer: null, combined: null };
+    const canvas = document.createElement("canvas");
+    const gl = (canvas.getContext("webgl") ||
+      canvas.getContext("experimental-webgl")) as WebGLRenderingContext | null;
+    if (!gl) return { vendor: null, renderer: null, combined: null };
+
+    const ext = gl.getExtension("WEBGL_debug_renderer_info");
+    const vendor = ext ? gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR);
+    const renderer = ext
+      ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)
+      : gl.getParameter(gl.RENDERER);
+
+    const vStr = typeof vendor === "string" ? vendor : null;
+    const rStr = typeof renderer === "string" ? renderer : null;
+    const combined = vStr || rStr ? `${vStr || "unknown"}~${rStr || "unknown"}` : null;
+    return { vendor: vStr, renderer: rStr, combined };
+  } catch {
+    return { vendor: null, renderer: null, combined: null };
+  }
+}
+
+/**
+ * Math precision differences across CPU architectures and JS engines.
+ */
+function computeMathFingerprint(): string {
+  try {
+    const samples = [
+      Math.tan(-1e300),
+      Math.sinh(1),
+      Math.exp(1),
+      Math.cos(1e10),
+      Math.sin(1e10),
+      Math.log(1.5),
+      Math.sqrt(2),
+    ];
+    return fnv1a(samples.map(String).join(","));
+  } catch {
+    return "default";
+  }
+}
+
+/**
+ * AudioContext oscillator and dynamics compressor frequency response fingerprint.
+ */
+function computeAudioFingerprint(): Promise<string | null> {
+  return new Promise((resolve) => {
+    try {
+      const AudioCtx =
+        window.OfflineAudioContext ||
+        (window as unknown as { webkitOfflineAudioContext?: typeof OfflineAudioContext })
+          .webkitOfflineAudioContext;
+      if (!AudioCtx) return resolve(null);
+
+      const ctx = new AudioCtx(1, 44100, 44100);
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(10000, ctx.currentTime);
+
+      const compressor = ctx.createDynamicsCompressor();
+      compressor.threshold.setValueAtTime(-50, ctx.currentTime);
+      compressor.knee.setValueAtTime(40, ctx.currentTime);
+      compressor.ratio.setValueAtTime(12, ctx.currentTime);
+      compressor.attack.setValueAtTime(0, ctx.currentTime);
+      compressor.release.setValueAtTime(0.25, ctx.currentTime);
+
+      osc.connect(compressor);
+      compressor.connect(ctx.destination);
+      osc.start(0);
+
+      ctx
+        .startRendering()
+        .then((buffer) => {
+          let hash = 0;
+          const channel = buffer.getChannelData(0);
+          for (let i = 4500; i < 5000; i++) {
+            hash += Math.abs(channel[i] || 0);
+          }
+          resolve(hash.toString(16));
+        })
+        .catch(() => resolve(null));
+    } catch {
+      resolve(null);
+    }
+  });
 }
 
 function collectLocalIp(): Promise<{ ip: string | null; mdns: boolean }> {
@@ -150,7 +280,6 @@ function val<T>(components: FpComponents, key: string): T | undefined {
 
 let fpPromise: Promise<Agent | null> | null = null;
 
-/** Loads FingerprintJS once; returns null on failure (never throws). */
 async function loadFingerprintJS(): Promise<Agent | null> {
   if (!fpPromise) fpPromise = FingerprintJS.load().catch(() => null);
   return fpPromise;
@@ -177,24 +306,26 @@ async function collectWithFingerprintJS(
     const pluginsVal = val<Array<{ name: string }>>(c, "plugins");
     const fontsVal = val<string | string[]>(c, "fonts");
 
+    const fpCanvas =
+      val<{ fingerprint: string }>(c, "canvas")?.fingerprint ??
+      (typeof c.canvas?.value === "string" ? c.canvas.value : null);
+    const fpWebgl =
+      val<string>(c, "webglVendorAndRenderer") ??
+      (typeof c.webglVendorAndRenderer?.value === "string" ? c.webglVendorAndRenderer.value : null);
+    const fpAudio =
+      typeof c.audio?.value === "string"
+        ? c.audio.value
+        : typeof c.audio?.value === "number"
+          ? String(c.audio.value)
+          : (val<string>(c, "audio") ?? null);
+
     return {
       visitorId,
       signals: {
         ...base,
-        canvas:
-          val<{ fingerprint: string }>(c, "canvas")?.fingerprint ??
-          (typeof c.canvas?.value === "string" ? c.canvas.value : null),
-        webgl:
-          val<string>(c, "webglVendorAndRenderer") ??
-          (typeof c.webglVendorAndRenderer?.value === "string"
-            ? c.webglVendorAndRenderer.value
-            : null),
-        audio:
-          typeof c.audio?.value === "string"
-            ? c.audio.value
-            : typeof c.audio?.value === "number"
-              ? String(c.audio.value)
-              : (val<string>(c, "audio") ?? null),
+        canvas: base.canvas || fpCanvas,
+        webgl: base.webgl || fpWebgl,
+        audio: base.audio || fpAudio,
         fonts: Array.isArray(fontsVal)
           ? fontsVal.join(",")
           : typeof fontsVal === "string"
@@ -223,13 +354,16 @@ async function collectWithFingerprintJS(
 export async function collectFingerprint(): Promise<FingerprintResult> {
   const nav = navigator;
   const screenStr = `${screen.width}x${screen.height}x${screen.colorDepth}@${window.devicePixelRatio ?? 1}`;
+  const availScreenStr = `${screen.availWidth}x${screen.availHeight}`;
+
   let tz = "";
   try {
     tz = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
   } catch {
     tz = "";
   }
-  const [storageUsage, ipResult] = await Promise.all([
+
+  const [storageUsage, ipResult, directAudio] = await Promise.all([
     (async () => {
       try {
         const est = await navigator.storage?.estimate?.();
@@ -239,8 +373,13 @@ export async function collectFingerprint(): Promise<FingerprintResult> {
       }
     })(),
     collectLocalIp(),
+    computeAudioFingerprint(),
   ]);
+
   const { id, stability } = persistentId();
+  const directCanvas = generateDirectCanvasFingerprint();
+  const directWebgl = probeWebGL();
+  const mathFingerprint = computeMathFingerprint();
 
   let uaModel: string | null = null;
   let uaPlatformVersion: string | null = null;
@@ -283,23 +422,28 @@ export async function collectFingerprint(): Promise<FingerprintResult> {
     language: nav.language ?? "",
     languages: (nav.languages ?? []).join(","),
     screen: screenStr,
+    availScreen: availScreenStr,
     timezone: tz,
     timezoneOffset: new Date().getTimezoneOffset(),
     hardwareConcurrency: nav.hardwareConcurrency ?? null,
     deviceMemory: (nav as Navigator & { deviceMemory?: number }).deviceMemory ?? null,
     maxTouchPoints: nav.maxTouchPoints ?? 0,
-    canvas: null,
-    webgl: null,
+    canvas: directCanvas,
+    webgl: directWebgl.combined,
+    webglVendor: directWebgl.vendor,
+    webglRenderer: directWebgl.renderer,
     fonts: null,
     plugins: "",
     cookiesEnabled: nav.cookieEnabled,
     doNotTrack: nav.doNotTrack ?? "",
     webdriver: nav.webdriver ?? false,
-    audio: null,
+    audio: directAudio,
+    mathFingerprint,
     storageEstimate: storageUsage,
     pointer: capability("(any-pointer: fine)", "fine", "coarse"),
     hover: capability("(any-hover: hover)", "hover", "none"),
-    colorGamut: "srgb",
+    colorGamut: capability("(color-gamut: p3)", "p3", "srgb"),
+    hdrSupport: capability("(dynamic-range: high)", "high", "standard") === "high",
     localIp: ipResult.ip,
     mdnsProtected: ipResult.mdns,
     uaModel,

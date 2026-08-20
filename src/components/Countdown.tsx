@@ -1,4 +1,4 @@
-import { Show, createEffect, createSignal, onCleanup } from "solid-js";
+import { Show, createEffect, createSignal, onCleanup, onMount } from "solid-js";
 
 /**
  * Segmented countdown.
@@ -51,16 +51,27 @@ function Segment(props: { value: string; unit: string }) {
 export function Countdown(props: CountdownProps) {
   const [now, setNow] = createSignal(Date.now());
 
-  createEffect(() => {
+  onMount(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     onCleanup(() => clearInterval(timer));
   });
 
-  // Fire onDone exactly once when countdown hits zero (mobile-friendly, no hover needed).
-  createEffect((prevDone?: boolean) => {
-    const done = props.target.getTime() - now() <= 0;
-    if (done && !prevDone) props.onDone?.();
-    return done;
+  // Fire onDone exactly once when countdown transitions to zero.
+  // If target was already in the past on mount, do not fire onDone.
+  let hasFired = props.target.getTime() - Date.now() <= 0;
+  let lastTargetMs = props.target.getTime();
+
+  createEffect(() => {
+    const targetMs = props.target.getTime();
+    if (targetMs !== lastTargetMs) {
+      lastTargetMs = targetMs;
+      hasFired = targetMs - Date.now() <= 0;
+    }
+    const done = targetMs - now() <= 0;
+    if (done && !hasFired) {
+      hasFired = true;
+      props.onDone?.();
+    }
   });
 
   const diff = () => Math.max(0, props.target.getTime() - now());

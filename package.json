@@ -17,7 +17,8 @@
     "fonts:fetch": "node scripts/fetch-fonts.mjs",
     "sprites:jump": "python3 scripts/process-jump-sprites.py",
     "sprites:vallam": "python3 scripts/process-vallam-sprites.py",
-    "verify:anticheat": "tsx scripts/verify-anticheat.ts"
+    "verify:anticheat": "tsx scripts/verify-anticheat.ts",
+    "analyze:cheaters": "tsx scripts/analyze-cheaters.ts"
   },
   "dependencies": {
     "@fingerprintjs/fingerprintjs": "^5.2.0",

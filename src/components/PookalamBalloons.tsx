@@ -97,7 +97,7 @@ export function PookalamBalloons() {
   };
 
   createEffect(() => {
-    if (location.pathname.startsWith("/games/")) {
+    if (location.pathname === "/games" || location.pathname.startsWith("/games/")) {
       stop();
     } else if (!disabled() && !balloon() && !spawnTimer) {
       schedule();
@@ -149,7 +149,7 @@ export function PookalamBalloons() {
     // rain. A bucket that was full on load never armed a timer, so spending
     // down below the cap must kick the scheduler back to life.
     const handleCreditsChanged = () => {
-      if (location.pathname.startsWith("/games/")) return;
+      if (location.pathname === "/games" || location.pathname.startsWith("/games/")) return;
       if (!disabled() && !balloon() && !spawnTimer) schedule();
     };
     window.addEventListener(POOKALAM_CREDITS_EVENT, handleCreditsChanged);

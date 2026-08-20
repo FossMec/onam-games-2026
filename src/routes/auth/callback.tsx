@@ -34,10 +34,28 @@ interface Explained {
  * anything unrecognised keeps the technical card, because that one really is a
  * bug and the trace is what gets it fixed.
  */
-function explain(error: unknown): Explained {
-  const raw = error instanceof Error ? error.message : String(error);
+function extractErrorMessage(error: unknown): string {
+  if (!error) return "";
+  if (typeof error === "string") return error;
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object") {
+    const obj = error as Record<string, unknown>;
+    if (typeof obj.message === "string") return obj.message;
+    if (typeof obj.error === "string") return obj.error;
+    if (typeof obj.statusText === "string") return obj.statusText;
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return "Unknown error";
+    }
+  }
+  return typeof error === "number" || typeof error === "boolean" ? String(error) : "Unknown error";
+}
 
-  if (/already linked to another account/i.test(raw)) {
+function explain(error: unknown): Explained {
+  const raw = extractErrorMessage(error);
+
+  if (/already linked to another account|device.*taken/i.test(raw)) {
     return {
       title: "This device is already taken",
       message:

@@ -80,7 +80,7 @@ export function Footer() {
             href="https://foss.mec.ac.in"
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-flex items-center gap-2.5 rounded-full px-5 py-2 transition-transform active:translate-y-0.5 hover:scale-105"
+            class="inline-flex items-center gap-2.5 rounded-full px-5 py-2  "
             style={{
               background: "var(--ink)",
               color: "var(--paper)",

@@ -165,8 +165,8 @@ export async function completeOAuthSignIn(
       deviceId: bind.deviceId,
       ip: meta.ip,
       eventType: otherDevices.length > 0 ? "session_moved_device" : "session_replaced",
-      severity: otherDevices.length > 0 ? "warn" : "info",
-      actionTaken: "flag",
+      severity: "info",
+      actionTaken: "none",
       details: {
         revokedSessions: displaced.length,
         previousDeviceIds: otherDevices,

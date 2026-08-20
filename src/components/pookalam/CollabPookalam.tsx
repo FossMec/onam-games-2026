@@ -1805,7 +1805,6 @@ function FlowerSwatch(props: { flower: Flower; size?: number }) {
     ctx.clearRect(0, 0, size, size);
     drawFlower(ctx, size / 2, size / 2, size * 0.44, props.flower);
   };
-  createEffect(paint);
   onMount(paint);
   return (
     <canvas

@@ -138,6 +138,7 @@ export function higherIsBetter(metric: GameMetric): boolean {
 }
 
 const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
 
 export const GAMES: readonly GameDef[] = [
   /* ---------------------------------------------------------------- day 1 */
@@ -148,7 +149,7 @@ export const GAMES: readonly GameDef[] = [
     metric: "time",
     maxAttempts: 1,
     minPlausibleMs: 1_500,
-    maxDurationMs: 20 * MINUTE,
+    maxDurationMs: 24 * HOUR,
     maxSubmissionBytes: 32_000,
     public: {
       title: "Open Source Tinder",
@@ -176,7 +177,7 @@ export const GAMES: readonly GameDef[] = [
     metric: "time",
     maxAttempts: 1,
     minPlausibleMs: 3_000,
-    maxDurationMs: 45 * MINUTE,
+    maxDurationMs: 24 * HOUR,
     maxSubmissionBytes: 64_000,
     public: {
       title: "Pookalam Jigsaw",
@@ -204,7 +205,7 @@ export const GAMES: readonly GameDef[] = [
     metric: "time",
     maxAttempts: 1,
     minPlausibleMs: 3_000,
-    maxDurationMs: 30 * MINUTE,
+    maxDurationMs: 24 * HOUR,
     maxSubmissionBytes: 16_000,
     public: {
       title: "Wend",
@@ -230,7 +231,7 @@ export const GAMES: readonly GameDef[] = [
     metric: "time",
     maxAttempts: 1,
     minPlausibleMs: 2_000,
-    maxDurationMs: 30 * MINUTE,
+    maxDurationMs: 24 * HOUR,
     maxSubmissionBytes: 32_000,
     public: {
       title: "Escape the Vallam",
@@ -258,7 +259,7 @@ export const GAMES: readonly GameDef[] = [
      */
     maxAttempts: 999_999,
     minPlausibleMs: 1_000,
-    maxDurationMs: 6 * MINUTE,
+    maxDurationMs: 24 * HOUR,
     /** ~40k frames of delta-encoded input, with headroom. */
     maxSubmissionBytes: 128_000,
     public: {

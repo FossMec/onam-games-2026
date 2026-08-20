@@ -153,22 +153,6 @@ export default function GamesPage() {
   };
   let arenaPrewarmed = "";
 
-  createEffect(() => {
-    const g = activeGame();
-    if (!g?.releaseAt) return;
-    if (g.status !== "upcoming" && g.status !== "preview") return;
-    const target = new Date(g.releaseAt).getTime();
-    const delay = target - Date.now();
-    if (delay <= 0) {
-      handleReleaseFlip();
-      return;
-    }
-    // Only schedule if within 2min — avoids long timers on idle tabs
-    if (delay > 2 * 60_000) return;
-    const id = setTimeout(handleReleaseFlip, delay + 300);
-    onCleanup(() => clearTimeout(id));
-  });
-
   // When locked card comes into view and is about to open, prewarm.
   // Also revalidate on tab resume (mobile background -> foreground).
   createEffect(() => {

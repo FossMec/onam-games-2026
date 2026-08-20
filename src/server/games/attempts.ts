@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { logActivity, logSuspicious } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
@@ -592,6 +592,77 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
       details: { durationMs: rawDurationMs, minPlausibleMs: def.minPlausibleMs, gameId: game.id },
       actionTaken: "flag",
     });
+  }
+
+  // Per-game solving rate heuristics
+  if (result.valid && result.movesCount && result.movesCount > 0) {
+    const msPerMove = rawDurationMs / result.movesCount;
+    if (game.gameType === "unblock" && msPerMove < 500) {
+      await logSuspicious({
+        userId: input.userId,
+        deviceId: input.deviceId,
+        ip: attempt.ip ?? undefined,
+        eventType: "vallam_superhuman_moves",
+        severity: "warn",
+        details: { msPerMove, movesCount: result.movesCount, rawDurationMs },
+        actionTaken: "flag",
+      });
+    } else if (game.gameType === "tinder" && penaltyMs === 0 && rawDurationMs < 7000) {
+      await logSuspicious({
+        userId: input.userId,
+        deviceId: input.deviceId,
+        ip: attempt.ip ?? undefined,
+        eventType: "tinder_superhuman_speed",
+        severity: "warn",
+        details: { rawDurationMs, penaltyMs },
+        actionTaken: "flag",
+      });
+    }
+  }
+
+  // Temporal cluster check: another account from the same IP/subnet submitted within 15 minutes
+  if (attempt.ip) {
+    try {
+      const recentSameGame = await db
+        .select({
+          userId: gameAttempts.userId,
+          ip: gameAttempts.ip,
+          durationMs: gameAttempts.durationMs,
+          submittedAt: gameAttempts.submittedAt,
+        })
+        .from(gameAttempts)
+        .where(
+          and(
+            eq(gameAttempts.gameId, game.id),
+            eq(gameAttempts.status, "submitted"),
+            ne(gameAttempts.userId, input.userId),
+            eq(gameAttempts.ip, attempt.ip),
+            sql`${gameAttempts.submittedAt} >= ${new Date(Date.now() - 15 * 60 * 1000)}`,
+          ),
+        )
+        .limit(1);
+
+      if (recentSameGame[0]) {
+        await logSuspicious({
+          userId: input.userId,
+          deviceId: input.deviceId,
+          ip: attempt.ip,
+          eventType: "temporal_cluster_submission",
+          severity: "info",
+          details: {
+            correlatedUserId: recentSameGame[0].userId,
+            priorDurationMs: recentSameGame[0].durationMs,
+            currentDurationMs: durationMs,
+            timeDeltaSec: Math.round(
+              (now.getTime() - (recentSameGame[0].submittedAt?.getTime() ?? now.getTime())) / 1000,
+            ),
+          },
+          actionTaken: "none",
+        });
+      }
+    } catch {
+      // non-blocking
+    }
   }
 
   let isPersonalBest = false;

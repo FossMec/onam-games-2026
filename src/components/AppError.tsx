@@ -1,5 +1,5 @@
 import { A } from "@solidjs/router";
-import { Show, createEffect } from "solid-js";
+import { Show, onMount } from "solid-js";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 
 /**
@@ -8,7 +8,7 @@ import { SpriteIcon } from "~/components/art/SpriteIcon";
  * A boundary turns uncaught runtime errors into a helpful recovery page with an exit.
  */
 export function AppError(props: { error?: unknown; reset: () => void }) {
-  createEffect(() => {
+  onMount(() => {
     if (props.error) {
       console.error("[AppError] Uncaught error caught by root ErrorBoundary:", props.error);
     }

@@ -116,7 +116,7 @@ export default function Onboarding() {
         batch: (batch() || undefined) as Batch | undefined,
         div: (div() || undefined) as Div | undefined,
         instagramHandle: cleanInstagram() || undefined,
-        whatsappNumber: whatsapp().replace(/[\s\-()]/g, "") || undefined,
+        whatsappNumber: whatsapp().replace(/[\s\-()]/g, ""),
       });
       if (result.ok) {
         if (me()?.onboardingCompleted) {
@@ -619,15 +619,19 @@ export default function Onboarding() {
           {/* WhatsApp */}
           <div>
             <label for="whatsapp" class="font-extrabold text-sm block mb-1">
-              WhatsApp number <span style={{ color: "var(--ink-soft)" }}>(optional)</span>
+              WhatsApp / Mobile number *{" "}
+              <span style={{ color: "var(--ink-soft)" }}>
+                (10-digit Indian number for prize delivery)
+              </span>
             </label>
             <input
               id="whatsapp"
               type="tel"
               value={whatsapp()}
               onInput={(e) => setWhatsapp(e.currentTarget.value)}
-              placeholder="+91 98765 43210"
-              class="input"
+              placeholder="98765 43210"
+              required
+              class="input font-mono"
             />
             <Show when={fieldError("whatsappNumber")}>
               <p class="mt-1 font-extrabold text-xs" style={{ color: "var(--pop-red)" }}>
