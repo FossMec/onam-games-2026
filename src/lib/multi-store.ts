@@ -160,3 +160,52 @@ export async function getAndHealMultiStore(key: string): Promise<string | null> 
   }
   return val;
 }
+
+function cookieDelete(key: string): void {
+  if (typeof document === "undefined") return;
+  try {
+    document.cookie = `${encodeURIComponent(key)}=; path=/; max-age=0; SameSite=Lax`;
+  } catch {
+    // ignore
+  }
+}
+
+async function idbDelete(key: string): Promise<void> {
+  try {
+    const db = await getIndexedDB();
+    if (!db) return;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        store.delete(key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+      } catch {
+        resolve();
+      }
+    });
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Removes a key synchronously across localStorage, sessionStorage, and cookie,
+ * and asynchronously deletes it from IndexedDB.
+ */
+export function removeMultiStoreSync(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+  try {
+    sessionStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+  cookieDelete(key);
+  idbDelete(key).catch(() => undefined);
+}

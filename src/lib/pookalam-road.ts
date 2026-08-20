@@ -559,6 +559,8 @@ link.click();`,
  * faking it and no reason to spend a table on it.
  */
 
+import { getMultiStoreSync, removeMultiStoreSync, setMultiStoreSync } from "./multi-store";
+
 const KEY = "pookalam:road:v1";
 const NOTES_KEY = "pookalam:road-notes:v1";
 const RATINGS_KEY = "pookalam:road-ratings:v1";
@@ -568,7 +570,7 @@ const CHECKS_KEY = "pookalam:entry-checks:v1";
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
   try {
-    const raw = localStorage.getItem(key);
+    const raw = getMultiStoreSync(key);
     return raw ? ((JSON.parse(raw) as T) ?? fallback) : fallback;
   } catch {
     return fallback;
@@ -577,7 +579,7 @@ function readJson<T>(key: string, fallback: T): T {
 
 function writeJson(key: string, value: unknown): void {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    setMultiStoreSync(key, JSON.stringify(value));
   } catch {
     // Private mode. Everything here is a convenience, so losing it is fine.
   }
@@ -633,7 +635,7 @@ export function writeEntryChecks(ids: string[]): void {
 export function readRoadProgress(): string[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = getMultiStoreSync(KEY);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -646,7 +648,7 @@ export function readRoadProgress(): string[] {
 
 export function writeRoadProgress(ids: string[]): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(ids));
+    setMultiStoreSync(KEY, JSON.stringify(ids));
   } catch {
     // Storage is a convenience here; the road still works without it.
   }
@@ -654,7 +656,7 @@ export function writeRoadProgress(ids: string[]): void {
 
 export function clearRoadProgress(): void {
   try {
-    localStorage.removeItem(KEY);
+    removeMultiStoreSync(KEY);
   } catch {
     // As above.
   }

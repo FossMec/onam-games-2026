@@ -142,5 +142,12 @@ export const looseImage = (ref: string) => lookup(LOOSE_SRC, basename(ref));
 export const spriteImage = (ref: string) => lookup(SPRITE_FULL, basename(ref));
 export const jumpSprite = (ref: string) => lookup(JUMP_SRC, basename(ref));
 export const vallamSprite = (ref: string) => lookup(VALLAM_SRC, basename(ref));
+const MAP_SRC = import.meta.glob<string>("~/assets/images/treasure-map.webp", {
+  query: { w: 1200, format: "webp", quality: 100 },
+  import: "default",
+  eager: true,
+});
+export const treasureMapImage = () =>
+  lookup(MAP_SRC, "treasure-map.webp") || "/images/treasure-map.webp";
 export const pookalamThumb = (ref: string) => lookup(POOKALAM_THUMB, basename(ref));
 export const pookalamFull = (ref: string) => lookup(POOKALAM_FULL, basename(ref));

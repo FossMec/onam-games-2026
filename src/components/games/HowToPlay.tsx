@@ -743,6 +743,7 @@ export interface HowToPlayModalProps {
   steps: string[];
   startLabel?: string;
   busy?: boolean;
+  error?: string;
   onStart?: () => void;
   onClose: () => void;
 }
@@ -835,6 +836,13 @@ export function HowToPlayModal(props: HowToPlayModalProps) {
 
         <Show when={hasTrial(props.gameType) && tab() === "trial"}>
           <InteractiveTrial gameType={props.gameType} />
+        </Show>
+
+        {/* Error inside modal */}
+        <Show when={props.error}>
+          <div class="p-3 rounded-lg bg-[var(--pop-red)] text-white text-xs sm:text-sm font-bold border-2 border-[var(--ink)] text-center">
+            {props.error}
+          </div>
         </Show>
 
         <Show

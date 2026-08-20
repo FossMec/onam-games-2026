@@ -1,7 +1,7 @@
 import { Meta, Title } from "@solidjs/meta";
 import { A, createAsync, revalidate, useNavigate, useSearchParams } from "@solidjs/router";
 import type { RouteDefinition } from "@solidjs/router";
-import { ChevronLeft, ChevronRight, HelpCircle, Lock } from "lucide-solid";
+import { AlertCircle, ChevronLeft, ChevronRight, HelpCircle, Lock } from "lucide-solid";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 
 import { SpriteIcon } from "~/components/art/SpriteIcon";
@@ -866,6 +866,7 @@ export default function GamesPage() {
           gameType={activeModalGame()!.gameType}
           title={activeModalGame()!.title}
           steps={activeModalGame()!.howTo}
+          error={error()}
           startLabel={
             busy()
               ? "STARTING…"
@@ -877,20 +878,23 @@ export default function GamesPage() {
           }
           busy={busy()}
           onStart={() => void startAndLaunch()}
-          onClose={() => setActiveModalGame(null)}
+          onClose={() => {
+            setError("");
+            setActiveModalGame(null);
+          }}
         />
       </Show>
 
-      {/* Error Banner */}
-      <Show when={error()}>
-        <div class="fixed bottom-4 right-4 z-50 max-w-sm card pop-red space-y-2 shadow-xl">
-          <div class="flex items-start gap-3">
-            <SpriteIcon name="papad-face" size={32} animate="wobble" alt="" />
-            <p class="flex-1 font-semibold text-sm">{error()}</p>
+      {/* Error Toast - Top Right, Clean Border, No Shadows, No Emoji Face */}
+      <Show when={error() && !activeModalGame()}>
+        <div class="fixed top-5 right-5 z-[100] max-w-sm card pop-red p-3.5 space-y-2.5 shadow-none border-2 border-[var(--ink)]">
+          <div class="flex items-start gap-2.5">
+            <AlertCircle size={18} class="shrink-0 text-white mt-0.5" />
+            <p class="flex-1 font-bold text-xs sm:text-sm text-white m-0 leading-snug">{error()}</p>
           </div>
           <button
             type="button"
-            class="btn-ghost text-xs py-1 w-full cursor-pointer"
+            class="btn-ghost text-xs py-1 w-full cursor-pointer bg-white/20 hover:bg-white/30 text-white font-bold rounded"
             onClick={() => setError("")}
           >
             Dismiss

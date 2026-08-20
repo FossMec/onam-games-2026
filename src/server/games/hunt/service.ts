@@ -239,15 +239,15 @@ export async function submitHuntAnswer(
     throw new HttpError(404, "Active question not found");
   }
 
-  // Update lastSubmittedAt immediately for rate limiting
-  await db
-    .update(userHuntProgress)
-    .set({ lastSubmittedAt: new Date(), updatedAt: new Date() })
-    .where(eq(userHuntProgress.id, progress.id));
-
   const isCorrect = checkAnswerMatch(rawAnswer, currentQ.answer);
 
   if (!isCorrect) {
+    // Cooldown is applied ONLY on failed attempts
+    await db
+      .update(userHuntProgress)
+      .set({ lastSubmittedAt: new Date(), updatedAt: new Date() })
+      .where(eq(userHuntProgress.id, progress.id));
+
     await logActivity({
       userId,
       deviceId: meta.deviceId,
@@ -268,7 +268,7 @@ export async function submitHuntAnswer(
     };
   }
 
-  // Correct answer!
+  // Correct answer! Reset any past cooldown and proceed immediately
   const solvedSet = new Set(progress.solvedQuestionIds ?? []);
   solvedSet.add(currentQ.id);
   const updatedSolvedList = Array.from(solvedSet);
@@ -282,6 +282,7 @@ export async function submitHuntAnswer(
       solvedQuestionIds: updatedSolvedList,
       solvedCount: updatedSolvedList.length,
       currentQuestionId: nextQ?.id ?? null,
+      lastSubmittedAt: null,
       completedAt: isComplete ? new Date() : null,
       updatedAt: new Date(),
     })
@@ -306,7 +307,7 @@ export async function submitHuntAnswer(
     valid: true,
     solvedQuestionId: currentQ.id,
     isComplete,
-    cooldownRemainingSec: Math.ceil(RATE_LIMIT_MS / 1000),
+    cooldownRemainingSec: 0,
     state: nextState,
   };
 }

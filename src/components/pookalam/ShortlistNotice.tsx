@@ -5,6 +5,7 @@ import { ShoutBurst } from "~/components/art/Burst";
 import { SHOUT_COLOR, shout } from "~/lib/shouts";
 import type { getMyPookalamNotice } from "~/server/pookalam/actions";
 import { pookalamNotice } from "~/lib/queries";
+import { getMultiStoreSync, setMultiStoreSync } from "~/lib/multi-store";
 
 /**
  * The once-per-browser "your pookalam made the shortlist" announcement.
@@ -30,7 +31,7 @@ const SEEN_KEY = "pookalam:shortlist-notice-seen";
 function hasSeen(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return localStorage.getItem(SEEN_KEY) === "1";
+    return getMultiStoreSync(SEEN_KEY) === "1";
   } catch {
     return false;
   }
@@ -38,7 +39,7 @@ function hasSeen(): boolean {
 
 function markSeen(): void {
   try {
-    localStorage.setItem(SEEN_KEY, "1");
+    setMultiStoreSync(SEEN_KEY, "1");
   } catch {
     // Private-mode storage is a nice-to-have; the popup just reappears.
   }

@@ -1,12 +1,14 @@
+import { getMultiStoreSync, setMultiStoreSync } from "./multi-store";
+
 const DAILY_LIMIT_KEY = "onam-games:pookalam-daily-limit";
 export const POOKALAM_CREDITS_EVENT = "onam-games:pookalam-credits";
 
 export const pookalamDailyLimit = () =>
-  typeof window === "undefined" ? 0 : Number(localStorage.getItem(DAILY_LIMIT_KEY)) || 0;
+  typeof window === "undefined" ? 0 : Number(getMultiStoreSync(DAILY_LIMIT_KEY)) || 0;
 
 export function setPookalamDailyLimit(value: number): void {
   if (typeof window !== "undefined" && Number.isFinite(value) && value >= 0) {
-    localStorage.setItem(DAILY_LIMIT_KEY, String(Math.floor(value)));
+    setMultiStoreSync(DAILY_LIMIT_KEY, String(Math.floor(value)));
   }
 }
 
@@ -15,13 +17,13 @@ export function addPookalamCredits(amount: number): void {
   const key = "collab-pookalam:token-bucket";
   const daily = pookalamDailyLimit();
   try {
-    const raw = localStorage.getItem(key);
+    const raw = getMultiStoreSync(key);
     const current = raw ? JSON.parse(raw) : null;
     const today = new Date().toISOString().slice(0, 10);
     const bucket = current?.day === today ? current : null;
     if (!bucket || (bucket.balloonsToday ?? 0) < Math.floor(daily / 5)) {
       const cap = Math.min(Math.ceil(daily / 3), 100);
-      localStorage.setItem(
+      setMultiStoreSync(
         key,
         JSON.stringify({
           day: today,
@@ -44,7 +46,7 @@ export function canCollectPookalamBalloon(): boolean {
   const daily = pookalamDailyLimit();
   if (daily <= 0) return false;
   try {
-    const raw = localStorage.getItem("collab-pookalam:token-bucket");
+    const raw = getMultiStoreSync("collab-pookalam:token-bucket");
     const bucket = raw ? (JSON.parse(raw) as { day?: string; balloonsToday?: number }) : null;
     const today = new Date().toISOString().slice(0, 10);
     if (bucket?.day !== today) return true;

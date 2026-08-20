@@ -216,14 +216,34 @@ export default function GameArenaPage() {
         // Timer already ticking from hub's `startedAt`, so chunk+view overlap saves 1-2s.
         const g = game();
         if (g?.gameType) void warmChunkForGameType(g.gameType);
-        void fetchAttemptView(stored.attemptToken);
+        void fetchAttemptView();
       }
     }
 
     return currentSlug;
   });
 
-  const fetchAttemptView = async (_token: string) => {
+  // Automatically restore in-progress attempt if localStorage was cleared or missing
+  createEffect(() => {
+    const attempt = myAttempt();
+    const currentSlug = slug();
+    if (!currentSlug || !attempt) return;
+
+    if (attempt.status === "in_progress" && !attemptToken() && !busy()) {
+      const stored = getStoredAttempt(currentSlug);
+      if (stored) {
+        setAttemptToken(stored.attemptToken);
+        setStartedAt(new Date(stored.startedAt).getTime());
+        setNow(Date.now());
+        setRestored(getProgress(stored.attemptToken));
+        const g = game();
+        if (g?.gameType) void warmChunkForGameType(g.gameType);
+      }
+      void fetchAttemptView();
+    }
+  });
+
+  const fetchAttemptView = async () => {
     setBusy(true);
     try {
       const res = await fetch(`/api/game/${slug()}/start`, { method: "POST" });
@@ -235,6 +255,14 @@ export default function GameArenaPage() {
       };
       if (res.ok && data.view) {
         setView(data.view);
+        if (data.attemptToken) {
+          setAttemptToken(data.attemptToken);
+          setRestored(getProgress(data.attemptToken));
+          storeAttempt(slug(), {
+            attemptToken: data.attemptToken,
+            startedAt: data.startedAt || new Date().toISOString(),
+          });
+        }
         if (data.startedAt) setStartedAt(new Date(data.startedAt).getTime());
       }
     } catch {
@@ -491,7 +519,7 @@ export default function GameArenaPage() {
 
     if (hasNoAttempt()) return;
 
-    if (!attemptToken() && !hasFinishedRun()) {
+    if (!attemptToken() && !hasFinishedRun() && attempt?.status !== "in_progress" && !busy()) {
       navigate(`/games?day=${g?.day ?? 1}&game=${slug()}`, { replace: true });
     }
   });
@@ -576,7 +604,15 @@ export default function GameArenaPage() {
               isTester={isTester()}
               gameType={game()!.gameType}
               elapsed={
-                attemptToken() ? (game()!.gameType === "hunt" ? huntElapsed() : elapsed()) : null
+                attemptToken()
+                  ? game()!.gameType === "hunt"
+                    ? huntElapsed()
+                    : elapsed()
+                  : settledResult()?.durationMs != null
+                    ? Math.floor(settledResult()!.durationMs / 1000)
+                    : myAttempt()?.durationMs != null
+                      ? Math.floor(myAttempt()!.durationMs! / 1000)
+                      : null
               }
               liveScore={game()!.gameType === "jump" ? jumpScore() : null}
               onHowTo={(game()!.howTo?.length ?? 0) > 0 ? () => setShowHowTo(true) : undefined}
@@ -743,7 +779,7 @@ export default function GameArenaPage() {
 
                 <div class="w-full flex items-center justify-center">
                   <Show
-                    when={game()?.status === "closed" || isTester()}
+                    when={isHunt() || game()?.status === "closed" || isTester()}
                     fallback={
                       <div class="card card-plain w-full max-w-sm mx-auto p-4 space-y-2 text-center">
                         <p class="font-extrabold text-sm sm:text-base">
@@ -756,6 +792,11 @@ export default function GameArenaPage() {
                       </div>
                     }
                   >
+                    <Show when={isHunt()}>
+                      <Suspense fallback={<p class="font-semibold">Loading treasure map…</p>}>
+                        <TreasureHuntGame disabled />
+                      </Suspense>
+                    </Show>
                     <Show when={finishedKind() === "wend"}>
                       <Suspense fallback={<p class="font-semibold">Loading board…</p>}>
                         <WendGame

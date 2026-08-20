@@ -16,6 +16,7 @@ import { EMPTY_BRUSH, FLOWERS, type Flower, drawFlower, flowerById } from "~/lib
 import { CELL_COUNT, fromBase64, readCell, writeCell } from "~/lib/pookalam-grid";
 import { PADDING_SCALE, SLOTS, slotAt } from "~/lib/pookalam-layout";
 import { POOKALAM_CREDITS_EVENT, setPookalamDailyLimit } from "~/lib/pookalam-credits";
+import { getAndHealMultiStore, getMultiStoreSync, setMultiStoreSync } from "~/lib/multi-store";
 import type { CollabMessageItem } from "~/server/pookalam/comments";
 
 const MAX_MESSAGE_CHARS = 100;
@@ -129,7 +130,7 @@ export function CollabPookalam() {
   const saveBucket = (next: TokenBucket) => {
     setBucket(next);
     try {
-      localStorage.setItem(TOKEN_BUCKET_KEY, JSON.stringify(next));
+      setMultiStoreSync(TOKEN_BUCKET_KEY, JSON.stringify(next));
     } catch {
       /* storage disabled: state remains valid for this mount */
     }
@@ -232,7 +233,7 @@ export function CollabPookalam() {
 
   const initBucket = () => {
     try {
-      const raw = localStorage.getItem(TOKEN_BUCKET_KEY);
+      const raw = getMultiStoreSync(TOKEN_BUCKET_KEY);
       const parsed = raw ? (JSON.parse(raw) as Partial<TokenBucket>) : null;
       const initial: TokenBucket = {
         day: typeof parsed?.day === "string" ? parsed.day : todayKey(),
@@ -249,6 +250,22 @@ export function CollabPookalam() {
         balloonsToday: 0,
       });
     }
+
+    void getAndHealMultiStore(TOKEN_BUCKET_KEY).then((healedRaw) => {
+      if (healedRaw) {
+        try {
+          const parsed = JSON.parse(healedRaw) as Partial<TokenBucket>;
+          if (parsed?.day === todayKey() && typeof parsed?.credits === "number") {
+            const current = bucket();
+            if (current && parsed.credits < current.credits) {
+              setBucket(refillBucket(parsed as TokenBucket));
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+    });
   };
 
   const howToSteps = () => [
@@ -352,7 +369,7 @@ export function CollabPookalam() {
         const current = bucket();
         if (current) {
           try {
-            const stored = JSON.parse(localStorage.getItem(TOKEN_BUCKET_KEY) ?? "null");
+            const stored = JSON.parse(getMultiStoreSync(TOKEN_BUCKET_KEY) ?? "null");
             if (stored?.day === todayKey()) setBucket(stored as TokenBucket);
           } catch {
             /* Keep the in-memory bucket when storage is unavailable. */

@@ -3,12 +3,14 @@ import { onCleanup, onMount } from "solid-js";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 
+import { getMultiStoreSync, setMultiStoreSync } from "~/lib/multi-store";
+
 export const FAIR_PLAY_STORAGE_KEY = "foss_fair_play_ack_v1";
 
 export function hasAcknowledgedFairPlay(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return localStorage.getItem(FAIR_PLAY_STORAGE_KEY) === "true";
+    return getMultiStoreSync(FAIR_PLAY_STORAGE_KEY) === "true";
   } catch {
     return false;
   }
@@ -17,7 +19,7 @@ export function hasAcknowledgedFairPlay(): boolean {
 export function saveFairPlayAcknowledgement(): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(FAIR_PLAY_STORAGE_KEY, "true");
+    setMultiStoreSync(FAIR_PLAY_STORAGE_KEY, "true");
   } catch {
     // Ignore private browsing storage errors
   }

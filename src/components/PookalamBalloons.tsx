@@ -6,6 +6,7 @@ import {
   canCollectPookalamBalloon,
   pookalamDailyLimit,
 } from "~/lib/pookalam-credits";
+import { getMultiStoreSync, setMultiStoreSync } from "~/lib/multi-store";
 
 const COLORS = ["var(--pop-yellow)", "var(--pop-teal)", "var(--pop-pink)", "var(--pop-purple)"];
 const randomBetween = (min: number, max: number) => min + Math.random() * (max - min);
@@ -36,7 +37,7 @@ export function PookalamBalloons() {
   const todayKey = () => new Date().toISOString().slice(0, 10);
   const spawnedToday = () => {
     try {
-      const stored = JSON.parse(localStorage.getItem(SPAWN_COUNT_KEY) ?? "null");
+      const stored = JSON.parse(getMultiStoreSync(SPAWN_COUNT_KEY) ?? "null");
       return stored?.day === todayKey() && typeof stored.count === "number" ? stored.count : 0;
     } catch {
       return 0;
@@ -45,7 +46,7 @@ export function PookalamBalloons() {
 
   const recordSpawn = () => {
     try {
-      localStorage.setItem(
+      setMultiStoreSync(
         SPAWN_COUNT_KEY,
         JSON.stringify({ day: todayKey(), count: spawnedToday() + 1 }),
       );
@@ -55,33 +56,31 @@ export function PookalamBalloons() {
   };
 
   const scheduleTreasure = () => {
-    if (disabled() || !huntBalloonActive()) return;
+    if (!huntBalloonActive()) return;
     if (treasureTimer) clearTimeout(treasureTimer);
-    treasureTimer = setTimeout(
-      () => {
-        treasureTimer = undefined;
-        if (disabled() || !huntBalloonActive()) return;
-        setPopped(false);
-        setBalloon({
-          left: randomBetween(15, 80),
-          color: "var(--pop-yellow)",
-          isTreasure: true,
-        });
-        removeTimer = setTimeout(() => {
-          setBalloon(null);
-          scheduleTreasure();
-        }, riseDuration());
-      },
-      randomBetween(20_000, 30_000),
-    );
+    const delay = randomBetween(30_000, 60_000);
+    treasureTimer = setTimeout(() => {
+      treasureTimer = undefined;
+      if (!huntBalloonActive()) return;
+      setPopped(false);
+      setBalloon({
+        left: randomBetween(15, 80),
+        color: "var(--pop-yellow)",
+        isTreasure: true,
+      });
+      removeTimer = setTimeout(() => {
+        setBalloon(null);
+        scheduleTreasure();
+      }, riseDuration());
+    }, delay);
   };
 
   const schedule = () => {
-    if (disabled()) return;
     if (huntBalloonActive()) {
       scheduleTreasure();
       return;
     }
+    if (disabled()) return;
     if (
       (pookalamDailyLimit() > 0 && spawnedToday() >= Math.ceil(pookalamDailyLimit() / 5)) ||
       !canCollectPookalamBalloon()
@@ -239,7 +238,7 @@ export function PookalamBalloons() {
           return current ? (
             <button
               type="button"
-              class={`pookalam-balloon ${popped() ? "is-popped" : ""} ${current.isTreasure ? "border-2 border-[var(--ink)] shadow-xl" : ""}`}
+              class={`pookalam-balloon ${popped() ? "is-popped" : ""}`}
               style={{
                 left: `${current.left}%`,
                 "--balloon-color": current.color,
@@ -257,20 +256,14 @@ export function PookalamBalloons() {
                 when={popped()}
                 fallback={
                   <>
-                    <span class="pookalam-balloon-body" aria-hidden="true">
-                      <Show when={current.isTreasure}>
-                        <span class="absolute inset-0 grid place-items-center text-xs font-black text-[var(--ink)]">
-                          👑
-                        </span>
-                      </Show>
-                    </span>
+                    <span class="pookalam-balloon-body" aria-hidden="true"></span>
                     <span class="pookalam-balloon-string" aria-hidden="true" />
                   </>
                 }
               >
                 <span class="pookalam-balloon-reward">
                   {current.isTreasure
-                    ? "✨ Secret Payload Captured! ✨"
+                    ? "Secret Payload Captured!"
                     : "+5 Community Pookalam Credits"}
                 </span>
               </Show>
@@ -286,7 +279,6 @@ export function PookalamBalloons() {
           style={{ background: "rgba(34, 32, 43, 0.85)" }}
         >
           <div class="card pop-yellow max-w-sm w-full p-5 text-center space-y-3 anim-sheet-in">
-            <span class="text-3xl">🎈👑</span>
             <h3 class="text-xl font-black m-0">Royal Air Delivery!</h3>
             <p class="text-xs font-semibold text-[var(--ink-soft)]">
               You intercepted Maveli's carrier balloon in the sky!

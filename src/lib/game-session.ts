@@ -23,6 +23,8 @@ const DONE_PREFIX = "og_done:";
  * would be both wrong and confusing.
  */
 
+import { getMultiStoreSync, removeMultiStoreSync, setMultiStoreSync } from "./multi-store";
+
 export interface StoredAttempt {
   attemptToken: string;
   startedAt: string;
@@ -30,7 +32,7 @@ export interface StoredAttempt {
 
 function read<T>(key: string): T | null {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = getMultiStoreSync(key);
     return raw ? (JSON.parse(raw) as T) : null;
   } catch {
     // Malformed or unavailable storage must never break a game in progress.
@@ -40,7 +42,7 @@ function read<T>(key: string): T | null {
 
 function write(key: string, value: unknown): void {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    setMultiStoreSync(key, JSON.stringify(value));
   } catch {
     // Best effort: private mode and full quotas are both survivable. The
     // attempt itself lives on the server; this only costs the player a resume.
@@ -49,7 +51,7 @@ function write(key: string, value: unknown): void {
 
 function drop(key: string): void {
   try {
-    localStorage.removeItem(key);
+    removeMultiStoreSync(key);
   } catch {
     // best effort
   }

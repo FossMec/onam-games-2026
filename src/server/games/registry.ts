@@ -1,4 +1,6 @@
-import { getSetting } from "~/server/settings/service";
+import { eq } from "drizzle-orm";
+import { getDb } from "~/server/db/client";
+import { huntQuestions, userHuntProgress } from "~/server/db/schema";
 import * as jigsaw from "./impl/jigsaw";
 import * as jump from "./impl/jump";
 import * as tinder from "./impl/tinder";
@@ -11,18 +13,6 @@ import * as wend from "./impl/wend";
  * placeholder with `node scripts/make-pookalam.mjs`.
  */
 const DEFAULT_POOKALAM = "/images/games/pookalam.webp";
-
-/**
- * Tokens get typed off a phone screen, read off paper, and pasted out of URLs.
- * Normalising away case, spacing and punctuation means a correct answer is not
- * rejected over a stray hyphen - without widening what actually counts.
- */
-function normalizeToken(value: string): string {
-  return value
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "");
-}
 
 /**
  * The game registry - one place that owns how every game *behaves*.
@@ -65,6 +55,8 @@ export interface VerifyInput {
   submission: unknown;
   /** Server-measured elapsed time. The client does not get a vote on this. */
   durationMs: number;
+  userId?: string;
+  startedAt?: Date;
 }
 
 export interface VerifyResult {
@@ -294,8 +286,8 @@ export const GAMES: readonly GameDef[] = [
     gameType: "hunt",
     metric: "fcfs",
     maxAttempts: 1,
-    /** No floor: the hunt runs for hours and the clock is the point. */
-    minPlausibleMs: 0,
+    /** Realistically at least 20s to solve and submit across 10 clues */
+    minPlausibleMs: 20_000,
     maxDurationMs: 24 * 60 * MINUTE,
     maxSubmissionBytes: 4_000,
     public: {
@@ -314,7 +306,7 @@ export const GAMES: readonly GameDef[] = [
       view: { kind: "hunt", prompt: "Enter the token from the final stage." },
       solution: null,
     }),
-    verify: async ({ submission }) => {
+    verify: async ({ submission, userId, startedAt }) => {
       const claimed =
         submission && typeof submission === "object"
           ? (submission as { token?: unknown }).token
@@ -322,14 +314,38 @@ export const GAMES: readonly GameDef[] = [
       if (typeof claimed !== "string") {
         return { valid: false, reason: "No token submitted." };
       }
-      if (claimed === "TREASURE_HUNT_ALL_COMPLETED") {
-        return { valid: true };
+
+      if (!userId) {
+        return { valid: false, reason: "Unauthorized attempt." };
       }
-      const expected = await getSetting<string>("hunt.final_token", "");
-      if (expected.trim() && normalizeToken(claimed) === normalizeToken(expected)) {
-        return { valid: true };
+
+      const db = getDb();
+      const [progress] = await db
+        .select()
+        .from(userHuntProgress)
+        .where(eq(userHuntProgress.userId, userId))
+        .limit(1);
+
+      const allActive = await db.select().from(huntQuestions).where(eq(huntQuestions.active, true));
+
+      if (
+        !progress ||
+        !progress.completedAt ||
+        (progress.solvedQuestionIds?.length ?? 0) < allActive.length
+      ) {
+        return { valid: false, reason: "You have not discovered all 10 treasure hunt relics yet." };
       }
-      return { valid: false, reason: "That is not the token. Keep looking." };
+
+      // Verify that completedAt was achieved during this attempt (or within 15s grace of startedAt)
+      if (startedAt && new Date(progress.completedAt).getTime() < startedAt.getTime() - 15_000) {
+        return {
+          valid: false,
+          reason:
+            "Invalid run: The hunt was solved before this attempt started. Please start a fresh run.",
+        };
+      }
+
+      return { valid: true };
     },
   },
 ];

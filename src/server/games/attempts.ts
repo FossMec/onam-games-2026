@@ -2,7 +2,14 @@ import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { logActivity, logSuspicious } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
-import { dailyLeaderboard, devices, gameAttempts, games } from "~/server/db/schema";
+import {
+  dailyLeaderboard,
+  devices,
+  gameAttempts,
+  games,
+  huntQuestions,
+  userHuntProgress,
+} from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
 import { getRequestMeta } from "~/server/request";
 import { revealDeck } from "./impl/tinder";
@@ -142,6 +149,36 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
   }
 
   const attemptNumber = (prior[0]?.attemptNumber ?? 0) + 1;
+
+  if (game.gameType === "hunt") {
+    // If starting a fresh attempt (e.g. testing or cleared attempt), reset any stale completed hunt progress
+    const [existingProgress] = await db
+      .select()
+      .from(userHuntProgress)
+      .where(eq(userHuntProgress.userId, input.userId))
+      .limit(1);
+
+    if (existingProgress && existingProgress.completedAt) {
+      const allActive = await db
+        .select()
+        .from(huntQuestions)
+        .where(eq(huntQuestions.active, true))
+        .orderBy(huntQuestions.orderIndex);
+      const firstQ = allActive.find((q) => q.difficulty === "first") || allActive[0];
+
+      await db
+        .update(userHuntProgress)
+        .set({
+          currentQuestionId: firstQ?.id ?? null,
+          solvedQuestionIds: [],
+          solvedCount: 0,
+          completedAt: null,
+          lastSubmittedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(userHuntProgress.id, existingProgress.id));
+    }
+  }
 
   // Generate per-attempt seeds for games where randomizing deals, piece scatter, or orientations
   // prevents answer sharing / layout copying between players, while maintaining identical puzzle difficulty.
@@ -541,6 +578,8 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
     difficulty: game.difficulty,
     submission: input.submittedState,
     durationMs: rawDurationMs,
+    userId: input.userId,
+    startedAt: attempt.startedAt,
   });
 
   /*
