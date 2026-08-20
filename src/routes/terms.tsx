@@ -1,10 +1,11 @@
 import { Title } from "@solidjs/meta";
 import { For } from "solid-js";
+import { SITE_URL } from "~/lib/site";
 
 const SECTIONS = [
   {
     title: "Acceptance",
-    body: 'By accessing or using foss-onam.onrender.com ("the Site"), you agree to these Terms. If you do not agree, please do not use the Site. The Site is operated by FOSS MEC for the Onam Games 2026 event.',
+    body: `By accessing or using ${SITE_URL} ("the Site"), you agree to these Terms. If you do not agree, please do not use the Site. The Site is operated by FOSS MEC for the Onam Games 2026 event.`,
   },
   {
     title: "The games",

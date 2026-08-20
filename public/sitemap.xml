@@ -1,82 +1,83 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Canonical domain is configured via VITE_SITE_URL (e.g. https://onam-games.fossmec.workers.dev) - sitemap locs are templated at build; default below matches SITE_URL fallback -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://foss-onam.onrender.com/</loc>
+    <loc>https://onam-games.fossmec.workers.dev/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://foss-onam.onrender.com/leaderboard</loc>
+    <loc>https://onam-games.fossmec.workers.dev/leaderboard</loc>
     <changefreq>hourly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://foss-onam.onrender.com/code-a-pookalam</loc>
+    <loc>https://onam-games.fossmec.workers.dev/code-a-pookalam</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://foss-onam.onrender.com/code-a-pookalam/submit</loc>
+    <loc>https://onam-games.fossmec.workers.dev/code-a-pookalam/submit</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://foss-onam.onrender.com/comics</loc>
+    <loc>https://onam-games.fossmec.workers.dev/comics</loc>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
-    <loc>https://foss-onam.onrender.com/games/maveli-jump</loc>
+    <loc>https://onam-games.fossmec.workers.dev/games/maveli-jump</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foss-onam.onrender.com/games/escape-the-vallam</loc>
+    <loc>https://onam-games.fossmec.workers.dev/games/escape-the-vallam</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foss-onam.onrender.com/games/wend</loc>
+    <loc>https://onam-games.fossmec.workers.dev/games/wend</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foss-onam.onrender.com/games/open-source-tinder</loc>
+    <loc>https://onam-games.fossmec.workers.dev/games/open-source-tinder</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foss-onam.onrender.com/games/pookalam-jigsaw</loc>
+    <loc>https://onam-games.fossmec.workers.dev/games/pookalam-jigsaw</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foss-onam.onrender.com/games/tux-says</loc>
+    <loc>https://onam-games.fossmec.workers.dev/games/tux-says</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://foss-onam.onrender.com/games/onam-wordle</loc>
+    <loc>https://onam-games.fossmec.workers.dev/games/onam-wordle</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://foss-onam.onrender.com/design</loc>
+    <loc>https://onam-games.fossmec.workers.dev/design</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://foss-onam.onrender.com/style</loc>
+    <loc>https://onam-games.fossmec.workers.dev/style</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://foss-onam.onrender.com/terms</loc>
+    <loc>https://onam-games.fossmec.workers.dev/terms</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://foss-onam.onrender.com/privacy</loc>
+    <loc>https://onam-games.fossmec.workers.dev/privacy</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>

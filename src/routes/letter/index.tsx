@@ -6,6 +6,7 @@ import { Halftone } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { decodeGiftMessage, encodeGiftMessage } from "~/lib/gift-crypto";
+import { SITE_URL } from "~/lib/site";
 
 function FoldingOnamCard(props: { message: string }) {
   const [opened, setOpened] = createSignal(false);
@@ -272,7 +273,7 @@ export default function LetterPage() {
         property="og:description"
         content="Click to open your special Onam festival greeting letter!"
       />
-      <Meta property="og:image" content="https://foss-onam.onrender.com/images/gift-og.webp" />
+      <Meta property="og:image" content={`${SITE_URL}/images/gift-og.webp`} />
       <Meta property="og:image:type" content="image/webp" />
       <Meta property="og:image:width" content="1376" />
       <Meta property="og:image:height" content="768" />
@@ -282,7 +283,7 @@ export default function LetterPage() {
         name="twitter:description"
         content="Click to open your special Onam festival greeting letter!"
       />
-      <Meta name="twitter:image" content="https://foss-onam.onrender.com/images/gift-og.webp" />
+      <Meta name="twitter:image" content={`${SITE_URL}/images/gift-og.webp`} />
 
       {/* -------------------- UNWRAP / CARD MODE -------------------- */}
       <Show when={hasReceivedGift()}>

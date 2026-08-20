@@ -87,6 +87,7 @@ export default defineConfig({
     tailwindcss(),
     solidStart({ middleware: "./src/middleware/index.ts" }),
     nitro({
+      preset: "cloudflare-pages",
       compressPublicAssets: true,
       routeRules: {
         "/_build/**": { headers: { "cache-control": "public, max-age=31536000, immutable" } },
@@ -120,12 +121,6 @@ export default defineConfig({
         },
         "/site.webmanifest": {
           headers: { "cache-control": "public, max-age=3600, stale-while-revalidate=86400" },
-        },
-      },
-      vercel: {
-        functions: {
-          regions: ["sin1"],
-          maxDuration: 10,
         },
       },
     }),

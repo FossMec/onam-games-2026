@@ -2,15 +2,21 @@
 import { createHandler, StartServer } from "@solidjs/start/server";
 
 export default createHandler(() => {
+  // All analytics IDs configurable via Cloudflare Variables - change env, redeploy, done
   const umamiWebsiteId =
     process.env.VITE_UMAMI_WEBSITE_ID ||
     process.env.UMAMI_WEBSITE_ID ||
+    process.env.VITE_UMAMI_ID ||
     "e55018c4-dbfc-4970-a2eb-8e08e32465c1";
   const umamiScriptUrl =
     process.env.VITE_UMAMI_SCRIPT_URL ||
+    process.env.VITE_UMAMI_SRC ||
     process.env.UMAMI_SCRIPT_URL ||
     "https://cloud.umami.is/script.js";
-  const clarityProjectId = process.env.VITE_CLARITY_PROJECT_ID || process.env.CLARITY_PROJECT_ID;
+  const clarityProjectId =
+    process.env.VITE_CLARITY_PROJECT_ID ||
+    process.env.CLARITY_PROJECT_ID ||
+    process.env.VITE_CLARITY_ID;
 
   return (
     <StartServer

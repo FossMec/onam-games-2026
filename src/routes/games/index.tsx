@@ -13,6 +13,7 @@ import { clearAttempt, getStoredAttempt, markArenaFromHub, storeAttempt } from "
 import { gameBySlug, gamesList, myAttempt as myAttemptQuery, viewer } from "~/lib/queries";
 import { teaserIcon } from "~/lib/game-teasers";
 import { gameImageForType } from "~/lib/img";
+import { SITE_URL } from "~/lib/site";
 import type { GameCard } from "~/server/games/service";
 
 const DAY_POPS = [
@@ -283,8 +284,8 @@ export default function GamesPage() {
         property="og:description"
         content="Play a fun new mini-game every evening at Onam Games by FOSSMEC — six daily puzzle challenges across the festival week, with ₹200 daily bounties and a ₹5K+ prize pool."
       />
-      <Meta property="og:url" content="https://foss-onam.onrender.com/games" />
-      <Meta property="og:image" content="https://foss-onam.onrender.com/images/games-og.webp" />
+      <Meta property="og:url" content={`${SITE_URL}/games`} />
+      <Meta property="og:image" content={`${SITE_URL}/images/games-og.webp`} />
       <Meta property="og:image:type" content="image/webp" />
       <Meta property="og:image:width" content="1376" />
       <Meta property="og:image:height" content="768" />
@@ -293,7 +294,7 @@ export default function GamesPage() {
         name="twitter:description"
         content="Play a fun new mini-game every evening at Onam Games by FOSSMEC — six daily puzzle challenges across the festival week, with ₹200 daily bounties and a ₹5K+ prize pool."
       />
-      <Meta name="twitter:image" content="https://foss-onam.onrender.com/images/games-og.webp" />
+      <Meta name="twitter:image" content={`${SITE_URL}/images/games-og.webp`} />
 
       {/* Header Banner */}
       {/* <section */}

@@ -35,6 +35,7 @@ import type { ShareCardData } from "~/lib/share-card";
 import { dailyBoard, gamesList, viewer } from "~/lib/queries";
 import type { DailyBoard, DailyEntry } from "~/server/leaderboard/service";
 import { memeImage } from "~/lib/img";
+import { SITE_URL } from "~/lib/site";
 
 const POLL_MS = 120_000;
 const REFRESH_COOLDOWN_MS = 10_000;
@@ -307,8 +308,8 @@ export default function Leaderboard() {
         property="og:description"
         content="Live daily leaderboard for Onam Games by FOSSMEC. Rank in each of the six daily mini-games, beat the crowd, and win daily ₹200 cash prizes all festival week."
       />
-      <Meta property="og:url" content="https://foss-onam.onrender.com/leaderboard" />
-      <Meta property="og:image" content="https://foss-onam.onrender.com/images/lb-og.webp" />
+      <Meta property="og:url" content={`${SITE_URL}/leaderboard`} />
+      <Meta property="og:image" content={`${SITE_URL}/images/lb-og.webp`} />
       <Meta property="og:image:type" content="image/webp" />
       <Meta property="og:image:width" content="1376" />
       <Meta property="og:image:height" content="768" />
@@ -317,7 +318,7 @@ export default function Leaderboard() {
         name="twitter:description"
         content="Live daily leaderboard for Onam Games by FOSSMEC. Rank in each of the six daily mini-games, beat the crowd, and win daily ₹200 cash prizes all festival week."
       />
-      <Meta name="twitter:image" content="https://foss-onam.onrender.com/images/lb-og.webp" />
+      <Meta name="twitter:image" content={`${SITE_URL}/images/lb-og.webp`} />
 
       {/* Desktop Inked Sidebar: Festival Meme (Failure is not an Option<T>) + Share Card Widget on the right margin */}
       <aside class="hidden 2xl:flex flex-col gap-3 absolute left-[calc(100%+2rem)] top-6 w-68 pointer-events-auto">
