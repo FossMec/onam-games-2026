@@ -73,42 +73,43 @@ function getDatabaseUrl(): string {
 
 function createDrizzle() {
   const url = getDatabaseUrl();
-
   const isDev = process.env.NODE_ENV !== "production";
-  const poolSize = isDev ? 10 : 3;
 
   const queryClient = postgres(url, {
-    max: poolSize,
-    prepare: false,
+    max: 1, // Edge isolates / Hyperdrive require 1 connection per request
+    prepare: false, // Hyperdrive does not support server-side prepared statements
     connect_timeout: 10,
-    idle_timeout: 10,
-    max_lifetime: 60 * 5,
+    idle_timeout: 0, // Disable background timers on edge isolates
+    max_lifetime: 0,
     onnotice: (notice) => {
       if (isDev) console.log("[DB NOTICE]", notice.message);
     },
-    debug:
-      process.env.SQL_DEBUG || isDev
-        ? (_connection, query, params) => {
-            const cleanQuery = query.replace(/\s+/g, " ").trim();
-            if (
-              cleanQuery.startsWith("SELECT") ||
-              cleanQuery.startsWith("INSERT") ||
-              cleanQuery.startsWith("UPDATE")
-            ) {
-              console.log(
-                `[SQL ${Date.now() % 10000}ms]`,
-                cleanQuery.slice(0, 120),
-                params?.length ? `(params: ${params.length})` : "",
-              );
-            }
-          }
-        : undefined,
+    debug: process.env.SQL_DEBUG
+      ? (_connection, query, params) => {
+          const cleanQuery = query.replace(/\s+/g, " ").trim();
+          console.log(
+            `[SQL ${Date.now() % 10000}ms]`,
+            cleanQuery.slice(0, 120),
+            params?.length ? `(params: ${params.length})` : "",
+          );
+        }
+      : undefined,
   });
 
   return drizzle(queryClient, { schema });
 }
 
-export function getDb() {
+export function getDb(): Db {
+  const event = getRequestEvent();
+  if (event) {
+    // Cache per request on event.locals so all queries within the same request lifecycle reuse the client
+    if (!event.locals._db) {
+      event.locals._db = createDrizzle();
+    }
+    return event.locals._db as Db;
+  }
+
+  // Outside request context (CLI scripts, etc.), use global singleton
   if (!_db) _db = createDrizzle();
   return _db;
 }
