@@ -4,18 +4,23 @@ import { blockedIps } from "~/server/db/schema";
 
 export async function isIpBlocked(ip: string): Promise<boolean> {
   if (!ip) return false;
-  const db = getDb();
-  const [row] = await db
-    .select({ id: blockedIps.ip })
-    .from(blockedIps)
-    .where(
-      and(
-        eq(blockedIps.ip, ip),
-        or(gte(blockedIps.expiresAt, new Date()), isNull(blockedIps.expiresAt)),
-      ),
-    )
-    .limit(1);
-  return !!row;
+  try {
+    const db = getDb();
+    const [row] = await db
+      .select({ id: blockedIps.ip })
+      .from(blockedIps)
+      .where(
+        and(
+          eq(blockedIps.ip, ip),
+          or(gte(blockedIps.expiresAt, new Date()), isNull(blockedIps.expiresAt)),
+        ),
+      )
+      .limit(1);
+    return !!row;
+  } catch (err) {
+    console.error("[anti-cheat] Failed checking isIpBlocked (failing open):", err);
+    return false;
+  }
 }
 
 export async function blockIp(opts: {

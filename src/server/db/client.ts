@@ -75,14 +75,14 @@ function createDrizzle() {
   const url = getDatabaseUrl();
 
   const isDev = process.env.NODE_ENV !== "production";
-  const poolSize = isDev ? 10 : 5;
+  const poolSize = isDev ? 10 : 3;
 
   const queryClient = postgres(url, {
     max: poolSize,
     prepare: false,
-    connect_timeout: 5,
-    idle_timeout: 20,
-    max_lifetime: 60 * 15,
+    connect_timeout: 10,
+    idle_timeout: 10,
+    max_lifetime: 60 * 5,
     onnotice: (notice) => {
       if (isDev) console.log("[DB NOTICE]", notice.message);
     },

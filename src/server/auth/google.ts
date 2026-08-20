@@ -89,13 +89,14 @@ function getSecret(): string {
  * person who was already signed in.
  */
 async function pendingCookie() {
+  const isLocal = getServerEnv("NODE_ENV") === "development" && !getServerEnv("CF_PAGES");
   return useSession<PendingOAuth>({
     name: OAUTH_COOKIE,
     password: getSecret(),
     maxAge: PENDING_MAX_AGE_S,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: !isLocal,
       // `lax` still arrives on Google's top-level GET redirect back to us,
       // which is the only cross-site navigation this cookie has to survive.
       sameSite: "lax",
@@ -127,7 +128,8 @@ async function pkce(): Promise<{ verifier: string; challenge: string }> {
 }
 
 export function redirectUri(origin: string): string {
-  let base = (process.env.AUTH_ORIGIN || origin).trim();
+  const configured = getServerEnv("AUTH_ORIGIN", "VITE_SITE_URL", "SITE_URL");
+  let base = (configured && !configured.includes("localhost") ? configured : origin).trim();
   // Reverse proxies like Render/Cloudflare forward requests over HTTP internally.
   // Force https:// for all non-local hosts so Google OAuth receives the matching https redirect URI.
   if (!base.includes("localhost") && !base.includes("127.0.0.1")) {

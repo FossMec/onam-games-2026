@@ -135,9 +135,9 @@ export default function AuthCallback() {
   const [details, setDetails] = createSignal<string>("");
 
   const fail = (error: unknown, trace?: string) => {
-    setStatus("error");
     setProblem(explain(error));
     setDetails(trace ?? "");
+    setStatus("error");
   };
 
   onMount(async () => {
@@ -278,61 +278,63 @@ export default function AuthCallback() {
   });
 
   return (
-    <Show when={status() === "error"} fallback={<SignInScene />}>
-      <main class="container flex min-h-[70vh] items-center justify-center py-8">
-        <div
-          class="card w-full max-w-md text-center space-y-3"
-          style={{ "--pop": problem()!.technical ? "var(--pop-red)" : "var(--pop-yellow)" }}
-        >
-          {/*
-            A rule we chose to enforce is not a crash, and it should not wear a
-            crash's clothes. Enforcement gets a mascot and an explanation; only
-            an actual bug gets the red triangle.
-          */}
-          <div class="flex justify-center">
-            <Show
-              when={problem()!.technical}
-              fallback={<SpriteIcon name={problem()!.sprite} size={56} animate="float" />}
-            >
-              <span style={{ color: "var(--pop-red)" }}>
-                <TriangleAlert size={48} strokeWidth={2.5} />
-              </span>
+    <Show when={status() === "error" && problem()} keyed fallback={<SignInScene />}>
+      {(prob) => (
+        <main class="container flex min-h-[70vh] items-center justify-center py-8">
+          <div
+            class="card w-full max-w-md text-center space-y-3"
+            style={{ "--pop": prob.technical ? "var(--pop-red)" : "var(--pop-yellow)" }}
+          >
+            {/*
+              A rule we chose to enforce is not a crash, and it should not wear a
+              crash's clothes. Enforcement gets a mascot and an explanation; only
+              an actual bug gets the red triangle.
+            */}
+            <div class="flex justify-center">
+              <Show
+                when={prob.technical}
+                fallback={<SpriteIcon name={prob.sprite} size={56} animate="float" />}
+              >
+                <span style={{ color: "var(--pop-red)" }}>
+                  <TriangleAlert size={48} strokeWidth={2.5} />
+                </span>
+              </Show>
+            </div>
+
+            <h1 class="text-2xl font-black m-0">{prob.title}</h1>
+
+            <p class="font-bold text-sm leading-relaxed m-0">{prob.message}</p>
+
+            <Show when={prob.hint}>
+              <p class="comment text-xs">{prob.hint}</p>
             </Show>
+
+            {/* Offered only when the trace could actually help someone. */}
+            <Show when={prob.technical && details()}>
+              <details
+                class="text-left p-2.5 rounded-md text-xs font-mono"
+                style={{ background: "var(--paper)", border: "2px solid var(--ink)" }}
+              >
+                <summary class="cursor-pointer font-bold select-none">Technical details</summary>
+                <pre class="mt-2 whitespace-pre-wrap break-all text-[11px] opacity-80 max-h-32 overflow-y-auto">
+                  {details()}
+                </pre>
+              </details>
+            </Show>
+
+            <div class="flex flex-wrap gap-2 justify-center pt-1">
+              <A href="/auth/signin" class="btn-brand inline-flex items-center gap-1.5 text-sm">
+                <RefreshCw size={15} />
+                <span>Try again</span>
+              </A>
+              <A href="/" class="btn-ghost inline-flex items-center gap-1.5 text-sm">
+                <ArrowLeft size={15} />
+                <span>Back to home</span>
+              </A>
+            </div>
           </div>
-
-          <h1 class="text-2xl font-black m-0">{problem()!.title}</h1>
-
-          <p class="font-bold text-sm leading-relaxed m-0">{problem()!.message}</p>
-
-          <Show when={problem()!.hint}>
-            <p class="comment text-xs">{problem()!.hint}</p>
-          </Show>
-
-          {/* Offered only when the trace could actually help someone. */}
-          <Show when={problem()!.technical && details()}>
-            <details
-              class="text-left p-2.5 rounded-md text-xs font-mono"
-              style={{ background: "var(--paper)", border: "2px solid var(--ink)" }}
-            >
-              <summary class="cursor-pointer font-bold select-none">Technical details</summary>
-              <pre class="mt-2 whitespace-pre-wrap break-all text-[11px] opacity-80 max-h-32 overflow-y-auto">
-                {details()}
-              </pre>
-            </details>
-          </Show>
-
-          <div class="flex flex-wrap gap-2 justify-center pt-1">
-            <A href="/auth/signin" class="btn-brand inline-flex items-center gap-1.5 text-sm">
-              <RefreshCw size={15} />
-              <span>Try again</span>
-            </A>
-            <A href="/" class="btn-ghost inline-flex items-center gap-1.5 text-sm">
-              <ArrowLeft size={15} />
-              <span>Back to home</span>
-            </A>
-          </div>
-        </div>
-      </main>
+        </main>
+      )}
     </Show>
   );
 }
