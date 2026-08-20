@@ -2,14 +2,16 @@ name = "onam-games"
 compatibility_date = "2025-08-20"
 compatibility_flags = ["nodejs_compat"]
 
-# Cloudflare Workers - idiomatic for SolidStart + Hyperdrive + Singapore-pool Supabase
-# Hyperdrive binding HYPERDRIVE is added via Dashboard (Workers → onam-games → Settings → Bindings)
-# Variable name must be HYPERDRIVE to match src/server/db/client.ts
+[observability]
+enabled = true
+
 # Smart placement runs isolate closest to Hyperdrive origin (Singapore)
 [placement]
 mode = "smart"
 
-# Build is handled by Cloudflare Pages/Workers Git integration:
-#   Build command: pnpm run build  (vp build → .output/server)
-#   Deploy command: npx wrangler deploy
-# Output dir is .output - not needed here, nitro handles it
+# Cloudflare Workers - idiomatic for SolidStart + Hyperdrive + Singapore-pool Supabase
+# Hyperdrive binding HYPERDRIVE is added via Dashboard or defined below.
+# Variable name must be HYPERDRIVE to match src/server/db/client.ts
+[[hyperdrives]]
+binding = "HYPERDRIVE"
+id = "5eb4ab7a271b462187c2945486c8739a"

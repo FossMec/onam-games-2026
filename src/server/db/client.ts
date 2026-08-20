@@ -5,21 +5,37 @@ import * as schema from "./schema";
 let _db: ReturnType<typeof createDrizzle> | undefined;
 
 function getDatabaseUrl(): string {
-  // Prefer Hyperdrive binding (Cloudflare Pages/Workers idiomatic)
-  // Variable name must match wrangler.toml / Dashboard Hyperdrive binding: HYPERDRIVE
+  // Prefer Hyperdrive binding (Cloudflare Workers idiomatic)
+  // Supports both HYPERDRIVE (docs) and SUPABASE_SG (your current binding) + fallbacks
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cfEnv = (globalThis as any).__cloudflare_env ?? (globalThis as any).env;
-    const hyperdrive = (cfEnv as Record<string, unknown>)?.HYPERDRIVE as
-      | { connectionString?: string }
-      | undefined;
-    if (hyperdrive?.connectionString) return hyperdrive.connectionString;
+    const cfEnv =
+      (globalThis as any).__cloudflare_env ?? (globalThis as any).env ?? (globalThis as any);
+    const candidates = ["HYPERDRIVE", "SUPABASE_SG", "SUPABASE", "DB"] as const;
+    for (const key of candidates) {
+      const binding = (cfEnv as Record<string, unknown>)?.[key] as
+        | { connectionString?: string }
+        | string
+        | undefined;
+      if (typeof binding === "string" && binding.startsWith("postgres")) return binding;
+      if (
+        binding &&
+        typeof binding === "object" &&
+        (binding as { connectionString?: string }).connectionString
+      ) {
+        return (binding as { connectionString: string }).connectionString;
+      }
+    }
   } catch {
     /* ignore */
   }
-  // Also check process.env injected by Cloudflare (Hyperdrive connectionString passthrough)
+  // Also check process.env injected by Cloudflare (Hyperdrive connectionString passthrough as string)
+  const envProcess = process.env as Record<string, string | undefined>;
   const hyperdriveString =
-    process.env.HYPERDRIVE ?? (process.env as Record<string, string>).HYPERDRIVE_CONNECTION_STRING;
+    envProcess.HYPERDRIVE ??
+    envProcess.SUPABASE_SG ??
+    envProcess.HYPERDRIVE_CONNECTION_STRING ??
+    envProcess.SUPABASE_SG_CONNECTION_STRING;
   if (hyperdriveString && hyperdriveString.startsWith("postgres")) return hyperdriveString;
 
   const url = process.env.DATABASE_URL;
