@@ -12,6 +12,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "node --env-file=.env scripts/seed.mjs",
+    "db:seed:hunt": "node --env-file=.env scripts/seed-treasure-hunt-questions.mjs",
     "db:seed:pookalams": "node --env-file=.env scripts/seed-pookalams.mjs",
     "storage:buckets": "node --env-file=.env scripts/ensure-buckets.mjs",
     "fonts:fetch": "node scripts/fetch-fonts.mjs",

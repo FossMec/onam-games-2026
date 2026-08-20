@@ -45,6 +45,9 @@ const VallamGame = lazy(() =>
 const WendGame = lazy(() =>
   import("~/components/games/WendGame").then((m) => ({ default: m.WendGame })),
 );
+const TreasureHuntGame = lazy(() =>
+  import("~/components/games/TreasureHuntGame").then((m) => ({ default: m.TreasureHuntGame })),
+);
 import { getMyRecap } from "~/server/games/actions";
 import {
   gameBySlug,
@@ -87,6 +90,8 @@ function warmChunkForGameType(type: string) {
       return import("~/components/games/VallamGame");
     case "jump":
       return import("~/components/games/JumpGame");
+    case "hunt":
+      return import("~/components/games/TreasureHuntGame");
     default:
       return Promise.resolve();
   }
@@ -161,7 +166,6 @@ export default function GameArenaPage() {
   const [error, setError] = createSignal("");
   const [result, setResult] = createSignal<FinishPayload | null>(null);
   const [celebrating, setCelebrating] = createSignal(false);
-  const [huntToken, setHuntToken] = createSignal("");
   const [showHowTo, setShowHowTo] = createSignal(false);
   const [view, setView] = createSignal<GameView | null>(null);
   const [restored, setRestored] = createSignal<unknown>(null);
@@ -581,10 +585,16 @@ export default function GameArenaPage() {
         </header>
 
         <main
-          class="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden px-2 py-4 sm:px-4 flex flex-col items-center justify-start scrollbar-none"
+          class={`flex-1 min-h-0 w-full px-2 py-2 sm:px-4 flex flex-col items-center justify-center ${
+            isHunt() ? "overflow-hidden" : "overflow-y-auto overflow-x-hidden scrollbar-none"
+          }`}
           style={{ "scrollbar-width": "none", "-ms-overflow-style": "none" }}
         >
-          <div class="my-auto w-full max-w-xl flex flex-col items-center justify-center gap-4 text-center">
+          <div
+            class={`my-auto w-full flex flex-col items-center justify-center gap-4 text-center ${
+              isHunt() ? "max-w-5xl h-full flex-1 min-h-0" : "max-w-xl"
+            }`}
+          >
             <Show when={banState()?.blocksPlay}>
               <div class="card pop-red space-y-2 max-w-sm">
                 <p class="font-extrabold">{banState()!.message}</p>
@@ -617,22 +627,12 @@ export default function GameArenaPage() {
 
             <Show when={!banState()?.blocksPlay && attemptToken()}>
               <Show when={isHunt()}>
-                <div class="space-y-3 w-full max-w-sm">
-                  <input
-                    value={huntToken()}
-                    onInput={(e) => setHuntToken(e.currentTarget.value)}
-                    placeholder="Paste the final token"
-                    class="input text-center font-mono"
+                <Suspense fallback={<p class="font-semibold">Unrolling treasure hunt maps…</p>}>
+                  <TreasureHuntGame
+                    disabled={busy()}
+                    onFinish={(submission) => finish(submission)}
                   />
-                  <button
-                    type="button"
-                    onClick={() => finish({ token: huntToken() })}
-                    disabled={busy() || !huntToken().trim()}
-                    class="btn-brand px-8 py-3 text-lg w-full cursor-pointer"
-                  >
-                    {busy() ? "Checking…" : "Submit token"}
-                  </button>
-                </div>
+                </Suspense>
               </Show>
 
               <Show when={isTinder()}>

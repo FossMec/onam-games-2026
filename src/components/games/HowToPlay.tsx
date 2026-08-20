@@ -654,6 +654,10 @@ function Steps(props: { steps: string[] }) {
 import { InteractiveTrial } from "./PracticeTrial";
 import { jumpSprite, vallamSprite } from "~/lib/img";
 
+export function hasTrial(gameType: string): boolean {
+  return ["tinder", "jigsaw", "wend", "unblock"].includes(gameType);
+}
+
 /* ------------------------------------------------------------------ panel */
 
 /** The always-there version, collapsed by default so it never eats the page. */
@@ -685,42 +689,44 @@ export function HowToPlayPanel(props: { gameType: string; steps: string[]; title
 
       <Show when={open()}>
         <div class="space-y-3">
-          {/* Tab Switcher */}
-          <div class="flex gap-1.5 p-1 rounded-lg border-2 border-ink bg-paper-3">
-            <button
-              type="button"
-              class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer ${
-                tab() === "rules"
-                  ? "bg-pop-yellow text-ink border border-ink shadow-xs"
-                  : "text-muted hover:text-ink"
-              }`}
-              onClick={() => setTab("rules")}
-            >
-              <BookOpen size={14} strokeWidth={2.5} />
-              <span>Rules & Demo</span>
-            </button>
-            <button
-              type="button"
-              class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer ${
-                tab() === "trial"
-                  ? "bg-pop-teal text-ink border border-ink shadow-xs"
-                  : "text-muted hover:text-ink"
-              }`}
-              onClick={() => setTab("trial")}
-            >
-              <Gamepad2 size={14} strokeWidth={2.5} />
-              <span>Play Trial</span>
-            </button>
-          </div>
+          {/* Tab Switcher: Only shown if the game has an interactive trial */}
+          <Show when={hasTrial(props.gameType)}>
+            <div class="flex gap-1.5 p-1 rounded-lg border-2 border-ink bg-paper-3">
+              <button
+                type="button"
+                class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer ${
+                  tab() === "rules"
+                    ? "bg-pop-yellow text-ink border border-ink shadow-xs"
+                    : "text-muted hover:text-ink"
+                }`}
+                onClick={() => setTab("rules")}
+              >
+                <BookOpen size={14} strokeWidth={2.5} />
+                <span>Rules & Demo</span>
+              </button>
+              <button
+                type="button"
+                class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer ${
+                  tab() === "trial"
+                    ? "bg-pop-teal text-ink border border-ink shadow-xs"
+                    : "text-muted hover:text-ink"
+                }`}
+                onClick={() => setTab("trial")}
+              >
+                <Gamepad2 size={14} strokeWidth={2.5} />
+                <span>Play Trial</span>
+              </button>
+            </div>
+          </Show>
 
-          <Show when={tab() === "rules"}>
+          <Show when={!hasTrial(props.gameType) || tab() === "rules"}>
             <div class="space-y-4">
               <GameDemo gameType={props.gameType} />
               <Steps steps={props.steps} />
             </div>
           </Show>
 
-          <Show when={tab() === "trial"}>
+          <Show when={hasTrial(props.gameType) && tab() === "trial"}>
             <InteractiveTrial gameType={props.gameType} />
           </Show>
         </div>
@@ -790,42 +796,44 @@ export function HowToPlayModal(props: HowToPlayModalProps) {
           </button>
         </div>
 
-        {/* Tab Switcher: Inline without any extra popup */}
-        <div class="flex gap-1.5 p-1 rounded-lg border-2 border-ink bg-paper-3">
-          <button
-            type="button"
-            class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer ${
-              tab() === "rules"
-                ? "bg-pop-yellow text-ink border border-ink shadow-xs"
-                : "text-muted hover:text-ink"
-            }`}
-            onClick={() => setTab("rules")}
-          >
-            <BookOpen size={14} strokeWidth={2.5} />
-            <span>Rules & Demo</span>
-          </button>
-          <button
-            type="button"
-            class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer ${
-              tab() === "trial"
-                ? "bg-pop-teal text-ink border border-ink shadow-xs"
-                : "text-muted hover:text-ink"
-            }`}
-            onClick={() => setTab("trial")}
-          >
-            <Gamepad2 size={14} strokeWidth={2.5} />
-            <span>Play Trial</span>
-          </button>
-        </div>
+        {/* Tab Switcher: Only shown if game has a trial */}
+        <Show when={hasTrial(props.gameType)}>
+          <div class="flex gap-1.5 p-1 rounded-lg border-2 border-ink bg-paper-3">
+            <button
+              type="button"
+              class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer ${
+                tab() === "rules"
+                  ? "bg-pop-yellow text-ink border border-ink shadow-xs"
+                  : "text-muted hover:text-ink"
+              }`}
+              onClick={() => setTab("rules")}
+            >
+              <BookOpen size={14} strokeWidth={2.5} />
+              <span>Rules & Demo</span>
+            </button>
+            <button
+              type="button"
+              class={`flex-1 py-1.5 px-3 rounded text-xs font-black transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer ${
+                tab() === "trial"
+                  ? "bg-pop-teal text-ink border border-ink shadow-xs"
+                  : "text-muted hover:text-ink"
+              }`}
+              onClick={() => setTab("trial")}
+            >
+              <Gamepad2 size={14} strokeWidth={2.5} />
+              <span>Play Trial</span>
+            </button>
+          </div>
+        </Show>
 
-        <Show when={tab() === "rules"}>
+        <Show when={!hasTrial(props.gameType) || tab() === "rules"}>
           <div class="space-y-3.5">
             <GameDemo gameType={props.gameType} />
             <Steps steps={props.steps} />
           </div>
         </Show>
 
-        <Show when={tab() === "trial"}>
+        <Show when={hasTrial(props.gameType) && tab() === "trial"}>
           <InteractiveTrial gameType={props.gameType} />
         </Show>
 
@@ -833,7 +841,25 @@ export function HowToPlayModal(props: HowToPlayModalProps) {
           when={props.onStart}
           fallback={<p class="comment">your clock is still running, by the way.</p>}
         >
-          <p class="comment">read it now. the clock starts when you press the button.</p>
+          <Show
+            when={props.gameType === "hunt"}
+            fallback={
+              <Show
+                when={props.gameType === "jump"}
+                fallback={
+                  <p class="comment">read it now. the clock starts when you press the button.</p>
+                }
+              >
+                <p class="comment">
+                  unlimited climbs. climb as high as you can to set your best score.
+                </p>
+              </Show>
+            }
+          >
+            <p class="comment">
+              take your time to read the briefing. the hunt is a race across the realm.
+            </p>
+          </Show>
         </Show>
 
         <Show
@@ -851,7 +877,14 @@ export function HowToPlayModal(props: HowToPlayModalProps) {
               disabled={props.busy}
               onClick={props.onStart}
             >
-              {props.busy ? "Starting…" : props.startLabel}
+              {props.busy
+                ? "Starting…"
+                : props.startLabel ||
+                  (props.gameType === "hunt"
+                    ? "ENTER THE HUNT"
+                    : props.gameType === "jump"
+                      ? "START CLIMB"
+                      : "START THE CLOCK")}
             </button>
             <button type="button" class="btn-ghost sm:flex-none" onClick={props.onClose}>
               Not yet

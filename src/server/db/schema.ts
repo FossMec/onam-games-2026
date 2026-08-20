@@ -676,6 +676,49 @@ export const pookalamVotes = pgTable(
   ],
 );
 
+export const huntDifficultyEnum = pgEnum("hunt_difficulty", ["first", "easy", "medium", "hard"]);
+
+export const huntQuestions = pgTable(
+  "hunt_questions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    slug: text("slug").notNull().unique(),
+    title: text("title").notNull(),
+    hintHtml: text("hint_html").notNull(),
+    answer: text("answer").notNull(),
+    difficulty: huntDifficultyEnum("difficulty").notNull().default("easy"),
+    orderIndex: integer("order_index").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("hunt_questions_diff_idx").on(t.difficulty),
+    index("hunt_questions_order_idx").on(t.orderIndex),
+  ],
+);
+
+export const userHuntProgress = pgTable(
+  "user_hunt_progress",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .unique()
+      .references(() => users.id, { onDelete: "cascade" }),
+    currentQuestionId: uuid("current_question_id").references(() => huntQuestions.id, {
+      onDelete: "set null",
+    }),
+    solvedQuestionIds: jsonb("solved_question_ids").$type<string[]>().notNull().default([]),
+    solvedCount: integer("solved_count").notNull().default(0),
+    lastSubmittedAt: timestamp("last_submitted_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("user_hunt_progress_user_idx").on(t.userId)],
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Device = typeof devices.$inferSelect;
@@ -683,3 +726,6 @@ export type Game = typeof games.$inferSelect;
 export type GameAttempt = typeof gameAttempts.$inferSelect;
 export type PookalamSubmission = typeof pookalamSubmissions.$inferSelect;
 export type PookalamReview = typeof pookalamReviews.$inferSelect;
+export type HuntQuestion = typeof huntQuestions.$inferSelect;
+export type NewHuntQuestion = typeof huntQuestions.$inferInsert;
+export type UserHuntProgress = typeof userHuntProgress.$inferSelect;

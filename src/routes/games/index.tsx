@@ -866,7 +866,15 @@ export default function GamesPage() {
           gameType={activeModalGame()!.gameType}
           title={activeModalGame()!.title}
           steps={activeModalGame()!.howTo}
-          startLabel={busy() ? "STARTING…" : "START THE CLOCK"}
+          startLabel={
+            busy()
+              ? "STARTING…"
+              : activeModalGame()?.gameType === "hunt"
+                ? "ENTER THE HUNT"
+                : activeModalGame()?.gameType === "jump"
+                  ? "START CLIMB"
+                  : "START THE CLOCK"
+          }
           busy={busy()}
           onStart={() => void startAndLaunch()}
           onClose={() => setActiveModalGame(null)}

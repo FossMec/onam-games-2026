@@ -166,6 +166,289 @@ function CommunityRightPage() {
   );
 }
 
+// Persist peeled strips across comic page flips using relative coordinates
+interface RelativeStrip {
+  u0: number;
+  v0: number;
+  u1: number;
+  v1: number;
+}
+const GLOBAL_PEELED_STRIPS: RelativeStrip[] = [];
+
+function PeelableComicPanel(props: { src: string; alt: string }) {
+  let canvasRef: HTMLCanvasElement | undefined;
+  let containerRef: HTMLDivElement | undefined;
+  const [isReady, setIsReady] = createSignal(false);
+
+  onMount(() => {
+    const canvas = canvasRef;
+    const container = containerRef;
+    if (!canvas || !container) return;
+
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+
+    let W = 400;
+    let H = 400;
+    let isPeeling = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    // List of peeled centers to allow peeling from any already-peeled edge
+    const peeledSpots: Array<{ x: number; y: number }> = [];
+
+    // Helper to carve a fibrous paper strip on canvas
+    const drawStrip = (fromX: number, fromY: number, toX: number, toY: number) => {
+      ctx.save();
+      ctx.globalCompositeOperation = "destination-out";
+
+      // Draw fibrous torn strip between the two drag points
+      ctx.beginPath();
+      ctx.lineWidth = Math.max(18, Math.min(32, W * 0.07));
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.moveTo(fromX, fromY);
+      ctx.lineTo(toX, toY);
+      ctx.stroke();
+
+      // Jagged fibrous paper tear edge marks
+      ctx.beginPath();
+      const midX = (fromX + toX) / 2;
+      const midY = (fromY + toY) / 2;
+      const radius = 12 + Math.random() * 6;
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const r = radius + (Math.random() - 0.5) * 8;
+        const px = midX + Math.cos(angle) * r;
+        const py = midY + Math.sin(angle) * r;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+
+      // Micro paper fiber specks
+      for (let f = 0; f < 3; f++) {
+        const fx = toX + (Math.random() - 0.5) * 24;
+        const fy = toY + (Math.random() - 0.5) * 24;
+        ctx.fillRect(fx, fy, 2, 2);
+      }
+
+      ctx.restore();
+    };
+
+    // Default initial peel nick relative position (centered on Gemini logo on Tux)
+    const DEFAULT_NICK_U = 0.79;
+    const DEFAULT_NICK_V = 0.9;
+
+    const drawDefaultNick = (w: number, h: number) => {
+      const cx = DEFAULT_NICK_U * w;
+      const cy = DEFAULT_NICK_V * h;
+
+      ctx.save();
+      ctx.globalCompositeOperation = "destination-out";
+
+      // Larger organic spiky paper tear polygon that fully covers the Gemini star logo
+      ctx.beginPath();
+      const radius = Math.max(14, Math.min(22, w * 0.048));
+      const points = 12;
+      for (let i = 0; i < points; i++) {
+        const angle = (i / points) * Math.PI * 2;
+        // Diamond star bias with natural fibrous jitter
+        const starBias = i % 3 === 0 ? 1.25 : 0.85;
+        const r = radius * starBias + (Math.random() - 0.5) * 5;
+        const px = cx + Math.cos(angle) * r;
+        const py = cy + Math.sin(angle) * r;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+
+      // Scattered paper fibers & scuffs along the torn contour
+      for (let f = 0; f < 6; f++) {
+        const fx = cx + (Math.random() - 0.5) * (radius * 2.2);
+        const fy = cy + (Math.random() - 0.5) * (radius * 2.2);
+        ctx.fillRect(fx, fy, 2, 2);
+      }
+
+      ctx.restore();
+
+      peeledSpots.push({ x: cx, y: cy });
+    };
+
+    const img = new Image();
+    img.src = props.src;
+    img.onload = () => {
+      W = container.clientWidth || 400;
+      H = container.clientHeight || 400;
+      canvas.width = W;
+      canvas.height = H;
+      ctx.drawImage(img, 0, 0, W, H);
+
+      // Always draw the initial default peeled nick
+      drawDefaultNick(W, H);
+
+      // Replay all previously peeled strips using relative coordinates
+      for (let i = 0; i < GLOBAL_PEELED_STRIPS.length; i++) {
+        const s = GLOBAL_PEELED_STRIPS[i];
+        const fromX = s.u0 * W;
+        const fromY = s.v0 * H;
+        const toX = s.u1 * W;
+        const toY = s.v1 * H;
+        drawStrip(fromX, fromY, toX, toY);
+        peeledSpots.push({ x: toX, y: toY });
+      }
+
+      setIsReady(true);
+    };
+
+    // Check if a point is near an exposed peelable edge (default nick or already peeled spot)
+    const isNearPeeledEdge = (x: number, y: number): boolean => {
+      // Near default initial nick
+      const nickDist = Math.hypot(x - DEFAULT_NICK_U * W, y - DEFAULT_NICK_V * H);
+      if (nickDist <= 32) return true;
+
+      // Near any already peeled spot
+      for (let i = 0; i < peeledSpots.length; i++) {
+        const spot = peeledSpots[i];
+        const dist = Math.hypot(x - spot.x, y - spot.y);
+        if (dist <= 32) return true;
+      }
+      return false;
+    };
+
+    // Peel off a small fibrous paper strip along the drag path
+    const peelStrip = (fromX: number, fromY: number, toX: number, toY: number) => {
+      // Don't peel top/left spine margins
+      if (toX < W * 0.15 || toY < H * 0.18) return;
+
+      drawStrip(fromX, fromY, toX, toY);
+      peeledSpots.push({ x: toX, y: toY });
+      GLOBAL_PEELED_STRIPS.push({
+        u0: fromX / W,
+        v0: fromY / H,
+        u1: toX / W,
+        v1: toY / H,
+      });
+    };
+
+    const handleDown = (e: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const fromRight = W - x;
+      const fromBottom = H - y;
+      const relX = (x / W).toFixed(4);
+      const relY = (y / H).toFixed(4);
+
+      console.log(
+        `[Comic Peel Offset from Bottom-Right] dx=${fromRight.toFixed(1)}px, dy=${fromBottom.toFixed(1)}px | relative: (x=${relX}, y=${relY}) | canvas size: ${W}x${H}`,
+      );
+
+      // Must start from the corner or any already peeled edge
+      if (isNearPeeledEdge(x, y)) {
+        isPeeling = true;
+        lastX = x;
+        lastY = y;
+        peelStrip(x, y, x, y);
+        try {
+          canvas.setPointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+
+    const handleMove = (e: PointerEvent) => {
+      if (!isPeeling) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const dist = Math.hypot(x - lastX, y - lastY);
+      if (dist >= 6 && dist <= 60) {
+        peelStrip(lastX, lastY, x, y);
+        lastX = x;
+        lastY = y;
+      }
+    };
+
+    const handleUp = (e: PointerEvent) => {
+      if (!isPeeling) return;
+      isPeeling = false;
+      try {
+        canvas.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+    };
+
+    canvas.addEventListener("pointerdown", handleDown);
+    canvas.addEventListener("pointermove", handleMove);
+    canvas.addEventListener("pointerup", handleUp);
+    canvas.addEventListener("pointercancel", handleUp);
+
+    onCleanup(() => {
+      canvas.removeEventListener("pointerdown", handleDown);
+      canvas.removeEventListener("pointermove", handleMove);
+      canvas.removeEventListener("pointerup", handleUp);
+      canvas.removeEventListener("pointercancel", handleUp);
+    });
+  });
+
+  return (
+    <div
+      ref={(el) => (containerRef = el)}
+      class="relative w-full h-full overflow-hidden select-none"
+    >
+      {/* Secret Card Revealed Underneath - Hidden until canvas is initialized */}
+      <div
+        class={`absolute inset-0 z-0 flex flex-col items-center justify-center p-4 text-center bg-[var(--pop-yellow)] border-2 border-[var(--ink)] transition-opacity duration-150 ${
+          isReady() ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        {/* Inked Comic Treasure Chest Icon */}
+        <svg
+          viewBox="0 0 48 48"
+          class="w-10 h-10 mb-2"
+          fill="none"
+          stroke="var(--ink)"
+          stroke-width="2.5"
+        >
+          <rect x="6" y="20" width="36" height="22" rx="3" fill="var(--pop-yellow)" />
+          <path d="M 6,20 C 6,11 42,11 42,20 Z" fill="#E8B038" />
+          <path d="M 16,13 L 16,42 M 32,13 L 32,42" stroke="var(--ink)" stroke-width="2" />
+          <circle
+            cx="24"
+            cy="27"
+            r="3.5"
+            fill="var(--paper)"
+            stroke="var(--ink)"
+            stroke-width="2"
+          />
+          <path d="M 24,27 L 24,30" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" />
+        </svg>
+
+        <p
+          class="text-base sm:text-lg font-black text-[var(--ink)] m-0 leading-tight select-all"
+          style={{ "font-family": "var(--font-stack-display)" }}
+        >
+          3X91A4
+        </p>
+      </div>
+
+      {/* Top Peelable Canvas Layer */}
+      <canvas
+        ref={(el) => (canvasRef = el)}
+        class="absolute inset-0 z-10 w-full h-full cursor-pointer"
+        style={{ "touch-action": "none" }}
+      />
+    </div>
+  );
+}
+
 /**
  * One face of one leaf.
  *
@@ -175,18 +458,27 @@ function CommunityRightPage() {
  */
 function PageFace(props: { issue: number; side: "left" | "right" }) {
   const book = () => (props.issue < COMIC_BOOKS.length ? COMIC_BOOKS[props.issue] : null);
+  const isPeelable = () => props.issue === 2 && props.side === "right";
+
   return (
     <Show
       when={book()}
       fallback={props.side === "left" ? <CommunityLeftPage /> : <CommunityRightPage />}
     >
-      <img
-        src={props.side === "left" ? book()!.leftImage : book()!.rightImage}
-        alt={`${book()!.tag} ${props.side} page`}
-        class="w-full h-full object-fill select-none block"
-        loading="eager"
-        draggable={false}
-      />
+      <Show
+        when={isPeelable()}
+        fallback={
+          <img
+            src={props.side === "left" ? book()!.leftImage : book()!.rightImage}
+            alt={`${book()!.tag} ${props.side} page`}
+            class="w-full h-full object-fill select-none block"
+            loading="eager"
+            draggable={false}
+          />
+        }
+      >
+        <PeelableComicPanel src={book()!.rightImage} alt={`${book()!.tag} right page (peelable)`} />
+      </Show>
     </Show>
   );
 }
@@ -727,12 +1019,24 @@ export default function ComicsPage() {
                     class="rounded-lg overflow-hidden"
                     style={{ border: "2px solid var(--ink)", background: "var(--paper)" }}
                   >
-                    <img
-                      src={comic.fullImage}
-                      alt={`FOSS Onam Comic ${comic.tag}`}
-                      class="w-full h-auto object-contain select-none block"
-                      loading="lazy"
-                    />
+                    <Show
+                      when={comic.id === 3}
+                      fallback={
+                        <img
+                          src={comic.fullImage}
+                          alt={`FOSS Onam Comic ${comic.tag}`}
+                          class="w-full h-auto object-contain select-none block"
+                          loading="lazy"
+                        />
+                      }
+                    >
+                      <div class="aspect-square w-full">
+                        <PeelableComicPanel
+                          src={comic.fullImage}
+                          alt={`FOSS Onam Comic ${comic.tag} (peelable)`}
+                        />
+                      </div>
+                    </Show>
                   </div>
                 </article>
               )}

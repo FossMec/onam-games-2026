@@ -1,0 +1,82 @@
+[
+  {
+    "slug": "maveli-terminal-ssh",
+    "title": "The Royal Terminal",
+    "difficulty": "first",
+    "hintHtml": "<p>King Mahabali left his terminal open in the royal proclamation letter on the home page. How do you reach him?</p>",
+    "answer": "maveli@pathalam.btw",
+    "orderIndex": 1
+  },
+  {
+    "slug": "comic-peelable-secret",
+    "title": "Sticky Ink",
+    "difficulty": "easy",
+    "hintHtml": "<p>Maveli left something sticking behind the comic panels of Issue #3.</p>",
+    "answer": "3X91A4",
+    "orderIndex": 2
+  },
+  {
+    "slug": "rising-treasure-balloon",
+    "title": "Sky Delivery",
+    "difficulty": "easy",
+    "hintHtml": "<p class=\"text-center text-xl font-black italic my-2 tracking-wide text-[var(--pop-pink)]\">\"floats!\"</p>",
+    "answer": "AIR_DELIVERY_MAVELI",
+    "orderIndex": 3
+  },
+  {
+    "slug": "gift-opengraph-token",
+    "title": "The Unopened Wish",
+    "difficulty": "medium",
+    "hintHtml": "<div class=\"p-3 rounded-lg bg-[var(--pop-yellow)] border-2 border-[var(--ink)] text-center mb-2\"><p class=\"font-black text-sm m-0\">💌 Create an Onam letter at <a href=\"/letter\" target=\"_blank\" class=\"underline font-bold text-[var(--pop-pink)]\">/letter</a></p></div><p class=\"text-xs font-semibold\">Look closely at what the link reveals to the world before it is opened.</p>",
+    "answer": "R5T9X2",
+    "orderIndex": 4
+  },
+  {
+    "slug": "foss-mec-origin",
+    "title": "The Spark",
+    "difficulty": "medium",
+    "hintHtml": "<p>In what year was the first official FOSS cell at Model Engineering College established, igniting open source in Thrikkakara?</p>",
+    "answer": "2004",
+    "orderIndex": 5
+  },
+  {
+    "slug": "git-initial-commit",
+    "title": "Torvalds' Exodus",
+    "difficulty": "medium",
+    "hintHtml": "<p>Linus Torvalds created Git in April 2005 to break free from which proprietary version control system?</p>",
+    "answer": "BitKeeper",
+    "orderIndex": 6
+  },
+  {
+    "slug": "tux-the-penguin",
+    "title": "The Emperor's Mascot",
+    "difficulty": "hard",
+    "hintHtml": "<p>Who created and drew the official Tux penguin mascot in 1996 using GIMP?</p>",
+    "answer": "Larry Ewing",
+    "orderIndex": 7
+  },
+  {
+    "slug": "gpl-license-header",
+    "title": "The Freedom Manifesto",
+    "difficulty": "hard",
+    "hintHtml": "<p>What was the original 1989 version of Richard Stallman's revolutionary copyleft license?</p>",
+    "answer": "GPLv1",
+    "orderIndex": 8
+  },
+  {
+    "slug": "thrikkakara-temple-seat",
+    "title": "Three Paces",
+    "difficulty": "hard",
+    "hintHtml": "<p>According to ancient Onam legend, which divine incarnation requested three paces of land from King Mahabali at Thrikkakara?</p>",
+    "answer": "Vamana",
+    "orderIndex": 9
+  },
+  {
+    "slug": "arch-linux-pacman",
+    "title": "The Package Master",
+    "difficulty": "hard",
+    "hintHtml": "<p>Who originally created Arch Linux and released version 0.1 'Homer' in March 2002?</p>",
+    "answer": "Judd Vinet",
+    "orderIndex": 10
+  }
+]

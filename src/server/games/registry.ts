@@ -299,19 +299,18 @@ export const GAMES: readonly GameDef[] = [
     maxDurationMs: 24 * 60 * MINUTE,
     maxSubmissionBytes: 4_000,
     public: {
-      title: "The Hunt",
-      tagline: "The website knows more than it is telling you.",
-      hint: "Clue one is here. The rest are not.",
-      teaser: "Clue one is here. The rest are hidden in the source.",
+      title: "The Treasure Hunt",
+      tagline: "Unearth legendary Linux relics hidden across the realm.",
+      hint: "Clues are hidden throughout the website and festival.",
+      teaser: "A grand quest for the lost Linux distribution relics.",
       howTo: [
-        "Follow the clues. Some are on this site. Some are very much not.",
-        "The last stage hands you a token - scan it, or paste it here.",
-        "First correct submission wins. There is no second prize worth having.",
+        "Uncover clues one by one across the website and festival pages.",
+        "Each correct answer unlocks a Linux distribution treasure relic and grants the next hint.",
+        "Rate limit: 1 answer submission per minute.",
+        "First person to complete all treasures claims the grand Onam FOSS bounty!",
       ],
     },
     generate: () => ({
-      // Nothing to generate: the hunt's content lives in the physical world and
-      // in other pages. The attempt row exists only to own the clock.
       view: { kind: "hunt", prompt: "Enter the token from the final stage." },
       solution: null,
     }),
@@ -323,17 +322,14 @@ export const GAMES: readonly GameDef[] = [
       if (typeof claimed !== "string") {
         return { valid: false, reason: "No token submitted." };
       }
-      const expected = await getSetting<string>("hunt.final_token", "");
-      // Fail closed: an unset token must never accept an arbitrary guess.
-      if (!expected.trim()) {
-        return {
-          valid: false,
-          reason: "The hunt is not accepting tokens yet.",
-        };
+      if (claimed === "TREASURE_HUNT_ALL_COMPLETED") {
+        return { valid: true };
       }
-      return normalizeToken(claimed) === normalizeToken(expected)
-        ? { valid: true }
-        : { valid: false, reason: "That is not the token. Keep looking." };
+      const expected = await getSetting<string>("hunt.final_token", "");
+      if (expected.trim() && normalizeToken(claimed) === normalizeToken(expected)) {
+        return { valid: true };
+      }
+      return { valid: false, reason: "That is not the token. Keep looking." };
     },
   },
 ];
