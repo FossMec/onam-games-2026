@@ -1,4 +1,5 @@
 name = "onam-games"
+pages_build_output_dir = "dist"
 compatibility_date = "2025-08-20"
 compatibility_flags = ["nodejs_compat"]
 
@@ -12,6 +13,6 @@ mode = "smart"
 # Cloudflare Workers - idiomatic for SolidStart + Hyperdrive + Singapore-pool Supabase
 # Hyperdrive binding HYPERDRIVE is added via Dashboard or defined below.
 # Variable name must be HYPERDRIVE to match src/server/db/client.ts
-[[hyperdrives]]
+[[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "5eb4ab7a271b462187c2945486c8739a"
