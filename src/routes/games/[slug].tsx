@@ -707,7 +707,9 @@ export default function GameArenaPage() {
               <div class="w-full max-w-md mx-auto space-y-4 flex flex-col items-center justify-center">
                 <div class="flex items-center justify-between w-full gap-2 px-1">
                   <span class="text-xs font-extrabold uppercase tracking-wider text-muted">
-                    {hasFinishedBoard() ? "Your finished board" : "Your run"}
+                    {hasFinishedBoard() && (game()?.status === "closed" || isTester())
+                      ? "Your finished board"
+                      : "Your run"}
                   </span>
                   <Show when={settledResult()?.valid}>
                     <ShoutBurst
@@ -721,49 +723,64 @@ export default function GameArenaPage() {
                 </div>
 
                 <div class="w-full flex items-center justify-center">
-                  <Show when={finishedKind() === "wend"}>
-                    <Suspense fallback={<p class="font-semibold">Loading board…</p>}>
-                      <WendGame
-                        view={finishedBoard()!.view as WendViewData}
-                        disabled
-                        initialFound={
-                          (finishedBoard()!.submission as { found?: WendFound[] } | null)?.found
+                  <Show
+                    when={game()?.status === "closed" || isTester()}
+                    fallback={
+                      <div class="card card-plain w-full max-w-sm mx-auto p-4 space-y-2 text-center">
+                        <p class="font-extrabold text-sm sm:text-base">
+                          🔒 Solution Submitted & Locked
+                        </p>
+                        <p class="comment text-xs sm:text-sm">
+                          To keep competition fair for all players, completed boards and answer keys
+                          will be revealed once today's challenge window closes.
+                        </p>
+                      </div>
+                    }
+                  >
+                    <Show when={finishedKind() === "wend"}>
+                      <Suspense fallback={<p class="font-semibold">Loading board…</p>}>
+                        <WendGame
+                          view={finishedBoard()!.view as WendViewData}
+                          disabled
+                          initialFound={
+                            (finishedBoard()!.submission as { found?: WendFound[] } | null)?.found
+                          }
+                          onFinish={() => undefined}
+                        />
+                      </Suspense>
+                    </Show>
+                    <Show when={finishedKind() === "vallam"}>
+                      <Suspense fallback={<p class="font-semibold">Loading board…</p>}>
+                        <VallamGame
+                          view={finishedBoard()!.view as VallamViewData}
+                          disabled
+                          initialMoves={
+                            (finishedBoard()!.submission as { moves?: VallamMove[] } | null)?.moves
+                          }
+                          onFinish={() => undefined}
+                        />
+                      </Suspense>
+                    </Show>
+                    <Show when={finishedKind() === "jigsaw"}>
+                      <Suspense fallback={<p class="font-semibold">Loading board…</p>}>
+                        <JigsawGame
+                          view={finishedBoard()!.view as JigsawViewData}
+                          startedAt={0}
+                          disabled
+                          initialProgress={jigsawFinishedProgress()}
+                          onFinish={() => undefined}
+                        />
+                      </Suspense>
+                    </Show>
+                    <Show when={isTinder() && tinderFinishedCards()}>
+                      <TinderRecap
+                        cards={tinderFinishedCards()!}
+                        passes={
+                          (finishedBoard()?.submission as TinderSubmission | null)?.passes ?? []
                         }
-                        onFinish={() => undefined}
+                        reveal={recap()?.cards ?? null}
                       />
-                    </Suspense>
-                  </Show>
-                  <Show when={finishedKind() === "vallam"}>
-                    <Suspense fallback={<p class="font-semibold">Loading board…</p>}>
-                      <VallamGame
-                        view={finishedBoard()!.view as VallamViewData}
-                        disabled
-                        initialMoves={
-                          (finishedBoard()!.submission as { moves?: VallamMove[] } | null)?.moves
-                        }
-                        onFinish={() => undefined}
-                      />
-                    </Suspense>
-                  </Show>
-                  <Show when={finishedKind() === "jigsaw"}>
-                    <Suspense fallback={<p class="font-semibold">Loading board…</p>}>
-                      <JigsawGame
-                        view={finishedBoard()!.view as JigsawViewData}
-                        startedAt={0}
-                        disabled
-                        initialProgress={jigsawFinishedProgress()}
-                        onFinish={() => undefined}
-                      />
-                    </Suspense>
-                  </Show>
-                  <Show when={isTinder() && tinderFinishedCards()}>
-                    <TinderRecap
-                      cards={tinderFinishedCards()!}
-                      passes={
-                        (finishedBoard()?.submission as TinderSubmission | null)?.passes ?? []
-                      }
-                      reveal={recap()?.cards ?? null}
-                    />
+                    </Show>
                   </Show>
                 </div>
 

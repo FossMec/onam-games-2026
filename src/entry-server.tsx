@@ -10,6 +10,7 @@ export default createHandler(() => {
     process.env.VITE_UMAMI_SCRIPT_URL ||
     process.env.UMAMI_SCRIPT_URL ||
     "https://cloud.umami.is/script.js";
+  const clarityProjectId = process.env.VITE_CLARITY_PROJECT_ID || process.env.CLARITY_PROJECT_ID;
 
   return (
     <StartServer
@@ -43,6 +44,12 @@ export default createHandler(() => {
             />
             {umamiWebsiteId ? (
               <script defer src={umamiScriptUrl} data-website-id={umamiWebsiteId} />
+            ) : null}
+            {clarityProjectId ? (
+              <script
+                type="text/javascript"
+                innerHTML={`(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","${clarityProjectId}");`}
+              />
             ) : null}
             {assets}
           </head>

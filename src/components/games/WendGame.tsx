@@ -58,10 +58,28 @@ const PATH_POPS = [
   "var(--pop-orange, #f97316)",
 ];
 
+function shufflePops(grid: string[][]): string[] {
+  let hash = 0x811c9dc5;
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < (grid[r]?.length ?? 0); c++) {
+      const code = (grid[r][c] || "W").charCodeAt(0);
+      hash = Math.imul(hash ^ code, 0x01000193);
+    }
+  }
+  const colors = [...PATH_POPS];
+  for (let i = colors.length - 1; i > 0; i--) {
+    hash = Math.imul(hash ^ (hash >>> 16), 0x45d9f3b);
+    const j = Math.abs(hash) % (i + 1);
+    [colors[i], colors[j]] = [colors[j], colors[i]];
+  }
+  return colors;
+}
+
 const key = (cell: Cell) => `${cell.r},${cell.c}`;
 const adjacent = (a: Cell, b: Cell) => Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1;
 
 export function WendGame(props: WendGameProps) {
+  const pathPops = createMemo(() => shufflePops(props.view.grid));
   const [found, setFound] = createSignal<WendFound[]>(props.initialFound ?? []);
   const [path, setPath] = createSignal<Cell[]>([]);
   const [drawing, setDrawing] = createSignal(false);
@@ -316,7 +334,7 @@ export function WendGame(props: WendGameProps) {
             {/* 1. Locked Found Words */}
             <For each={found()}>
               {(entry, i) => {
-                const color = PATH_POPS[i() % PATH_POPS.length];
+                const color = pathPops()[i() % pathPops().length];
                 const cells = entry.cells;
                 const pathD =
                   cells.length > 1
@@ -536,7 +554,7 @@ export function WendGame(props: WendGameProps) {
             <span
               class="badge text-xs font-black px-3 py-1 inline-flex items-center gap-1.5 shadow-xs"
               style={{
-                background: PATH_POPS[i() % PATH_POPS.length],
+                background: pathPops()[i() % pathPops().length],
                 border: "2px solid var(--ink)",
                 color: "var(--ink)",
               }}

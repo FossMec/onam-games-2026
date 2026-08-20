@@ -64,5 +64,5 @@ export async function getMyAttempt(slug: string) {
 export async function getMyRecap(slug: string): Promise<TinderRecap | null> {
   const user = await getCurrentUser();
   if (!user) return null;
-  return getMyRecapBySlug(slug, user.id);
+  return getMyRecapBySlug(slug, user.id, viewerRole(user));
 }

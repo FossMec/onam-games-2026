@@ -85,28 +85,39 @@ const ENEMY_FILTERS = [
   "hue-rotate(-20deg) saturate(1.5)",
 ];
 
-function getBoatSprite(boat: BoatView): string {
-  if (boat.id === 0) return BOAT_SPRITES.hero;
-  if (boat.len >= 3) {
-    return BOAT_SPRITES.canoe3;
-  }
-  const pick = boat.id % 3;
-  if (pick === 0) return BOAT_SPRITES.wood;
-  if (pick === 1) return BOAT_SPRITES.canoe;
-  return BOAT_SPRITES.small;
+const SHORT_SPRITES = [BOAT_SPRITES.wood, BOAT_SPRITES.canoe, BOAT_SPRITES.small];
+
+function boatVisualSeed(boat: BoatView): number {
+  if (boat.id === 0) return 0;
+  let h = Math.imul(boat.id ^ 0x5bd1e995, 0x1b873593);
+  h = Math.imul(h ^ (boat.r * 7 + boat.c * 13 + (boat.horizontal ? 31 : 17)), 0xcc9e2d51);
+  return Math.abs(h);
 }
 
-function getBoatFilter(boat: BoatView, isActive: boolean): string {
+function getBoatSprite(boat: BoatView, visualSalt = 0): string {
+  if (boat.id === 0) return BOAT_SPRITES.hero;
+  if (boat.len >= 3) return BOAT_SPRITES.canoe3;
+  const hash = boatVisualSeed(boat) ^ visualSalt;
+  return SHORT_SPRITES[hash % SHORT_SPRITES.length];
+}
+
+function getBoatFilter(boat: BoatView, isActive: boolean, visualSalt = 0): string {
   if (boat.id === 0) {
     return isActive
       ? "drop-shadow(0 0 10px rgba(228, 88, 88, 0.9)) drop-shadow(0 4px 8px rgba(34, 32, 43, 0.4))"
       : "drop-shadow(0 2px 4px rgba(34, 32, 43, 0.3))";
   }
-  const baseFilter = ENEMY_FILTERS[boat.id % ENEMY_FILTERS.length];
+  const hash = (boatVisualSeed(boat) >>> 3) ^ visualSalt;
+  const baseFilter = ENEMY_FILTERS[hash % ENEMY_FILTERS.length];
   const filterPrefix = baseFilter === "none" ? "" : `${baseFilter} `;
   return isActive
     ? `${filterPrefix}drop-shadow(0 0 8px rgba(255, 209, 102, 0.95)) drop-shadow(0 4px 8px rgba(34, 32, 43, 0.4))`
     : `${filterPrefix}drop-shadow(0 2px 4px rgba(34, 32, 43, 0.25))`;
+}
+
+function getBoatPassenger(boat: BoatView, visualSalt = 0): SpriteName {
+  const hash = (boatVisualSeed(boat) >>> 6) ^ visualSalt;
+  return ENEMY_PASSENGERS[hash % ENEMY_PASSENGERS.length];
 }
 
 function occupancy(boats: BoatView[], size: number): Int8Array {
@@ -156,6 +167,14 @@ function replay(start: BoatView[], moves: VallamMove[]): BoatView[] {
 
 export function VallamGame(props: VallamGameProps) {
   let boardRef: HTMLDivElement | undefined;
+
+  const visualSalt = createMemo(() => {
+    let s = 0x811c9dc5;
+    for (const b of props.view.boats) {
+      s = Math.imul(s ^ (b.id * 17 + b.r * 31 + b.c * 13 + (b.horizontal ? 7 : 3)), 0x01000193);
+    }
+    return Math.abs(s);
+  });
 
   const [moves, setMoves] = createSignal<VallamMove[]>(props.initialMoves ?? []);
   const [boats, setBoats] = createSignal<BoatView[]>(
@@ -417,14 +436,14 @@ export function VallamGame(props: VallamGameProps) {
                         }}
                       >
                         <img
-                          src={getBoatSprite(boat)}
+                          src={getBoatSprite(boat, visualSalt())}
                           alt=""
                           draggable={false}
                           style={{
                             width: "100%",
                             height: "100%",
                             "object-fit": "contain",
-                            filter: getBoatFilter(boat, active()),
+                            filter: getBoatFilter(boat, active(), visualSalt()),
                             transition: "filter 140ms ease-out",
                           }}
                         />
@@ -438,7 +457,7 @@ export function VallamGame(props: VallamGameProps) {
                             }}
                           >
                             <SpriteIcon
-                              name={ENEMY_PASSENGERS[boat.id % ENEMY_PASSENGERS.length]}
+                              name={getBoatPassenger(boat, visualSalt())}
                               size={boat.len >= 3 ? 24 : 20}
                               animate="wobble"
                             />
@@ -449,7 +468,7 @@ export function VallamGame(props: VallamGameProps) {
                   >
                     {/* Horizontal boat: faces right toward exit (hero vallam flipped horizontally so prow points right) */}
                     <img
-                      src={getBoatSprite(boat)}
+                      src={getBoatSprite(boat, visualSalt())}
                       alt=""
                       draggable={false}
                       style={{
@@ -457,7 +476,7 @@ export function VallamGame(props: VallamGameProps) {
                         height: "100%",
                         "object-fit": "contain",
                         transform: isVallam ? "scaleX(-1)" : "none",
-                        filter: getBoatFilter(boat, active()),
+                        filter: getBoatFilter(boat, active(), visualSalt()),
                         transition: "filter 140ms ease-out",
                       }}
                     />
@@ -470,7 +489,7 @@ export function VallamGame(props: VallamGameProps) {
                         }}
                       >
                         <SpriteIcon
-                          name={ENEMY_PASSENGERS[boat.id % ENEMY_PASSENGERS.length]}
+                          name={getBoatPassenger(boat, visualSalt())}
                           size={boat.len >= 3 ? 24 : 20}
                           animate="wobble"
                         />

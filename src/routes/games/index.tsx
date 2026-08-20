@@ -648,7 +648,9 @@ export default function GamesPage() {
                                     : isRunning()
                                       ? `Resume Day ${current.day} Challenge →`
                                       : isCompleted()
-                                        ? `View Day ${current.day} Board & Score →`
+                                        ? current.status === "closed"
+                                          ? `View Day ${current.day} Board & Score →`
+                                          : `View Day ${current.day} Result →`
                                         : (currentAttempt()?.attemptsUsed ?? 0) > 0
                                           ? `Play Day ${current.day} (Attempt ${(currentAttempt()?.attemptsUsed ?? 0) + 1}) →`
                                           : `Play Day ${current.day} Now →`}

@@ -141,10 +141,17 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
     );
   }
 
-  // Canonical daily seed ensures fair competition - every player receives the exact same puzzle/level.
-  const seed = sha256(`foss-onam:daily-game:${game.slug}:day-${game.day}`);
-  const { view } = def.generate(seed, game.difficulty, game.assets as GameAssets);
   const attemptNumber = (prior[0]?.attemptNumber ?? 0) + 1;
+
+  // Generate per-attempt seeds for games where randomizing deals, piece scatter, or orientations
+  // prevents answer sharing / layout copying between players, while maintaining identical puzzle difficulty.
+  let seed: string;
+  if (game.gameType === "tinder" || game.gameType === "jigsaw" || game.gameType === "wend") {
+    seed = sha256(`foss-onam:${game.gameType}:${game.slug}:${input.userId}:${attemptNumber}`);
+  } else {
+    seed = sha256(`foss-onam:daily-game:${game.slug}:day-${game.day}`);
+  }
+  const { view } = def.generate(seed, game.difficulty, game.assets as GameAssets);
   const now = new Date();
   const releaseAtDate = game.releaseAt ? new Date(game.releaseAt) : null;
   const startedAt =
@@ -367,14 +374,21 @@ export interface TinderRecap {
  * ever hand over is the deck you just finished - and every card in it is one
  * you have already answered correctly, or the run would not have ended.
  */
-export async function getMyRecapBySlug(slug: string, userId: string): Promise<TinderRecap | null> {
-  const db = getDb();
-  const [game] = await db
-    .select({ id: games.id, gameType: games.gameType })
-    .from(games)
-    .where(eq(games.slug, slug))
-    .limit(1);
+export async function getMyRecapBySlug(
+  slug: string,
+  userId: string,
+  role: ViewerRole = "player",
+): Promise<TinderRecap | null> {
+  const game = await getGameBySlug(slug, role);
   if (!game || game.gameType !== "tinder") return null;
+
+  const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
+  const isTester = (role === "tester" || role === "admin") && isTesterModeEnabled;
+
+  // Answers remain locked until the day's challenge closes (or tester mode for testers)
+  if (game.status !== "closed" && !isTester) return null;
+
+  const db = getDb();
 
   const [attempt] = await db
     .select({ seed: gameAttempts.seed })
