@@ -1,7 +1,7 @@
 import { getRequestEvent } from "solid-js/web";
 import { getDb } from "~/server/db/client";
 import { appSettings } from "~/server/db/schema";
-import { invalidateShared, sharedRead } from "~/server/cache";
+import { invalidateShared } from "~/server/cache";
 
 /**
  * Every setting, once per request.
@@ -69,8 +69,8 @@ async function loadSettings(): Promise<Map<string, unknown>> {
  */
 export function snapshotSettings(): Promise<Map<string, unknown>> {
   const event = getRequestEvent();
-  if (!event) return sharedRead(SETTINGS_KEY, loadSettings);
-  event.locals.settingsPromise ??= sharedRead(SETTINGS_KEY, loadSettings);
+  if (!event) return loadSettings();
+  event.locals.settingsPromise ??= loadSettings();
   return event.locals.settingsPromise;
 }
 

@@ -429,13 +429,19 @@ export function TinderGame(props: TinderGameProps) {
       {/* ------------------------------------------------------- app chrome */}
       <div
         class="flex shrink-0 items-center justify-between gap-2 rounded px-3 py-1.5"
-        style={{ border: "var(--ink-w) solid var(--ink)", background: "var(--paper-3)" }}
+        style={{
+          border: "var(--ink-w) solid var(--ink)",
+          background: "var(--paper-3)",
+        }}
       >
         <span
           class="text-base sm:text-lg leading-none"
-          style={{ "font-family": "var(--font-stack-comic)", "letter-spacing": "0.02em" }}
+          style={{
+            "font-family": "var(--font-stack-comic)",
+            "letter-spacing": "0.02em",
+          }}
         >
-          foss<span style={{ color: "var(--pop-red)" }}>·</span>tinder
+          foss<span style={{ color: "var(--pop-red)" }}>·</span>finder
         </span>
         <div class="flex items-center gap-1.5 text-xs sm:text-sm">
           <span class="badge" style={{ "--pop": "var(--pop-blue)" }}>
@@ -628,7 +634,10 @@ function CardFace(props: { card: TinderCardView | undefined; id: string }) {
       {/* The bio bar. */}
       <div
         class="space-y-1 px-4 py-3"
-        style={{ "border-top": "var(--ink-w) solid var(--ink)", background: "var(--paper-2)" }}
+        style={{
+          "border-top": "var(--ink-w) solid var(--ink)",
+          background: "var(--paper-2)",
+        }}
       >
         <p
           class="leading-tight"
@@ -677,7 +686,10 @@ function PenaltyScreen(props: { verdict: Verdict; card: TinderCardView | undefin
       <div class="flex items-center gap-3">
         <div
           class="grid h-14 w-14 shrink-0 place-items-center rounded-full"
-          style={{ background: "var(--paper-2)", border: "var(--ink-w) solid var(--paper)" }}
+          style={{
+            background: "var(--paper-2)",
+            border: "var(--ink-w) solid var(--paper)",
+          }}
         >
           <ProjectMark id={props.verdict.id} name={props.card?.name ?? ""} size={40} />
         </div>
@@ -695,7 +707,9 @@ function PenaltyScreen(props: { verdict: Verdict; card: TinderCardView | undefin
           </p>
           <span
             class="sticker text-xs"
-            style={{ "--pop": props.verdict.open ? "var(--pop-teal)" : "var(--pop-red)" }}
+            style={{
+              "--pop": props.verdict.open ? "var(--pop-teal)" : "var(--pop-red)",
+            }}
           >
             {props.verdict.open ? "is open source" : "is proprietary"}
           </span>
@@ -735,7 +749,10 @@ function PenaltyScreen(props: { verdict: Verdict; card: TinderCardView | undefin
         </svg>
         <span
           class="tabular-nums text-lg font-bold"
-          style={{ color: "var(--pop-yellow)", "font-family": "var(--font-stack-mono)" }}
+          style={{
+            color: "var(--pop-yellow)",
+            "font-family": "var(--font-stack-mono)",
+          }}
         >
           +3s
         </span>

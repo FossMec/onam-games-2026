@@ -90,7 +90,7 @@ const SHORT_SPRITES = [BOAT_SPRITES.wood, BOAT_SPRITES.canoe, BOAT_SPRITES.small
 function boatVisualSeed(boat: BoatView): number {
   if (boat.id === 0) return 0;
   let h = Math.imul(boat.id ^ 0x5bd1e995, 0x1b873593);
-  h = Math.imul(h ^ (boat.r * 7 + boat.c * 13 + (boat.horizontal ? 31 : 17)), 0xcc9e2d51);
+  h = Math.imul(h ^ (boat.len * 31 + (boat.horizontal ? 101 : 17)), 0xcc9e2d51);
   return Math.abs(h);
 }
 
