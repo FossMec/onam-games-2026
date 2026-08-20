@@ -194,9 +194,6 @@ export default function Home() {
     return null;
   };
 
-  const selectedDay = createMemo(() => parseQueryDay() ?? currentActiveDay());
-  const [aboutTab, setAboutTab] = createSignal<"games" | "fossmec">("games");
-
   const currentActiveDay = () => {
     const list = games();
     if (!list || list.length === 0) return 1;
@@ -218,6 +215,9 @@ export default function Home() {
 
     return 1;
   };
+
+  const selectedDay = createMemo(() => parseQueryDay() ?? currentActiveDay());
+  const [aboutTab, setAboutTab] = createSignal<"games" | "fossmec">("games");
 
   const liveGame = () =>
     games()?.find((g) => g.day === currentActiveDay()) ??

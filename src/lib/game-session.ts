@@ -106,3 +106,31 @@ export function getFinished(slug: string): FinishedBoard | null {
 export function saveFinished(slug: string, board: FinishedBoard): void {
   write(DONE_PREFIX + slug, board);
 }
+
+/* ------------------------------------------------------- hub entry gate */
+
+const HUB_ENTRY_KEY = "og_arena_from_hub";
+
+/**
+ * Marks that the player reached the arena by clicking through the games hub,
+ * not by deep-linking or refreshing the /games/<slug> URL directly. The arena
+ * page uses this to bounce direct hits back to the hub, so a completed/locked
+ * board is never the first thing someone lands on. Scoped to the tab via
+ * sessionStorage: a fresh tab or a manually typed URL has no flag and is sent
+ * back to the hub.
+ */
+export function markArenaFromHub(): void {
+  try {
+    sessionStorage.setItem(HUB_ENTRY_KEY, "1");
+  } catch {
+    // best effort — without the flag the arena just bounces to the hub
+  }
+}
+
+export function enteredArenaFromHub(): boolean {
+  try {
+    return sessionStorage.getItem(HUB_ENTRY_KEY) === "1";
+  } catch {
+    return false;
+  }
+}

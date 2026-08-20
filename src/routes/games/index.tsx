@@ -9,7 +9,7 @@ import { Countdown } from "~/components/Countdown";
 import { LoadingScreen } from "~/components/LoadingScreen";
 import { FairPlayModal, hasAcknowledgedFairPlay } from "~/components/games/FairPlayModal";
 import { HowToPlayModal } from "~/components/games/HowToPlay";
-import { clearAttempt, getStoredAttempt, storeAttempt } from "~/lib/game-session";
+import { clearAttempt, getStoredAttempt, markArenaFromHub, storeAttempt } from "~/lib/game-session";
 import { gameBySlug, gamesList, myAttempt as myAttemptQuery, viewer } from "~/lib/queries";
 import { teaserIcon } from "~/lib/game-teasers";
 import { gameImageForType } from "~/lib/img";
@@ -194,12 +194,16 @@ export default function GamesPage() {
       return;
     }
 
-    // If game has an active run or is completed, jump straight into arena without rules modal
-    if (
-      getStoredAttempt(game.slug) ||
-      currentAttempt()?.status === "in_progress" ||
-      isCompleted()
-    ) {
+    // A completed game skips the locked arena page and goes straight to the
+    // day's leaderboard — that's the result the player actually wants.
+    if (isCompleted()) {
+      navigate(`/leaderboard?day=${game.day}`);
+      return;
+    }
+
+    // Active run or in-progress attempt: jump into the arena without the rules modal.
+    if (getStoredAttempt(game.slug) || currentAttempt()?.status === "in_progress") {
+      markArenaFromHub();
       navigate(`/games/${game.slug}`);
       return;
     }
@@ -236,6 +240,7 @@ export default function GamesPage() {
         startedAt: data.startedAt,
       });
       setActiveModalGame(null);
+      markArenaFromHub();
       navigate(`/games/${game.slug}`);
     } catch {
       setError("Network hiccup - please check your connection.");
@@ -595,6 +600,7 @@ export default function GamesPage() {
                           </div>
                           <A
                             href={playHref}
+                            onClick={() => markArenaFromHub()}
                             class="btn-ghost w-full text-center text-base py-2.5 block"
                           >
                             Take a look before it opens →
@@ -661,7 +667,14 @@ export default function GamesPage() {
                             }
                             fallback={
                               <A
-                                href={isDay7 ? "/code-a-pookalam/vote" : `/games/${current.slug}`}
+                                href={
+                                  isDay7
+                                    ? "/code-a-pookalam/vote"
+                                    : currentAttempt()?.status === "submitted"
+                                      ? `/leaderboard?day=${current.day}`
+                                      : `/games/${current.slug}`
+                                }
+                                onClick={() => markArenaFromHub()}
                                 class="btn-ghost w-full text-center text-base py-2.5 block"
                               >
                                 <Show

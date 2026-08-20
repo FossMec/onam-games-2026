@@ -2,7 +2,16 @@ import { Title } from "@solidjs/meta";
 import { A, createAsync, useNavigate, useParams, revalidate } from "@solidjs/router";
 import type { RouteDefinition } from "@solidjs/router";
 import { ChevronLeft } from "lucide-solid";
-import { lazy, Show, Suspense, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+import {
+  lazy,
+  Show,
+  Suspense,
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  onMount,
+} from "solid-js";
 
 import { ShoutBurst } from "~/components/art/Burst";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
@@ -55,6 +64,7 @@ import {
   saveFinished,
   saveProgress,
   storeAttempt,
+  enteredArenaFromHub,
 } from "~/lib/game-session";
 import { SHOUT_COLOR, moodForResult, shout } from "~/lib/shouts";
 
@@ -131,6 +141,15 @@ export default function GameArenaPage() {
   const navigate = useNavigate();
   const slug = () => params.slug ?? "";
   const game = createAsync(() => gameBySlug(slug()));
+
+  // The arena is only meant to be reached by clicking through the games hub.
+  // Any direct hit (deep link, refresh, shared URL) bounces back to the hub so
+  // a completed/locked board is never the first thing someone lands on.
+  onMount(() => {
+    if (!enteredArenaFromHub()) {
+      navigate(`/games?game=${slug()}`, { replace: true });
+    }
+  });
   const me = createAsync(() => viewer());
   const myAttempt = createAsync(() => myAttemptQuery(slug()));
   const banState = createAsync(() => banStateQuery());
