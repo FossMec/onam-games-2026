@@ -19,7 +19,8 @@
     "sprites:jump": "python3 scripts/process-jump-sprites.py",
     "sprites:vallam": "python3 scripts/process-vallam-sprites.py",
     "verify:anticheat": "tsx scripts/verify-anticheat.ts",
-    "analyze:cheaters": "tsx scripts/analyze-cheaters.ts"
+    "analyze:cheaters": "tsx scripts/analyze-cheaters.ts",
+    "deploy": "wrangler pages deploy dist"
   },
   "dependencies": {
     "@fingerprintjs/fingerprintjs": "^5.2.0",
@@ -43,17 +44,11 @@
     "iron-webcrypto": "^2.0.0",
     "tailwindcss": "^4.3.3",
     "vite-imagetools": "^12.0.0",
-    "vite-plus": "catalog:"
-  },
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "11.21.0",
-      "onFail": "download"
-    }
+    "vite-plus": "catalog:",
+    "wrangler": "^4.124.0"
   },
   "engines": {
-    "node": ">=24"
+    "node": ">=20"
   },
   "packageManager": "pnpm@11.21.0"
 }

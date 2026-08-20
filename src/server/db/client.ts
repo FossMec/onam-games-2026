@@ -2,43 +2,68 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
+import { getServerEnv } from "~/server/env";
+import { getRequestEvent } from "solid-js/web";
+
 let _db: ReturnType<typeof createDrizzle> | undefined;
 
 function getDatabaseUrl(): string {
-  // Prefer Hyperdrive binding (Cloudflare Workers idiomatic)
-  // Supports both HYPERDRIVE (docs) and SUPABASE_SG (your current binding) + fallbacks
+  // Prefer Hyperdrive binding (Cloudflare Pages/Workers idiomatic)
+  // Supports both HYPERDRIVE (docs) and SUPABASE_SG (current binding) + fallbacks
   try {
+    const event = getRequestEvent();
+    const nativeEvent = event?.nativeEvent as unknown as Record<string, unknown> | undefined;
+    const nativeContext = nativeEvent?.context as Record<string, unknown> | undefined;
+    const cfContext = nativeContext?.cloudflare as { env?: Record<string, unknown> } | undefined;
+    const requestRuntime = (
+      event?.request as unknown as {
+        runtime?: { cloudflare?: { env?: Record<string, unknown> } };
+      }
+    )?.runtime;
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cfEnv =
-      (globalThis as any).__cloudflare_env ?? (globalThis as any).env ?? (globalThis as any);
+    const g = globalThis as any;
+    const envCandidates = [
+      cfContext?.env,
+      requestRuntime?.cloudflare?.env,
+      g.__env__,
+      g.__cloudflare_env__,
+      g.env,
+      g,
+    ];
+
     const candidates = ["HYPERDRIVE", "SUPABASE_SG", "SUPABASE", "DB"] as const;
-    for (const key of candidates) {
-      const binding = (cfEnv as Record<string, unknown>)?.[key] as
-        | { connectionString?: string }
-        | string
-        | undefined;
-      if (typeof binding === "string" && binding.startsWith("postgres")) return binding;
-      if (
-        binding &&
-        typeof binding === "object" &&
-        (binding as { connectionString?: string }).connectionString
-      ) {
-        return (binding as { connectionString: string }).connectionString;
+    for (const envObj of envCandidates) {
+      if (envObj && typeof envObj === "object") {
+        for (const key of candidates) {
+          const binding = envObj[key] as { connectionString?: string } | string | undefined;
+          if (typeof binding === "string" && binding.startsWith("postgres")) {
+            return binding;
+          }
+          if (
+            binding &&
+            typeof binding === "object" &&
+            (binding as { connectionString?: string }).connectionString
+          ) {
+            return (binding as { connectionString: string }).connectionString;
+          }
+        }
       }
     }
   } catch {
     /* ignore */
   }
-  // Also check process.env injected by Cloudflare (Hyperdrive connectionString passthrough as string)
-  const envProcess = process.env as Record<string, string | undefined>;
-  const hyperdriveString =
-    envProcess.HYPERDRIVE ??
-    envProcess.SUPABASE_SG ??
-    envProcess.HYPERDRIVE_CONNECTION_STRING ??
-    envProcess.SUPABASE_SG_CONNECTION_STRING;
+
+  // Also check process.env / getServerEnv injected by Cloudflare (Hyperdrive connectionString passthrough as string)
+  const hyperdriveString = getServerEnv(
+    "HYPERDRIVE",
+    "SUPABASE_SG",
+    "HYPERDRIVE_CONNECTION_STRING",
+    "SUPABASE_SG_CONNECTION_STRING",
+  );
   if (hyperdriveString && hyperdriveString.startsWith("postgres")) return hyperdriveString;
 
-  const url = process.env.DATABASE_URL;
+  const url = getServerEnv("DATABASE_URL");
   if (!url) {
     console.error("[DATABASE] ❌ Fatal: DATABASE_URL environment variable is missing!");
     throw new Error("DATABASE_URL is not set");

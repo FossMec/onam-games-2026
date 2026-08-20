@@ -1,5 +1,6 @@
 import { useSession } from "@solidjs/start/http";
 import { getSupabaseAnon } from "~/server/supabase/client";
+import { getServerEnv } from "~/server/env";
 import type { OAuthSession } from "./service";
 
 /**
@@ -60,12 +61,12 @@ interface PendingOAuth {
 }
 
 export function isDirectGoogleEnabled(): boolean {
-  return !!process.env.GOOGLE_OAUTH_CLIENT_ID && !!process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  return !!getServerEnv("GOOGLE_OAUTH_CLIENT_ID") && !!getServerEnv("GOOGLE_OAUTH_CLIENT_SECRET");
 }
 
 function credentials(): { clientId: string; clientSecret: string } {
-  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const clientId = getServerEnv("GOOGLE_OAUTH_CLIENT_ID");
+  const clientSecret = getServerEnv("GOOGLE_OAUTH_CLIENT_SECRET");
   if (!clientId || !clientSecret) {
     throw new Error("GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET are not set");
   }
@@ -73,7 +74,7 @@ function credentials(): { clientId: string; clientSecret: string } {
 }
 
 function getSecret(): string {
-  const secret = process.env.SESSION_SECRET;
+  const secret = getServerEnv("SESSION_SECRET");
   if (!secret || secret.length < 32) {
     throw new Error("SESSION_SECRET must be set and at least 32 characters");
   }

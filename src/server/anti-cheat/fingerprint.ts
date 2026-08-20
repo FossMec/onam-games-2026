@@ -1,8 +1,9 @@
 import { createHmac } from "node:crypto";
+import { getServerEnv } from "~/server/env";
 import type { FingerprintSignals } from "~/lib/fingerprint";
 
 function hmac(value: unknown, salt = ""): string {
-  const key = process.env.DEVICE_PEPPER ?? process.env.SESSION_SECRET ?? "dev-pepper";
+  const key = getServerEnv("DEVICE_PEPPER", "SESSION_SECRET") ?? "dev-pepper";
   const str =
     typeof value === "string"
       ? value

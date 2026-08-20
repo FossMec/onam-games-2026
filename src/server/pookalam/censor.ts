@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import defaultHashesData from "./profanity-hashes.json";
+import { getServerEnv } from "~/server/env";
 
 /**
  * Server-side moderation and profanity filter.
@@ -33,9 +34,10 @@ function loadConfig(): ProfanityConfig {
   const blockedWords: string[] = [];
 
   // 1. Try loading from environment variable (optional)
-  if (process.env.PROFANITY_DICTIONARY_JSON) {
+  const profanityEnv = getServerEnv("PROFANITY_DICTIONARY_JSON");
+  if (profanityEnv) {
     try {
-      const parsed = JSON.parse(process.env.PROFANITY_DICTIONARY_JSON);
+      const parsed = JSON.parse(profanityEnv);
       if (Array.isArray(parsed?.blocked)) {
         for (const w of parsed.blocked) {
           if (typeof w === "string") {

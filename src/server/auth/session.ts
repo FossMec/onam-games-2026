@@ -1,4 +1,5 @@
 import { useSession } from "@solidjs/start/http";
+import { getServerEnv } from "~/server/env";
 
 const SESSION_NAME = "og_session";
 
@@ -8,7 +9,7 @@ export interface AuthCookieData {
 }
 
 function getSecret(): string {
-  const secret = process.env.SESSION_SECRET;
+  const secret = getServerEnv("SESSION_SECRET");
   if (!secret || secret.length < 32) {
     throw new Error("SESSION_SECRET must be set and at least 32 characters");
   }
