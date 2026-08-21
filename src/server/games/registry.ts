@@ -284,7 +284,7 @@ export const GAMES: readonly GameDef[] = [
     slug: "treasure-hunt",
     day: 6,
     gameType: "hunt",
-    metric: "fcfs",
+    metric: "score",
     maxAttempts: 1,
     /** Realistically at least 20s to solve and submit across 10 clues */
     minPlausibleMs: 20_000,

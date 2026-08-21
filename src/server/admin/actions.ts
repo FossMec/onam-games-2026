@@ -5,6 +5,7 @@ import {
   adminAddTester,
   adminCreateGame,
   adminDeleteGame,
+  adminGetHuntOverview,
   adminGetMetrics,
   adminListActivity,
   adminListAttempts,
@@ -170,4 +171,8 @@ export async function listCollabMessagesAction(page = 0) {
 export async function adminDeleteCollabMessageAction(messageId: string) {
   await requireAdmin();
   return deleteCollabMessage(messageId);
+}
+
+export async function getAdminHuntOverviewAction() {
+  return adminGetHuntOverview();
 }

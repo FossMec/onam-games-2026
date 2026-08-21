@@ -1,5 +1,6 @@
 import {
   Activity,
+  Compass,
   Flame,
   Gamepad2,
   Image as ImageIcon,
@@ -15,6 +16,7 @@ export type AdminTabId =
   | "games"
   | "users"
   | "attempts"
+  | "hunt"
   | "settings"
   | "security"
   | "pookalam"
@@ -34,6 +36,7 @@ interface AdminTabsProps {
     users?: number;
     games?: number;
     attempts?: number;
+    hunt?: number;
     suspicious?: number;
     testers?: number;
     pookalam?: number;
@@ -44,6 +47,7 @@ export function AdminTabs(props: AdminTabsProps) {
   const tabs = (): AdminTabItem[] => [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
     { id: "games", label: "Games & Schedule", icon: Gamepad2, badge: props.counts?.games },
+    { id: "hunt", label: "Treasure Hunt", icon: Compass, badge: props.counts?.hunt },
     { id: "users", label: "Users & Bans", icon: Users, badge: props.counts?.users },
     { id: "attempts", label: "Game Attempts", icon: Flame, badge: props.counts?.attempts },
     { id: "settings", label: "App Settings", icon: Settings },

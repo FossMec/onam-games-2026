@@ -8,10 +8,12 @@ import {
   gameAttempts,
   games,
   getDb,
+  huntQuestions,
   pookalamSubmissions,
   suspiciousLogs,
   testers,
   userDevices,
+  userHuntProgress,
   users,
 } from "~/server/db/client";
 import { invalidateShared } from "~/server/cache";
@@ -498,4 +500,148 @@ export async function adminListCollabMessages(limit = 30, offset = 0) {
     .orderBy(desc(collabMessages.createdAt))
     .limit(limit)
     .offset(offset);
+}
+
+export interface AdminHuntQuestionStat {
+  id: string;
+  slug: string;
+  title: string;
+  difficulty: string;
+  orderIndex: number;
+  hintHtml: string;
+  answer: string;
+  active: boolean;
+  stuckPlayersCount: number;
+  solvedPlayersCount: number;
+}
+
+export interface AdminHuntPlayer {
+  userId: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+  college: string | null;
+  branch: string | null;
+  batch: string | null;
+  role: string;
+  currentQuestionId: string | null;
+  currentQuestionTitle: string;
+  currentQuestionIndex: number | null;
+  solvedCount: number;
+  solvedQuestionIds: string[];
+  completed: boolean;
+  completedAt: string | null;
+  lastSubmittedAt: string | null;
+  updatedAt: string;
+}
+
+export interface AdminHuntOverview {
+  totalParticipants: number;
+  completedCount: number;
+  inProgressCount: number;
+  questions: AdminHuntQuestionStat[];
+  players: AdminHuntPlayer[];
+}
+
+export async function adminGetHuntOverview(): Promise<AdminHuntOverview> {
+  await requireAdmin();
+  const db = getDb();
+
+  const [questions, progressRows] = await Promise.all([
+    db.select().from(huntQuestions).orderBy(asc(huntQuestions.orderIndex)),
+    db
+      .select({
+        progressId: userHuntProgress.id,
+        userId: userHuntProgress.userId,
+        currentQuestionId: userHuntProgress.currentQuestionId,
+        solvedQuestionIds: userHuntProgress.solvedQuestionIds,
+        solvedCount: userHuntProgress.solvedCount,
+        lastSubmittedAt: userHuntProgress.lastSubmittedAt,
+        completedAt: userHuntProgress.completedAt,
+        updatedAt: userHuntProgress.updatedAt,
+        name: users.name,
+        email: users.email,
+        avatarUrl: users.avatarUrl,
+        college: users.college,
+        branch: users.branch,
+        batch: users.batch,
+        role: users.role,
+      })
+      .from(userHuntProgress)
+      .innerJoin(users, eq(users.id, userHuntProgress.userId))
+      .orderBy(
+        desc(userHuntProgress.solvedCount),
+        asc(userHuntProgress.completedAt),
+        desc(userHuntProgress.updatedAt),
+      ),
+  ]);
+
+  const questionsMap = new Map(questions.map((q) => [q.id, q]));
+
+  const questionStats: AdminHuntQuestionStat[] = questions.map((q) => {
+    let stuckCount = 0;
+    let solvedCount = 0;
+
+    for (const p of progressRows) {
+      if (!p.completedAt && p.currentQuestionId === q.id) {
+        stuckCount++;
+      }
+      if (p.solvedQuestionIds?.includes(q.id)) {
+        solvedCount++;
+      }
+    }
+
+    return {
+      id: q.id,
+      slug: q.slug,
+      title: q.title,
+      difficulty: q.difficulty,
+      orderIndex: q.orderIndex,
+      hintHtml: q.hintHtml,
+      answer: q.answer,
+      active: q.active,
+      stuckPlayersCount: stuckCount,
+      solvedPlayersCount: solvedCount,
+    };
+  });
+
+  const completedCount = progressRows.filter((p) => !!p.completedAt).length;
+
+  const players: AdminHuntPlayer[] = progressRows.map((p): AdminHuntPlayer => {
+    const curQ = p.currentQuestionId ? questionsMap.get(p.currentQuestionId) : null;
+    return {
+      userId: p.userId,
+      name: p.name,
+      email: p.email,
+      avatarUrl: p.avatarUrl,
+      college: p.college,
+      branch: p.branch,
+      batch: p.batch,
+      role: p.role ?? "player",
+      currentQuestionId: p.currentQuestionId,
+      currentQuestionTitle: curQ?.title ?? (p.completedAt ? "Finished Hunt 👑" : "Not Started"),
+      currentQuestionIndex: curQ?.orderIndex ?? (p.completedAt ? questions.length : null),
+      solvedCount:
+        typeof p.solvedCount === "number"
+          ? p.solvedCount
+          : Array.isArray(p.solvedQuestionIds)
+            ? p.solvedQuestionIds.length
+            : 0,
+      solvedQuestionIds: Array.isArray(p.solvedQuestionIds)
+        ? (p.solvedQuestionIds as string[])
+        : [],
+      completed: !!p.completedAt,
+      completedAt: p.completedAt ? p.completedAt.toISOString() : null,
+      lastSubmittedAt: p.lastSubmittedAt ? p.lastSubmittedAt.toISOString() : null,
+      updatedAt: p.updatedAt ? p.updatedAt.toISOString() : new Date().toISOString(),
+    };
+  });
+
+  return {
+    totalParticipants: progressRows.length,
+    completedCount,
+    inProgressCount: progressRows.length - completedCount,
+    questions: questionStats,
+    players,
+  };
 }

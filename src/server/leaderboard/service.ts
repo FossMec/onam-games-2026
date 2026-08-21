@@ -17,6 +17,7 @@ export interface DailyEntry {
   streakCount: number;
   /** Which of `durationMs` / `score` is the ranking value for this board. */
   metric: GameMetric;
+  gameType?: string;
   durationMs: number | null;
   score: number | null;
   /** The ranking value for `fcfs` boards - "finished at" wall-clock time. */
@@ -28,7 +29,8 @@ export interface DailyEntry {
 
 export interface DailyBoard {
   metric: GameMetric;
-  /** UI label for the ranking column, e.g. "Time" or "Height". */
+  gameType: string;
+  /** UI label for the ranking column, e.g. "Time", "Height", or "Treasures". */
   metricLabel: string;
   fieldSize: number;
   entries: DailyEntry[];
@@ -38,7 +40,8 @@ export interface DailyBoard {
   totalPages: number;
 }
 
-export function metricLabel(metric: GameMetric): string {
+export function metricLabel(metric: GameMetric, gameType?: string): string {
+  if (gameType === "hunt") return "Treasures";
   switch (metric) {
     case "score":
       return "Height";
@@ -91,6 +94,7 @@ export async function getDailyLeaderboard(
   const fieldSize = rows[0]?.fieldSize ?? 0;
   const totalPages = Math.max(1, Math.ceil(fieldSize / safePageSize));
 
+  const gameType = game?.gameType ?? "time";
   const toEntry = (row: (typeof rows)[number], rank: number): DailyEntry => ({
     rank,
     userId: row.userId,
@@ -101,6 +105,7 @@ export async function getDailyLeaderboard(
     batch: row.batch,
     streakCount: row.streakCount,
     metric,
+    gameType,
     durationMs: row.durationMs,
     score: row.score,
     submittedAt: row.submittedAt.toISOString(),
@@ -118,7 +123,8 @@ export async function getDailyLeaderboard(
 
   return {
     metric,
-    metricLabel: metricLabel(metric),
+    gameType,
+    metricLabel: metricLabel(metric, gameType),
     fieldSize,
     entries,
     myEntry,
@@ -205,7 +211,7 @@ function boardConditions(
 
 function rankingOrder(metric: GameMetric) {
   return metric === "score"
-    ? sql`${dailyLeaderboard.score} desc, ${dailyLeaderboard.startedAt} asc`
+    ? sql`${dailyLeaderboard.score} desc, coalesce(${dailyLeaderboard.submittedAt}, ${dailyLeaderboard.startedAt}) asc`
     : metric === "fcfs"
       ? sql`${dailyLeaderboard.submittedAt} asc, ${dailyLeaderboard.startedAt} asc`
       : sql`${dailyLeaderboard.durationMs} asc, ${dailyLeaderboard.startedAt} asc`;

@@ -57,6 +57,13 @@ function formatClock(iso: string): string {
 }
 
 function formatMetric(entry: DailyEntry): string {
+  if (
+    entry.gameType === "hunt" ||
+    (entry.metric === "score" && entry.durationMs == null && (entry.score ?? 0) <= 20)
+  ) {
+    const s = entry.score ?? 0;
+    return s === 10 ? "10/10 Relics 👑" : `${s}/10 Relics`;
+  }
   switch (entry.metric) {
     case "score":
       return `${(entry.score ?? 0).toLocaleString("en-IN")} m`;

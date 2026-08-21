@@ -1,6 +1,13 @@
-import { eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
-import { huntQuestions, userHuntProgress, type HuntQuestion } from "~/server/db/schema";
+import {
+  dailyLeaderboard,
+  gameAttempts,
+  games,
+  huntQuestions,
+  userHuntProgress,
+  type HuntQuestion,
+} from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
 import { logActivity } from "~/server/anti-cheat/log";
 import { getSetting } from "~/server/settings/service";
@@ -392,6 +399,49 @@ export async function submitHuntAnswer(
       updatedAt: new Date(),
     })
     .where(eq(userHuntProgress.id, progress.id));
+
+  // Live update the Treasure Hunt ranking on dailyLeaderboard by number of treasures found
+  try {
+    const [huntGame] = await db
+      .select({ id: games.id })
+      .from(games)
+      .where(eq(games.gameType, "hunt"))
+      .limit(1);
+
+    if (huntGame) {
+      const [attempt] = await db
+        .select({ id: gameAttempts.id, startedAt: gameAttempts.startedAt })
+        .from(gameAttempts)
+        .where(eq(gameAttempts.userId, userId))
+        .orderBy(desc(gameAttempts.startedAt))
+        .limit(1);
+
+      if (attempt) {
+        await db
+          .insert(dailyLeaderboard)
+          .values({
+            gameId: huntGame.id,
+            userId,
+            attemptId: attempt.id,
+            metric: "score",
+            score: updatedSolvedList.length,
+            durationMs: null,
+            attemptsUsed: 1,
+            startedAt: attempt.startedAt,
+            submittedAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: [dailyLeaderboard.gameId, dailyLeaderboard.userId],
+            set: {
+              score: sql`greatest(${dailyLeaderboard.score}, ${updatedSolvedList.length})`,
+              submittedAt: new Date(),
+            },
+          });
+      }
+    }
+  } catch {
+    /* ignore leaderboard sync errors to avoid blocking answer submission */
+  }
 
   await logActivity({
     userId,

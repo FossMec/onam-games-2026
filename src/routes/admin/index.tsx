@@ -9,6 +9,7 @@ import { PookalamAnimationExport } from "~/components/admin/PookalamAnimationExp
 import { AttemptsTab } from "~/components/admin/tabs/AttemptsTab";
 import { CollabWishesTab } from "~/components/admin/tabs/CollabWishesTab";
 import { GamesTab } from "~/components/admin/tabs/GamesTab";
+import { HuntTab } from "~/components/admin/tabs/HuntTab";
 import { LogsTab } from "~/components/admin/tabs/LogsTab";
 import { OverviewTab } from "~/components/admin/tabs/OverviewTab";
 import { SecurityTab } from "~/components/admin/tabs/SecurityTab";
@@ -22,6 +23,7 @@ import {
   adminBlockedIps,
   adminCollabMessages,
   adminDashboard,
+  adminHunt,
   adminSettings,
   adminSuspicious,
   adminTesters,
@@ -46,6 +48,7 @@ export default function Admin() {
   const attempts = createAsync(() =>
     activeTab() === "attempts" ? adminAttempts(page()) : Promise.resolve(null),
   );
+  const hunt = createAsync(() => (activeTab() === "hunt" ? adminHunt() : Promise.resolve(null)));
   const settings = createAsync(() =>
     activeTab() === "settings" ? adminSettings() : Promise.resolve(null),
   );
@@ -266,7 +269,14 @@ export default function Admin() {
                   </Show>
                 </Show>
 
-                {/* 5. Settings Tab */}
+                {/* 5. Treasure Hunt Tab */}
+                <Show when={activeTab() === "hunt"}>
+                  <Show when={hunt()} fallback={<TabLoading />}>
+                    <HuntTab data={hunt()!} />
+                  </Show>
+                </Show>
+
+                {/* 6. Settings Tab */}
                 <Show when={activeTab() === "settings"}>
                   <Show when={settings()} fallback={<TabLoading />}>
                     <SettingsTab

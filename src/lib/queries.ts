@@ -6,6 +6,7 @@ import { getDaily } from "~/server/leaderboard/actions";
 import { getAuthMode, getMe, getMyBanState } from "~/server/auth/actions";
 import {
   getAdminDashboard,
+  getAdminHuntOverviewAction,
   listActivity,
   listAttemptsAction,
   listBlockedIpsAction,
@@ -122,6 +123,7 @@ export const adminSuspicious = query(listSuspicious, "admin-suspicious");
 export const adminBlockedIps = query(listBlockedIpsAction, "admin-blocked-ips");
 export const adminActivity = query(listActivity, "admin-activity");
 export const adminCollabMessages = query(listCollabMessagesAction, "admin-collab-messages");
+export const adminHunt = query(getAdminHuntOverviewAction, "admin-hunt");
 
 /**
  * The keys a console write should drop. `revalidate` matches by prefix, so
@@ -137,6 +139,7 @@ export const ADMIN_QUERY_KEYS = {
   blockedIps: "admin-blocked-ips",
   activity: "admin-activity",
   collabMessages: "admin-collab-messages",
+  hunt: "admin-hunt",
 } as const;
 
 /** Returns an `onReload` callback that revalidates exactly the given keys. */

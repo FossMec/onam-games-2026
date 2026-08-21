@@ -46,18 +46,96 @@ export function addPookalamCredits(amount: number): void {
   );
 }
 
-export function canCollectPookalamBalloon(): boolean {
-  if (typeof window === "undefined") return false;
+export interface PookalamCreditState {
+  credits: number;
+  maxCredits: number;
+  dailyLimit: number;
+  balloonsToday: number;
+  maxBalloonsToday: number;
+  isFull: boolean;
+  canCollectBalloon: boolean;
+}
+
+export function getPookalamCreditState(): PookalamCreditState {
+  if (typeof window === "undefined") {
+    const daily = DEFAULT_DAILY_LIMIT;
+    const maxCredits = Math.min(Math.ceil(daily / 3), 100);
+    return {
+      credits: maxCredits,
+      maxCredits,
+      dailyLimit: daily,
+      balloonsToday: 0,
+      maxBalloonsToday: Math.max(1, Math.floor(daily / 5)),
+      isFull: true,
+      canCollectBalloon: false,
+    };
+  }
+
   const daily = pookalamDailyLimit();
-  if (daily <= 0) return false;
+  const maxCredits = Math.min(Math.ceil(daily / 3), 100);
+  const maxBalloonsToday = Math.max(1, Math.floor(daily / 5));
+
+  if (daily <= 0) {
+    return {
+      credits: 0,
+      maxCredits: 0,
+      dailyLimit: 0,
+      balloonsToday: 0,
+      maxBalloonsToday: 0,
+      isFull: true,
+      canCollectBalloon: false,
+    };
+  }
+
   try {
     const raw = getMultiStoreSync("collab-pookalam:token-bucket");
-    const bucket = raw ? (JSON.parse(raw) as { day?: string; balloonsToday?: number }) : null;
+    const bucket = raw
+      ? (JSON.parse(raw) as {
+          day?: string;
+          credits?: number;
+          balloonsToday?: number;
+          lastCreditAt?: number;
+        })
+      : null;
     const today = new Date().toISOString().slice(0, 10);
-    if (bucket?.day !== today) return true;
-    const maxBalloons = Math.max(1, Math.floor(daily / 5));
-    return (bucket?.balloonsToday ?? 0) < maxBalloons;
+
+    let credits = maxCredits;
+    let balloonsToday = 0;
+
+    if (bucket && bucket.day === today) {
+      credits =
+        typeof bucket.credits === "number"
+          ? Math.min(maxCredits, Math.max(0, bucket.credits))
+          : maxCredits;
+      balloonsToday =
+        typeof bucket.balloonsToday === "number" ? Math.max(0, bucket.balloonsToday) : 0;
+    }
+
+    const isFull = credits >= maxCredits;
+    const canCollectBalloon = !isFull && balloonsToday < maxBalloonsToday;
+
+    return {
+      credits,
+      maxCredits,
+      dailyLimit: daily,
+      balloonsToday,
+      maxBalloonsToday,
+      isFull,
+      canCollectBalloon,
+    };
   } catch {
-    return true;
+    return {
+      credits: maxCredits,
+      maxCredits,
+      dailyLimit: daily,
+      balloonsToday: 0,
+      maxBalloonsToday,
+      isFull: true,
+      canCollectBalloon: false,
+    };
   }
+}
+
+export function canCollectPookalamBalloon(): boolean {
+  return getPookalamCreditState().canCollectBalloon;
 }
