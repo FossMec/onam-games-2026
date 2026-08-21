@@ -4,9 +4,23 @@ import { huntQuestions, userHuntProgress, type HuntQuestion } from "~/server/db/
 import { HttpError } from "~/server/errors";
 import { logActivity } from "~/server/anti-cheat/log";
 import { getSetting } from "~/server/settings/service";
-import type { ViewerRole } from "~/server/games/service";
+import { getGameBySlug, type ViewerRole } from "~/server/games/service";
+import { sharedRead } from "~/server/cache";
 
 const RATE_LIMIT_MS = 60_000;
+
+function getActiveHuntQuestions(): Promise<HuntQuestion[]> {
+  return sharedRead(
+    "hunt:questions",
+    () =>
+      getDb()
+        .select()
+        .from(huntQuestions)
+        .where(eq(huntQuestions.active, true))
+        .orderBy(huntQuestions.orderIndex),
+    60_000,
+  );
+}
 
 /** True for 6-char alphanumeric token (e.g. 3X91A4). No dashes/specials. */
 export function isTokenAnswer(answer: string): boolean {
@@ -75,6 +89,7 @@ function pickNextQuestion(
 export type HuntInputType = "token" | "answer";
 
 export interface HuntPublicState {
+  isGameActive: boolean;
   currentQuestion: {
     id: string;
     title: string;
@@ -109,14 +124,17 @@ export async function getUserHuntState(
 ): Promise<HuntPublicState> {
   const db = getDb();
 
-  const allActive = await db
-    .select()
-    .from(huntQuestions)
-    .where(eq(huntQuestions.active, true))
-    .orderBy(huntQuestions.orderIndex);
+  const [allActive, isTesterModeEnabled, huntGame] = await Promise.all([
+    getActiveHuntQuestions(),
+    getSetting<boolean>("access.tester_mode", true),
+    getGameBySlug("treasure-hunt", role),
+  ]);
 
-  const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
   const isTesterMode = (role === "tester" || role === "admin") && isTesterModeEnabled;
+  const isGameActive =
+    huntGame?.status === "live" ||
+    huntGame?.status === "closed" ||
+    (isTesterMode && huntGame?.status === "tester");
 
   let [progress] = await db
     .select()
@@ -171,9 +189,11 @@ export async function getUserHuntState(
     : null;
 
   // Internal: detect balloon question without exposing slug/answer to client
-  const isBalloonQuestion = (q: HuntQuestion) => q.slug === "hunt-c2d5a7f9";
+  // Only active when the treasure hunt game itself is open/live!
+  const isBalloonQuestion = (q: HuntQuestion) => isGameActive && q.slug === "hunt-c2d5a7f9";
 
   return {
+    isGameActive,
     currentQuestion: currentQ
       ? {
           id: currentQ.id,
@@ -225,11 +245,7 @@ export async function submitHuntAnswer(
 ): Promise<HuntSubmitResult> {
   const db = getDb();
 
-  const allActive = await db
-    .select()
-    .from(huntQuestions)
-    .where(eq(huntQuestions.active, true))
-    .orderBy(huntQuestions.orderIndex);
+  const allActive = await getActiveHuntQuestions();
 
   let [progress] = await db
     .select()

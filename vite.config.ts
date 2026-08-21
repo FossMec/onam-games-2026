@@ -89,6 +89,30 @@ export default defineConfig({
     nitro({
       preset: "cloudflare-pages",
       compressPublicAssets: true,
+      cloudflare: {
+        pages: {
+          routes: {
+            exclude: [
+              "/_build/*",
+              "/images/*",
+              "/sprites/*",
+              "/fonts/*",
+              "/cursors/*",
+              "/previous-pookalam/*",
+              "/favicon.ico",
+              "/favicon-*.png",
+              "/favicon.png",
+              "/icon-*.png",
+              "/apple-touch-icon.png",
+              "/logo.svg",
+              "/foss-logo-original.webp",
+              "/site.webmanifest",
+              "/robots.txt",
+              "/sitemap.xml",
+            ],
+          },
+        },
+      },
       routeRules: {
         "/_build/**": { headers: { "cache-control": "public, max-age=31536000, immutable" } },
         "/images/**": { headers: { "cache-control": "public, max-age=31536000, immutable" } },

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "include": ["/*"],
+  "exclude": [
+    "/_build/*",
+    "/images/*",
+    "/sprites/*",
+    "/fonts/*",
+    "/cursors/*",
+    "/previous-pookalam/*",
+    "/favicon.ico",
+    "/favicon-*.png",
+    "/favicon.png",
+    "/icon-*.png",
+    "/apple-touch-icon.png",
+    "/logo.svg",
+    "/foss-logo-original.webp",
+    "/site.webmanifest",
+    "/robots.txt",
+    "/sitemap.xml"
+  ]
+}

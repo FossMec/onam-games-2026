@@ -143,6 +143,10 @@ export function PookalamBalloons() {
     fetch("/api/hunt/state")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
+        if (!data?.isGameActive) {
+          setHuntBalloonActive(false);
+          return;
+        }
         const hasBalloon =
           data?.currentQuestion?.isBalloon ||
           (data?.isTesterMode &&
@@ -163,21 +167,16 @@ export function PookalamBalloons() {
   };
 
   createEffect(() => {
-    if (location.pathname === "/games" || location.pathname.startsWith("/games/")) {
+    const path = location.pathname;
+    if (path === "/games" || path.startsWith("/games/")) {
       stop();
     } else if (!disabled() && !balloon() && !spawnTimer && !treasureTimer) {
       schedule();
     }
-    checkHuntQuestionState();
-  });
-
-  createEffect(() => {
-    if (location.pathname) {
-      requestAnimationFrame(() => {
-        measurePage?.();
-        requestAnimationFrame(() => measurePage?.());
-      });
-    }
+    requestAnimationFrame(() => {
+      measurePage?.();
+      requestAnimationFrame(() => measurePage?.());
+    });
   });
 
   onMount(() => {

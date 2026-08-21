@@ -4,7 +4,7 @@ import { games } from "~/server/db/schema";
 import type { GameMetric } from "./registry";
 import { getGameDefByType } from "./registry";
 import { getSettings } from "~/server/settings/service";
-import { requestMemo } from "~/server/cache";
+import { sharedRead } from "~/server/cache";
 import { getConfig } from "~/server/pookalam/service";
 import type { PhaseState } from "~/server/pookalam/window";
 
@@ -276,7 +276,7 @@ function maskCard(card: GameCard): GameCard {
  * status is still recomputed on every single request.
  */
 function publishedGameRows() {
-  return requestMemo("games:rows", () =>
+  return sharedRead("games:rows", () =>
     getDb().select().from(games).where(eq(games.published, true)).orderBy(asc(games.day)),
   );
 }

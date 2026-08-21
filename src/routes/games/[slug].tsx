@@ -799,7 +799,7 @@ export default function GameArenaPage() {
                 <div class="flex items-center justify-between w-full gap-2 px-1">
                   <span class="text-xs font-extrabold uppercase tracking-wider text-muted">
                     {hasFinishedBoard() && (game()?.status === "closed" || isTester())
-                      ? "Your finished board"
+                      ? "Your result"
                       : "Your run"}
                   </span>
                   <Show when={settledResult()?.valid}>

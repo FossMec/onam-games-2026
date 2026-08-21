@@ -4,7 +4,7 @@ import { CircleAlert, LoaderCircle, UserRoundCheck } from "lucide-solid";
 import { Show, createSignal } from "solid-js";
 import { Confetti } from "~/components/art/Confetti";
 import { getBrowserSupabase } from "~/lib/supabase-client";
-import { getAuthMode } from "~/server/auth/actions";
+import { authMode } from "~/lib/queries";
 import { memeImage } from "~/lib/img";
 
 export default function SignIn() {
@@ -17,7 +17,7 @@ export default function SignIn() {
    * taps the instant the page paints gets the old flow, which works - the
    * direct path is a nicer consent screen, not a different outcome.
    */
-  const mode = createAsync(() => getAuthMode(), {
+  const mode = createAsync(() => authMode(), {
     initialValue: { direct: false },
   });
 

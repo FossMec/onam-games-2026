@@ -3,7 +3,7 @@ import { getShellData } from "~/server/shell";
 import { getGames, getGame, getMyAttempt } from "~/server/games/actions";
 import { getPookalamState, getMyPookalamNotice, getFinalResults } from "~/server/pookalam/actions";
 import { getDaily } from "~/server/leaderboard/actions";
-import { getMe, getMyBanState } from "~/server/auth/actions";
+import { getAuthMode, getMe, getMyBanState } from "~/server/auth/actions";
 import {
   getAdminDashboard,
   listActivity,
@@ -57,6 +57,9 @@ export const viewer = query(getMe, "viewer");
 
 /** Ban / restriction state on its own, for callers outside the shell. */
 export const banState = query(getMyBanState, "ban-state");
+
+/** Auth mode (direct google vs supabase oauth). */
+export const authMode = query(getAuthMode, "auth-mode");
 
 /** The seven-day schedule. Same for every viewer of a given role. */
 export const gamesList = query(getGames, "games");

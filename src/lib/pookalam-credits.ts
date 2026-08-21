@@ -2,9 +2,13 @@ import { getMultiStoreSync, setMultiStoreSync } from "./multi-store";
 
 const DAILY_LIMIT_KEY = "onam-games:pookalam-daily-limit";
 export const POOKALAM_CREDITS_EVENT = "onam-games:pookalam-credits";
+export const DEFAULT_DAILY_LIMIT = 30;
 
-export const pookalamDailyLimit = () =>
-  typeof window === "undefined" ? 0 : Number(getMultiStoreSync(DAILY_LIMIT_KEY)) || 0;
+export const pookalamDailyLimit = () => {
+  if (typeof window === "undefined") return DEFAULT_DAILY_LIMIT;
+  const val = Number(getMultiStoreSync(DAILY_LIMIT_KEY));
+  return Number.isFinite(val) && val > 0 ? val : DEFAULT_DAILY_LIMIT;
+};
 
 export function setPookalamDailyLimit(value: number): void {
   if (typeof window !== "undefined" && Number.isFinite(value) && value >= 0) {
@@ -16,12 +20,13 @@ export function addPookalamCredits(amount: number): void {
   if (typeof window === "undefined" || amount <= 0) return;
   const key = "collab-pookalam:token-bucket";
   const daily = pookalamDailyLimit();
+  const maxBalloons = Math.max(1, Math.floor(daily / 5));
   try {
     const raw = getMultiStoreSync(key);
     const current = raw ? JSON.parse(raw) : null;
     const today = new Date().toISOString().slice(0, 10);
     const bucket = current?.day === today ? current : null;
-    if (!bucket || (bucket.balloonsToday ?? 0) < Math.floor(daily / 5)) {
+    if (!bucket || (bucket.balloonsToday ?? 0) < maxBalloons) {
       const cap = Math.min(Math.ceil(daily / 3), 100);
       setMultiStoreSync(
         key,
@@ -50,9 +55,8 @@ export function canCollectPookalamBalloon(): boolean {
     const bucket = raw ? (JSON.parse(raw) as { day?: string; balloonsToday?: number }) : null;
     const today = new Date().toISOString().slice(0, 10);
     if (bucket?.day !== today) return true;
-    const credits = Number((bucket as { credits?: number }).credits) || 0;
-    const creditCap = Math.min(Math.ceil(daily / 3), 100);
-    return credits < creditCap && (bucket?.balloonsToday ?? 0) < Math.floor(daily / 5);
+    const maxBalloons = Math.max(1, Math.floor(daily / 5));
+    return (bucket?.balloonsToday ?? 0) < maxBalloons;
   } catch {
     return true;
   }

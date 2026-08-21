@@ -140,25 +140,16 @@ export default function Leaderboard() {
     return 1;
   };
 
-  // Auto-select the current day's game only if no explicit day was specified in query param
-  createEffect(() => {
-    if (!parseQueryDay()) {
-      const day = currentActiveDay();
-      setSelectedDay(day);
-      setSearchParams(
-        { day, ...(viewMode() === "tester" ? { view: "tester" } : {}) },
-        { replace: true },
-      );
-    }
-  });
-
-  // Sync state if URL searchParams change via browser navigation (Back/Forward)
+  // Sync day and viewMode with search params or fallback to current active day
   createEffect(() => {
     const qDay = parseQueryDay();
-    if (qDay && qDay !== selectedDay()) {
-      setSelectedDay(qDay);
-    }
     const qView = searchParams.view === "tester" ? "tester" : "main";
+    if (qDay) {
+      if (qDay !== selectedDay()) setSelectedDay(qDay);
+    } else {
+      const day = currentActiveDay();
+      if (day !== selectedDay()) setSelectedDay(day);
+    }
     if (qView !== viewMode()) {
       setViewMode(qView);
     }

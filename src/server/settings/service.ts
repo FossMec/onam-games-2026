@@ -1,26 +1,10 @@
 import { getRequestEvent } from "solid-js/web";
 import { getDb } from "~/server/db/client";
 import { appSettings } from "~/server/db/schema";
-import { invalidateShared } from "~/server/cache";
+import { invalidateShared, sharedRead } from "~/server/cache";
 
-/**
- * Every setting, once per request.
- *
- * The whole table is sixteen rows and about two hundred bytes of values, so
- * fetching all of it costs the same round trip as fetching one key - and a
- * single page render reads settings from several places that know nothing about
- * each other. The home page alone was two separate `app_settings` selects (the
- * closed-beta flag, then the four schedule keys) on top of the games query.
- *
- * The snapshot is memoised on the request, not on the module: settings are
- * edited live from the admin panel, and a process-wide cache would keep serving
- * yesterday's schedule from a warm Vercel instance. Within one request the
- * value is fixed anyway - a render that saw two different values for the same
- * flag would be worse than a stale one.
- *
- * Outside a request (scripts, tests) there is nothing to hang it on, so it
- * falls back to a plain query.
- */
+const SETTINGS_KEY = "settings:all";
+
 /**
  * Undoes a double-encoded jsonb value.
  *
@@ -69,12 +53,12 @@ async function loadSettings(): Promise<Map<string, unknown>> {
  */
 export function snapshotSettings(): Promise<Map<string, unknown>> {
   const event = getRequestEvent();
-  if (!event) return loadSettings();
-  event.locals.settingsPromise ??= loadSettings();
-  return event.locals.settingsPromise;
+  if (event) {
+    event.locals.settingsPromise ??= sharedRead(SETTINGS_KEY, loadSettings);
+    return event.locals.settingsPromise;
+  }
+  return sharedRead(SETTINGS_KEY, loadSettings);
 }
-
-const SETTINGS_KEY = "settings:all";
 
 /**
  * Several settings at once. Missing keys are simply absent from the map;

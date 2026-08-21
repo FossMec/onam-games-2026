@@ -2,7 +2,7 @@ import { Meta, Title } from "@solidjs/meta";
 import { A, createAsync, revalidate, useNavigate, useSearchParams } from "@solidjs/router";
 import type { RouteDefinition } from "@solidjs/router";
 import { AlertCircle, ChevronLeft, ChevronRight, HelpCircle, Lock } from "lucide-solid";
-import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
+import { createEffect, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { Countdown } from "~/components/Countdown";
@@ -155,7 +155,6 @@ export default function GamesPage() {
   let arenaPrewarmed = "";
 
   // When locked card comes into view and is about to open, prewarm.
-  // Also revalidate on tab resume (mobile background -> foreground).
   createEffect(() => {
     const g = activeGame();
     if (!g?.slug || g.status === "closed") return;
@@ -172,7 +171,9 @@ export default function GamesPage() {
       arenaPrewarmed = g.slug;
       prewarmArena(g.slug);
     }
+  });
 
+  onMount(() => {
     const onVisible = () => {
       if (document.visibilityState === "visible") {
         const cur = activeGame();
@@ -599,13 +600,20 @@ export default function GamesPage() {
                               />
                             </Show>
                           </div>
-                          <A
-                            href={playHref}
-                            onClick={() => markArenaFromHub()}
-                            class="btn-ghost w-full text-center text-base py-2.5 block"
+                          <Show
+                            when={
+                              (current.testerMode ?? true) &&
+                              (me()?.role === "tester" || me()?.role === "admin")
+                            }
                           >
-                            Take a look before it opens →
-                          </A>
+                            <A
+                              href={playHref}
+                              onClick={() => markArenaFromHub()}
+                              class="btn-ghost w-full text-center text-base py-2.5 block"
+                            >
+                              Take a look before it opens →
+                            </A>
+                          </Show>
                         </Show>
 
                         <Show when={!locked && !previewing && current.endAt}>
@@ -639,9 +647,7 @@ export default function GamesPage() {
                                     : isRunning()
                                       ? `Resume Day ${current.day} Challenge →`
                                       : isCompleted()
-                                        ? current.status === "closed"
-                                          ? `View Day ${current.day} Board & Score →`
-                                          : `View Day ${current.day} Result →`
+                                        ? `View Day ${current.day} Result →`
                                         : (currentAttempt()?.attemptsUsed ?? 0) > 0
                                           ? `Play Day ${current.day} (Attempt ${(currentAttempt()?.attemptsUsed ?? 0) + 1}) →`
                                           : `Play Day ${current.day} Now →`}
@@ -682,7 +688,7 @@ export default function GamesPage() {
                                   when={isDay7}
                                   fallback={
                                     currentAttempt()?.status === "submitted"
-                                      ? `View Day ${current.day} Board & Score →`
+                                      ? `View Day ${current.day} Result →`
                                       : `View Day ${current.day} →`
                                   }
                                 >
