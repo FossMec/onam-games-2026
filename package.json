@@ -10,6 +10,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
+    "db:reset": "node scripts/reset-db.mjs",
     "db:studio": "drizzle-kit studio",
     "db:seed": "node  scripts/seed.mjs",
     "db:seed:hunt": "node  scripts/seed-treasure-hunt-questions.mjs",
