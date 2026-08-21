@@ -17,6 +17,7 @@ import { Burst, Halftone } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { SpriteScatter } from "~/components/art/SpriteScatter";
+import { CommunityGroupCard } from "~/components/CommunityGroupCard";
 import { EVENT, POOKALAM } from "~/lib/event-content";
 import { SITE_URL } from "~/lib/site";
 
@@ -915,6 +916,9 @@ export default function Home() {
             );
           })()}
         </Show>
+
+        {/* Community Group Link Card */}
+        <CommunityGroupCard class="mt-4" />
       </Section>
 
       {/* ------------------------------------------- 4. community pookalam */}

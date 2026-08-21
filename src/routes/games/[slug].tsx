@@ -24,6 +24,7 @@ import type { TinderCardView, TinderProgress } from "~/components/games/TinderGa
 import { TinderRecap } from "~/components/games/TinderRecap";
 import { ShareCard, ShareCardModal } from "~/components/games/ShareCard";
 import { WinModal } from "~/components/games/WinModal";
+import { CommunityGroupCard } from "~/components/CommunityGroupCard";
 import type { VallamMove, VallamViewData } from "~/components/games/VallamGame";
 import type { Cell as WendCell, WendViewData } from "~/components/games/WendGame";
 
@@ -945,6 +946,9 @@ export default function GameArenaPage() {
                         Leaderboard →
                       </A>
                     </div>
+
+                    {/* Community Group Link Card */}
+                    <CommunityGroupCard class="w-full mt-3 text-left" />
                   </div>
                 </Show>
               </div>

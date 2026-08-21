@@ -40,9 +40,9 @@ export const GRID_SIZE = 7;
 
 /** Words to find. Order is irrelevant - the player finds them however they like. */
 export const WORDS = [
-  "GNU",
+  "GIT",
   "FOSS",
-  "LINUX",
+  "GNOME",
   "MAVELI",
   "KERNEL",
   "DEBIAN",
@@ -60,11 +60,11 @@ export const WORDS = [
 export const BOARD: readonly (readonly string[])[] = [
   ["", "I", "", "K", "E", "R", "L"],
   ["E", "L", "M", "A", "L", "N", "E"],
-  ["V", "A", "M", "U", "A", "S", "O"],
-  ["P", "A", "Y", "N", "K", "S", "F"],
+  ["V", "A", "M", "T", "A", "S", "O"],
+  ["P", "A", "Y", "I", "K", "S", "F"],
   ["A", "I", "A", "G", "O", "O", "P"],
-  ["N", "B", "S", "A", "N", "U", "X"],
-  ["", "E", "D", "M", "I", "L", ""],
+  ["N", "B", "S", "A", "O", "M", "E"],
+  ["", "E", "D", "M", "N", "G", ""],
 ];
 
 export interface Cell {

@@ -94,25 +94,32 @@ export const settingsRegistry: SettingDef[] = [
   {
     key: "social.whatsapp_group_link",
     group: "social",
-    description: "WhatsApp group invite link",
+    description: "General WhatsApp community group invite link",
     defaultValue: "",
   },
   {
-    key: "hunt.final_token",
-    group: "hunt",
-    /**
-     * Server-only. Never expose this through a public settings reader - it is
-     * the single answer to the day-6 hunt for every player.
-     */
-    description: "Treasure hunt final-stage token (case/punctuation insensitive). Keep secret.",
+    key: "social.whatsapp_group_mec_2027",
+    group: "social",
+    description: "WhatsApp group invite link for MEC Batch '27 (4th Year / Final Year)",
     defaultValue: "",
   },
   {
-    key: "hunt.token_query_param",
-    group: "hunt",
-    description:
-      "Query parameter the final clue uses to hand over the token, e.g. /games/treasure-hunt?token=…",
-    defaultValue: "token",
+    key: "social.whatsapp_group_mec_2028",
+    group: "social",
+    description: "WhatsApp group invite link for MEC Batch '28 (3rd Year)",
+    defaultValue: "",
+  },
+  {
+    key: "social.whatsapp_group_mec_2029",
+    group: "social",
+    description: "WhatsApp group invite link for MEC Batch '29 (2nd Year)",
+    defaultValue: "",
+  },
+  {
+    key: "social.whatsapp_group_mec_2030",
+    group: "social",
+    description: "WhatsApp group invite link for MEC Batch '30 (1st Year)",
+    defaultValue: "",
   },
   /*
    * Code-a-Pookalam runs on a clock. Each phase has a window (IST wall clock,

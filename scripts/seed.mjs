@@ -24,10 +24,10 @@ const settings = [
   ["ui.leaderboard_poll_ms", 120000, "ui"],
   ["ui.refresh_cooldown_ms", 10000, "ui"],
   ["social.whatsapp_group_link", "", "social"],
-  // Left blank on purpose: the hunt verifier fails closed until an admin sets
-  // the real token, so a seeded database can never accept a guess.
-  ["hunt.final_token", "", "hunt"],
-  ["hunt.token_query_param", "token", "hunt"],
+  ["social.whatsapp_group_mec_2027", "", "social"],
+  ["social.whatsapp_group_mec_2028", "", "social"],
+  ["social.whatsapp_group_mec_2029", "", "social"],
+  ["social.whatsapp_group_mec_2030", "", "social"],
 ];
 
 for (const [key, value, group] of settings) {

@@ -14,6 +14,8 @@ import { gameBySlug, gamesList, myAttempt as myAttemptQuery, viewer } from "~/li
 import { teaserIcon } from "~/lib/game-teasers";
 import { gameImageForType } from "~/lib/img";
 import { SITE_URL } from "~/lib/site";
+import { CommunityGroupCard } from "~/components/CommunityGroupCard";
+import { InviteFriendsCard } from "~/components/games/InviteFriendsCard";
 import type { GameCard } from "~/server/games/service";
 
 const DAY_POPS = [
@@ -808,6 +810,12 @@ export default function GamesPage() {
                       }}
                     </For>
                   </div>
+                </div>
+
+                {/* Invite Friends & Community Group Cards (After Game Card) */}
+                <div class="space-y-4 pt-2">
+                  <InviteFriendsCard />
+                  <CommunityGroupCard />
                 </div>
               </section>
             );

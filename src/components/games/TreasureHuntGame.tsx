@@ -3,6 +3,7 @@ import { Key, RefreshCw, ShieldAlert, X } from "lucide-solid";
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { Confetti } from "~/components/art/Confetti";
 import { LoadingScreen } from "~/components/LoadingScreen";
+import { CommunityGroupCard } from "~/components/CommunityGroupCard";
 import { treasureMapImage } from "~/lib/img";
 import { getDistroForQuestionIndex } from "~/lib/treasure-distros";
 import type { HuntPublicState, HuntSubmitResult } from "~/server/games/hunt/service";
@@ -771,6 +772,9 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
                         )}
                       </For>
                     </div>
+
+                    {/* Community Group Link Card */}
+                    <CommunityGroupCard compact class="w-full mt-2.5" />
                   </Show>
                 </div>
               </div>

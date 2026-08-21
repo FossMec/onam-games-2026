@@ -111,29 +111,39 @@ const SETTINGS_META: Record<string, SettingMetadata> = {
       "Rate-limit cooldown in milliseconds between manual clicks on the 'Refresh' button to protect server bandwidth.",
   },
 
-  // Social
   "social.whatsapp_group_link": {
-    label: "WhatsApp Community Group Invite Link",
+    label: "General WhatsApp Community Group Invite Link",
+    type: "string",
+    placeholder: "https://chat.whatsapp.com/...",
+    explanation: "Direct invite link to the general FOSS Onam WhatsApp community group.",
+  },
+  "social.whatsapp_group_mec_2027": {
+    label: "MEC Batch '27 WhatsApp Community Link (4th Year)",
     type: "string",
     placeholder: "https://chat.whatsapp.com/...",
     explanation:
-      "Direct invite link to the official FOSS Onam WhatsApp community group, displayed in notifications and footers.",
+      "Exclusive WhatsApp community group invite link shown only to 4th Year (Batch '27) MEC students.",
   },
-
-  // Day-6 Hunt
-  "hunt.final_token": {
-    label: "Treasure Hunt Secret Final Token",
-    type: "secret",
-    placeholder: "Secret token (case-insensitive)",
-    explanation:
-      "Server-only secret phrase for the Day-6 Treasure Hunt endgame. Never exposed to the client; verified strictly on the server.",
-  },
-  "hunt.token_query_param": {
-    label: "Treasure Hunt URL Query Param",
+  "social.whatsapp_group_mec_2028": {
+    label: "MEC Batch '28 WhatsApp Community Link (3rd Year)",
     type: "string",
-    placeholder: "token",
+    placeholder: "https://chat.whatsapp.com/...",
     explanation:
-      "URL query parameter name that the final clue uses to submit the secret token (e.g. /games/treasure-hunt?token=...).",
+      "Exclusive WhatsApp community group invite link shown only to 3rd Year (Batch '28) MEC students.",
+  },
+  "social.whatsapp_group_mec_2029": {
+    label: "MEC Batch '29 WhatsApp Community Link (2nd Year)",
+    type: "string",
+    placeholder: "https://chat.whatsapp.com/...",
+    explanation:
+      "Exclusive WhatsApp community group invite link shown only to 2nd Year (Batch '29) MEC students.",
+  },
+  "social.whatsapp_group_mec_2030": {
+    label: "MEC Batch '30 WhatsApp Community Link (1st Year)",
+    type: "string",
+    placeholder: "https://chat.whatsapp.com/...",
+    explanation:
+      "Exclusive WhatsApp community group invite link shown only to 1st Year (Batch '30) MEC students.",
   },
 
   // Day-7 Pookalam - each phase has a window plus a manual force override.

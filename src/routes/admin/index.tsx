@@ -105,14 +105,16 @@ export default function Admin() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => revalidate()}
-          class="btn-ghost text-xs px-3.5 py-1.5 inline-flex items-center gap-1.5 cursor-pointer font-extrabold"
-        >
-          <RefreshCw size={13} strokeWidth={2.5} />
-          <span>Refresh Data</span>
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => revalidate()}
+            class="btn-ghost text-xs px-3.5 py-1.5 inline-flex items-center gap-1.5 cursor-pointer font-extrabold"
+          >
+            <RefreshCw size={13} strokeWidth={2.5} />
+            <span>Refresh Data</span>
+          </button>
+        </div>
       </div>
 
       {/* Notification Toast */}
