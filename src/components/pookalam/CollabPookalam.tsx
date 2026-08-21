@@ -412,6 +412,7 @@ export function CollabPookalam() {
   };
 
   const deleteWish = async (messageId: string) => {
+    if (!isAdmin()) return;
     setMessagePool((prev) => prev.filter((m) => m.id !== messageId));
     setDisplayedMessages((prev) => prev.filter((m) => m.id !== messageId));
     if (myMessage()?.id === messageId) setMyMessage(null);
@@ -995,7 +996,7 @@ export function CollabPookalam() {
               <WishBubble
                 msg={msg}
                 onLike={toggleLike}
-                onDelete={deleteWish}
+                onDelete={isAdmin() ? deleteWish : undefined}
                 isAdmin={isAdmin()}
                 index={idx()}
                 compact
@@ -1015,7 +1016,7 @@ export function CollabPookalam() {
                 <WishBubble
                   msg={msg}
                   onLike={toggleLike}
-                  onDelete={deleteWish}
+                  onDelete={isAdmin() ? deleteWish : undefined}
                   isAdmin={isAdmin()}
                   index={idx() * 2}
                 />
@@ -1252,14 +1253,16 @@ export function CollabPookalam() {
                         <Heart size={11} fill="var(--pop-red)" strokeWidth={2.5} />
                         {myMessage()!.likesCount}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => deleteWish(myMessage()!.id)}
-                        class="text-[var(--ink-soft)] hover:text-[var(--pop-red)] transition-colors p-0.5 cursor-pointer"
-                        title="Delete your wish"
-                      >
-                        <Trash2 size={11} />
-                      </button>
+                      <Show when={isAdmin()}>
+                        <button
+                          type="button"
+                          onClick={() => deleteWish(myMessage()!.id)}
+                          class="text-[var(--ink-soft)] hover:text-[var(--pop-red)] transition-colors p-0.5 cursor-pointer"
+                          title="Delete wish (Admin)"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      </Show>
                     </div>
                   </div>
                 }
@@ -1409,7 +1412,7 @@ export function CollabPookalam() {
                 <WishBubble
                   msg={msg}
                   onLike={toggleLike}
-                  onDelete={deleteWish}
+                  onDelete={isAdmin() ? deleteWish : undefined}
                   isAdmin={isAdmin()}
                   index={idx() * 2 + 1}
                 />
@@ -1741,13 +1744,13 @@ function WishBubble(props: {
             <span>{props.msg.likesCount}</span>
           </button>
 
-          {/* Inlined Delete Button for Admins / Author */}
-          <Show when={(props.isAdmin || props.msg.isMine) && props.onDelete}>
+          {/* Inlined Delete Button ONLY for Admins */}
+          <Show when={props.isAdmin && props.onDelete}>
             <button
               type="button"
               onClick={() => props.onDelete!(props.msg.id)}
               class="text-[var(--ink-soft)] hover:text-[var(--pop-red)] transition-colors p-0.5 cursor-pointer leading-none shrink-0"
-              title="Delete wish"
+              title="Delete wish (Admin)"
             >
               <Trash2 size={props.compact ? 9 : 10.5} />
             </button>

@@ -199,7 +199,8 @@ export async function postCollabMessage(
 }
 
 /**
- * Delete a collaborative message (allowed for Admins or the author).
+ * Delete a collaborative message (allowed for Admins only).
+ * Normal players cannot delete their wish once posted to preserve community wishes and enforce 1 wish per day.
  */
 export async function deleteCollabMessage(
   messageId: string,
@@ -211,22 +212,12 @@ export async function deleteCollabMessage(
   }
 
   const isAdmin = user.role === "admin";
+  if (!isAdmin) {
+    return { ok: false, reason: "Community wishes cannot be deleted once posted." };
+  }
+
   const db = getDb();
-
-  if (isAdmin) {
-    await db.delete(collabMessages).where(eq(collabMessages.id, messageId));
-    return { ok: true };
-  }
-
-  const deleted = await db
-    .delete(collabMessages)
-    .where(and(eq(collabMessages.id, messageId), eq(collabMessages.userId, user.id)))
-    .returning({ id: collabMessages.id });
-
-  if (deleted.length === 0) {
-    return { ok: false, reason: "You can only delete your own message." };
-  }
-
+  await db.delete(collabMessages).where(eq(collabMessages.id, messageId));
   return { ok: true };
 }
 
