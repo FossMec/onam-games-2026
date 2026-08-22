@@ -1,3 +1,5 @@
+"use server";
+
 import { getCurrentUser } from "~/server/auth/service";
 import { banMessage, describeBan } from "~/server/auth/bans";
 import { getSettings } from "~/server/settings/service";
