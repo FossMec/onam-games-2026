@@ -78,7 +78,8 @@ function createDrizzleForUrl(url: string) {
   const queryClient = postgres(url, {
     max: 1, // Edge isolates / Hyperdrive require 1 connection per request
     prepare: false, // Hyperdrive does not support server-side prepared statements
-    connect_timeout: 10,
+    fetch_types: false, // Disable background type discovery query that hangs on Cloudflare Isolates
+    connect_timeout: 5,
     idle_timeout: 0, // Disable background timers on edge isolates
     max_lifetime: 0,
     onnotice: (notice) => {
