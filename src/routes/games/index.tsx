@@ -1,7 +1,7 @@
 import { Meta, Title } from "@solidjs/meta";
 import { A, createAsync, revalidate, useNavigate, useSearchParams } from "@solidjs/router";
 import type { RouteDefinition } from "@solidjs/router";
-import { AlertCircle, ChevronLeft, ChevronRight, HelpCircle, Lock } from "lucide-solid";
+import { AlertCircle, ChevronLeft, ChevronRight, HelpCircle, Lock, Trophy } from "lucide-solid";
 import { createEffect, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 
 import { SpriteIcon } from "~/components/art/SpriteIcon";
@@ -458,47 +458,57 @@ export default function GamesPage() {
                 >
                   <div class="flex flex-col md:flex-row gap-6 items-center md:items-start">
                     {/* Artwork */}
-                    <div
-                      class="relative overflow-hidden rounded-lg aspect-square w-full sm:w-64 md:w-72 shrink-0 bg-[var(--paper-3)] flex items-center justify-center"
-                      style={{ border: "var(--ink-w-bold) solid var(--ink)" }}
-                    >
-                      <Show
-                        when={!locked}
-                        fallback={
-                          <div class="relative h-full w-full overflow-hidden flex flex-col items-center justify-center text-center p-4 bg-[var(--paper-3)]">
-                            <img
-                              src={gameImageForType(current.gameType)}
-                              alt="Classified preview"
-                              class="absolute inset-0 h-full w-full object-cover blur-xl opacity-40 grayscale"
-                            />
-                            <div class="relative z-10 space-y-2">
-                              <SpriteIcon name={teaserIcon(current)} size={48} animate="wobble" />
-                              <p
-                                class="text-xl font-extrabold uppercase tracking-widest"
-                                style={{
-                                  "font-family": "var(--font-stack-display)",
-                                }}
-                              >
-                                ? ? ? ?
-                              </p>
-                              <span
-                                class="sticker inline-flex items-center gap-1"
-                                style={{ "--pop": "var(--pop-red)" }}
-                              >
-                                <Lock size={12} strokeWidth={2.5} />
-                                <span>Classified</span>
-                              </span>
-                            </div>
-                          </div>
-                        }
+                    <div class="relative shrink-0">
+                      {/* Daily cash bounty sticker - the prize is the pitch */}
+                      <span
+                        class="sticker absolute -top-3 -right-2 z-10 inline-flex items-center gap-1.5 px-3 py-2 text-sm sm:text-base"
+                        style={{ "--pop": "var(--pop-yellow)" }}
                       >
-                        <img
-                          src={gameImageForType(current.gameType)}
-                          alt={current.title}
-                          loading="eager"
-                          class="h-full w-full object-cover aspect-square"
-                        />
-                      </Show>
+                        <Trophy size={18} strokeWidth={2.5} />
+                        <span>Win ₹200 Cash</span>
+                      </span>
+                      <div
+                        class="relative overflow-hidden rounded-lg aspect-square w-full sm:w-64 md:w-72 bg-[var(--paper-3)] flex items-center justify-center"
+                        style={{ border: "var(--ink-w-bold) solid var(--ink)" }}
+                      >
+                        <Show
+                          when={!locked}
+                          fallback={
+                            <div class="relative h-full w-full overflow-hidden flex flex-col items-center justify-center text-center p-4 bg-[var(--paper-3)]">
+                              <img
+                                src={gameImageForType(current.gameType)}
+                                alt="Classified preview"
+                                class="absolute inset-0 h-full w-full object-cover blur-xl opacity-40 grayscale"
+                              />
+                              <div class="relative z-10 space-y-2">
+                                <SpriteIcon name={teaserIcon(current)} size={48} animate="wobble" />
+                                <p
+                                  class="text-xl font-extrabold uppercase tracking-widest"
+                                  style={{
+                                    "font-family": "var(--font-stack-display)",
+                                  }}
+                                >
+                                  ? ? ? ?
+                                </p>
+                                <span
+                                  class="sticker inline-flex items-center gap-1"
+                                  style={{ "--pop": "var(--pop-red)" }}
+                                >
+                                  <Lock size={12} strokeWidth={2.5} />
+                                  <span>Classified</span>
+                                </span>
+                              </div>
+                            </div>
+                          }
+                        >
+                          <img
+                            src={gameImageForType(current.gameType)}
+                            alt={current.title}
+                            loading="eager"
+                            class="h-full w-full object-cover aspect-square"
+                          />
+                        </Show>
+                      </div>
                     </div>
 
                     {/* Game Details */}
