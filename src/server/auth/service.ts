@@ -9,6 +9,7 @@ import { getRequestMeta } from "~/server/request";
 import { getSupabaseAdmin, getSupabaseAnon } from "~/server/supabase/client";
 import { getRequestEvent } from "solid-js/web";
 import { clearAuthCookie, readAuthCookie, writeAuthCookie } from "./session";
+import { sharedRead, invalidateShared } from "~/server/cache";
 
 export interface OAuthSession {
   access_token: string;
@@ -242,22 +243,25 @@ export async function getCurrentUser(): Promise<PublicUser | null> {
 
 async function getCurrentUserUncached(): Promise<PublicUser | null> {
   const data = await readAuthCookie();
-  if (!data?.sid) return null;
-  const db = getDb();
-  const [row] = await db
-    // `expiresAt` rides along on the row we are already fetching. Without it,
-    // every request from a signed-in visitor paid for a second select on
-    // `auth_sessions` purely to discover that the token was nowhere near
-    // expiry - which is the answer 99 times out of 100.
-    .select({ ...USER_SELECT, sessionExpiresAt: authSessions.expiresAt })
-    .from(authSessions)
-    .innerJoin(users, eq(users.id, authSessions.userId))
-    .where(and(eq(authSessions.id, data.sid), isNull(authSessions.revokedAt)))
-    .limit(1);
-  if (!row) return null;
-  const { sessionExpiresAt, ...user } = row;
-  if (isRefreshDue(sessionExpiresAt)) void refreshSessionIfNeeded(data.sid);
-  return user as PublicUser;
+  const sid = data?.sid;
+  if (!sid) return null;
+  return sharedRead(
+    `session:${sid}`,
+    async () => {
+      const db = getDb();
+      const [row] = await db
+        .select({ ...USER_SELECT, sessionExpiresAt: authSessions.expiresAt })
+        .from(authSessions)
+        .innerJoin(users, eq(users.id, authSessions.userId))
+        .where(and(eq(authSessions.id, sid), isNull(authSessions.revokedAt)))
+        .limit(1);
+      if (!row) return null;
+      const { sessionExpiresAt, ...user } = row;
+      if (isRefreshDue(sessionExpiresAt)) void refreshSessionIfNeeded(sid);
+      return user as PublicUser;
+    },
+    15_000,
+  );
 }
 
 /** A session is worth refreshing once it is within a minute of expiring. */
@@ -355,6 +359,7 @@ async function refreshSessionIfNeeded(sessionId: string): Promise<void> {
 export async function signOut(): Promise<void> {
   const data = await readAuthCookie();
   if (data?.sid) {
+    invalidateShared(`session:${data.sid}`);
     const db = getDb();
     const [row] = await db
       .select()

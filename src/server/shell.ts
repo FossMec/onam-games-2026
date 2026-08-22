@@ -1,9 +1,6 @@
-"use server";
-
 import { getCurrentUser } from "~/server/auth/service";
 import { banMessage, describeBan } from "~/server/auth/bans";
-import { readSetting } from "~/server/settings/service";
-import { readOrDegrade } from "~/server/degrade";
+import { getSettings } from "~/server/settings/service";
 import type { AccessState, BanNoticeState } from "~/server/auth/actions";
 
 /**
@@ -34,30 +31,42 @@ export interface ShellData {
   communityLinks: CommunityLinks;
 }
 
+const SHELL_SETTING_KEYS = [
+  "access.closed_beta",
+  "social.whatsapp_group_mec_2027",
+  "social.whatsapp_group_mec_2028",
+  "social.whatsapp_group_mec_2029",
+  "social.whatsapp_group_mec_2030",
+  "social.whatsapp_group_link",
+];
+
 export async function getShellData(): Promise<ShellData> {
-  /*
-   * One session read feeds all four answers. `getCurrentUser` is memoised on
-   * the request, so the reads below that also call it cost nothing extra.
-   */
-  const [user, closedBeta, mec27, mec28, mec29, mec30, generalWa] = await Promise.all([
-    readOrDegrade("shell.me", null, getCurrentUser),
-    readOrDegrade("shell.closedBeta", true, () => readSetting<boolean>("access.closed_beta", true)),
-    readOrDegrade("shell.mec27", "", () =>
-      readSetting<string>("social.whatsapp_group_mec_2027", ""),
-    ),
-    readOrDegrade("shell.mec28", "", () =>
-      readSetting<string>("social.whatsapp_group_mec_2028", ""),
-    ),
-    readOrDegrade("shell.mec29", "", () =>
-      readSetting<string>("social.whatsapp_group_mec_2029", ""),
-    ),
-    readOrDegrade("shell.mec30", "", () =>
-      readSetting<string>("social.whatsapp_group_mec_2030", ""),
-    ),
-    readOrDegrade("shell.generalWa", "", () =>
-      readSetting<string>("social.whatsapp_group_link", ""),
-    ),
+  const [user, settings] = await Promise.all([
+    getCurrentUser().catch(() => null),
+    getSettings(SHELL_SETTING_KEYS).catch(() => new Map<string, unknown>()),
   ]);
+
+  const closedBeta = settings.get("access.closed_beta") !== false;
+  const mec27 =
+    typeof settings.get("social.whatsapp_group_mec_2027") === "string"
+      ? (settings.get("social.whatsapp_group_mec_2027") as string)
+      : "";
+  const mec28 =
+    typeof settings.get("social.whatsapp_group_mec_2028") === "string"
+      ? (settings.get("social.whatsapp_group_mec_2028") as string)
+      : "";
+  const mec29 =
+    typeof settings.get("social.whatsapp_group_mec_2029") === "string"
+      ? (settings.get("social.whatsapp_group_mec_2029") as string)
+      : "";
+  const mec30 =
+    typeof settings.get("social.whatsapp_group_mec_2030") === "string"
+      ? (settings.get("social.whatsapp_group_mec_2030") as string)
+      : "";
+  const generalWa =
+    typeof settings.get("social.whatsapp_group_link") === "string"
+      ? (settings.get("social.whatsapp_group_link") as string)
+      : "";
 
   const privileged = user?.role === "tester" || user?.role === "admin";
   const access: AccessState = {

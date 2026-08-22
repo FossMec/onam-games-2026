@@ -409,25 +409,30 @@ async function loadPool(): Promise<PoolEntry[]> {
  */
 export async function nextPair(voterId: string): Promise<VotingPair | null> {
   const db = getDb();
-  const [pool, judgedRows, pairCountRows, config] = await Promise.all([
+  const [pool, judgedRows, pairCountRows, config, [mine]] = await Promise.all([
     loadPool(),
     db
       .select({ pairKey: pookalamVotes.pairKey })
       .from(pookalamVotes)
       .where(eq(pookalamVotes.voterId, voterId)),
-    db
-      .select({ pairKey: pookalamVotes.pairKey, n: sql<number>`count(*)::int` })
-      .from(pookalamVotes)
-      .groupBy(pookalamVotes.pairKey),
+    sharedRead(
+      "pookalam:pair_counts",
+      () =>
+        db
+          .select({ pairKey: pookalamVotes.pairKey, n: sql<number>`count(*)::int` })
+          .from(pookalamVotes)
+          .groupBy(pookalamVotes.pairKey),
+      5_000,
+    ),
     getConfig(),
+    db
+      .select({ id: pookalamSubmissions.id })
+      .from(pookalamSubmissions)
+      .where(eq(pookalamSubmissions.userId, voterId))
+      .limit(1),
   ]);
 
   // Nobody judges their own entry, so it never enters the candidate set.
-  const [mine] = await db
-    .select({ id: pookalamSubmissions.id })
-    .from(pookalamSubmissions)
-    .where(eq(pookalamSubmissions.userId, voterId))
-    .limit(1);
   const visible = pool.filter((entry) => entry.id !== mine?.id);
   if (visible.length < 2) return null;
 
@@ -457,10 +462,7 @@ export async function nextPair(voterId: string): Promise<VotingPair | null> {
 
 /* ----------------------------------------------------------------- vote */
 
-export interface VoteResult {
-  ok: boolean;
-  reason?: string;
-}
+export type VoteResult = { ok: true; nextPair: VotingPair | null } | { ok: false; reason: string };
 
 /**
  * Records a decided match and moves both ratings, immediately.
@@ -539,7 +541,8 @@ export async function castVote(
       .where(eq(pookalamSubmissions.id, loserId)),
   ]);
 
-  return { ok: true };
+  const upcoming = await nextPair(voterId);
+  return { ok: true, nextPair: upcoming };
 }
 
 export async function countMyVotes(voterId: string): Promise<number> {

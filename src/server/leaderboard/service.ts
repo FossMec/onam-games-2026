@@ -5,6 +5,7 @@ import type { GameMetric } from "~/server/games/registry";
 import { getGameDefByType } from "~/server/games/registry";
 import type { ViewerRole } from "~/server/games/service";
 import { getSetting } from "~/server/settings/service";
+import { sharedRead } from "~/server/cache";
 
 export interface DailyEntry {
   rank: number;
@@ -79,21 +80,61 @@ export async function getDailyLeaderboard(
     "access.tester_real_leaderboard",
     true,
   );
-  const ranked = rankedBoard(db, gameId, viewerRole, viewMode, metric, hideTestersFromPlayerBoard);
-  const inSlice = and(
-    sql`${ranked.rank} > ${offset}`,
-    sql`${ranked.rank} <= ${offset + safePageSize}`,
-  );
-  const rows = await db
-    .with(ranked)
-    .select()
-    .from(ranked)
-    .where(viewerUserId ? or(inSlice, eq(ranked.userId, viewerUserId)) : inSlice)
-    .orderBy(asc(ranked.rank));
 
-  const fieldSize = rows[0]?.fieldSize ?? 0;
+  let rows: any[] = [];
+  let fieldSize = 0;
+
+  if (safePage === 1 && !viewerUserId) {
+    const cached = await sharedRead(
+      `leaderboard:${gameId}:${viewMode}:${viewerRole}:${safePageSize}`,
+      async () => {
+        const ranked = rankedBoard(
+          db,
+          gameId,
+          viewerRole,
+          viewMode,
+          metric,
+          hideTestersFromPlayerBoard,
+        );
+        const inSlice = and(sql`${ranked.rank} > 0`, sql`${ranked.rank} <= ${safePageSize}`);
+        const resultRows = await db
+          .with(ranked)
+          .select()
+          .from(ranked)
+          .where(inSlice)
+          .orderBy(asc(ranked.rank));
+        return {
+          rows: resultRows,
+          fieldSize: resultRows[0]?.fieldSize ?? 0,
+        };
+      },
+      15_000,
+    );
+    rows = cached.rows;
+    fieldSize = cached.fieldSize;
+  } else {
+    const ranked = rankedBoard(
+      db,
+      gameId,
+      viewerRole,
+      viewMode,
+      metric,
+      hideTestersFromPlayerBoard,
+    );
+    const inSlice = and(
+      sql`${ranked.rank} > ${offset}`,
+      sql`${ranked.rank} <= ${offset + safePageSize}`,
+    );
+    rows = await db
+      .with(ranked)
+      .select()
+      .from(ranked)
+      .where(viewerUserId ? or(inSlice, eq(ranked.userId, viewerUserId)) : inSlice)
+      .orderBy(asc(ranked.rank));
+    fieldSize = rows[0]?.fieldSize ?? 0;
+  }
+
   const totalPages = Math.max(1, Math.ceil(fieldSize / safePageSize));
-
   const gameType = game?.gameType ?? "time";
   const toEntry = (row: (typeof rows)[number], rank: number): DailyEntry => ({
     rank,
@@ -108,7 +149,9 @@ export async function getDailyLeaderboard(
     gameType,
     durationMs: row.durationMs,
     score: row.score,
-    submittedAt: row.submittedAt.toISOString(),
+    submittedAt: row.submittedAt
+      ? new Date(row.submittedAt).toISOString()
+      : new Date().toISOString(),
     attemptsUsed: row.attemptsUsed,
     isTester: row.role === "tester",
     isMe: row.userId === viewerUserId,

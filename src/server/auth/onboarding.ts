@@ -4,6 +4,7 @@ import { logSuspicious } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
 import { users } from "~/server/db/schema";
 import { getSupabaseAdmin } from "~/server/supabase/client";
+import { invalidateShared } from "~/server/cache";
 import {
   branchValues,
   batchValues,
@@ -158,6 +159,8 @@ export async function completeOnboarding(input: OnboardingInput): Promise<void> 
       onboardingCompleted: true,
     })
     .where(eq(users.id, user.id));
+
+  invalidateShared("session:");
 }
 
 export async function uploadAvatar(dataUrl: string): Promise<string> {

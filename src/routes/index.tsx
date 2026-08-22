@@ -1,3 +1,4 @@
+import { clientOnly } from "@solidjs/start";
 import { Link, Meta, Title } from "@solidjs/meta";
 import {
   A,
@@ -12,11 +13,14 @@ import { For, Show, createMemo, createSignal } from "solid-js";
 import { Countdown } from "~/components/Countdown";
 import { LoadingScreen } from "~/components/LoadingScreen";
 import { MaveliLetter } from "~/components/MaveliLetter";
-import { CollabPookalam } from "~/components/pookalam/CollabPookalam";
 import { Burst, Halftone } from "~/components/art/Burst";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { SpriteScatter } from "~/components/art/SpriteScatter";
+
+const CollabPookalam = clientOnly(() =>
+  import("~/components/pookalam/CollabPookalam").then((m) => ({ default: m.CollabPookalam })),
+);
 import { CommunityGroupCard } from "~/components/CommunityGroupCard";
 import { EVENT, POOKALAM } from "~/lib/event-content";
 import { SITE_URL } from "~/lib/site";

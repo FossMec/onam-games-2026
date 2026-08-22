@@ -74,6 +74,14 @@ export default function VotePookalam() {
   const [done, setDone] = createSignal(false);
   const [error, setError] = createSignal("");
 
+  const prefetchImages = (p: Pair | null) => {
+    if (!p || typeof window === "undefined") return;
+    const img1 = new Image();
+    img1.src = p.left.imageUrl;
+    const img2 = new Image();
+    img2.src = p.right.imageUrl;
+  };
+
   const advance = async () => {
     setBusy(true);
     setError("");
@@ -83,6 +91,7 @@ export default function VotePookalam() {
       if (next) {
         setCount(next.progress.votes);
         setTarget(next.progress.target);
+        prefetchImages(next);
       }
       // A null pair with voting open means this voter has judged everything
       // available to them - a finish line, not a failure.
@@ -111,15 +120,23 @@ export default function VotePookalam() {
       const result = await votePookalam(winner.id, loser.id);
       if (!result.ok) {
         setError(result.reason ?? "That vote did not count.");
+        await advance();
       } else {
-        setCount(count() + 1);
+        const next = (result as { ok: true; nextPair: Pair | null }).nextPair;
+        setPair(next);
+        if (next) {
+          setCount(next.progress.votes);
+          setTarget(next.progress.target);
+          prefetchImages(next);
+        } else {
+          setDone(true);
+        }
       }
     } catch {
       setError("Could not record that vote.");
     } finally {
       setBusy(false);
     }
-    await advance();
   };
 
   const pct = () => (target() > 0 ? Math.min(100, Math.round((count() / target()) * 100)) : 0);
@@ -368,7 +385,8 @@ function Choice(props: {
       <img
         src={props.entry.imageUrl}
         alt=""
-        loading="lazy"
+        loading="eager"
+        decoding="async"
         style={{
           width: "100%",
           "aspect-ratio": "1 / 1",

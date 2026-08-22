@@ -4,7 +4,6 @@ import { getCurrentUser } from "~/server/auth/service";
 import { getMyAttemptBySlug, getMyRecapBySlug, type TinderRecap } from "./attempts";
 import type { ViewerRole } from "./service";
 import { getGameBySlug, getGamesList, type GameCard } from "./service";
-import { readOrDegrade } from "~/server/degrade";
 
 function viewerRole(user: { role?: "player" | "tester" | "admin" } | null): ViewerRole {
   if (!user?.role) return "player";
@@ -13,41 +12,34 @@ function viewerRole(user: { role?: "player" | "tester" | "admin" } | null): View
 
 /**
  * The seven-day schedule.
- *
- * Degrades to an empty list, which the landing page and the leaderboard both
- * read as "the schedule is unavailable" rather than "there are no games" - the
- * distinction matters, because an empty list must never be dressed up as a
  * real festival week.
  */
 export async function getGames(): Promise<GameCard[]> {
-  return readOrDegrade<GameCard[]>("games.list", [], async () => {
+  try {
     const user = await getCurrentUser();
-    return getGamesList(viewerRole(user));
-  });
+    return await getGamesList(viewerRole(user));
+  } catch {
+    return [];
+  }
 }
 
-/**
- * One game, for its page.
- *
- * Degrades to `null`, which the page already renders as "there is no game at
- * this address". That is the wrong sentence for an outage, but it is a page
- * with words on it and a way back - where a read with no deadline is a spinner
- * that never stops. Play itself is unaffected: `/start` and `/finish`
- * re-check everything server-side and fail loudly on their own.
- */
-export async function getGame(slug: string) {
-  return readOrDegrade<GameCard | null>("games.bySlug", null, async () => {
+export async function getGame(slug: string): Promise<GameCard | null> {
+  try {
     const user = await getCurrentUser();
-    return getGameBySlug(slug, viewerRole(user));
-  });
+    return await getGameBySlug(slug, viewerRole(user));
+  } catch {
+    return null;
+  }
 }
 
 export async function getMyAttempt(slug: string) {
-  return readOrDegrade("games.myAttempt", null, async () => {
+  try {
     const user = await getCurrentUser();
     if (!user) return null;
-    return getMyAttemptBySlug(slug, user.id, viewerRole(user));
-  });
+    return await getMyAttemptBySlug(slug, user.id, viewerRole(user));
+  } catch {
+    return null;
+  }
 }
 
 /**

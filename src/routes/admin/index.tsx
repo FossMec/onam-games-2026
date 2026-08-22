@@ -33,6 +33,17 @@ import {
 } from "~/lib/queries";
 
 export default function Admin() {
+  if (typeof window === "undefined") {
+    return (
+      <main class="container py-8 max-w-5xl mx-auto">
+        <Title>Admin Console - Onam Games</Title>
+        <div class="card space-y-4 p-8 text-center">
+          <p class="font-extrabold">Loading Admin Console…</p>
+        </div>
+      </main>
+    );
+  }
+
   const shellData = createAsync(() => shell());
   const me = () => shellData()?.me ?? undefined;
   const [activeTab, setActiveTab] = createSignal<AdminTabId>("overview");

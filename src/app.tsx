@@ -1,17 +1,25 @@
+import { clientOnly } from "@solidjs/start";
 import { Link, Meta, MetaProvider } from "@solidjs/meta";
 import { Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { ErrorBoundary, Show, Suspense } from "solid-js";
 import { AppError } from "./components/AppError";
-import { BanNotice } from "./components/BanNotice";
 import { BetaGate } from "./components/BetaGate";
 import { Footer } from "./components/Footer";
 import { Nav } from "./components/Nav";
-import { ShortlistNotice } from "./components/pookalam/ShortlistNotice";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { InkFilter } from "./components/art/InkFilter";
-import { PookalamBalloons } from "./components/PookalamBalloons";
 import "./app.css";
+
+const BanNotice = clientOnly(() =>
+  import("./components/BanNotice").then((m) => ({ default: m.BanNotice })),
+);
+const ShortlistNotice = clientOnly(() =>
+  import("./components/pookalam/ShortlistNotice").then((m) => ({ default: m.ShortlistNotice })),
+);
+const PookalamBalloons = clientOnly(() =>
+  import("./components/PookalamBalloons").then((m) => ({ default: m.PookalamBalloons })),
+);
 
 export default function App() {
   return (

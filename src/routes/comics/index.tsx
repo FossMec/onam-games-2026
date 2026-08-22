@@ -420,19 +420,25 @@ function PeelableComicPanel(props: { src: string; alt: string }) {
   return (
     <div
       ref={(el) => (containerRef = el)}
-      class="relative w-full h-full overflow-hidden select-none"
+      class="relative w-full h-full overflow-hidden select-none bg-[var(--paper)]"
       style="contain: paint layout; isolation: isolate;"
     >
-      {/* Secret Card Revealed Underneath - Hidden until canvas is initialized */}
+      {/* Secret Card Revealed Underneath - Sits strictly under the peelable area in bottom-right */}
       <div
-        class={`absolute inset-0 z-0 flex flex-col items-center justify-center p-4 text-center bg-[var(--pop-yellow)] border-2 border-[var(--ink)] transition-opacity duration-150 ${
+        class={`absolute z-0 flex flex-col items-center justify-center p-3 text-center bg-[var(--pop-yellow)] rounded-xl border-2 border-[var(--ink)] shadow-md transition-opacity duration-150 ${
           isReady() ? "opacity-100" : "opacity-0"
         }`}
+        style={{
+          right: "4%",
+          bottom: "4%",
+          width: "52%",
+          height: "42%",
+        }}
       >
         {/* Inked Comic Treasure Chest Icon */}
         <svg
           viewBox="0 0 48 48"
-          class="w-10 h-10 mb-2"
+          class="w-9 h-9 mb-1"
           fill="none"
           stroke="var(--ink)"
           stroke-width="2.5"
@@ -452,7 +458,7 @@ function PeelableComicPanel(props: { src: string; alt: string }) {
         </svg>
 
         <p
-          class="text-base sm:text-lg font-black text-[var(--ink)] m-0 leading-tight select-all"
+          class="text-sm sm:text-base font-black text-[var(--ink)] m-0 leading-tight select-all"
           style={{ "font-family": "var(--font-stack-display)" }}
         >
           3X91A4
@@ -462,7 +468,7 @@ function PeelableComicPanel(props: { src: string; alt: string }) {
       {/* Top Peelable Canvas Layer */}
       <canvas
         ref={(el) => (canvasRef = el)}
-        class="absolute inset-0 z-10 w-full h-full cursor-pointer"
+        class="absolute inset-0 z-10 w-full h-full cursor-pointer block"
         style={{ "touch-action": "none" }}
       />
     </div>
@@ -476,9 +482,9 @@ function PeelableComicPanel(props: { src: string; alt: string }) {
  * which is the whole reason the turn can be honest: the back of a turning page
  * is rendered by exactly the same code as the page it becomes.
  */
-function PageFace(props: { issue: number; side: "left" | "right" }) {
+function PageFace(props: { issue: number; side: "left" | "right"; inLeaf?: boolean }) {
   const book = () => (props.issue < COMIC_BOOKS.length ? COMIC_BOOKS[props.issue] : null);
-  const isPeelable = () => props.issue === 2 && props.side === "right";
+  const isPeelable = () => props.issue === 2 && props.side === "right" && !props.inLeaf;
 
   return (
     <Show
@@ -602,12 +608,12 @@ export default function ComicsPage() {
     const t = turning();
     if (!t) return currentIssue();
     if (t.dir === "next") return t.from;
-    return progress() < 0.5 ? t.from : t.to;
+    return t.to;
   };
   const rightIssue = () => {
     const t = turning();
     if (!t) return currentIssue();
-    if (t.dir === "next") return progress() < 0.5 ? t.from : t.to;
+    if (t.dir === "next") return t.to;
     return t.from;
   };
 
@@ -935,6 +941,7 @@ export default function ComicsPage() {
                       <PageFace
                         issue={turn().from}
                         side={turn().dir === "next" ? "right" : "left"}
+                        inLeaf={true}
                       />
                       <div
                         class="book-shade"
@@ -947,7 +954,11 @@ export default function ComicsPage() {
                       drawn here, not a mirror of the front.
                     */}
                     <div class="book-face book-face-back" style={{ background: "var(--paper)" }}>
-                      <PageFace issue={turn().to} side={turn().dir === "next" ? "left" : "right"} />
+                      <PageFace
+                        issue={turn().to}
+                        side={turn().dir === "next" ? "left" : "right"}
+                        inLeaf={true}
+                      />
                     </div>
                   </div>
                 )}
