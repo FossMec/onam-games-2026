@@ -22,7 +22,8 @@
     "verify:anticheat": "tsx scripts/verify-anticheat.ts",
     "analyze:cheaters": "tsx scripts/analyze-cheaters.ts",
     "preview:cf": "wrangler pages dev dist",
-    "deploy": "wrangler pages deploy dist"
+    "deploy": "wrangler pages deploy dist",
+    "profile": "node scripts/profile-cpu.mjs"
   },
   "dependencies": {
     "@fingerprintjs/fingerprintjs": "^5.2.0",
