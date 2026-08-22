@@ -32,7 +32,7 @@ import { ShareCardModal } from "~/components/games/ShareCard";
 import { PookalamBoards } from "~/components/pookalam/PookalamBoards";
 import { collegeLabel } from "~/lib/profile";
 import type { ShareCardData } from "~/lib/share-card";
-import { dailyBoard, gamesList, viewer } from "~/lib/queries";
+import { dailyBoard, gamesList, shell } from "~/lib/queries";
 import type { DailyBoard, DailyEntry } from "~/server/leaderboard/service";
 import { memeImage } from "~/lib/img";
 import { SITE_URL } from "~/lib/site";
@@ -89,13 +89,14 @@ const rankPop = (rank: number): string =>
  */
 export const route = {
   preload() {
-    void viewer();
+    void shell();
     void gamesList();
   },
 } satisfies RouteDefinition;
 
 export default function Leaderboard() {
-  const me = createAsync(() => viewer());
+  const s = createAsync(() => shell());
+  const me = () => s()?.me ?? null;
   const games = createAsync(() => gamesList());
   const [searchParams, setSearchParams] = useSearchParams();
 

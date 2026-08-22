@@ -295,8 +295,9 @@ export async function placeStroke(
     // Batch-insert diff rows for animation replay. Fire-and-forget after the
     // grid read-back; a failure here must not break the stroke response.
     if (diffRows.length > 0) {
-      void ensureDiffsTable()
-        .then(() => getDb().insert(collabPookalamDiffs).values(diffRows))
+      void getDb()
+        .insert(collabPookalamDiffs)
+        .values(diffRows)
         .catch((err) => {
           console.warn("[collab] diff insert failed:", err?.message ?? err);
         });
