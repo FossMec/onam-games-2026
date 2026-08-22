@@ -22,15 +22,13 @@ describe("scoreVoters", () => {
     expect(agrees.accuracy).toBeGreaterThan(disagrees.accuracy);
   });
 
-  it("pays less for calling a blowout than it costs to miss one", () => {
-    // Same single vote, opposite directions, on a wide-gap pair.
-    const [easy] = scoreVoters(votes(["v", "a", "c"]), noThreshold);
-    const [wrong] = scoreVoters(votes(["v", "c", "a"]), noThreshold);
-    expect(easy.accuracy - 50).toBeLessThan(50 - wrong.accuracy + 1e-9);
-    expect(wrong.accuracy).toBeLessThan(50);
+  it("gives equal +1 score for agreeing with consensus regardless of pairing gap", () => {
+    const [blowout] = scoreVoters(votes(["v", "a", "c"]), noThreshold);
+    const [close] = scoreVoters(votes(["w", "a", "b"]), noThreshold);
+    expect(blowout.accuracy).toBeCloseTo(close.accuracy);
   });
 
-  it("barely moves anyone on a genuine coin flip", () => {
+  it("scores exactly 50% on a tied matchup", () => {
     const evens = new Map([
       ["x", 1200],
       ["y", 1200],
@@ -39,7 +37,7 @@ describe("scoreVoters", () => {
       ratings: evens,
       voteTarget: () => 1,
     });
-    // Zero confidence weight, so the prior is all that is left: exactly 50%.
+    // Tied matchup awards 0.5 score: (0.5 + 1) / (1 + 2) = 50%.
     expect(row.accuracy).toBeCloseTo(50, 6);
   });
 

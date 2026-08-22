@@ -1,5 +1,3 @@
-import { expectedScore } from "./elo";
-
 /**
  * The voters' leaderboard: who judged well, not who judged most.
  *
@@ -10,20 +8,12 @@ import { expectedScore } from "./elo";
  * other one, you did not. That is the only ground truth available - there is no
  * external answer key for "which pookalam is better".
  *
- * WHY IT IS WEIGHTED
+ * EQUAL HEAD-TO-HEAD WEIGHT
  *
- * Raw agreement rate rewards the wrong thing twice over. Somebody who only ever
- * saw blowout matchups gets a near-perfect score for calling the obvious, while
- * somebody who did the hard work on genuinely close pairs is punished for the
- * coin flips they lost. So each vote carries a confidence weight: `|2p − 1|`
- * from the final ratings, which is 0 for a dead-even matchup and 1 for a
- * foregone conclusion. Getting a lopsided pair right barely moves you; getting
- * one *wrong* costs you, because that is a real misread. Close pairs count for
- * little either way, which is correct - nobody should be ranked on coin flips.
- *
- * Scores are shrunk toward 50% by a prior, so twelve lucky votes cannot outrank
- * sixty careful ones. Between that and the coverage threshold, the board
- * measures judgement rather than either luck or volume.
+ * Every head-to-head vote carries equal weight (+1 for picking the consensus winner),
+ * ensuring neither early nor late voters have an unfair advantage.
+ * Scores are smoothed toward 50% by a uniform prior (2 baseline votes), so a 3-vote
+ * streak cannot outrank a full, consistent voting shift.
  *
  * Pure functions. `service.ts` supplies the votes and the settled ratings.
  */
@@ -63,7 +53,7 @@ export interface ScoreVotersOptions {
 }
 
 export function scoreVoters(votes: readonly VoteRecord[], options: ScoreVotersOptions): VoterRow[] {
-  const tally = new Map<string, { votes: number; score: number; weight: number }>();
+  const tally = new Map<string, { votes: number; score: number }>();
 
   for (const vote of votes) {
     const chosen = options.ratings.get(vote.winnerId);
@@ -73,18 +63,19 @@ export function scoreVoters(votes: readonly VoteRecord[], options: ScoreVotersOp
     // about them.
     if (chosen === undefined || other === undefined) continue;
 
-    const entry = tally.get(vote.voterId) ?? { votes: 0, score: 0, weight: 0 };
-    const p = expectedScore(chosen, other);
-    const confidence = Math.abs(2 * p - 1);
+    const entry = tally.get(vote.voterId) ?? { votes: 0, score: 0 };
     entry.votes += 1;
-    entry.weight += confidence;
-    if (chosen > other) entry.score += confidence;
+    if (chosen > other) {
+      entry.score += 1;
+    } else if (chosen === other) {
+      entry.score += 0.5;
+    }
     tally.set(vote.voterId, entry);
   }
 
   const rows: VoterRow[] = [];
   for (const [voterId, entry] of tally) {
-    const accuracy = ((entry.score + PRIOR_WEIGHT * 0.5) / (entry.weight + PRIOR_WEIGHT)) * 100;
+    const accuracy = ((entry.score + PRIOR_WEIGHT * 0.5) / (entry.votes + PRIOR_WEIGHT)) * 100;
     const target = Math.max(0, options.voteTarget(voterId));
     const coveragePct = target > 0 ? (entry.votes / target) * 100 : 0;
     rows.push({

@@ -30,6 +30,12 @@ export const GRID_SIZE = 50;
 export const CELL_COUNT = GRID_SIZE * GRID_SIZE;
 export const PACKED_BYTES = CELL_COUNT / 2;
 
+/**
+ * Overwriting an occupied square unlocks once the canvas is at least this full.
+ * Shared by the client gate and the placement SQL so the two copies cannot drift.
+ */
+export const OVERWRITE_THRESHOLD = Math.floor(CELL_COUNT * 0.8);
+
 /** 0 means empty, so the catalogue can hold fifteen flowers at most. */
 export const EMPTY_CELL = 0;
 export const MAX_FLOWER_ID = 15;
@@ -48,6 +54,14 @@ export function isValidIndex(index: number): boolean {
 
 export function isValidFlower(id: number): boolean {
   return Number.isInteger(id) && id >= 1 && id <= MAX_FLOWER_ID;
+}
+
+/**
+ * A stroke cell may carry a flower or the eraser (`0`). Wider than
+ * `isValidFlower`, which stays strict for callers that must not see the eraser.
+ */
+export function isValidBrush(id: number): boolean {
+  return Number.isInteger(id) && id >= 0 && id <= MAX_FLOWER_ID;
 }
 
 /**

@@ -7,6 +7,7 @@ import { ShoutBurst } from "~/components/art/Burst";
 import { Countdown } from "~/components/Countdown";
 import { POOKALAM } from "~/lib/event-content";
 import { SHOUT_COLOR, shout } from "~/lib/shouts";
+import { PookalamVoteMath } from "~/components/pookalam/PookalamVoteMath";
 import { getNextPair, votePookalam } from "~/server/pookalam/actions";
 import { pookalamState } from "~/lib/queries";
 
@@ -54,10 +55,12 @@ interface Pair {
 }
 
 const HOW_TO = [
-  "Two pookalams, side by side. Both are anonymous - no names, no repos, no titles.",
+  "Two pookalams, side by side. Both are anonymous — no names, no repos, no titles.",
   "Pick the one you think is better. There is no draw and no skip; a considered guess beats a blank.",
-  "The next pair is chosen by where the crowd is most undecided, so your vote goes where it counts most.",
+  "Fair head-to-head pairing ensures every artwork and matchup gets balanced attention across the community.",
   "Finish your shift to land on the voters' board. It ranks how well you called it, not how fast you tapped.",
+  "Entries are ranked by Elo (K=32) — everyone starts at 1200, winners climb, losers drop. Highest Elo when voting closes wins.",
+  "Voters are ranked by agreement with the final consensus ranking (need about 21 votes for 10 entries to qualify).",
 ];
 
 export default function VotePookalam() {
@@ -281,6 +284,7 @@ export default function VotePookalam() {
  */
 function HowToVote() {
   const [open, setOpen] = createSignal(false);
+  const [showMath, setShowMath] = createSignal(false);
   return (
     <section class="card card-plain space-y-3">
       <button
@@ -324,6 +328,16 @@ function HowToVote() {
             )}
           </For>
         </ol>
+        <button
+          type="button"
+          class="text-xs font-black underline decoration-2 underline-offset-4"
+          onClick={() => setShowMath((v) => !v)}
+        >
+          {showMath() ? "Hide math ↑" : "Show me the math →"}
+        </button>
+        <Show when={showMath()}>
+          <PookalamVoteMath />
+        </Show>
       </Show>
     </section>
   );

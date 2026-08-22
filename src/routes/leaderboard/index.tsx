@@ -654,7 +654,7 @@ export default function Leaderboard() {
                         <div class="px-4 py-3 text-xs border-t border-[var(--ink-soft)]/15 bg-[var(--paper-3)]/70 flex flex-wrap items-center justify-between gap-3">
                           <div class="flex items-center gap-1.5">
                             <GraduationCap size={14} class="shrink-0 opacity-70" />
-                            <span class="font-semibold">
+                            <span class="font-semibold uppercase">
                               {entry.college ?? "Independent"}
                               {entry.branch ? ` · ${entry.branch}` : ""}
                             </span>

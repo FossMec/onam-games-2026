@@ -4,12 +4,14 @@ import {
   EMPTY_CELL,
   GRID_SIZE,
   MAX_FLOWER_ID,
+  OVERWRITE_THRESHOLD,
   PACKED_BYTES,
   cellAddress,
   cellToXY,
   countFilled,
   emptyGrid,
   fromBase64,
+  isValidBrush,
   isValidFlower,
   isValidIndex,
   readCell,
@@ -108,6 +110,20 @@ describe("validation", () => {
     expect(isValidFlower(MAX_FLOWER_ID)).toBe(true);
     expect(isValidFlower(MAX_FLOWER_ID + 1)).toBe(false);
     expect(isValidFlower(2.5)).toBe(false);
+  });
+
+  it("accepts the eraser (0) as a brush", () => {
+    expect(isValidBrush(0)).toBe(true);
+    expect(isValidBrush(1)).toBe(true);
+    expect(isValidBrush(MAX_FLOWER_ID)).toBe(true);
+    expect(isValidBrush(MAX_FLOWER_ID + 1)).toBe(false);
+    expect(isValidBrush(-1)).toBe(false);
+    expect(isValidBrush(2.5)).toBe(false);
+  });
+
+  it("shares the overwrite threshold with the server", () => {
+    expect(OVERWRITE_THRESHOLD).toBe(Math.floor(CELL_COUNT * 0.8));
+    expect(OVERWRITE_THRESHOLD).toBe(2000);
   });
 });
 

@@ -14,7 +14,7 @@ import { getSetting } from "~/server/settings/service";
 import { getGameBySlug, type ViewerRole } from "~/server/games/service";
 import { sharedRead } from "~/server/cache";
 
-const RATE_LIMIT_MS = 60_000;
+const RATE_LIMIT_MS = 30_000;
 
 function getActiveHuntQuestions(): Promise<HuntQuestion[]> {
   return sharedRead(
@@ -269,7 +269,7 @@ export async function submitHuntAnswer(
   const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
   const isTesterMode = (role === "tester" || role === "admin") && isTesterModeEnabled;
 
-  // 60-second rate limit
+  // 30-second rate limit
   if (progress.lastSubmittedAt) {
     const elapsed = now - new Date(progress.lastSubmittedAt).getTime();
     if (elapsed < RATE_LIMIT_MS) {

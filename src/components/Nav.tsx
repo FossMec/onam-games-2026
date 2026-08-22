@@ -1,5 +1,5 @@
 import { A, createAsync, useLocation } from "@solidjs/router";
-import { ChevronDown, GraduationCap, LogOut, Mail, Send, User } from "lucide-solid";
+import { ChevronDown, GraduationCap, Home, LogOut, Mail, Send, User } from "lucide-solid";
 import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
 import { signOutAndReload } from "~/lib/sign-out";
 import type { getMe } from "~/server/auth/actions";
@@ -137,7 +137,7 @@ function ProfileMenu(props: {
                   style={{ color: "var(--ink-soft)" }}
                 >
                   <GraduationCap size={10} class="shrink-0" />
-                  <span class="truncate">{props.me.college}</span>
+                  <span class="truncate uppercase">{props.me.college}</span>
                 </span>
               </Show>
             </div>
@@ -256,6 +256,17 @@ export function Nav() {
             {/* Nav Links + Desktop User Profile */}
             <div class="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full sm:w-auto">
               <nav class="min-w-0 max-w-full h-full flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 w-full sm:w-auto  scrollbar-none ">
+                <A
+                  href="/"
+                  class="flex-none grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-full shrink-0"
+                  style={{
+                    border: "2px solid var(--ink)",
+                    background: isActive("/") ? "var(--pop-teal)" : "var(--paper-2)",
+                  }}
+                  aria-label="Home"
+                >
+                  <Home size={16} strokeWidth={2.5} />
+                </A>
                 <For each={LINKS}>
                   {(link) => (
                     <A

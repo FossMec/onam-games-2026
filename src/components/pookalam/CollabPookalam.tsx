@@ -13,7 +13,13 @@ import {
 } from "lucide-solid";
 import { For, Show, batch, createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { EMPTY_BRUSH, FLOWERS, type Flower, drawFlower, flowerById } from "~/lib/pookalam-flowers";
-import { CELL_COUNT, fromBase64, readCell, writeCell } from "~/lib/pookalam-grid";
+import {
+  CELL_COUNT,
+  OVERWRITE_THRESHOLD,
+  fromBase64,
+  readCell,
+  writeCell,
+} from "~/lib/pookalam-grid";
 import { PADDING_SCALE, SLOTS, slotAt } from "~/lib/pookalam-layout";
 import { POOKALAM_CREDITS_EVENT, setPookalamDailyLimit } from "~/lib/pookalam-credits";
 import { getAndHealMultiStore, getMultiStoreSync, setMultiStoreSync } from "~/lib/multi-store";
@@ -26,8 +32,8 @@ const MIN_CANVAS_PX = 260;
 const ZOOM_STEPS = [1, 1.6, 2.4, 3.2];
 const GROUND = "#2b2733";
 
-// Overwriting on top unlocks when <= 20% empty (i.e. >= 80% filled = 2000 cells)
-const OVERWRITE_THRESHOLD = Math.floor(CELL_COUNT * 0.8);
+// Overwriting on top unlocks when <= 20% empty (i.e. >= 80% filled = 2000 cells).
+// Imported from pookalam-grid so client and server cannot drift.
 
 // Client-side 20% limit per flower species across the whole pookalam
 const MAX_FLOWER_PERCENT = 0.2;
@@ -275,7 +281,7 @@ export function CollabPookalam() {
     "Each flower species can occupy up to 20% of the pookalam to ensure a colorful, diverse carpet.",
     "Drawing on top of existing flowers unlocks once the canvas is 80% filled (less than 20% empty).",
     "Once you finish placing flowers in a window, you unlock the ability to post your daily Onam wish!",
-    "Use the Eraser tool anytime if you want to clear a spot or adjust a section.",
+    "Use the Eraser tool anytime to clear a spot or adjust a section — erasing costs one credit, just like placing.",
     "The communal canvas lives forever — come back throughout the festival to create art together!",
   ];
 
@@ -502,15 +508,12 @@ export function CollabPookalam() {
     });
   });
 
-  // A full pookalam can contain thousands of flowers across the current and
-  // historical layers. Painting all of them in one task blocks navigation and
-  // scrolling, especially on mobile. Keep only one render job alive and yield
-  // between small batches so the page remains interactive while the artwork
-  // fills in.
+  // Full pookalam paints progressively (batched) so 2500 flowers never freeze the UI.
+  // Keep only one job alive and yield between small batches.
   let paintFrame: number | undefined;
   let paintJob = 0;
 
-  /** Repaints canvas with crisp DPR without monopolising the main thread. */
+  /** Repaints canvas with crisp DPR — batched, progressive (original animation). */
   const paint = () => {
     const grid = today();
     if (!canvas || !grid || typeof window === "undefined") return;
@@ -586,10 +589,13 @@ export function CollabPookalam() {
   const DEBOUNCE_MS = 350;
   const MAX_WAIT_MS = 1500;
 
-  let stroke: number[] = [];
+  let stroke: { index: number; flowerId: number }[] = [];
   let inFlight: Promise<void> = Promise.resolve();
   let debounce: ReturnType<typeof setTimeout> | undefined;
   let maxWait: ReturnType<typeof setTimeout> | undefined;
+
+  /** Authoritative grid from the last stroke response — applied between strokes only. */
+  let pendingServerCells: string | null = null;
 
   const clearTimers = () => {
     if (debounce) clearTimeout(debounce);
@@ -602,6 +608,63 @@ export function CollabPookalam() {
     if (debounce) clearTimeout(debounce);
     debounce = setTimeout(() => void flush(), DEBOUNCE_MS);
     if (!maxWait) maxWait = setTimeout(() => void flush(), MAX_WAIT_MS);
+  };
+
+  /** Re-paints only the ~1 radius overlapping neighbours of an erased cell. */
+  const healEraseNeighbors = (erasedIndex: number) => {
+    const grid = today();
+    if (!grid || !canvas) return;
+    const css = fit();
+    const erasedSlot = SLOTS[erasedIndex];
+    if (!erasedSlot) return;
+    const erasedR = erasedSlot.cellRadius * css * 1.12;
+    for (let i = 0; i < CELL_COUNT; i++) {
+      if (i === erasedIndex) continue;
+      const id = readCell(grid, i);
+      if (id === 0) continue;
+      const slot = SLOTS[i];
+      const dist = Math.hypot((slot.x - erasedSlot.x) * css, (slot.y - erasedSlot.y) * css);
+      const neighborR = slot.cellRadius * css * 1.02;
+      if (dist < erasedR + neighborR + 1) {
+        const flower = flowerById(id);
+        if (flower) drawCellDirect(i, flower);
+      }
+    }
+  };
+
+  /** Applies the stashed server grid without a full re-animation — patches only the diff. */
+  const settleServerGrid = () => {
+    if (!pendingServerCells || drawing()) return;
+    const raw = pendingServerCells;
+    pendingServerCells = null;
+    try {
+      const next = fromBase64(raw);
+      // Keep a follow-up stroke that hasn't been acked yet from blinking away.
+      for (const cell of stroke) writeCell(next, cell.index, cell.flowerId);
+      const cur = today();
+      if (!cur) {
+        setToday(next);
+        return;
+      }
+      // Patch in place and draw only what changed; erasures also heal their 1-radius neighbours.
+      for (let i = 0; i < CELL_COUNT; i++) {
+        const curId = readCell(cur, i);
+        const nextId = readCell(next, i);
+        if (curId === nextId) continue;
+        writeCell(cur, i, nextId);
+        if (nextId === 0) {
+          const eraser = flowerById(0);
+          if (eraser) drawCellDirect(i, eraser);
+          healEraseNeighbors(i);
+        } else {
+          const flower = flowerById(nextId);
+          if (flower) drawCellDirect(i, flower);
+        }
+      }
+      // No setToday — we mutated in place and already painted the diff.
+    } catch {
+      /* malformed payload: keep local state */
+    }
   };
 
   const allowanceLeftInStroke = () => left();
@@ -668,9 +731,11 @@ export function CollabPookalam() {
 
     // 2. Update state in memory
     writeCell(grid, index, flower.id);
-    stroke.push(index);
+    stroke.push({ index, flowerId: flower.id });
     recordPlacement(1);
     scheduleFlush();
+    // Erasing clips neighbours — heal only the 1-radius overlap instead of a full repaint.
+    if (flower.id === 0) healEraseNeighbors(index);
     return true;
   };
 
@@ -680,15 +745,12 @@ export function CollabPookalam() {
     stroke = [];
     if (cells.length === 0) return inFlight;
 
-    const flowerId = picked().id;
     inFlight = inFlight.then(async () => {
       try {
         const res = await fetch("/api/pookalam/stroke", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            cells: cells.map((index) => ({ index, flowerId })),
-          }),
+          body: JSON.stringify({ cells }),
         });
         const result = (await res.json()) as {
           written: number[];
@@ -699,14 +761,15 @@ export function CollabPookalam() {
         if (result && typeof result.placed === "number") {
           setPlaced(result.placed);
         }
+        if (result?.cells) pendingServerCells = result.cells;
 
         const kept = result?.written?.length ?? 0;
-        if (kept < cells.length) {
-          if (result?.reason) setNote(result.reason);
-        }
+        if (kept < cells.length && result?.reason) setNote(result.reason);
         restoreCredits(cells.length - kept);
       } catch {
         restoreCredits(cells.length);
+      } finally {
+        settleServerGrid();
       }
     });
     return inFlight;
@@ -760,7 +823,7 @@ export function CollabPookalam() {
     if (index === null) return;
 
     setNote("");
-    stroke = [];
+    void flush();
     setDrawing(true);
     lastPointerPos = { x: nx, y: ny };
     lastPlacedIndex = index;
@@ -873,6 +936,7 @@ export function CollabPookalam() {
     setDrawing(false);
     lastPointerPos = null;
     lastPlacedIndex = null;
+    void inFlight.then(() => settleServerGrid());
   };
 
   const handleWheel = (e: WheelEvent) => {
@@ -990,7 +1054,7 @@ export function CollabPookalam() {
 
       {/* ---------------- Mobile Playful Scattered Mini Wishes (Non-overlapping) ---------------- */}
       <Show when={!disableComments() && mobileWishes().length > 0}>
-        <div class="lg:hidden w-full flex items-center justify-center gap-2 py-0.5 px-1 overflow-x-auto scrollbar-none">
+        <div class="lg:hidden w-full flex flex-wrap items-center justify-center gap-2 py-2 px-1 overflow-visible relative">
           <For each={mobileWishes()}>
             {(msg, idx) => (
               <WishBubble
@@ -1642,9 +1706,11 @@ function WishBubble(props: {
 
   return (
     <div
-      class="inline-flex items-start gap-1 select-none relative max-w-full z-10"
+      class="inline-flex items-start gap-1 select-none relative max-w-full"
+      classList={{ "z-50": showAuthor(), "z-10": !showAuthor() }}
       style={{
         transform: `rotate(${tilt()})`,
+        overflow: "visible",
       }}
     >
       {/* 1. Outside Circular Avatar Profile */}
@@ -1680,13 +1746,14 @@ function WishBubble(props: {
           />
         </Show>
 
-        {/* Hover / Click Author Name Tooltip */}
+        {/* Hover / Click Author Name Tooltip — higher z, never clipped */}
         <Show when={showAuthor()}>
           <div
-            class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-40 px-1.5 py-0.5 rounded text-[9px] font-black text-[var(--ink)] whitespace-nowrap pointer-events-none shadow-sm"
+            class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-[60] px-2 py-1 rounded text-[10px] font-black text-[var(--ink)] whitespace-nowrap pointer-events-none shadow-md"
             style={{
               background: "var(--paper)",
-              border: "1.5px solid var(--ink)",
+              border: "2px solid var(--ink)",
+              "box-shadow": "var(--shadow-hard)",
             }}
           >
             {props.msg.userName}

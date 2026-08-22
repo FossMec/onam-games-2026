@@ -20,9 +20,10 @@ describe("expectedScore", () => {
 });
 
 describe("kFactor", () => {
-  it("shrinks as an entry accumulates matches", () => {
-    expect(kFactor(0)).toBeGreaterThan(kFactor(10));
-    expect(kFactor(10)).toBeGreaterThan(kFactor(100));
+  it("provides equal weight for every match", () => {
+    expect(kFactor(0)).toBe(32);
+    expect(kFactor(10)).toBe(32);
+    expect(kFactor(100)).toBe(32);
   });
 });
 
@@ -33,7 +34,7 @@ describe("applyResult", () => {
     expect(next.loser).toBeLessThan(START_RATING);
   });
 
-  it("conserves rating when both sides have the same K", () => {
+  it("conserves rating across all matches", () => {
     const next = applyResult(1300, 10, 1100, 10);
     expect(next.winner + next.loser).toBeCloseTo(1300 + 1100);
   });
@@ -44,12 +45,10 @@ describe("applyResult", () => {
     expect(upset.winner - 1000).toBeGreaterThan(expected.winner - 1600);
   });
 
-  it("moves a brand-new entry faster than a settled one", () => {
-    // What makes late submissions viable: a fresh entry finds its level in a
-    // handful of matches instead of needing as many votes as everyone else.
-    const fresh = applyResult(START_RATING, 0, START_RATING, 0);
-    const settled = applyResult(START_RATING, 50, START_RATING, 50);
-    expect(fresh.winner - START_RATING).toBeGreaterThan(settled.winner - START_RATING);
+  it("treats all votes with equal K weight", () => {
+    const early = applyResult(START_RATING, 0, START_RATING, 0);
+    const late = applyResult(START_RATING, 50, START_RATING, 50);
+    expect(early.winner - START_RATING).toBeCloseTo(late.winner - START_RATING);
   });
 
   it("orders a round-robin field by strength", () => {

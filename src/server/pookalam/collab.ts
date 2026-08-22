@@ -4,9 +4,10 @@ import { collabPookalam, collabPookalamDiffs } from "~/server/db/client";
 import { getSettings } from "~/server/settings/service";
 import {
   CELL_COUNT,
+  OVERWRITE_THRESHOLD,
   cellAddress,
   emptyGrid,
-  isValidFlower,
+  isValidBrush,
   isValidIndex,
   toBase64,
 } from "~/lib/pookalam-grid";
@@ -177,8 +178,8 @@ async function writeCell(index: number, flowerId: number): Promise<number | null
     .where(
       and(
         eq(collabPookalam.dayKey, COMMUNITY_GRID_KEY),
-        // Bare cell, OR eraser, OR canvas is >= 80% filled (<= 20% empty)
-        sql`(${flowerId} = 0 or (get_byte(${collabPookalam.cells}, ${byteIndex}) & ${mask}) = 0 or ${collabPookalam.placed} >= 2000)`,
+        // Bare cell, eraser (allowed anytime), or canvas is >= 80% filled
+        sql`(${flowerId} = 0 or (get_byte(${collabPookalam.cells}, ${byteIndex}) & ${mask}) = 0 or ${collabPookalam.placed} >= ${OVERWRITE_THRESHOLD})`,
       ),
     )
     .returning({ placed: collabPookalam.placed });
@@ -188,7 +189,7 @@ async function writeCell(index: number, flowerId: number): Promise<number | null
 
 export async function placeFlower(index: number, flowerId: number): Promise<PlaceResult> {
   if (!isValidIndex(index)) return { ok: false, reason: "That square is not on the grid." };
-  if (!isValidFlower(flowerId)) return { ok: false, reason: "Unknown flower." };
+  if (!isValidBrush(flowerId)) return { ok: false, reason: "Unknown flower." };
 
   const config = await getConfig();
   if (!config.open) return { ok: false, reason: "The shared pookalam is closed right now." };
@@ -251,7 +252,7 @@ export async function placeStroke(
   const diffRows: { cellIndex: number; flowerId: number }[] = [];
 
   for (const cell of cells.slice(0, MAX_STROKE)) {
-    if (!isValidIndex(cell.index) || !isValidFlower(cell.flowerId)) continue;
+    if (!isValidIndex(cell.index) || !isValidBrush(cell.flowerId)) continue;
     // A drag re-reports the same cell as the pointer wobbles inside it.
     if (seen.has(cell.index)) continue;
     seen.add(cell.index);

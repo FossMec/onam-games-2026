@@ -339,7 +339,6 @@ export function VallamGame(props: VallamGameProps) {
         style={{
           background: "var(--paper-2)",
           border: "var(--ink-w-bold) solid var(--ink)",
-          "border-right": "var(--ink-w-bold) dashed var(--ink)",
           "touch-action": "none",
         }}
       >
@@ -357,7 +356,7 @@ export function VallamGame(props: VallamGameProps) {
           </For>
         </div>
 
-        {/* The gap in the right wall the vallam has to reach. */}
+        {/* Special-marked exit — only this cell breaks the solid wall. */}
         <div
           class="absolute"
           style={{
@@ -365,10 +364,29 @@ export function VallamGame(props: VallamGameProps) {
             right: "calc(var(--ink-w-bold) * -1)",
             width: "var(--ink-w-bold)",
             height: pct(1),
-            background: "var(--pop-teal)",
+            background: "var(--pop-yellow)",
+            border: "1px dashed var(--ink)",
+            "border-left": "none",
           }}
+          title="Escape point — slide the vallam out here"
           aria-hidden="true"
         />
+        {/* Subtle arrow pointing out of the exit */}
+        <div
+          class="absolute pointer-events-none select-none"
+          style={{
+            top: `calc(${pct(props.view.exitRow)} + ${pct(1)} / 2)`,
+            right: "calc(var(--ink-w-bold) * -0.55)",
+            transform: "translateY(-50%)",
+            "font-size": "10px",
+            "line-height": "1",
+            color: "var(--ink)",
+            "font-weight": "900",
+          }}
+          aria-hidden="true"
+        >
+          ▶
+        </div>
 
         {/* Boats. */}
         <For each={boats()}>

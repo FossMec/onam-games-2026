@@ -296,10 +296,12 @@ export const GAMES: readonly GameDef[] = [
       hint: "Clues are hidden throughout the website and festival.",
       teaser: "A grand quest for the lost Linux distribution relics.",
       howTo: [
-        "Uncover clues one by one across the website and festival pages.",
-        "Each correct answer unlocks a Linux distribution treasure relic and grants the next hint.",
-        "Rate limit: 1 answer submission per minute.",
-        "First person to complete all treasures claims the grand Onam FOSS bounty!",
+        "It's a treasure hunt with 10 hidden clues to solve, one after the other.",
+        "Some clues and answers are hidden right here on the website — others are somewhere else on the internet. Look everywhere!",
+        "Each clue asks for either a 6-letter code or a short answer. Stuck? Ask for more hints in the comments on our Instagram.",
+        "Get it right and you earn a treasure — a legendary Linux distro logo — and the next clue unlocks.",
+        "You can try again every 30 seconds if you get it wrong.",
+        "Unlike other games, the clock for this game starts the moment the game day begins.",
       ],
     },
     generate: () => ({

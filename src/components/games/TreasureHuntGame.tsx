@@ -491,6 +491,14 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
           </Show>
         </div>
 
+        {/* Nudge below the map */}
+        <p
+          class="mt-2 text-center text-sm sm:text-base font-black tracking-tight"
+          style={{ "font-family": "var(--font-stack-kalam)", color: "var(--ink)" }}
+        >
+          What are you waiting for? Only hints are here — answers are somewhere else!
+        </p>
+
         {/* -------------------- CLUE / DISTRO TROPHY MODAL -------------------- */}
         <Show when={selectedQuestionId() && selectedQuestion()}>
           {(() => {
@@ -733,7 +741,7 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
                               class="text-[var(--pop-pink)] animate-spin shrink-0"
                             />
                             <span>
-                              1 guess per min. Ready in <strong>{cooldownSeconds()}s</strong>.
+                              1 guess per 30s. Ready in <strong>{cooldownSeconds()}s</strong>.
                             </span>
                           </div>
                         </Show>

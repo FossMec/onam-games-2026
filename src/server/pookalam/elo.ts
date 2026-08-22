@@ -16,18 +16,17 @@
 /** Conventional Elo starting point. Also the schema default. */
 export const START_RATING = 1200;
 
+/** Constant K-factor: every single vote carries equal weight. */
+export const K_FACTOR = 32;
+
 /**
  * How far a rating can move on one result.
  *
- * High while an entry is new so it finds roughly the right neighbourhood in a
- * handful of matches, low once it has settled so a single contrarian voter
- * cannot shift a placing. With a few hundred voters and a couple of dozen
- * entries, most entries land in the middle band.
+ * Set to a constant K=32 so every single vote carries identical mathematical
+ * weight regardless of whether it is cast early or late.
  */
-export function kFactor(matches: number): number {
-  if (matches < 8) return 48;
-  if (matches < 24) return 32;
-  return 16;
+export function kFactor(_matches?: number): number {
+  return K_FACTOR;
 }
 
 /** Probability the first entry wins, per the logistic Elo curve. */

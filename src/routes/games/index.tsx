@@ -1,14 +1,22 @@
 import { Meta, Title } from "@solidjs/meta";
 import { A, createAsync, revalidate, useNavigate, useSearchParams } from "@solidjs/router";
 import type { RouteDefinition } from "@solidjs/router";
-import { AlertCircle, ChevronLeft, ChevronRight, HelpCircle, Lock, Trophy } from "lucide-solid";
+import {
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  HelpCircle,
+  Lock,
+  Trophy,
+} from "lucide-solid";
 import { createEffect, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { Countdown } from "~/components/Countdown";
 import { LoadingScreen } from "~/components/LoadingScreen";
 import { FairPlayModal, hasAcknowledgedFairPlay } from "~/components/games/FairPlayModal";
-import { HowToPlayModal } from "~/components/games/HowToPlay";
+import { GameDemo, HowToPlayModal } from "~/components/games/HowToPlay";
 import { clearAttempt, getStoredAttempt, markArenaFromHub, storeAttempt } from "~/lib/game-session";
 import { gameBySlug, gamesList, myAttempt as myAttemptQuery, viewer } from "~/lib/queries";
 import { teaserIcon } from "~/lib/game-teasers";
@@ -16,6 +24,7 @@ import { gameImageForType } from "~/lib/img";
 import { SITE_URL } from "~/lib/site";
 import { CommunityGroupCard } from "~/components/CommunityGroupCard";
 import { InviteFriendsCard } from "~/components/games/InviteFriendsCard";
+import { PookalamVoteMath } from "~/components/pookalam/PookalamVoteMath";
 import type { GameCard } from "~/server/games/service";
 
 const DAY_POPS = [
@@ -59,6 +68,12 @@ export default function GamesPage() {
   const [activeModalGame, setActiveModalGame] = createSignal<GameCard | null>(null);
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal("");
+  const [showVoteMathHub, setShowVoteMathHub] = createSignal(false);
+
+  createEffect(() => {
+    void activeGame()?.slug;
+    setShowVoteMathHub(false);
+  });
 
   const fullSchedule = () => games() ?? [];
 
@@ -175,6 +190,14 @@ export default function GamesPage() {
     }
   });
 
+  const scrollToHowItWorks = () => {
+    const el = document.getElementById("how-it-works");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      history.replaceState(null, "", "#how-it-works");
+    }
+  };
+
   onMount(() => {
     const onVisible = () => {
       if (document.visibilityState === "visible") {
@@ -184,6 +207,38 @@ export default function GamesPage() {
     };
     document.addEventListener("visibilitychange", onVisible);
     onCleanup(() => document.removeEventListener("visibilitychange", onVisible));
+
+    // Keep URL hash in sync: clear it when the help section scrolls out of view
+    // so the "Rules & Help ↓" link can be clicked again and still navigate.
+    const howItWorksEl = document.getElementById("how-it-works");
+    if (howItWorksEl && "IntersectionObserver" in window) {
+      const io = new IntersectionObserver(
+        (entries) => {
+          const visible = entries[0]?.isIntersecting;
+          if (!visible && window.location.hash === "#how-it-works") {
+            history.replaceState(null, "", window.location.pathname + window.location.search);
+          } else if (visible && window.location.hash !== "#how-it-works") {
+            // Don't force hash on scroll-down via manual scroll, only on button click.
+            // Leaving this commented keeps scroll-up clearing only.
+          }
+        },
+        { threshold: 0.15 },
+      );
+      io.observe(howItWorksEl);
+      onCleanup(() => io.disconnect());
+    } else {
+      const onScroll = () => {
+        if (window.location.hash !== "#how-it-works") return;
+        const el = document.getElementById("how-it-works");
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        if (rect.top > window.innerHeight * 0.8 || rect.bottom < 0) {
+          history.replaceState(null, "", window.location.pathname + window.location.search);
+        }
+      };
+      window.addEventListener("scroll", onScroll, { passive: true });
+      onCleanup(() => window.removeEventListener("scroll", onScroll));
+    }
   });
 
   const handlePlayClick = (game: GameCard) => {
@@ -400,14 +455,15 @@ export default function GamesPage() {
                     >
                       Day {current.day} of 7
                     </span>
-                    <a
-                      href="#how-it-works"
-                      class="text-xs font-extrabold underline decoration-2 underline-offset-4 px-2 py-1 inline-flex items-center gap-1"
+                    <button
+                      type="button"
+                      onClick={scrollToHowItWorks}
+                      class="text-xs font-extrabold underline decoration-2 underline-offset-4 px-2 py-1 inline-flex items-center gap-1 cursor-pointer bg-transparent border-none"
                       style={{ color: "var(--ink)" }}
                     >
                       <HelpCircle size={14} strokeWidth={2.5} />
                       <span>Rules & Help ↓</span>
-                    </a>
+                    </button>
                   </div>
                 </div>
 
@@ -577,6 +633,16 @@ export default function GamesPage() {
                               : "fastest wins"}
                         </span>
                       </div>
+
+                      <Show when={current.gameType === "hunt"}>
+                        <div class="rounded-lg border-2 border-[var(--ink)] bg-[var(--pop-red)] p-2.5 text-xs font-bold leading-snug text-white flex gap-2 items-center text-left">
+                          <Clock size={16} class="shrink-0" strokeWidth={2.5} />
+                          <span>
+                            Unlike other games, the clock for this game starts the moment the game
+                            day begins.
+                          </span>
+                        </div>
+                      </Show>
 
                       {/* Main Action Area */}
                       <div class="pt-3 space-y-2">
@@ -871,6 +937,62 @@ export default function GamesPage() {
           </div>
         </div>
       </section>
+
+      {/* Game-specific How to Play — expanded on the page so players can read before Starting */}
+      <Show when={(activeGame()?.howTo?.length ?? 0) > 0 && activeGame()?.status !== "upcoming"}>
+        <section class="space-y-4 pt-2">
+          <h2 class="rule">How to play — {activeGame()!.title}</h2>
+          <div class="card card-plain space-y-4">
+            <Show when={activeGame()!.gameType}>
+              <GameDemo gameType={activeGame()!.gameType} />
+            </Show>
+            <ol class="space-y-2.5">
+              <For each={activeGame()!.howTo}>
+                {(step, i) => (
+                  <li class="flex gap-3">
+                    <span
+                      class="grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs tabular-nums"
+                      style={{
+                        background: "var(--pop-yellow)",
+                        border: "2px solid var(--ink)",
+                        "font-family": "var(--font-stack-display)",
+                        "font-weight": 800,
+                      }}
+                    >
+                      {i() + 1}
+                    </span>
+                    <span class="text-sm font-semibold leading-snug">{step}</span>
+                  </li>
+                )}
+              </For>
+            </ol>
+            <Show when={activeGame()!.gameType === "vote"}>
+              <button
+                type="button"
+                class="text-xs font-black underline decoration-2 underline-offset-4 text-left"
+                onClick={() => setShowVoteMathHub((v) => !v)}
+              >
+                {showVoteMathHub() ? "Hide math ↑" : "Show me the math →"}
+              </button>
+              <Show when={showVoteMathHub()}>
+                <PookalamVoteMath />
+              </Show>
+            </Show>
+            <Show when={activeGame()!.status === "live" || activeGame()!.status === "tester"}>
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById("arena-hero-card");
+                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                class="btn-brand w-full text-base py-2.5 cursor-pointer"
+              >
+                Back to challenge ↑
+              </button>
+            </Show>
+          </div>
+        </section>
+      </Show>
 
       {/* Fair Play Modal */}
       <Show when={showFairPlay()}>

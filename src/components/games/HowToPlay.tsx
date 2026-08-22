@@ -570,30 +570,98 @@ function JumpDemo() {
   );
 }
 
-/** Clues out there, one token back here. */
+/** Ten hidden treasures, one after another — easy → medium → hard. */
 function HuntDemo() {
+  const TREASURES = [
+    { name: "Ubuntu", path: "/images/treasures/ubuntu.svg" },
+    { name: "Mint", path: "/images/treasures/mint.svg" },
+    { name: "Fedora", path: "/images/treasures/fedora.svg" },
+    { name: "Debian", path: "/images/treasures/debian.svg" },
+    { name: "Alpine", path: "/images/treasures/alpine.svg" },
+    { name: "Kali", path: "/images/treasures/kali.svg" },
+    { name: "NixOS", path: "/images/treasures/nixos.svg" },
+    { name: "Arch", path: "/images/treasures/arch.svg" },
+    { name: "Gentoo", path: "/images/treasures/gentoo.svg" },
+    { name: "Manjaro", path: "/images/treasures/manjaro.svg" },
+  ];
+  const DIFFS = [
+    "FIRST",
+    "EASY",
+    "MEDIUM",
+    "MEDIUM",
+    "MEDIUM",
+    "MEDIUM",
+    "HARD",
+    "HARD",
+    "HARD",
+    "HARD",
+  ] as const;
+  const [idx, setIdx] = createSignal(0);
+  onMount(() => {
+    const id = setInterval(() => setIdx((v) => (v + 1) % TREASURES.length), 900);
+    onCleanup(() => clearInterval(id));
+  });
+  const cur = () => TREASURES[idx()];
+  const diff = () => DIFFS[idx()];
+  const diffPop: Record<string, string> = {
+    FIRST: "var(--pop-yellow)",
+    EASY: "var(--pop-teal)",
+    MEDIUM: "var(--pop-blue)",
+    HARD: "var(--pop-red)",
+  };
   return (
     <Stage seed="demo-hunt">
-      <div class="absolute inset-0 grid place-items-center gap-2 px-4">
-        <div class="flex items-center gap-2">
-          <SpriteIcon name="terminal-star" size={34} animate="pulse" alt="" />
-          <span class="text-2xl" style={{ color: "var(--ink-soft)" }}>
+      <div class="absolute inset-0 grid place-items-center px-2">
+        <div class="flex items-center gap-1 sm:gap-2">
+          {/* Clue */}
+          <div class="flex flex-col items-center gap-0.5">
+            <div
+              class="grid h-9 w-10 place-items-center rounded text-[0.55rem] font-black leading-none"
+              style={{ background: PAPER, border: "var(--ink-w) solid var(--ink)" }}
+            >
+              <span>CLUE</span>
+            </div>
+            <span class="text-[0.5rem] font-bold text-muted">on site / web</span>
+          </div>
+          <span class="text-lg font-black" style={{ color: "var(--ink-soft)" }}>
             →
           </span>
-          <SpriteIcon name="footprints" size={34} animate="float" alt="" />
-          <span class="text-2xl" style={{ color: "var(--ink-soft)" }}>
+          <SpriteIcon name="footprints" size={28} animate="float" alt="" />
+          <span class="text-lg font-black" style={{ color: "var(--ink-soft)" }}>
             →
           </span>
-          <div
-            class="rounded px-2 py-1 tabular-nums text-xs font-bold"
-            style={{ background: PAPER, border: "var(--ink-w) solid var(--ink)" }}
-          >
-            ONAM-••••
+          {/* Treasure */}
+          <div class="flex flex-col items-center gap-0.5">
+            <div
+              class="relative grid h-12 w-12 place-items-center rounded-xl bg-white"
+              style={{ border: "var(--ink-w) solid var(--ink)" }}
+            >
+              <img src={cur().path} alt={cur().name} class="h-7 w-7 object-contain" />
+              <span
+                class="absolute -right-1 -top-1 grid h-5 min-w-[1.25rem] place-items-center rounded-full px-1 text-[0.55rem] font-black text-white"
+                style={{ background: "var(--ink)", border: "1px solid white" }}
+              >
+                {idx() + 1}/10
+              </span>
+            </div>
+            <span
+              class="rounded px-1 py-0 text-[0.5rem] font-black uppercase text-white"
+              style={{
+                background: diffPop[diff()] ?? "var(--ink)",
+                border: "1px solid var(--ink)",
+              }}
+            >
+              {diff()}
+            </span>
+          </div>
+          <div class="hidden sm:flex flex-col items-center gap-0.5 ml-1">
+            <span class="text-[0.6rem] font-black leading-none">{cur().name}</span>
+            <span class="text-[0.5rem] font-bold text-muted">relic</span>
           </div>
         </div>
       </div>
-      <p class="absolute inset-x-0 bottom-1 text-center text-[0.65rem] font-extrabold uppercase tracking-wider text-muted">
-        first correct token wins. there is no second prize.
+      <p class="absolute inset-x-0 bottom-1 text-center text-[0.58rem] font-extrabold uppercase tracking-wider text-muted">
+        find & unlock all 10 · first → easy → medium → hard
       </p>
     </Stage>
   );
