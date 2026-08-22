@@ -66,7 +66,7 @@ export default function VotePookalam() {
     }
   };
 
-  const refillQueue = async (requestedCount = 5) => {
+  const refillQueue = async (requestedCount = 25) => {
     if (fetching() || done()) return;
     setFetching(true);
     try {
@@ -86,6 +86,9 @@ export default function VotePookalam() {
             setCount(first.progress.votes);
             setTarget(first.progress.target);
           }
+        } else if (queue().length === 0) {
+          // If no fresh pairs were returned and queue is empty, voter has judged all
+          setDone(true);
         }
       }
     } catch {
@@ -102,7 +105,7 @@ export default function VotePookalam() {
     setOpensAt(state.phases.voting.opensAt ? new Date(state.phases.voting.opensAt) : null);
     setCount(state.votesCast);
     if (state.phases.voting.open && state.signedIn) {
-      await refillQueue(5);
+      await refillQueue(25);
     }
   });
 
@@ -112,14 +115,15 @@ export default function VotePookalam() {
     if (curQueue.length === 0) return;
 
     // Instant local advance
-    setQueue(curQueue.slice(1));
+    const remaining = curQueue.slice(1);
+    setQueue(remaining);
     setCount((c) => c + 1);
     setLeftLoaded(false);
     setRightLoaded(false);
 
     // If buffer is running low, eagerly fetch next batch
-    if (queue().length <= 2) {
-      void refillQueue(5);
+    if (remaining.length <= 5) {
+      void refillQueue(25);
     }
 
     // Fire vote asynchronously in background

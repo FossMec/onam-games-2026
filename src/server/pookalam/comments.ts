@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { getCurrentUser } from "~/server/auth/service";
 import { getDb } from "~/server/db/client";
 import { collabMessageLikes, collabMessages } from "~/server/db/schema";
+import { sharedRead, invalidateShared } from "~/server/cache";
 import { censorMessageServer, MAX_MESSAGE_CHARS } from "./censor";
 import { istDayKey } from "./collab";
 
@@ -55,6 +56,16 @@ export async function ensureMessageTables(): Promise<void> {
   return tableInitPromise;
 }
 
+function loadCollabMessageRows(dayKey: string) {
+  const db = getDb();
+  return db
+    .select()
+    .from(collabMessages)
+    .where(eq(collabMessages.dayKey, dayKey))
+    .orderBy(desc(collabMessages.likesCount), desc(collabMessages.createdAt))
+    .limit(30);
+}
+
 /**
  * Returns up to 30 messages for today so the client can perform smooth
  * local weighted rotations without recurring network polling.
@@ -66,17 +77,12 @@ export async function getCollabMessages(dayKey: string = istDayKey()): Promise<{
   signedIn: boolean;
   isAdmin: boolean;
 }> {
-  await ensureMessageTables();
-  const user = await getCurrentUser();
+  const [user, allRows] = await Promise.all([
+    getCurrentUser().catch(() => null),
+    sharedRead(`collab:messages:${dayKey}`, () => loadCollabMessageRows(dayKey), 3_000),
+  ]);
   const db = getDb();
   const isAdmin = user?.role === "admin";
-
-  const allRows = await db
-    .select()
-    .from(collabMessages)
-    .where(eq(collabMessages.dayKey, dayKey))
-    .orderBy(desc(collabMessages.likesCount), desc(collabMessages.createdAt))
-    .limit(30);
 
   if (allRows.length === 0) {
     return {
@@ -181,6 +187,8 @@ export async function postCollabMessage(
     })
     .returning();
 
+  invalidateShared("collab:messages");
+
   return {
     ok: true,
     message: {
@@ -218,6 +226,7 @@ export async function deleteCollabMessage(
 
   const db = getDb();
   await db.delete(collabMessages).where(eq(collabMessages.id, messageId));
+  invalidateShared("collab:messages");
   return { ok: true };
 }
 
@@ -254,6 +263,7 @@ export async function toggleCollabMessageLike(
       .where(eq(collabMessages.id, messageId))
       .returning({ likesCount: collabMessages.likesCount });
 
+    invalidateShared("collab:messages");
     return { ok: true, likesCount: updated?.likesCount ?? 0, hasLiked: false };
   } else {
     // Like
@@ -270,6 +280,7 @@ export async function toggleCollabMessageLike(
       .where(eq(collabMessages.id, messageId))
       .returning({ likesCount: collabMessages.likesCount });
 
+    invalidateShared("collab:messages");
     return { ok: true, likesCount: updated?.likesCount ?? 1, hasLiked: true };
   }
 }

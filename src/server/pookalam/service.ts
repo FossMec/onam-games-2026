@@ -411,7 +411,7 @@ async function loadPool(): Promise<PoolEntry[]> {
  * Returns null when they have judged every pair available to them, which is a
  * finish line rather than a failure.
  */
-export async function nextPairs(voterId: string, count = 5): Promise<VotingPair[]> {
+export async function nextPairs(voterId: string, count = 25): Promise<VotingPair[]> {
   const db = getDb();
   const [pool, judgedRows, pairCountRows, config, [mine]] = await Promise.all([
     loadPool(),

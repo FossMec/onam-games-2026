@@ -120,22 +120,29 @@ export async function getDailyLeaderboard(
     fieldSize = cached.fieldSize;
 
     if (viewerUserId && !rows.some((r) => r.userId === viewerUserId)) {
-      const ranked = rankedBoard(
-        db,
-        gameId,
-        viewerRole,
-        viewMode,
-        metric,
-        hideTestersFromPlayerBoard,
+      const myRowCached = await sharedRead(
+        `userboard:${gameId}:${viewMode}:${viewerRole}:${viewerUserId}`,
+        async () => {
+          const ranked = rankedBoard(
+            db,
+            gameId,
+            viewerRole,
+            viewMode,
+            metric,
+            hideTestersFromPlayerBoard,
+          );
+          const myRow = await db
+            .with(ranked)
+            .select()
+            .from(ranked)
+            .where(eq(ranked.userId, viewerUserId))
+            .limit(1);
+          return myRow[0] || null;
+        },
+        15_000,
       );
-      const myRow = await db
-        .with(ranked)
-        .select()
-        .from(ranked)
-        .where(eq(ranked.userId, viewerUserId))
-        .limit(1);
-      if (myRow[0]) {
-        rows.push(myRow[0]);
+      if (myRowCached) {
+        rows.push(myRowCached);
       }
     }
   } else {

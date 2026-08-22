@@ -12,7 +12,7 @@ import { HttpError } from "~/server/errors";
 import { logActivity } from "~/server/anti-cheat/log";
 import { getSetting } from "~/server/settings/service";
 import { getGameBySlug, type ViewerRole } from "~/server/games/service";
-import { sharedRead } from "~/server/cache";
+import { invalidateShared, sharedRead } from "~/server/cache";
 
 const RATE_LIMIT_MS = 30_000;
 
@@ -27,6 +27,48 @@ function getActiveHuntQuestions(): Promise<HuntQuestion[]> {
         .orderBy(huntQuestions.orderIndex),
     60_000,
   );
+}
+
+async function loadUserHuntProgress(userId: string, allActive: HuntQuestion[]) {
+  const db = getDb();
+  let [progress] = await db
+    .select()
+    .from(userHuntProgress)
+    .where(eq(userHuntProgress.userId, userId))
+    .limit(1);
+
+  if (!progress) {
+    const nextQ = pickNextQuestion(allActive, new Set());
+    const [created] = await db
+      .insert(userHuntProgress)
+      .values({
+        userId,
+        currentQuestionId: nextQ?.id ?? null,
+        solvedQuestionIds: [],
+        solvedCount: 0,
+      })
+      .returning();
+    progress = created;
+  } else if (!progress.completedAt && !progress.currentQuestionId) {
+    const solvedSet = new Set(progress.solvedQuestionIds ?? []);
+    const nextQ = pickNextQuestion(allActive, solvedSet);
+    if (!nextQ) {
+      const [updated] = await db
+        .update(userHuntProgress)
+        .set({ completedAt: new Date(), updatedAt: new Date() })
+        .where(eq(userHuntProgress.id, progress.id))
+        .returning();
+      progress = updated;
+    } else {
+      const [updated] = await db
+        .update(userHuntProgress)
+        .set({ currentQuestionId: nextQ.id, updatedAt: new Date() })
+        .where(eq(userHuntProgress.id, progress.id))
+        .returning();
+      progress = updated;
+    }
+  }
+  return progress;
 }
 
 /** True for 6-char alphanumeric token (e.g. 3X91A4). No dashes/specials. */
@@ -129,8 +171,6 @@ export async function getUserHuntState(
   userId: string,
   role: ViewerRole = "player",
 ): Promise<HuntPublicState> {
-  const db = getDb();
-
   const [allActive, isTesterModeEnabled, huntGame] = await Promise.all([
     getActiveHuntQuestions(),
     getSetting<boolean>("access.tester_mode", true),
@@ -143,46 +183,13 @@ export async function getUserHuntState(
     huntGame?.status === "closed" ||
     (isTesterMode && huntGame?.status === "tester");
 
-  let [progress] = await db
-    .select()
-    .from(userHuntProgress)
-    .where(eq(userHuntProgress.userId, userId))
-    .limit(1);
+  const progress = await sharedRead(
+    `hunt:progress:${userId}`,
+    () => loadUserHuntProgress(userId, allActive),
+    2_000,
+  );
 
   const now = Date.now();
-
-  if (!progress) {
-    const nextQ = pickNextQuestion(allActive, new Set());
-    const [created] = await db
-      .insert(userHuntProgress)
-      .values({
-        userId,
-        currentQuestionId: nextQ?.id ?? null,
-        solvedQuestionIds: [],
-        solvedCount: 0,
-      })
-      .returning();
-    progress = created;
-  } else if (!progress.completedAt && !progress.currentQuestionId) {
-    const solvedSet = new Set(progress.solvedQuestionIds ?? []);
-    const nextQ = pickNextQuestion(allActive, solvedSet);
-    if (!nextQ) {
-      const [updated] = await db
-        .update(userHuntProgress)
-        .set({ completedAt: new Date(), updatedAt: new Date() })
-        .where(eq(userHuntProgress.id, progress.id))
-        .returning();
-      progress = updated;
-    } else {
-      const [updated] = await db
-        .update(userHuntProgress)
-        .set({ currentQuestionId: nextQ.id, updatedAt: new Date() })
-        .where(eq(userHuntProgress.id, progress.id))
-        .returning();
-      progress = updated;
-    }
-  }
-
   let cooldownRemainingSec = 0;
   if (progress.lastSubmittedAt) {
     const elapsed = now - new Date(progress.lastSubmittedAt).getTime();
@@ -325,6 +332,7 @@ export async function submitHuntAnswer(
         .update(userHuntProgress)
         .set({ lastSubmittedAt: new Date(), updatedAt: new Date() })
         .where(eq(userHuntProgress.id, progress.id));
+      invalidateShared(`hunt:progress:${userId}`);
 
       await logActivity({
         userId,
@@ -357,6 +365,7 @@ export async function submitHuntAnswer(
         .update(userHuntProgress)
         .set({ lastSubmittedAt: new Date(), updatedAt: new Date() })
         .where(eq(userHuntProgress.id, progress.id));
+      invalidateShared(`hunt:progress:${userId}`);
 
       await logActivity({
         userId,
@@ -399,6 +408,7 @@ export async function submitHuntAnswer(
       updatedAt: new Date(),
     })
     .where(eq(userHuntProgress.id, progress.id));
+  invalidateShared(`hunt:progress:${userId}`);
 
   // Live update the Treasure Hunt ranking on dailyLeaderboard by number of treasures found
   try {

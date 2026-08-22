@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
 import { collabPookalam, collabPookalamDiffs } from "~/server/db/client";
 import { getSettings } from "~/server/settings/service";
+import { sharedRead, invalidateShared } from "~/server/cache";
 import {
   CELL_COUNT,
   OVERWRITE_THRESHOLD,
@@ -52,7 +53,7 @@ export function istDayKey(now: Date = new Date()): string {
   return new Date(now.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
 }
 
-async function getConfig(): Promise<{
+async function computeCollabConfig(): Promise<{
   open: boolean;
   dailyFlowers: number;
   disableDrawing: boolean;
@@ -76,12 +77,16 @@ async function getConfig(): Promise<{
   };
 }
 
+function getConfig() {
+  return sharedRead("collab:config", computeCollabConfig, 5_000);
+}
+
 /**
  * Ensures the one event-wide canvas exists. Older deployments created one row
  * per day; the migration collapses those rows, and this key prevents that model
  * from returning in application code.
  */
-async function ensureCommunityGrid() {
+async function loadCommunityGrid() {
   const db = getDb();
   const [existing] = await db
     .select()
@@ -103,6 +108,10 @@ async function ensureCommunityGrid() {
     .where(eq(collabPookalam.dayKey, COMMUNITY_GRID_KEY))
     .limit(1);
   return created;
+}
+
+function ensureCommunityGrid() {
+  return sharedRead("collab:grid", loadCommunityGrid, 2_000);
 }
 
 let diffsTableInitPromise: Promise<void> | null = null;
@@ -201,6 +210,7 @@ export async function placeFlower(index: number, flowerId: number): Promise<Plac
 
   const placed = await writeCell(index, flowerId);
   if (placed === null) return { ok: false, reason: "Someone got there first.", taken: true };
+  invalidateShared("collab:grid");
   return { ok: true, index, flowerId, placed };
 }
 
@@ -279,6 +289,8 @@ export async function placeStroke(
         updatedAt: new Date(),
       })
       .where(eq(collabPookalam.dayKey, COMMUNITY_GRID_KEY));
+
+    invalidateShared("collab:grid");
 
     // Batch-insert diff rows for animation replay. Fire-and-forget after the
     // grid read-back; a failure here must not break the stroke response.

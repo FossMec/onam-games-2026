@@ -102,7 +102,7 @@ export async function getNextPair() {
   return nextPair(user.id);
 }
 
-export async function getNextPairs(count = 5) {
+export async function getNextPairs(count = 25) {
   const user = await requireCurrentUser();
   assertCanPlay(user);
   const gates = await getGates();

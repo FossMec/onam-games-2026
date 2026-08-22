@@ -70,6 +70,7 @@ export default createMiddleware([
     } finally {
       const duration = Math.round((performance.now() - start) * 100) / 100;
       event.res.headers.set("Server-Timing", `total;dur=${duration}`);
+      console.log(`[CPU_PROFILER] ${event.req.method} ${path} ${duration}ms`);
     }
   },
 ]);

@@ -18,6 +18,7 @@ import type { ViewerRole } from "./service";
 import { getGameBySlug, resolveSchedule } from "./service";
 import { updateStreak } from "./streak";
 import { getSetting } from "~/server/settings/service";
+import { invalidateShared } from "~/server/cache";
 
 function sha256(input: string): string {
   return createHash("sha256").update(input).digest("hex");
@@ -477,7 +478,11 @@ async function upsertDailyBest(params: {
     })
     .returning({ id: dailyLeaderboard.id });
 
-  if (written.length > 0) return true;
+  if (written.length > 0) {
+    invalidateShared("leaderboard:");
+    invalidateShared("userboard:");
+    return true;
+  }
 
   // Not an improvement - still keep the run counter honest.
   await db
@@ -486,6 +491,8 @@ async function upsertDailyBest(params: {
     .where(
       and(eq(dailyLeaderboard.gameId, params.gameId), eq(dailyLeaderboard.userId, params.userId)),
     );
+  invalidateShared("leaderboard:");
+  invalidateShared("userboard:");
   return false;
 }
 
