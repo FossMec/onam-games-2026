@@ -53,6 +53,17 @@ export function metricLabel(metric: GameMetric, gameType?: string): string {
   }
 }
 
+async function getGameType(gameId: string, db: Db): Promise<string | undefined> {
+  return sharedRead(`game:type:${gameId}`, async () => {
+    const [game] = await db
+      .select({ gameType: games.gameType })
+      .from(games)
+      .where(eq(games.id, gameId))
+      .limit(1);
+    return game?.gameType;
+  });
+}
+
 /**
  * A day's board, ranked in the game's own units.
  */
@@ -65,13 +76,8 @@ export async function getDailyLeaderboard(
   pageSize = 50,
 ): Promise<DailyBoard> {
   const db = getDb();
-  const [game] = await db
-    .select({ gameType: games.gameType })
-    .from(games)
-    .where(eq(games.id, gameId))
-    .limit(1);
-
-  const metric: GameMetric = game ? (getGameDefByType(game.gameType)?.metric ?? "time") : "time";
+  const gameType = (await getGameType(gameId, db)) ?? "time";
+  const metric: GameMetric = getGameDefByType(gameType)?.metric ?? "time";
   const safePage = Math.max(1, page);
   const safePageSize = Math.min(100, Math.max(1, pageSize));
   const offset = (safePage - 1) * safePageSize;
@@ -155,7 +161,6 @@ export async function getDailyLeaderboard(
   }
 
   const totalPages = Math.max(1, Math.ceil(fieldSize / safePageSize));
-  const gameType = game?.gameType ?? "time";
   const toEntry = (row: (typeof rows)[number], rank: number): DailyEntry => ({
     rank,
     userId: row.userId,

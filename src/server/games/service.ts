@@ -281,9 +281,7 @@ function publishedGameRows() {
   );
 }
 
-export async function getGamesList(viewerRole: ViewerRole): Promise<GameCard[]> {
-  // The schedule settings do not depend on the rows, so the two go out
-  // together rather than one after the other.
+async function computeGamesList(viewerRole: ViewerRole): Promise<GameCard[]> {
   const [rows, settings] = await Promise.all([publishedGameRows(), getScheduleSettings()]);
   const testerMode = settings.testerMode !== false;
   const cards = await Promise.all(
@@ -293,19 +291,7 @@ export async function getGamesList(viewerRole: ViewerRole): Promise<GameCard[]> 
   );
   const list = cards.map((card) => (card.status === "upcoming" ? maskCard(card) : card));
 
-  // Day 7 is not a `games` row - it is the Code-a-Pookalam voting arena - so it
-  // never comes out of the query above. Appending it here means every schedule
-  // consumer (landing page, games hub, game page nav, leaderboard) reads the
-  // same seventh card from the API instead of each page hand-building its own
-  // copy. It is never masked: its title is not a reveal to protect.
-  //
-  // Only when the week is real, though. An empty schedule means an outage or a
-  // half-configured deploy, and a lone Day 7 would dress that up as a festival
-  // week that does not exist.
   if (list.length > 0 && !list.some((card) => card.day === 7)) {
-    // When voting has no window configured, fall back to "the day after the
-    // last scheduled game" so the card keeps a real countdown instead of a
-    // dead lock. Derived here, from the same schedule the card sits in.
     const anchor = list.filter((g) => g.releaseAt).sort((a, b) => b.day - a.day)[0];
     const day7ReleaseAt = anchor?.releaseAt
       ? new Date(new Date(anchor.releaseAt).getTime() + (7 - anchor.day) * DAY_MS).toISOString()
@@ -313,6 +299,10 @@ export async function getGamesList(viewerRole: ViewerRole): Promise<GameCard[]> 
     list.push(day7Card((await getConfig()).voting, day7ReleaseAt, testerMode));
   }
   return list;
+}
+
+export function getGamesList(viewerRole: ViewerRole): Promise<GameCard[]> {
+  return sharedRead(`games:list:${viewerRole}`, () => computeGamesList(viewerRole), 5_000);
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;

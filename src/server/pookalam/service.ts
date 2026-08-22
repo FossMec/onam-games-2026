@@ -77,7 +77,7 @@ interface PookalamConfig extends PookalamPhases {
  * lets a render straddle a boundary and claim that submissions have closed
  * while voting has not yet opened, in the same breath, for the same second.
  */
-export async function getConfig(): Promise<PookalamConfig> {
+async function computeConfig(): Promise<PookalamConfig> {
   const values = await getSettings(SETTING_KEYS);
   const flag = (key: string) => values.get(key) === true;
   const at = (key: string) => parseIstDateTime(values.get(key));
@@ -106,6 +106,10 @@ export async function getConfig(): Promise<PookalamConfig> {
     leaderboardDelayMs: num("pookalam.leaderboard_delay_ms", 60_000),
     aspectTolerancePct: num("pookalam.aspect_tolerance_pct", 5),
   };
+}
+
+export function getConfig(): Promise<PookalamConfig> {
+  return sharedRead("pookalam:config", computeConfig, 5_000);
 }
 
 export async function getGates(): Promise<PookalamGates> {
