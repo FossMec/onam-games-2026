@@ -78,8 +78,7 @@ function createDrizzleForUrl(url: string) {
   const queryClient = postgres(url, {
     max: 1, // Edge isolates / Hyperdrive require 1 connection per request
     prepare: false, // Hyperdrive does not support server-side prepared statements
-    fetch_types: false, // Disable background type discovery query that hangs on Cloudflare Isolates
-    connect_timeout: 5,
+    connect_timeout: 10,
     idle_timeout: 0, // Disable background timers on edge isolates
     max_lifetime: 0,
     onnotice: (notice) => {
@@ -101,13 +100,19 @@ function createDrizzleForUrl(url: string) {
 }
 
 export function getDb(): Db {
-  const url = getDatabaseUrl();
-  if (_cachedDb && _cachedUrl === url) {
-    return _cachedDb;
+  const event = getRequestEvent();
+  if (event) {
+    if (!event.locals._db) {
+      const url = getDatabaseUrl();
+      event.locals._db = createDrizzleForUrl(url);
+    }
+    return event.locals._db as Db;
   }
 
-  _cachedDb = createDrizzleForUrl(url);
-  _cachedUrl = url;
+  if (!_cachedDb) {
+    const url = getDatabaseUrl();
+    _cachedDb = createDrizzleForUrl(url);
+  }
   return _cachedDb;
 }
 

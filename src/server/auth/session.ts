@@ -1,5 +1,4 @@
 import { useSession } from "@solidjs/start/http";
-import { getRequestEvent } from "solid-js/web";
 import { getServerEnv } from "~/server/env";
 import { requestMemo } from "~/server/cache";
 
@@ -33,14 +32,6 @@ async function getSessionManager() {
 }
 
 export async function readAuthCookie(): Promise<AuthCookieData | null> {
-  const event = getRequestEvent();
-  if (event) {
-    const rawCookie = event.request?.headers?.get("cookie") || "";
-    if (!rawCookie.includes(SESSION_NAME)) {
-      return null;
-    }
-  }
-
   return requestMemo("auth:cookie", async () => {
     try {
       const session = await getSessionManager();
