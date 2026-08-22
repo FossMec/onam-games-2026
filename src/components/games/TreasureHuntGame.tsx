@@ -691,7 +691,7 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
                               6-character token
                             </p>
                             <div
-                              class="flex items-center gap-1.5 sm:gap-2"
+                              class="grid grid-cols-6 gap-1.5 sm:gap-2"
                               onPaste={handleTokenPaste as any}
                             >
                               <For each={[0, 1, 2, 3, 4, 5]}>
@@ -707,29 +707,29 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
                                     maxlength={1}
                                     autocomplete="off"
                                     spellcheck={false}
-                                    class="input w-10 h-11 sm:w-11 sm:h-12 text-center font-mono text-base sm:text-lg font-black uppercase p-0"
+                                    class="input w-full h-11 sm:h-12 text-center font-mono text-base sm:text-lg font-black uppercase p-0"
                                     style={{ "letter-spacing": "0.02em" }}
                                   />
                                 )}
                               </For>
-                              <button
-                                type="submit"
-                                disabled={
-                                  busy() ||
-                                  !isTokenComplete() ||
-                                  cooldownSeconds() > 0 ||
-                                  props.disabled
-                                }
-                                class="btn-brand py-2.5 px-4 sm:px-5 text-sm font-black shrink-0 cursor-pointer disabled:opacity-50 ml-1"
-                              >
-                                <Show
-                                  when={cooldownSeconds() > 0}
-                                  fallback={busy() ? "Checking…" : "Submit ➔"}
-                                >
-                                  Wait ({cooldownSeconds()}s)
-                                </Show>
-                              </button>
                             </div>
+                            <button
+                              type="submit"
+                              disabled={
+                                busy() ||
+                                !isTokenComplete() ||
+                                cooldownSeconds() > 0 ||
+                                props.disabled
+                              }
+                              class="btn-brand w-full py-2.5 px-4 sm:px-5 text-sm font-black cursor-pointer disabled:opacity-50"
+                            >
+                              <Show
+                                when={cooldownSeconds() > 0}
+                                fallback={busy() ? "Checking…" : "Submit ➔"}
+                              >
+                                Wait ({cooldownSeconds()}s)
+                              </Show>
+                            </button>
                           </div>
                         </Show>
 

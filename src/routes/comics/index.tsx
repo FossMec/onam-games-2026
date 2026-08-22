@@ -278,29 +278,48 @@ function PeelableComicPanel(props: { src: string; alt: string }) {
     };
 
     const img = new Image();
+    // @ts-ignore - async decoding helps keep page 4 responsive while page 3 canvas initializes
+    img.decoding = "async";
     img.src = props.src;
     img.onload = () => {
-      W = container.clientWidth || 400;
-      H = container.clientHeight || 400;
-      canvas.width = W;
-      canvas.height = H;
-      ctx.drawImage(img, 0, 0, W, H);
+      // Defer heavy canvas work so page 4 images can decode first
+      requestAnimationFrame(() => {
+        W = Math.min(container.clientWidth || 400, 800);
+        H = Math.min(container.clientHeight || 400, 800);
+        // Cap DPR size to avoid huge backing store on large screens
+        const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+        canvas.width = Math.floor(W * dpr);
+        canvas.height = Math.floor(H * dpr);
+        canvas.style.width = `${W}px`;
+        canvas.style.height = `${H}px`;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.drawImage(img, 0, 0, W, H);
 
-      // Always draw the initial default peeled nick
-      drawDefaultNick(W, H);
+        // Always draw the initial default peeled nick
+        drawDefaultNick(W, H);
 
-      // Replay all previously peeled strips using relative coordinates
-      for (let i = 0; i < GLOBAL_PEELED_STRIPS.length; i++) {
-        const s = GLOBAL_PEELED_STRIPS[i];
-        const fromX = s.u0 * W;
-        const fromY = s.v0 * H;
-        const toX = s.u1 * W;
-        const toY = s.v1 * H;
-        drawStrip(fromX, fromY, toX, toY);
-        peeledSpots.push({ x: toX, y: toY });
-      }
-
-      setIsReady(true);
+        // Replay peeled strips in idle chunks so page 4 stays interactive
+        let idx = 0;
+        const replayChunk = () => {
+          const start = performance.now();
+          while (idx < GLOBAL_PEELED_STRIPS.length && performance.now() - start < 4) {
+            const s = GLOBAL_PEELED_STRIPS[idx++];
+            const fromX = s.u0 * W;
+            const fromY = s.v0 * H;
+            const toX = s.u1 * W;
+            const toY = s.v1 * H;
+            drawStrip(fromX, fromY, toX, toY);
+            peeledSpots.push({ x: toX, y: toY });
+          }
+          if (idx < GLOBAL_PEELED_STRIPS.length) {
+            requestAnimationFrame(replayChunk);
+          } else {
+            setIsReady(true);
+          }
+        };
+        if (GLOBAL_PEELED_STRIPS.length > 0) replayChunk();
+        else setIsReady(true);
+      });
     };
 
     // Check if a point is near an exposed peelable edge (default nick or already peeled spot)
@@ -402,6 +421,7 @@ function PeelableComicPanel(props: { src: string; alt: string }) {
     <div
       ref={(el) => (containerRef = el)}
       class="relative w-full h-full overflow-hidden select-none"
+      style="contain: paint layout; isolation: isolate;"
     >
       {/* Secret Card Revealed Underneath - Hidden until canvas is initialized */}
       <div
@@ -572,19 +592,23 @@ export default function ComicsPage() {
   /*
    * Which issue each half of the settled spread is showing.
    *
-   * Mid-turn the two halves belong to different issues: the side the leaf is
-   * lifting off already shows where you are going, while the far side still
-   * shows where you were until the leaf lands on it.
+   * The side the leaf is lifting off stays on the old issue until the leaf
+   * is edge-on (p≈0.5); switching it at p=0 makes the page behind the leaf
+   * flicker from old → new while the leaf front still covers it. Delaying the
+   * swap to the halfway point keeps the hidden page identical to the leaf front
+   * until the leaf has turned enough to reveal the new page.
    */
   const leftIssue = () => {
     const t = turning();
     if (!t) return currentIssue();
-    return t.dir === "next" ? t.from : t.to;
+    if (t.dir === "next") return t.from;
+    return progress() < 0.5 ? t.from : t.to;
   };
   const rightIssue = () => {
     const t = turning();
     if (!t) return currentIssue();
-    return t.dir === "next" ? t.to : t.from;
+    if (t.dir === "next") return progress() < 0.5 ? t.from : t.to;
+    return t.from;
   };
 
   const prevIssue = () => {
@@ -1030,7 +1054,10 @@ export default function ComicsPage() {
                         />
                       }
                     >
-                      <div class="aspect-square w-full">
+                      <div
+                        class="aspect-square w-full relative overflow-hidden"
+                        style="contain: paint layout; content-visibility: auto;"
+                      >
                         <PeelableComicPanel
                           src={comic.fullImage}
                           alt={`FOSS Onam Comic ${comic.tag} (peelable)`}
