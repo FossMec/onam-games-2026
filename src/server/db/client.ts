@@ -100,12 +100,19 @@ function createDrizzleForUrl(url: string) {
 }
 
 export function getDb(): Db {
-  const url = getDatabaseUrl();
-  if (_cachedDb && _cachedUrl === url) {
-    return _cachedDb;
+  const event = getRequestEvent();
+  if (event) {
+    if (!event.locals._db) {
+      const url = getDatabaseUrl();
+      event.locals._db = createDrizzleForUrl(url);
+    }
+    return event.locals._db as Db;
   }
-  _cachedUrl = url;
-  _cachedDb = createDrizzleForUrl(url);
+
+  if (!_cachedDb) {
+    const url = getDatabaseUrl();
+    _cachedDb = createDrizzleForUrl(url);
+  }
   return _cachedDb;
 }
 

@@ -11,6 +11,7 @@ export async function GET() {
     if (error instanceof HttpError) {
       return Response.json({ error: error.message }, { status: error.status });
     }
+    console.error("[api/hunt/state] Error:", error);
     return Response.json({ error: "Internal error" }, { status: 500 });
   }
 }
