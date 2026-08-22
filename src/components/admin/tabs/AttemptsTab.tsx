@@ -1,5 +1,6 @@
 import { AlertTriangle, Ban, CheckCircle2, Search, XCircle } from "lucide-solid";
 import { For, Show, createMemo, createSignal } from "solid-js";
+import { formatAdaptiveDuration } from "~/lib/time";
 import { voidAttemptAction } from "~/server/admin/actions";
 
 export interface AttemptRow {
@@ -34,10 +35,7 @@ interface AttemptsTabProps {
 
 function formatDuration(ms: number | null): string {
   if (ms == null) return "-";
-  const s = ms / 1000;
-  if (s < 60) return `${s.toFixed(2)}s`;
-  const m = Math.floor(s / 60);
-  return `${m}m ${Math.round(s % 60)}s`;
+  return formatAdaptiveDuration(ms);
 }
 
 export function AttemptsTab(props: AttemptsTabProps) {

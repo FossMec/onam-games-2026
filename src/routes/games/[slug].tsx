@@ -3,6 +3,7 @@ import { A, createAsync, useNavigate, useParams, revalidate } from "@solidjs/rou
 import type { RouteDefinition } from "@solidjs/router";
 import { ChevronLeft } from "lucide-solid";
 import { SITE_URL } from "~/lib/site";
+import { formatAdaptiveClock, formatAdaptiveDuration } from "~/lib/time";
 import {
   lazy,
   Show,
@@ -1106,9 +1107,7 @@ function GameBar(props: {
               }}
             >
               <span class="inline-block h-2 w-2 rounded-full bg-[var(--pop-teal)] animate-pulse" />
-              <span>
-                {Math.floor(props.elapsed! / 60)}:{String(props.elapsed! % 60).padStart(2, "0")}
-              </span>
+              <span>{formatAdaptiveClock(props.elapsed!)}</span>
             </div>
           }
         >
@@ -1143,16 +1142,17 @@ function GameBar(props: {
 
 function ResultFigures(props: { result: FinishPayload }) {
   const isTime = () => props.result.metric === "time" || props.result.metric === "fcfs";
-  const durationSec = () => (props.result.durationMs / 1000).toFixed(1);
 
   return (
     <div class="space-y-1">
       <p class="font-mono text-4xl sm:text-5xl font-black tabular-nums tracking-tight">
-        {isTime() ? `${durationSec()}s` : `${props.result.score ?? 0} pts`}
+        {isTime()
+          ? formatAdaptiveDuration(props.result.durationMs)
+          : `${props.result.score ?? 0} pts`}
       </p>
       <Show when={props.result.penaltyMs > 0}>
         <p class="text-xs text-muted font-semibold">
-          Includes +{(props.result.penaltyMs / 1000).toFixed(1)}s in penalty time
+          Includes +{formatAdaptiveDuration(props.result.penaltyMs)} in penalty time
         </p>
       </Show>
     </div>

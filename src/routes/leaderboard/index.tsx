@@ -36,15 +36,13 @@ import { dailyBoard, gamesList, viewer } from "~/lib/queries";
 import type { DailyBoard, DailyEntry } from "~/server/leaderboard/service";
 import { memeImage } from "~/lib/img";
 import { SITE_URL } from "~/lib/site";
+import { formatAdaptiveDuration } from "~/lib/time";
 
 const POLL_MS = 120_000;
 const REFRESH_COOLDOWN_MS = 10_000;
 
 function formatDuration(ms: number): string {
-  const s = ms / 1000;
-  if (s < 60) return `${s.toFixed(1)}s`;
-  const m = Math.floor(s / 60);
-  return `${m}m ${Math.round(s % 60)}s`;
+  return formatAdaptiveDuration(ms);
 }
 
 function formatClock(iso: string): string {

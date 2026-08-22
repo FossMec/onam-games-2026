@@ -1,4 +1,5 @@
 import { memeImage } from "~/lib/img";
+import { formatAdaptiveDuration } from "~/lib/time";
 /**
  * Every word that can end up printed on a share card.
  *
@@ -205,13 +206,7 @@ export function figureFor(input: FigureInput): {
       label: "M ABOVE PAATHALAM",
     };
   }
-  // Minutes past the minute mark, exactly as the leaderboard writes them -
-  // "184.3s" is a number, "3m 4s" is a time, and the two screens must agree.
-  const seconds = (input.durationMs ?? 0) / 1000;
-  const value =
-    seconds < 60
-      ? `${seconds.toFixed(1)}s`
-      : `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
+  const value = formatAdaptiveDuration(input.durationMs);
   return {
     value,
     label: input.metric === "fcfs" ? "FINISHED IN" : "ON THE CLOCK",

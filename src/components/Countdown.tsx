@@ -20,10 +20,6 @@ interface CountdownProps {
   onDone?: () => void;
 }
 
-function pad(value: number): string {
-  return String(value).padStart(2, "0");
-}
-
 function Segment(props: { value: string; unit: string }) {
   return (
     <span class="inline-flex flex-col items-center gap-0.5">
@@ -75,10 +71,6 @@ export function Countdown(props: CountdownProps) {
   });
 
   const diff = () => Math.max(0, props.target.getTime() - now());
-  const days = () => Math.floor(diff() / 86400000);
-  const hours = () => Math.floor(diff() / 3600000) % 24;
-  const minutes = () => Math.floor(diff() / 60000) % 60;
-  const seconds = () => Math.floor(diff() / 1000) % 60;
 
   return (
     <Show
@@ -90,12 +82,21 @@ export function Countdown(props: CountdownProps) {
       }
     >
       <span class="inline-flex items-center justify-center gap-2 sm:gap-2.5 px-2 py-0.5">
-        <Show when={!props.compact || days() > 0}>
-          <Segment value={pad(days())} unit="days" />
+        <Show
+          when={diff() >= 3600000}
+          fallback={
+            <Show
+              when={diff() >= 60000}
+              fallback={<Segment value={String(Math.floor(diff() / 1000))} unit="sec" />}
+            >
+              <Segment value={String(Math.floor(diff() / 60000) % 60)} unit="min" />
+              <Segment value={String(Math.floor(diff() / 1000) % 60)} unit="sec" />
+            </Show>
+          }
+        >
+          <Segment value={String(Math.floor(diff() / 3600000))} unit="hrs" />
+          <Segment value={String(Math.floor(diff() / 60000) % 60)} unit="min" />
         </Show>
-        <Segment value={pad(hours())} unit="hrs" />
-        <Segment value={pad(minutes())} unit="min" />
-        <Segment value={pad(seconds())} unit="sec" />
       </span>
     </Show>
   );
