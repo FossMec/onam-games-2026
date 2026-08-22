@@ -298,17 +298,19 @@ export function generate(seed: string, difficulty: string): GeneratedInstance {
   return result;
 }
 
-/** Handcrafted curated challenge levels with known high-quality move paths */
+/** Handcrafted curated challenge levels with known high-quality move paths and precomputed par */
 export const CUSTOM_LEVELS: {
   id: string;
   name: string;
   difficulty: "normal" | "hard" | "master";
+  par: number;
   boats: Omit<Boat, "id">[];
 }[] = [
   {
     id: "vembanad-7x7",
     name: "Vembanad Grand Express",
     difficulty: "normal",
+    par: 10,
     boats: [
       { r: 3, c: 0, len: 2, horizontal: true },
       { r: 6, c: 1, len: 3, horizontal: true },
@@ -328,6 +330,7 @@ export const CUSTOM_LEVELS: {
     id: "punnamada-7x7",
     name: "Punnamada Channel Surge",
     difficulty: "normal",
+    par: 10,
     boats: [
       { r: 3, c: 0, len: 2, horizontal: true },
       { r: 4, c: 0, len: 3, horizontal: true },
@@ -348,6 +351,7 @@ export const CUSTOM_LEVELS: {
     id: "ashtamudi-7x7",
     name: "Ashtamudi Eight-Fold Lock",
     difficulty: "hard",
+    par: 10,
     boats: [
       { r: 3, c: 0, len: 2, horizontal: true },
       { r: 4, c: 0, len: 2, horizontal: false },
@@ -368,6 +372,7 @@ export const CUSTOM_LEVELS: {
     id: "aranmula-7x7",
     name: "Aranmula Mirror Maze",
     difficulty: "hard",
+    par: 11,
     boats: [
       { r: 3, c: 0, len: 2, horizontal: true },
       { r: 6, c: 5, len: 2, horizontal: true },
@@ -388,6 +393,7 @@ export const CUSTOM_LEVELS: {
     id: "chambakkulam-7x7",
     name: "Chambakkulam Chundan Fury",
     difficulty: "master",
+    par: 16,
     boats: [
       { r: 3, c: 0, len: 2, horizontal: true },
       { r: 3, c: 2, len: 2, horizontal: false },
@@ -409,7 +415,6 @@ export const CUSTOM_LEVELS: {
 function generateUncached(seed: string, difficulty: string): GeneratedInstance {
   const rng = createRng(`${seed}:vallam:level-pick`);
 
-  // First, check if a matching curated handcrafted level can be selected
   const matchingLevels = CUSTOM_LEVELS.filter(
     (lvl) =>
       difficulty === "all" ||
@@ -420,64 +425,21 @@ function generateUncached(seed: string, difficulty: string): GeneratedInstance {
   const levelPool = matchingLevels.length > 0 ? matchingLevels : CUSTOM_LEVELS;
   const pickedLevel = levelPool[rng.int(0, levelPool.length - 1)];
 
-  if (pickedLevel) {
-    const boats: Boat[] = pickedLevel.boats.map((b, idx) => ({
-      ...b,
-      id: idx,
-    }));
-    const par = solve(boats);
-    if (par !== null && par > 0) {
-      return {
-        view: {
-          kind: "vallam",
-          size: BOARD,
-          exitRow: EXIT_ROW,
-          boats,
-          par,
-        } satisfies VallamView,
-        solution: { par },
-      };
-    }
-  }
+  const boats: Boat[] = pickedLevel.boats.map((b, idx) => ({
+    ...b,
+    id: idx,
+  }));
+  const par = pickedLevel.par;
 
-  // BFS solver random generator
-  const minPar = difficulty === "hard" || difficulty === "master" ? 14 : 10;
-  let fallback: { boats: Boat[]; par: number } | null = null;
-
-  for (let attempt = 0; attempt < 16; attempt += 1) {
-    const genRng = createRng(`${seed}:vallam:${attempt}`);
-    const boats = randomBoard(genRng);
-    if (!boats) continue;
-    const par = solve(boats);
-    if (par === null || par === 0) continue;
-    if (par >= minPar) {
-      return {
-        view: {
-          kind: "vallam",
-          size: BOARD,
-          exitRow: EXIT_ROW,
-          boats,
-          par,
-        } satisfies VallamView,
-        solution: { par },
-      };
-    }
-    if (!fallback || par > fallback.par) fallback = { boats, par };
-  }
-
-  const safeFallback = fallback ?? {
-    boats: CUSTOM_LEVELS[0].boats.map((b, idx) => ({ ...b, id: idx })),
-    par: solve(CUSTOM_LEVELS[0].boats.map((b, idx) => ({ ...b, id: idx }))) ?? 10,
-  };
   return {
     view: {
       kind: "vallam",
       size: BOARD,
       exitRow: EXIT_ROW,
-      boats: safeFallback.boats,
-      par: safeFallback.par,
+      boats,
+      par,
     } satisfies VallamView,
-    solution: { par: safeFallback.par },
+    solution: { par },
   };
 }
 

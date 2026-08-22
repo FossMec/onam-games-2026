@@ -185,7 +185,7 @@ describe("verify", () => {
 
   it("rejects a solution that leaves a tile uncovered", () => {
     const submission = solved();
-    const entry = submission.found.find((f) => f.word === "GNU")!;
+    const entry = submission.found.find((f) => f.word === "GIT")!;
     entry.cells = entry.cells.slice(0, 2);
     expect(run(submission).valid).toBe(false);
   });
@@ -235,7 +235,7 @@ describe("matchTrace", () => {
     solve(viewOf(seed).grid)!.find((f) => f.word === word)!.cells;
 
   it("confirms a path that spells a hidden word", () => {
-    expect(matchTrace(SEED, cellsFor("GNU"))).toBe("GNU");
+    expect(matchTrace(SEED, cellsFor("GIT"))).toBe("GIT");
   });
 
   it("rejects a path that spells nothing", () => {

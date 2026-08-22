@@ -120,7 +120,8 @@ export class Level {
   }
 
   ensure(y: number): void {
-    while (this.platforms[this.platforms.length - 1].y < y) this.append();
+    const target = y + 400;
+    while (this.platforms[this.platforms.length - 1].y < target) this.append();
   }
 
   private append(): void {
@@ -352,9 +353,10 @@ export function step(state: SimState, dir: number): void {
     state.umbrellaFrames -= 1;
   }
 
-  state.level.ensure(state.py + VIEW_H);
-
   const platforms = state.level.platforms;
+  if (state.py + VIEW_H >= platforms[platforms.length - 1].y) {
+    state.level.ensure(state.py + VIEW_H);
+  }
 
   // 1. Platform Landing Check
   if (state.vy < 0 && state.balloonFrames === 0) {

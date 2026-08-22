@@ -114,6 +114,40 @@ export default defineConfig({
         },
       },
       routeRules: {
+        // Landing page: SSR enabled with Cloudflare Edge caching
+        "/": {
+          headers: {
+            "cache-control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
+          },
+        },
+        // Static content pages: Prerendered / 24h Edge Caching
+        "/comics/**": {
+          headers: {
+            "cache-control": "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800",
+          },
+        },
+        "/design/**": {
+          headers: {
+            "cache-control": "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800",
+          },
+        },
+        "/letter/**": {
+          headers: {
+            "cache-control": "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800",
+          },
+        },
+        "/terms": {
+          headers: {
+            "cache-control": "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800",
+          },
+        },
+        "/privacy": {
+          headers: {
+            "cache-control": "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800",
+          },
+        },
+
+        // Static Assets
         "/_build/**": { headers: { "cache-control": "public, max-age=31536000, immutable" } },
         "/images/**": { headers: { "cache-control": "public, max-age=31536000, immutable" } },
         "/sprites/**": { headers: { "cache-control": "public, max-age=31536000, immutable" } },
@@ -122,9 +156,7 @@ export default defineConfig({
         "/previous-pookalam/**": {
           headers: { "cache-control": "public, max-age=31536000, immutable" },
         },
-        // These filenames are stable public shell assets rather than hashed
-        // build output. Cache them for a week, but allow a background refresh
-        // so a deploy is not forced to wait on every visitor's cache expiry.
+        // Stable shell assets
         "/favicon.ico": {
           headers: { "cache-control": "public, max-age=604800, stale-while-revalidate=86400" },
         },
