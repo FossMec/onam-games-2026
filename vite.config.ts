@@ -120,6 +120,28 @@ export default defineConfig({
             "cache-control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
           },
         },
+        // Leaderboard: Edge CDN cached (60s) so hard reloads are served instantly by CDN
+        "/leaderboard": {
+          headers: {
+            "cache-control": "public, max-age=15, s-maxage=60, stale-while-revalidate=120",
+          },
+        },
+        "/leaderboard/**": {
+          headers: {
+            "cache-control": "public, max-age=15, s-maxage=60, stale-while-revalidate=120",
+          },
+        },
+        // Interactive game lists and schedules
+        "/games": {
+          headers: {
+            "cache-control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
+          },
+        },
+        "/games/**": {
+          headers: {
+            "cache-control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
+          },
+        },
         // Static content pages: Prerendered / 24h Edge Caching
         "/comics/**": {
           headers: {

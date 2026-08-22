@@ -1,3 +1,4 @@
+import { clientOnly } from "@solidjs/start";
 import { Link, Meta, Title } from "@solidjs/meta";
 import { A, createAsync, useNavigate, useParams, revalidate } from "@solidjs/router";
 import type { RouteDefinition } from "@solidjs/router";
@@ -5,7 +6,6 @@ import { ChevronLeft } from "lucide-solid";
 import { SITE_URL } from "~/lib/site";
 import { formatAdaptiveClock, formatAdaptiveDuration } from "~/lib/time";
 import {
-  lazy,
   Show,
   Suspense,
   createEffect,
@@ -29,26 +29,23 @@ import { CommunityGroupCard } from "~/components/CommunityGroupCard";
 import type { VallamMove, VallamViewData } from "~/components/games/VallamGame";
 import type { Cell as WendCell, WendViewData } from "~/components/games/WendGame";
 
-// Each game is its own chunk — visiting Day 3 never downloads Day 5's Jump engine.
-// Masking in `server/games/service.ts:253` hides `gameType` for `upcoming`, but
-// chunk splitting ensures even the JS for future days never reaches the browser
-// until that day is live/preview (gameType becomes truthy).
-const JigsawGame = lazy(() =>
+// Each game engine runs strictly in the browser on the client (CSR)
+const JigsawGame = clientOnly(() =>
   import("~/components/games/JigsawGame").then((m) => ({ default: m.JigsawGame })),
 );
-const JumpGame = lazy(() =>
+const JumpGame = clientOnly(() =>
   import("~/components/games/JumpGame").then((m) => ({ default: m.JumpGame })),
 );
-const TinderGame = lazy(() =>
+const TinderGame = clientOnly(() =>
   import("~/components/games/TinderGame").then((m) => ({ default: m.TinderGame })),
 );
-const VallamGame = lazy(() =>
+const VallamGame = clientOnly(() =>
   import("~/components/games/VallamGame").then((m) => ({ default: m.VallamGame })),
 );
-const WendGame = lazy(() =>
+const WendGame = clientOnly(() =>
   import("~/components/games/WendGame").then((m) => ({ default: m.WendGame })),
 );
-const TreasureHuntGame = lazy(() =>
+const TreasureHuntGame = clientOnly(() =>
   import("~/components/games/TreasureHuntGame").then((m) => ({ default: m.TreasureHuntGame })),
 );
 import { getMyRecap } from "~/server/games/actions";
