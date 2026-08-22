@@ -6,10 +6,13 @@ import {
   CELL_COUNT,
   OVERWRITE_THRESHOLD,
   cellAddress,
+  countFilled,
   emptyGrid,
   isValidBrush,
   isValidIndex,
+  readCell,
   toBase64,
+  writeCell as writeCellBuffer,
 } from "~/lib/pookalam-grid";
 import { IST_OFFSET_MS } from "./window";
 
@@ -243,12 +246,12 @@ export async function placeStroke(
     };
   }
 
-  await ensureCommunityGrid();
+  const current = await ensureCommunityGrid();
+  const grid = new Uint8Array(current.cells);
+  const isUnlocked = current.placed >= OVERWRITE_THRESHOLD;
 
   const written: number[] = [];
-  let placed = 0;
   const seen = new Set<number>();
-  /** Cells that landed, collected for the diff log. */
   const diffRows: { cellIndex: number; flowerId: number }[] = [];
 
   for (const cell of cells.slice(0, MAX_STROKE)) {
@@ -257,36 +260,41 @@ export async function placeStroke(
     if (seen.has(cell.index)) continue;
     seen.add(cell.index);
 
-    const next = await writeCell(cell.index, cell.flowerId);
-    if (next !== null) {
+    const existing = readCell(grid, cell.index);
+    if (existing === 0 || cell.flowerId === 0 || isUnlocked) {
+      writeCellBuffer(grid, cell.index, cell.flowerId);
       written.push(cell.index);
-      placed = next;
       diffRows.push({ cellIndex: cell.index, flowerId: cell.flowerId });
     }
   }
 
-  // Always read back: the reply is the authoritative grid, which has to include
-  // whatever anybody else placed while this stroke was being drawn.
-  const [row] = await getDb()
-    .select({ cells: collabPookalam.cells, placed: collabPookalam.placed })
-    .from(collabPookalam)
-    .where(eq(collabPookalam.dayKey, COMMUNITY_GRID_KEY))
-    .limit(1);
+  let finalPlaced = current.placed;
+  if (written.length > 0) {
+    finalPlaced = countFilled(grid);
+    await getDb()
+      .update(collabPookalam)
+      .set({
+        cells: grid,
+        placed: finalPlaced,
+        updatedAt: new Date(),
+      })
+      .where(eq(collabPookalam.dayKey, COMMUNITY_GRID_KEY));
 
-  // Batch-insert diff rows for animation replay. Fire-and-forget after the
-  // grid read-back; a failure here must not break the stroke response.
-  if (diffRows.length > 0) {
-    void ensureDiffsTable()
-      .then(() => getDb().insert(collabPookalamDiffs).values(diffRows))
-      .catch((err) => {
-        console.warn("[collab] diff insert failed:", err?.message ?? err);
-      });
+    // Batch-insert diff rows for animation replay. Fire-and-forget after the
+    // grid read-back; a failure here must not break the stroke response.
+    if (diffRows.length > 0) {
+      void ensureDiffsTable()
+        .then(() => getDb().insert(collabPookalamDiffs).values(diffRows))
+        .catch((err) => {
+          console.warn("[collab] diff insert failed:", err?.message ?? err);
+        });
+    }
   }
 
   return {
     written,
-    placed: row?.placed ?? placed,
-    cells: toBase64(row?.cells ?? emptyGrid()),
+    placed: finalPlaced,
+    cells: toBase64(grid),
   };
 }
 

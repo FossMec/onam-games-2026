@@ -1,5 +1,6 @@
 import { useSession } from "@solidjs/start/http";
 import { getServerEnv } from "~/server/env";
+import { requestMemo } from "~/server/cache";
 
 const SESSION_NAME = "og_session";
 
@@ -31,12 +32,14 @@ async function getSessionManager() {
 }
 
 export async function readAuthCookie(): Promise<AuthCookieData | null> {
-  try {
-    const session = await getSessionManager();
-    return session.data.sid ? session.data : null;
-  } catch {
-    return null;
-  }
+  return requestMemo("auth:cookie", async () => {
+    try {
+      const session = await getSessionManager();
+      return session.data.sid ? session.data : null;
+    } catch {
+      return null;
+    }
+  });
 }
 
 export async function writeAuthCookie(data: AuthCookieData): Promise<void> {

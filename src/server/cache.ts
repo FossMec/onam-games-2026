@@ -43,23 +43,6 @@ interface Entry {
 const store = new Map<string, Entry>();
 
 /**
- * Whether one request may await a promise another request started.
- *
- * A resolved value is inert data and safe to hand to anybody. A *pending*
- * promise is not: on Cloudflare Workers it is bound to the request that
- * created it, and awaiting it from a second request throws "Cannot perform I/O
- * on behalf of a different request". The isolate is also liable to be torn
- * down when its originating request finishes, taking the read with it.
- *
- * So single-flight is a Node optimisation, not a guarantee of this module. On
- * Workers concurrent misses each issue their own query - more reads than
- * ideal, but correct, and the resolved value still lands in the cache for
- * everyone who comes after.
- */
-const CAN_SHARE_INFLIGHT =
-  typeof navigator === "undefined" || navigator.userAgent !== "Cloudflare-Workers";
-
-/**
  * How long a global read may be stale. Thirty seconds is chosen against the
  * thing that actually goes wrong: a game releases on a schedule, and the worst
  * case is a player seeing "opens in a moment" for half a minute after it
@@ -82,29 +65,27 @@ export function sharedRead<T>(
   const now = Date.now();
   const hit = store.get(key);
 
-  if (hit) {
-    if (hit.inflight) return hit.inflight as Promise<T>;
-    if (hit.expiresAt > now) return Promise.resolve(hit.value as T);
+  if (hit && hit.value !== undefined && hit.expiresAt > now) {
+    return Promise.resolve(hit.value as T);
   }
 
-  const inflight = read()
-    .then((value) => {
+  // Deduplicate concurrent inflight reads within the current request
+  return requestMemo(`shared:${key}`, async () => {
+    // Check store again in case a previous step in this request populated it
+    const current = store.get(key);
+    if (current && current.value !== undefined && current.expiresAt > Date.now()) {
+      return current.value as T;
+    }
+
+    try {
+      const value = await read();
       store.set(key, { value, expiresAt: Date.now() + ttlMs });
       return value;
-    })
-    .catch((error) => {
-      /*
-       * A failed read must not be cached, and must not leave the entry stuck
-       * "in flight" forever - the next caller has to be allowed to try again.
-       * Dropping the entry entirely is the honest thing: there is no value to
-       * serve and no reason to remember the failure.
-       */
+    } catch (error) {
       store.delete(key);
       throw error;
-    });
-
-  if (CAN_SHARE_INFLIGHT) store.set(key, { expiresAt: 0, inflight });
-  return inflight as Promise<T>;
+    }
+  });
 }
 
 /**

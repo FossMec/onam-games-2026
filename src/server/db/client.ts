@@ -5,7 +5,8 @@ import * as schema from "./schema";
 import { getServerEnv } from "~/server/env";
 import { getRequestEvent } from "solid-js/web";
 
-let _db: ReturnType<typeof createDrizzle> | undefined;
+let _cachedDb: Db | undefined;
+let _cachedUrl: string | undefined;
 
 function getDatabaseUrl(): string {
   // Prefer Hyperdrive binding (Cloudflare Pages/Workers idiomatic)
@@ -71,8 +72,7 @@ function getDatabaseUrl(): string {
   return url;
 }
 
-function createDrizzle() {
-  const url = getDatabaseUrl();
+function createDrizzleForUrl(url: string) {
   const isDev = process.env.NODE_ENV !== "production";
 
   const queryClient = postgres(url, {
@@ -100,19 +100,14 @@ function createDrizzle() {
 }
 
 export function getDb(): Db {
-  const event = getRequestEvent();
-  if (event) {
-    // Cache per request on event.locals so all queries within the same request lifecycle reuse the client
-    if (!event.locals._db) {
-      event.locals._db = createDrizzle();
-    }
-    return event.locals._db as Db;
+  const url = getDatabaseUrl();
+  if (_cachedDb && _cachedUrl === url) {
+    return _cachedDb;
   }
-
-  // Outside request context (CLI scripts, etc.), use global singleton
-  if (!_db) _db = createDrizzle();
-  return _db;
+  _cachedUrl = url;
+  _cachedDb = createDrizzleForUrl(url);
+  return _cachedDb;
 }
 
-export type Db = ReturnType<typeof createDrizzle>;
+export type Db = ReturnType<typeof createDrizzleForUrl>;
 export * from "./schema";

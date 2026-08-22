@@ -1,22 +1,24 @@
-import { and, eq, gte, isNull, or } from "drizzle-orm";
+import { eq, gte, isNull, or } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
 import { blockedIps } from "~/server/db/schema";
+import { invalidateShared, sharedRead } from "~/server/cache";
+
+const BLOCKED_IPS_CACHE_KEY = "blocked_ips:set";
+
+async function loadBlockedIpSet(): Promise<Set<string>> {
+  const db = getDb();
+  const rows = await db
+    .select({ ip: blockedIps.ip })
+    .from(blockedIps)
+    .where(or(gte(blockedIps.expiresAt, new Date()), isNull(blockedIps.expiresAt)));
+  return new Set(rows.map((r) => r.ip));
+}
 
 export async function isIpBlocked(ip: string): Promise<boolean> {
   if (!ip) return false;
   try {
-    const db = getDb();
-    const [row] = await db
-      .select({ id: blockedIps.ip })
-      .from(blockedIps)
-      .where(
-        and(
-          eq(blockedIps.ip, ip),
-          or(gte(blockedIps.expiresAt, new Date()), isNull(blockedIps.expiresAt)),
-        ),
-      )
-      .limit(1);
-    return !!row;
+    const blockedSet = await sharedRead(BLOCKED_IPS_CACHE_KEY, loadBlockedIpSet, 30_000);
+    return blockedSet.has(ip);
   } catch (err) {
     console.error("[anti-cheat] Failed checking isIpBlocked (failing open):", err);
     return false;
@@ -52,11 +54,13 @@ export async function blockIp(opts: {
         createdAt: new Date(),
       },
     });
+  invalidateShared(BLOCKED_IPS_CACHE_KEY);
 }
 
 export async function unblockIp(ip: string): Promise<void> {
   const db = getDb();
   await db.delete(blockedIps).where(eq(blockedIps.ip, ip));
+  invalidateShared(BLOCKED_IPS_CACHE_KEY);
 }
 
 export async function listBlockedIps(

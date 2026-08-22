@@ -9,7 +9,7 @@ import {
   users,
 } from "~/server/db/schema";
 import { getSettings } from "~/server/settings/service";
-import { requestMemo } from "~/server/cache";
+import { invalidateShared, requestMemo, sharedRead } from "~/server/cache";
 import { applyResult, pairKey } from "./elo";
 import { decodeSubmissionImage, deleteStoredImage, storeSubmissionImage } from "./image";
 import { candidatePairs, type PoolEntry, samplePair } from "./pairing";
@@ -377,17 +377,22 @@ const effectiveRating = sql<number>`(${pookalamSubmissions.rating} + ${pookalamS
  * the opposite of what the correction is for.
  */
 async function loadPool(): Promise<PoolEntry[]> {
-  return getDb()
-    .select({
-      id: pookalamSubmissions.id,
-      title: pookalamSubmissions.title,
-      imageUrl: pookalamSubmissions.imageUrl,
-      rating: pookalamSubmissions.rating,
-      matches: pookalamSubmissions.matches,
-    })
-    .from(pookalamSubmissions)
-    .where(shortlistedFilter())
-    .orderBy(asc(pookalamSubmissions.matches), asc(pookalamSubmissions.id));
+  return sharedRead(
+    "pookalam:pool",
+    () =>
+      getDb()
+        .select({
+          id: pookalamSubmissions.id,
+          title: pookalamSubmissions.title,
+          imageUrl: pookalamSubmissions.imageUrl,
+          rating: pookalamSubmissions.rating,
+          matches: pookalamSubmissions.matches,
+        })
+        .from(pookalamSubmissions)
+        .where(shortlistedFilter())
+        .orderBy(asc(pookalamSubmissions.matches), asc(pookalamSubmissions.id)),
+    10_000,
+  );
 }
 
 /**
@@ -763,6 +768,7 @@ export async function getEntrantStandings(): Promise<Standings<Entrant>> {
 
 /** Drops both cached boards so the next read recomputes. Used after admin edits. */
 export async function invalidateStandings(): Promise<void> {
+  invalidateShared("pookalam:pool");
   await getDb().delete(pookalamStandings);
 }
 

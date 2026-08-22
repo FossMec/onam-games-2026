@@ -16,6 +16,7 @@ const ASSET_EXT =
 
 export default createMiddleware([
   async (event, next) => {
+    const start = performance.now();
     const requestEvent = getRequestEvent();
     if (requestEvent) {
       requestEvent.locals.requestId = crypto.randomUUID();
@@ -64,6 +65,11 @@ export default createMiddleware([
       }
     }
 
-    return next();
+    try {
+      return await next();
+    } finally {
+      const duration = Math.round((performance.now() - start) * 100) / 100;
+      event.res.headers.set("Server-Timing", `total;dur=${duration}`);
+    }
   },
 ]);
