@@ -9,6 +9,8 @@ let _cachedDb: Db | undefined;
 let _cachedUrl: string | undefined;
 
 function getDatabaseUrl(): string {
+  if (_cachedUrl) return _cachedUrl;
+
   // Prefer Hyperdrive binding (Cloudflare Pages/Workers idiomatic)
   // Supports both HYPERDRIVE (docs) and SUPABASE_SG (current binding) + fallbacks
   try {
@@ -62,13 +64,17 @@ function getDatabaseUrl(): string {
     "HYPERDRIVE_CONNECTION_STRING",
     "SUPABASE_SG_CONNECTION_STRING",
   );
-  if (hyperdriveString && hyperdriveString.startsWith("postgres")) return hyperdriveString;
+  if (hyperdriveString && hyperdriveString.startsWith("postgres")) {
+    _cachedUrl = hyperdriveString;
+    return hyperdriveString;
+  }
 
   const url = getServerEnv("DATABASE_URL");
   if (!url) {
     console.error("[DATABASE] ❌ Fatal: DATABASE_URL environment variable is missing!");
     throw new Error("DATABASE_URL is not set");
   }
+  _cachedUrl = url;
   return url;
 }
 

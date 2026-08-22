@@ -94,6 +94,8 @@ export const route = {
   },
 } satisfies RouteDefinition;
 
+const clientBoardCache = new Map<string, { data: DailyBoard | null; timestamp: number }>();
+
 export default function Leaderboard() {
   const s = createAsync(() => shell());
   const me = () => s()?.me ?? null;
@@ -176,8 +178,6 @@ export default function Leaderboard() {
   const [pending, startTransition] = useTransition();
   const [sharing, setSharing] = createSignal(false);
   const [page, setPage] = createSignal(1);
-
-  const clientBoardCache = new Map<string, { data: DailyBoard | null; timestamp: number }>();
 
   const daily = createAsync<DailyBoard | null>(async () => {
     const v = version();
