@@ -84,7 +84,7 @@ export async function getDailyLeaderboard(
   let rows: any[] = [];
   let fieldSize = 0;
 
-  if (safePage === 1 && !viewerUserId) {
+  if (safePage === 1) {
     const cached = await sharedRead(
       `leaderboard:${gameId}:${viewMode}:${viewerRole}:${safePageSize}`,
       async () => {
@@ -110,8 +110,28 @@ export async function getDailyLeaderboard(
       },
       15_000,
     );
-    rows = cached.rows;
+    rows = [...cached.rows];
     fieldSize = cached.fieldSize;
+
+    if (viewerUserId && !rows.some((r) => r.userId === viewerUserId)) {
+      const ranked = rankedBoard(
+        db,
+        gameId,
+        viewerRole,
+        viewMode,
+        metric,
+        hideTestersFromPlayerBoard,
+      );
+      const myRow = await db
+        .with(ranked)
+        .select()
+        .from(ranked)
+        .where(eq(ranked.userId, viewerUserId))
+        .limit(1);
+      if (myRow[0]) {
+        rows.push(myRow[0]);
+      }
+    }
   } else {
     const ranked = rankedBoard(
       db,

@@ -24,6 +24,7 @@ import {
   listForAdmin,
   listForTesterReview,
   nextPair,
+  nextPairs,
   reviewSubmission,
   setReviewVerdict,
   setShortlisted,
@@ -99,6 +100,14 @@ export async function getNextPair() {
   const gates = await getGates();
   if (!gates.votingOpen) return null;
   return nextPair(user.id);
+}
+
+export async function getNextPairs(count = 5) {
+  const user = await requireCurrentUser();
+  assertCanPlay(user);
+  const gates = await getGates();
+  if (!gates.votingOpen) return [];
+  return nextPairs(user.id, count);
 }
 
 export async function votePookalam(winnerId: string, loserId: string) {

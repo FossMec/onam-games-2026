@@ -8,37 +8,13 @@ import { Countdown } from "~/components/Countdown";
 import { POOKALAM } from "~/lib/event-content";
 import { SHOUT_COLOR, shout } from "~/lib/shouts";
 import { PookalamVoteMath } from "~/components/pookalam/PookalamVoteMath";
-import { getNextPair, votePookalam } from "~/server/pookalam/actions";
+import { getNextPairs, votePookalam } from "~/server/pookalam/actions";
 import { pookalamState } from "~/lib/queries";
 
 /**
  * Day 7 - head-to-head pookalam voting.
  *
  * Two entries, no names, pick one. Elo does the rest.
- *
- * Nothing about who made these reaches the browser: the pairing query does not
- * select the author or the source link, and the page does not render the entry
- * *title* either. A title is a free identity leak - "Recursive Thumba by the
- * one guy who talks about recursion" - and it also invites judging the caption
- * instead of the picture, which is the one thing this round exists to stop.
- *
- * Laid out in the same 2xl column as a game page, so a pookalam sits at about
- * 300px rather than filling the viewport. Two images have to be comparable at a
- * glance, and comparing them is the entire task; if you have to scroll between
- * them the format has already failed.
- *
- * The pair is fetched imperatively rather than through `createAsync` because
- * each vote must pull the *next* pair, and a resource keyed on nothing would
- * either cache the old pair or refetch on every unrelated render.
- *
- * WHY THERE IS A TARGET AND NOT A TOTAL
- *
- * The server picks pairs by how undecided the crowd is about them, so a correct
- * ranking falls out of roughly n·log₂n votes rather than all n(n−1)/2 of them.
- * The progress bar counts toward that target - the number that makes you count
- * as having done a full shift - and every remaining pair stays available to
- * anyone who wants to keep going. Showing "20 of 45" instead would make a
- * finished voter feel like a quitter.
  */
 
 interface PairEntry {
@@ -67,39 +43,55 @@ export default function VotePookalam() {
   const [gateOpen, setGateOpen] = createSignal<boolean | null>(null);
   const [opensAt, setOpensAt] = createSignal<Date | null>(null);
   const [signedIn, setSignedIn] = createSignal(true);
-  const [pair, setPair] = createSignal<Pair | null>(null);
+  const [queue, setQueue] = createSignal<Pair[]>([]);
   const [count, setCount] = createSignal(0);
   const [target, setTarget] = createSignal(0);
-  const [busy, setBusy] = createSignal(false);
+  const [fetching, setFetching] = createSignal(false);
   const [done, setDone] = createSignal(false);
   const [error, setError] = createSignal("");
 
-  const prefetchImages = (p: Pair | null) => {
-    if (!p || typeof window === "undefined") return;
-    const img1 = new Image();
-    img1.src = p.left.imageUrl;
-    const img2 = new Image();
-    img2.src = p.right.imageUrl;
+  const [leftLoaded, setLeftLoaded] = createSignal(false);
+  const [rightLoaded, setRightLoaded] = createSignal(false);
+  const bothLoaded = () => leftLoaded() && rightLoaded();
+
+  const pair = () => queue()[0] ?? null;
+
+  const prefetchImages = (pairs: Pair[]) => {
+    if (typeof window === "undefined") return;
+    for (const p of pairs) {
+      const img1 = new Image();
+      img1.src = p.left.imageUrl;
+      const img2 = new Image();
+      img2.src = p.right.imageUrl;
+    }
   };
 
-  const advance = async () => {
-    setBusy(true);
-    setError("");
+  const refillQueue = async (requestedCount = 5) => {
+    if (fetching() || done()) return;
+    setFetching(true);
     try {
-      const next = await getNextPair();
-      setPair(next);
-      if (next) {
-        setCount(next.progress.votes);
-        setTarget(next.progress.target);
-        prefetchImages(next);
+      const batch = (await getNextPairs(requestedCount)) as Pair[];
+      if (batch.length === 0) {
+        if (queue().length === 0) {
+          setDone(true);
+        }
+      } else {
+        const existingKeys = new Set(queue().map((p) => p.pairKey));
+        const fresh = batch.filter((p) => !existingKeys.has(p.pairKey));
+        if (fresh.length > 0) {
+          setQueue((prev) => [...prev, ...fresh]);
+          prefetchImages(fresh);
+          const first = fresh[0];
+          if (first) {
+            setCount(first.progress.votes);
+            setTarget(first.progress.target);
+          }
+        }
       }
-      // A null pair with voting open means this voter has judged everything
-      // available to them - a finish line, not a failure.
-      if (!next) setDone(true);
     } catch {
-      setError("Could not load the next pair.");
+      setError("Could not load pairs.");
     } finally {
-      setBusy(false);
+      setFetching(false);
     }
   };
 
@@ -109,33 +101,35 @@ export default function VotePookalam() {
     setGateOpen(state.phases.voting.open);
     setOpensAt(state.phases.voting.opensAt ? new Date(state.phases.voting.opensAt) : null);
     setCount(state.votesCast);
-    if (state.phases.voting.open && state.signedIn) await advance();
+    if (state.phases.voting.open && state.signedIn) {
+      await refillQueue(5);
+    }
   });
 
   const pick = async (winner: PairEntry, loser: PairEntry) => {
-    if (busy()) return;
-    setBusy(true);
-    setError("");
+    if (!bothLoaded()) return;
+    const curQueue = queue();
+    if (curQueue.length === 0) return;
+
+    // Instant local advance
+    setQueue(curQueue.slice(1));
+    setCount((c) => c + 1);
+    setLeftLoaded(false);
+    setRightLoaded(false);
+
+    // If buffer is running low, eagerly fetch next batch
+    if (queue().length <= 2) {
+      void refillQueue(5);
+    }
+
+    // Fire vote asynchronously in background
     try {
       const result = await votePookalam(winner.id, loser.id);
       if (!result.ok) {
         setError(result.reason ?? "That vote did not count.");
-        await advance();
-      } else {
-        const next = (result as { ok: true; nextPair: Pair | null }).nextPair;
-        setPair(next);
-        if (next) {
-          setCount(next.progress.votes);
-          setTarget(next.progress.target);
-          prefetchImages(next);
-        } else {
-          setDone(true);
-        }
       }
     } catch {
       setError("Could not record that vote.");
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -265,7 +259,9 @@ export default function VotePookalam() {
                   other={pair()!.right}
                   label="Left pookalam"
                   pop="var(--pop-blue)"
-                  disabled={busy()}
+                  loaded={leftLoaded()}
+                  bothLoaded={bothLoaded()}
+                  onLoaded={() => setLeftLoaded(true)}
                   onPick={pick}
                 />
                 <Choice
@@ -273,7 +269,9 @@ export default function VotePookalam() {
                   other={pair()!.left}
                   label="Right pookalam"
                   pop="var(--pop-pink)"
-                  disabled={busy()}
+                  loaded={rightLoaded()}
+                  bothLoaded={bothLoaded()}
+                  onLoaded={() => setRightLoaded(true)}
                   onPick={pick}
                 />
               </div>
@@ -366,41 +364,51 @@ function Choice(props: {
   label: string;
   pop: string;
   disabled?: boolean;
+  loaded: boolean;
+  bothLoaded: boolean;
+  onLoaded: () => void;
   onPick: (winner: PairEntry, loser: PairEntry) => void;
 }) {
   return (
     <button
       type="button"
-      class="card block w-full space-y-2.5 p-2.5 text-left"
-      style={{ "--pop": props.pop, cursor: props.disabled ? "wait" : "pointer" }}
-      disabled={props.disabled}
+      class="card block w-full space-y-2.5 p-2.5 text-left transition-transform active:scale-[0.99]"
+      style={{
+        "--pop": props.pop,
+        cursor: props.disabled || !props.bothLoaded ? "wait" : "pointer",
+        opacity: props.bothLoaded ? "1" : "0.85",
+      }}
+      disabled={props.disabled || !props.bothLoaded}
       aria-label={`Pick the ${props.label.toLowerCase()}`}
       onClick={() => props.onPick(props.entry, props.other)}
     >
-      {/*
-        Empty alt, and no caption. The title is deliberately not rendered - see
-        the note at the top of this file. Screen readers get the button's own
-        label, which says left or right and nothing about whose work it is.
-      */}
-      <img
-        src={props.entry.imageUrl}
-        alt=""
-        loading="eager"
-        decoding="async"
-        style={{
-          width: "100%",
-          "aspect-ratio": "1 / 1",
-          "object-fit": "contain",
-          background: "var(--paper-2)",
-          border: "var(--ink-w) solid var(--ink)",
-          "border-radius": "var(--radius)",
-        }}
-      />
+      <div class="relative w-full aspect-square overflow-hidden bg-[var(--paper-2)] border-[var(--ink-w)] border-[var(--ink)] rounded-[var(--radius)]">
+        {/* Skeleton Shimmer Placeholder */}
+        <Show when={!props.loaded}>
+          <div class="absolute inset-0 grid place-items-center bg-[var(--paper-3)] animate-pulse">
+            <span class="text-xs font-black text-[var(--ink-soft)] uppercase tracking-wider">
+              Loading artwork…
+            </span>
+          </div>
+        </Show>
+
+        <img
+          src={props.entry.imageUrl}
+          alt=""
+          loading="eager"
+          decoding="async"
+          onLoad={() => props.onLoaded()}
+          class={`w-full h-full object-contain transition-opacity duration-150 ${
+            props.loaded ? "opacity-100" : "opacity-0"
+          }`}
+        />
+      </div>
+
       <p
         class="text-center font-extrabold m-0"
         style={{ "font-family": "var(--font-stack-display)" }}
       >
-        THIS ONE
+        {props.bothLoaded ? "THIS ONE" : "LOADING…"}
       </p>
     </button>
   );

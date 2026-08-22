@@ -174,11 +174,11 @@ interface RelativeStrip {
   v1: number;
 }
 const GLOBAL_PEELED_STRIPS: RelativeStrip[] = [];
+let PRELOADED_COMIC_3_IMG: HTMLImageElement | null = null;
 
 function PeelableComicPanel(props: { src: string; alt: string }) {
   let canvasRef: HTMLCanvasElement | undefined;
   let containerRef: HTMLDivElement | undefined;
-  const [isReady, setIsReady] = createSignal(false);
 
   onMount(() => {
     const canvas = canvasRef;
@@ -277,50 +277,42 @@ function PeelableComicPanel(props: { src: string; alt: string }) {
       peeledSpots.push({ x: cx, y: cy });
     };
 
-    const img = new Image();
-    // @ts-ignore - async decoding helps keep page 4 responsive while page 3 canvas initializes
-    img.decoding = "async";
-    img.src = props.src;
-    img.onload = () => {
-      // Defer heavy canvas work so page 4 images can decode first
-      requestAnimationFrame(() => {
-        W = Math.min(container.clientWidth || 400, 800);
-        H = Math.min(container.clientHeight || 400, 800);
-        // Cap DPR size to avoid huge backing store on large screens
-        const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-        canvas.width = Math.floor(W * dpr);
-        canvas.height = Math.floor(H * dpr);
-        canvas.style.width = `${W}px`;
-        canvas.style.height = `${H}px`;
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx.drawImage(img, 0, 0, W, H);
+    const paint = (img: HTMLImageElement) => {
+      W = Math.min(container.clientWidth || 400, 800);
+      H = Math.min(container.clientHeight || 400, 800);
+      // Cap DPR size to avoid huge backing store on large screens
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      canvas.width = Math.floor(W * dpr);
+      canvas.height = Math.floor(H * dpr);
+      canvas.style.width = `${W}px`;
+      canvas.style.height = `${H}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.drawImage(img, 0, 0, W, H);
 
-        // Always draw the initial default peeled nick
-        drawDefaultNick(W, H);
+      // Always draw the initial default peeled nick
+      drawDefaultNick(W, H);
 
-        // Replay peeled strips in idle chunks so page 4 stays interactive
-        let idx = 0;
-        const replayChunk = () => {
-          const start = performance.now();
-          while (idx < GLOBAL_PEELED_STRIPS.length && performance.now() - start < 4) {
-            const s = GLOBAL_PEELED_STRIPS[idx++];
-            const fromX = s.u0 * W;
-            const fromY = s.v0 * H;
-            const toX = s.u1 * W;
-            const toY = s.v1 * H;
-            drawStrip(fromX, fromY, toX, toY);
-            peeledSpots.push({ x: toX, y: toY });
-          }
-          if (idx < GLOBAL_PEELED_STRIPS.length) {
-            requestAnimationFrame(replayChunk);
-          } else {
-            setIsReady(true);
-          }
-        };
-        if (GLOBAL_PEELED_STRIPS.length > 0) replayChunk();
-        else setIsReady(true);
-      });
+      // Replay peeled strips synchronously
+      for (const s of GLOBAL_PEELED_STRIPS) {
+        const fromX = s.u0 * W;
+        const fromY = s.v0 * H;
+        const toX = s.u1 * W;
+        const toY = s.v1 * H;
+        drawStrip(fromX, fromY, toX, toY);
+        peeledSpots.push({ x: toX, y: toY });
+      }
     };
+
+    if (PRELOADED_COMIC_3_IMG && PRELOADED_COMIC_3_IMG.complete) {
+      paint(PRELOADED_COMIC_3_IMG);
+    } else {
+      const img = new Image();
+      img.src = props.src;
+      PRELOADED_COMIC_3_IMG = img;
+      img.onload = () => {
+        paint(img);
+      };
+    }
 
     // Check if a point is near an exposed peelable edge (default nick or already peeled spot)
     const isNearPeeledEdge = (x: number, y: number): boolean => {
@@ -425,9 +417,7 @@ function PeelableComicPanel(props: { src: string; alt: string }) {
     >
       {/* Secret Card Revealed Underneath - Sits strictly under the peelable area in bottom-right */}
       <div
-        class={`absolute z-0 flex flex-col items-center justify-center p-3 text-center bg-[var(--pop-yellow)] rounded-xl border-2 border-[var(--ink)] shadow-md transition-opacity duration-150 ${
-          isReady() ? "opacity-100" : "opacity-0"
-        }`}
+        class="absolute z-0 flex flex-col items-center justify-center p-3 text-center bg-[var(--pop-yellow)] rounded-xl border-2 border-[var(--ink)] shadow-md select-none"
         style={{
           right: "4%",
           bottom: "4%",
@@ -482,9 +472,9 @@ function PeelableComicPanel(props: { src: string; alt: string }) {
  * which is the whole reason the turn can be honest: the back of a turning page
  * is rendered by exactly the same code as the page it becomes.
  */
-function PageFace(props: { issue: number; side: "left" | "right"; inLeaf?: boolean }) {
+function PageFace(props: { issue: number; side: "left" | "right" }) {
   const book = () => (props.issue < COMIC_BOOKS.length ? COMIC_BOOKS[props.issue] : null);
-  const isPeelable = () => props.issue === 2 && props.side === "right" && !props.inLeaf;
+  const isPeelable = () => props.issue === 2 && props.side === "right";
 
   return (
     <Show
@@ -941,7 +931,6 @@ export default function ComicsPage() {
                       <PageFace
                         issue={turn().from}
                         side={turn().dir === "next" ? "right" : "left"}
-                        inLeaf={true}
                       />
                       <div
                         class="book-shade"
@@ -954,11 +943,7 @@ export default function ComicsPage() {
                       drawn here, not a mirror of the front.
                     */}
                     <div class="book-face book-face-back" style={{ background: "var(--paper)" }}>
-                      <PageFace
-                        issue={turn().to}
-                        side={turn().dir === "next" ? "left" : "right"}
-                        inLeaf={true}
-                      />
+                      <PageFace issue={turn().to} side={turn().dir === "next" ? "left" : "right"} />
                     </div>
                   </div>
                 )}

@@ -407,7 +407,7 @@ async function loadPool(): Promise<PoolEntry[]> {
  * Returns null when they have judged every pair available to them, which is a
  * finish line rather than a failure.
  */
-export async function nextPair(voterId: string): Promise<VotingPair | null> {
+export async function nextPairs(voterId: string, count = 5): Promise<VotingPair[]> {
   const db = getDb();
   const [pool, judgedRows, pairCountRows, config, [mine]] = await Promise.all([
     loadPool(),
@@ -432,32 +432,51 @@ export async function nextPair(voterId: string): Promise<VotingPair | null> {
       .limit(1),
   ]);
 
-  // Nobody judges their own entry, so it never enters the candidate set.
   const visible = pool.filter((entry) => entry.id !== mine?.id);
-  if (visible.length < 2) return null;
+  if (visible.length < 2) return [];
 
   const judged = new Set(judgedRows.map((row) => row.pairKey));
   const timesJudged = new Map(pairCountRows.map((row) => [row.pairKey, row.n]));
   const candidates = candidatePairs(visible, judged, timesJudged, pairKey);
-  const picked = samplePair(candidates);
-  if (!picked) return null;
+  if (candidates.length === 0) return [];
 
   const target = voteTarget(
     pool.length,
     !!mine && pool.some((entry) => entry.id === mine.id),
     config.voterTargetPct,
   );
-  const votes = judged.size;
+  let currentVotes = judged.size;
 
-  // Which one shows on the left is a coin flip. A fixed side wins votes on its
-  // own - a real and well-documented bias in pairwise judging.
-  const [left, right] = Math.random() < 0.5 ? [picked.a, picked.b] : [picked.b, picked.a];
-  return {
-    left: { id: left.id, title: left.title, imageUrl: left.imageUrl },
-    right: { id: right.id, title: right.title, imageUrl: right.imageUrl },
-    pairKey: pairKey(picked.a.id, picked.b.id),
-    progress: { votes, target, remaining: Math.max(0, target - votes) },
-  };
+  const result: VotingPair[] = [];
+  const chosenKeys = new Set<string>();
+
+  for (let i = 0; i < count; i++) {
+    const available = candidates.filter((c) => !chosenKeys.has(pairKey(c.a.id, c.b.id)));
+    if (available.length === 0) break;
+    const picked = samplePair(available);
+    if (!picked) break;
+    chosenKeys.add(pairKey(picked.a.id, picked.b.id));
+
+    const [left, right] = Math.random() < 0.5 ? [picked.a, picked.b] : [picked.b, picked.a];
+    currentVotes++;
+    result.push({
+      left: { id: left.id, title: left.title, imageUrl: left.imageUrl },
+      right: { id: right.id, title: right.title, imageUrl: right.imageUrl },
+      pairKey: pairKey(picked.a.id, picked.b.id),
+      progress: {
+        votes: currentVotes - 1,
+        target,
+        remaining: Math.max(0, target - (currentVotes - 1)),
+      },
+    });
+  }
+
+  return result;
+}
+
+export async function nextPair(voterId: string): Promise<VotingPair | null> {
+  const list = await nextPairs(voterId, 1);
+  return list[0] ?? null;
 }
 
 /* ----------------------------------------------------------------- vote */

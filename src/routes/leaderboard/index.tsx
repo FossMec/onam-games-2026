@@ -176,13 +176,24 @@ export default function Leaderboard() {
   const [sharing, setSharing] = createSignal(false);
   const [page, setPage] = createSignal(1);
 
-  const daily = createAsync<DailyBoard | null>(() => {
-    void version();
+  const clientBoardCache = new Map<string, { data: DailyBoard | null; timestamp: number }>();
+
+  const daily = createAsync<DailyBoard | null>(async () => {
+    const v = version();
     const g = selectedGame();
     const mode = isTesterOrAdmin() ? viewMode() : "main";
-    // Day 7 is the pookalam vote - no `games` row, no board to fetch. The
-    // arena's own boards render from their own reads.
-    return g && g.gameType !== "vote" ? dailyBoard(g.id, mode, page(), 50) : Promise.resolve(null);
+    if (!g || g.gameType === "vote") return null;
+
+    const cacheKey = `${g.id}:${mode}:${page()}:${v}`;
+    const nowTime = Date.now();
+    const cached = clientBoardCache.get(cacheKey);
+    if (cached && nowTime - cached.timestamp < 30_000) {
+      return cached.data;
+    }
+
+    const res = await dailyBoard(g.id, mode, page(), 50);
+    clientBoardCache.set(cacheKey, { data: res, timestamp: nowTime });
+    return res;
   });
 
   /**

@@ -1,6 +1,6 @@
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
-import { logActivity, logSuspicious } from "~/server/anti-cheat/log";
+import { logSuspicious } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
 import {
   dailyLeaderboard,
@@ -11,7 +11,6 @@ import {
   userHuntProgress,
 } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
-import { getRequestMeta } from "~/server/request";
 import { revealDeck } from "./impl/tinder";
 import type { GameAssets, GameDef, GameMetric } from "./registry";
 import { requireGameDef } from "./registry";
@@ -215,28 +214,6 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
       attemptToken: gameAttempts.attemptToken,
       startedAt: gameAttempts.startedAt,
     });
-
-  await logActivity({
-    userId: input.userId,
-    deviceId: input.deviceId,
-    ip: input.ip,
-    eventType: "game_start",
-    meta: {
-      slug: input.slug,
-      gameId: game.id,
-      attemptId: attempt.id,
-      attemptToken: attempt.attemptToken,
-      attemptNumber,
-      seed,
-      startedAt: attempt.startedAt,
-      deviceId: input.deviceId,
-      ip: input.ip,
-      userAgent: input.userAgent,
-      country: input.country,
-      city: input.city,
-      role: input.role,
-    },
-  });
 
   return {
     attemptToken: attempt.attemptToken,
@@ -616,13 +593,14 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
     throw new HttpError(409, "This attempt has already been submitted");
   }
 
-  await db
+  // Fire non-critical device counter update in background
+  void db
     .update(devices)
     .set({ attemptsCount: sql`${devices.attemptsCount} + 1` })
     .where(eq(devices.id, attempt.deviceId));
 
   if (isAnomalous) {
-    await logSuspicious({
+    void logSuspicious({
       userId: input.userId,
       deviceId: input.deviceId,
       ip: attempt.ip ?? undefined,
@@ -633,156 +611,25 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
     });
   }
 
-  // Per-game solving rate heuristics
-  if (result.valid && result.movesCount && result.movesCount > 0) {
-    const msPerMove = rawDurationMs / result.movesCount;
-    if (game.gameType === "unblock" && msPerMove < 500) {
-      await logSuspicious({
-        userId: input.userId,
-        deviceId: input.deviceId,
-        ip: attempt.ip ?? undefined,
-        eventType: "vallam_superhuman_moves",
-        severity: "warn",
-        details: { msPerMove, movesCount: result.movesCount, rawDurationMs },
-        actionTaken: "flag",
-      });
-    } else if (game.gameType === "tinder" && penaltyMs === 0 && rawDurationMs < 7000) {
-      await logSuspicious({
-        userId: input.userId,
-        deviceId: input.deviceId,
-        ip: attempt.ip ?? undefined,
-        eventType: "tinder_superhuman_speed",
-        severity: "warn",
-        details: { rawDurationMs, penaltyMs },
-        actionTaken: "flag",
-      });
-    }
-  }
-
-  // Temporal cluster check: another account from the same IP/subnet submitted within 15 minutes
-  if (attempt.ip) {
-    try {
-      const recentSameGame = await db
-        .select({
-          userId: gameAttempts.userId,
-          ip: gameAttempts.ip,
-          durationMs: gameAttempts.durationMs,
-          submittedAt: gameAttempts.submittedAt,
-        })
-        .from(gameAttempts)
-        .where(
-          and(
-            eq(gameAttempts.gameId, game.id),
-            eq(gameAttempts.status, "submitted"),
-            ne(gameAttempts.userId, input.userId),
-            eq(gameAttempts.ip, attempt.ip),
-            sql`${gameAttempts.submittedAt} >= ${new Date(Date.now() - 15 * 60 * 1000)}`,
-          ),
-        )
-        .limit(1);
-
-      if (recentSameGame[0]) {
-        await logSuspicious({
-          userId: input.userId,
-          deviceId: input.deviceId,
-          ip: attempt.ip,
-          eventType: "temporal_cluster_submission",
-          severity: "info",
-          details: {
-            correlatedUserId: recentSameGame[0].userId,
-            priorDurationMs: recentSameGame[0].durationMs,
-            currentDurationMs: durationMs,
-            timeDeltaSec: Math.round(
-              (now.getTime() - (recentSameGame[0].submittedAt?.getTime() ?? now.getTime())) / 1000,
-            ),
-          },
-          actionTaken: "none",
-        });
-      }
-    } catch {
-      // non-blocking
-    }
-  }
-
   let isPersonalBest = false;
   if (result.valid && !afterDeadline) {
-    await updateStreak(input.userId, game.day, schedule.eventStartDate);
-
-    isPersonalBest = await upsertDailyBest({
-      gameId: game.id,
-      userId: input.userId,
-      attemptId: attempt.id,
-      metric: def.metric,
-      durationMs,
-      score,
-      startedAt: attempt.startedAt,
-      submittedAt: now,
-      attemptsUsed,
-      isFlagged: isAnomalous,
-    });
-  } else if (result.valid) {
-    // Late / catch-up play is just for fun; no daily leaderboard entry or streak update.
-    await logActivity({
-      userId: input.userId,
-      deviceId: input.deviceId,
-      ip: attempt.ip ?? undefined,
-      eventType: "game_submit_late",
-      meta: { durationMs, gameId: game.id },
-    });
+    const [_, isPb] = await Promise.all([
+      updateStreak(input.userId, game.day, schedule.eventStartDate),
+      upsertDailyBest({
+        gameId: game.id,
+        userId: input.userId,
+        attemptId: attempt.id,
+        metric: def.metric,
+        durationMs,
+        score,
+        startedAt: attempt.startedAt,
+        submittedAt: now,
+        attemptsUsed,
+        isFlagged: isAnomalous,
+      }),
+    ]);
+    isPersonalBest = isPb;
   }
-
-  /*
-   * Everything known about this submission, recorded whether or not anything
-   * currently looks wrong with it.
-   *
-   * Detection rules get written after the event, once you can see what the
-   * cheating actually looked like - but they can only ever run over what was
-   * captured while it happened. A row that omits the submitting IP because
-   * nothing suspicious was flagged at the time is a row no later query can
-   * rescue.
-   *
-   * Note `startIp` and `submitIp` are separate on purpose: `attempt.ip` is
-   * where the attempt was *opened*, and the two differing is itself worth
-   * knowing - a run started on wifi and submitted from another network, or a
-   * device that changed hands mid-attempt.
-   */
-  const submitMeta = getRequestMeta();
-  await logActivity({
-    userId: input.userId,
-    deviceId: input.deviceId,
-    ip: submitMeta.ip || (attempt.ip ?? undefined),
-    eventType: "game_submit",
-    meta: {
-      gameId: game.id,
-      gameSlug: game.slug,
-      attemptId: attempt.id,
-      attemptNumber: attempt.attemptNumber,
-      attemptsUsed,
-      seed: attempt.seed,
-      metric: def.metric,
-      durationMs,
-      rawDurationMs,
-      penaltyMs,
-      score,
-      movesCount: result.movesCount ?? null,
-      valid: result.valid,
-      afterDeadline,
-      isAnomalous,
-      minPlausibleMs: def.minPlausibleMs,
-      startedAt: attempt.startedAt,
-      submittedAt: now,
-      startDeviceId: attempt.deviceId,
-      submitDeviceId: input.deviceId,
-      startIp: attempt.ip,
-      submitIp: submitMeta.ip || null,
-      startUserAgent: attempt.userAgent,
-      submitUserAgent: submitMeta.userAgent || null,
-      startCountry: attempt.country,
-      startCity: attempt.city,
-      submitCountry: submitMeta.country,
-      submitCity: submitMeta.city,
-    },
-  });
 
   return {
     valid: result.valid,
