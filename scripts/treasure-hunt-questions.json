@@ -1,10 +1,10 @@
 [
   {
     "slug": "hunt-9f3a1c2d",
-    "title": "The Royal Terminal",
+    "title": "Onam Games",
     "difficulty": "first",
-    "hintHtml": "<p>What's the SSH connection string for Maveli's terminal?</p>",
-    "answer": "maveli@pathalam.btw",
+    "hintHtml": "<p>Huge thanks to our design team, this year's Onam games poster looks amazing!</p>",
+    "answer": "M4V371",
     "orderIndex": 1
   },
   {
@@ -49,34 +49,35 @@
   },
   {
     "slug": "hunt-5c0e8f2a",
-    "title": "It's right there!",
-    "difficulty": "hard",
-    "hintHtml": "<p>from where did everyone first hear about the onam games?</p>",
-    "answer": "4X72RV",
+
+    "title": "The Royal Terminal",
+    "difficulty": "medium",
+    "hintHtml": "<p>What's the SSH connection string for Maveli's terminal?</p>",
+    "answer": "maveli@pathalam.btw",
     "orderIndex": 7
   },
   {
     "slug": "hunt-a3f1d9e6",
-    "title": "The Freedom Manifesto",
+    "title": "",
     "difficulty": "hard",
-    "hintHtml": "<p>What was the original 1989 version of Richard Stallman's revolutionary copyleft license?</p>",
-    "answer": "GPLv1",
+    "hintHtml": "<p></p>",
+    "answer": "",
     "orderIndex": 8
   },
   {
     "slug": "hunt-6d2b8c4f",
-    "title": "Three Paces",
+    "title": "",
     "difficulty": "hard",
-    "hintHtml": "<p>According to ancient Onam legend, which divine incarnation requested three paces of land from King Mahabali  </p>",
-    "answer": "Vamana",
+    "hintHtml": "<p></p>",
+    "answer": "",
     "orderIndex": 9
   },
   {
     "slug": "hunt-0e9f7a3b",
-    "title": "The Package Master",
+    "title": "",
     "difficulty": "hard",
-    "hintHtml": "<p>Who originally created Arch Linux and released version 0.1 'Homer' in March 2002?</p>",
-    "answer": "Judd Vinet",
+    "hintHtml": "<p></p>",
+    "answer": "",
     "orderIndex": 10
   }
 ]
