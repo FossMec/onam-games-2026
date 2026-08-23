@@ -7,7 +7,7 @@ import { getRequestMeta } from "~/server/request";
 import { getSupabaseAdmin, getSupabaseAnon } from "~/server/supabase/client";
 import { getRequestEvent } from "solid-js/web";
 import { clearAuthCookie, readAuthCookie, writeAuthCookie } from "./session";
-import { sharedRead, invalidateShared } from "~/server/cache";
+import { requestMemo, invalidateShared } from "~/server/cache";
 
 export interface OAuthSession {
   access_token: string;
@@ -224,49 +224,45 @@ async function getCurrentUserUncached(): Promise<PublicUser | null> {
   const data = await readAuthCookie();
   const sid = data?.sid;
   if (!sid) return null;
-  return sharedRead(
-    `session:${sid}`,
-    async () => {
-      const db = getDb();
-      const rows = await db<(PublicUser & { sessionExpiresAt: Date | null })[]>`
-        SELECT
-          u.id,
-          u.supabase_uid AS "supabaseUid",
-          u.email,
-          u.name,
-          u.avatar_url AS "avatarUrl",
-          u.instagram_handle AS "instagramHandle",
-          u.whatsapp_number AS "whatsappNumber",
-          u.occupation,
-          u.college,
-          u.college_other AS "collegeOther",
-          u.branch,
-          u.branch_other AS "branchOther",
-          u.batch,
-          u.div,
-          u.role,
-          u.ban_level AS "banLevel",
-          u.ban_until AS "banUntil",
-          u.ban_reason AS "banReason",
-          u.ban_acked_at AS "banAckedAt",
-          u.trust_score AS "trustScore",
-          u.streak_count AS "streakCount",
-          u.best_streak AS "bestStreak",
-          u.onboarding_completed AS "onboardingCompleted",
-          s.expires_at AS "sessionExpiresAt"
-        FROM auth_sessions s
-        INNER JOIN users u ON u.id = s.user_id
-        WHERE s.id = ${sid} AND s.revoked_at IS NULL
-        LIMIT 1
-      `;
-      const row = rows[0];
-      if (!row) return null;
-      const { sessionExpiresAt, ...user } = row;
-      if (isRefreshDue(sessionExpiresAt)) void refreshSessionIfNeeded(sid);
-      return user as PublicUser;
-    },
-    15_000,
-  );
+  return requestMemo(`user:session:${sid}`, async () => {
+    const db = getDb();
+    const rows = await db<(PublicUser & { sessionExpiresAt: Date | null })[]>`
+      SELECT
+        u.id,
+        u.supabase_uid AS "supabaseUid",
+        u.email,
+        u.name,
+        u.avatar_url AS "avatarUrl",
+        u.instagram_handle AS "instagramHandle",
+        u.whatsapp_number AS "whatsappNumber",
+        u.occupation,
+        u.college,
+        u.college_other AS "collegeOther",
+        u.branch,
+        u.branch_other AS "branchOther",
+        u.batch,
+        u.div,
+        u.role,
+        u.ban_level AS "banLevel",
+        u.ban_until AS "banUntil",
+        u.ban_reason AS "banReason",
+        u.ban_acked_at AS "banAckedAt",
+        u.trust_score AS "trustScore",
+        u.streak_count AS "streakCount",
+        u.best_streak AS "bestStreak",
+        u.onboarding_completed AS "onboardingCompleted",
+        s.expires_at AS "sessionExpiresAt"
+      FROM auth_sessions s
+      INNER JOIN users u ON u.id = s.user_id
+      WHERE s.id = ${sid} AND s.revoked_at IS NULL
+      LIMIT 1
+    `;
+    const row = rows[0];
+    if (!row) return null;
+    const { sessionExpiresAt, ...user } = row;
+    if (isRefreshDue(sessionExpiresAt)) void refreshSessionIfNeeded(sid);
+    return user as PublicUser;
+  });
 }
 
 /** A session is worth refreshing once it is within a minute of expiring. */
