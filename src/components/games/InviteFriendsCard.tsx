@@ -108,7 +108,7 @@ export function InviteFriendsCard(props: InviteFriendsCardProps) {
             class="text-xs sm:text-sm font-bold text-[var(--ink)] m-0"
             style={{ "font-family": "var(--font-stack-hand)" }}
           >
-            "tell them before they find out about the ₹200 daily prizes from someone else."
+            "tell them before they find out about the ₹250 daily prizes from someone else."
           </p>
         </div>
 

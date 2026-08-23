@@ -431,7 +431,7 @@ export function GamesHubView() {
                         style={{ "--pop": "var(--pop-yellow)" }}
                       >
                         <Trophy size={18} strokeWidth={2.5} />
-                        <span>Win ₹200 Cash</span>
+                        <span>Win ₹250 Cash</span>
                       </span>
                       <div
                         class="relative overflow-hidden rounded-lg aspect-square w-full sm:w-64 md:w-72 bg-[var(--paper-3)] flex items-center justify-center"
@@ -819,7 +819,7 @@ export function GamesHubView() {
               <h3 class="font-black text-base m-0">1. A Game a Day</h3>
             </div>
             <p class="text-xs font-semibold leading-relaxed text-muted m-0">
-              A new puzzle unlocks each evening. Complete the challenge fast to take home daily ₹200
+              A new puzzle unlocks each evening. Complete the challenge fast to take home daily ₹250
               cash bounties.
             </p>
           </div>

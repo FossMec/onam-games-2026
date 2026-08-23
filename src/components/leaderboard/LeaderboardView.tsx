@@ -292,7 +292,7 @@ export function LeaderboardView() {
             decoding="async"
           />
           <p class="text-xs font-black text-center mt-2 text-[var(--ink)] uppercase tracking-wider">
-            ₹200 Daily Prize · FOSS Onam
+            ₹250 Daily Prize · FOSS Onam
           </p>
         </div>
 
@@ -333,7 +333,7 @@ export function LeaderboardView() {
               </h1>
             </div>
             <p class="text-xs sm:text-sm font-semibold text-[var(--ink-soft)] leading-snug">
-              Daily mini-game results & rankings · Top 1 wins ₹200 daily prize
+              Daily mini-game results & rankings · Top 1 wins ₹250 daily prize
             </p>
           </div>
 
@@ -490,7 +490,7 @@ export function LeaderboardView() {
                   <div class="min-w-0">
                     <div class="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase px-2 py-0.5 rounded bg-[var(--paper-2)] border border-[var(--ink)]">
                       <Trophy size={12} strokeWidth={3} />
-                      <span>Day Winner · ₹200 Cash Prize</span>
+                      <span>Day Winner · ₹250 Cash Prize</span>
                     </div>
                     <p class="font-black text-base sm:text-lg mt-1 truncate">{top.name}</p>
                   </div>

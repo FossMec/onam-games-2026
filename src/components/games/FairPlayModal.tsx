@@ -108,7 +108,7 @@ export function FairPlayModal(props: FairPlayModalProps) {
         </div>
 
         <p class="text-xs sm:text-sm font-semibold text-[var(--ink-soft)] leading-relaxed relative z-10 m-0">
-          To keep daily ₹200 cash bounties and leaderboard podiums fair and fun for all players,
+          To keep daily ₹250 cash bounties and leaderboard podiums fair and fun for all players,
           please confirm you understand our anti-cheat rules before starting:
         </p>
 

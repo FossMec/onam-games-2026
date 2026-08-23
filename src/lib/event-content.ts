@@ -129,7 +129,7 @@ export const EVENT = {
 
   prizes: [
     {
-      amount: "₹200 / Day",
+      amount: "₹250 / Day",
       rank: "Daily Game Champions",
       detail:
         "Awarded to the #1 verified player with the fastest solve time each day (7 days total).",
@@ -154,7 +154,7 @@ export const EVENT = {
       badge: "Podium Runners-up",
     },
     {
-      amount: "₹200",
+      amount: "₹250",
       rank: "Best Voter Bounty",
       detail: "Awarded to the sharpest eyes on Day 7 pairwise pookalam matchmaking voting.",
       pop: "pop-purple",
@@ -177,7 +177,7 @@ export const EVENT = {
     },
     {
       q: "How and when do I get my cash prize if I win?",
-      a: "Daily winners (₹200) and Code-a-Pookalam winners (up to ₹1,500) will be contacted directly through their WhatsApp number or email registered on their account right after results are verified. Payouts are made via UPI.",
+      a: "Daily winners (₹250) and Code-a-Pookalam winners (up to ₹1,500) will be contacted directly through their WhatsApp number or email registered on their account right after results are verified. Payouts are made via UPI.",
     },
     {
       q: "Do I need to know how to code?",
@@ -189,7 +189,7 @@ export const EVENT = {
     },
     {
       q: "I missed a day. Can I still win?",
-      a: "Yes! Every day's game is an independent competition with its own ₹200 daily cash prize. Missed days don't hold you back from winning future days.",
+      a: "Yes! Every day's game is an independent competition with its own ₹250 daily cash prize. Missed days don't hold you back from winning future days.",
     },
     {
       q: "Can I play on my phone?",
