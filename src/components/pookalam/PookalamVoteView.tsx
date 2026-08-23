@@ -30,6 +30,39 @@ interface Pair {
   progress: { votes: number; target: number; remaining: number };
 }
 
+/**
+ * Voting only needs ~320px (cards are ~160px on phone, ~300px desktop).
+ * 320 is ~1/10 the pixels of 1024, small webp thumbs.
+ * Supabase Storage supports on-the-fly transforms via /render/image (no migration).
+ * Original 1024 webp stays for results/detail, vote uses 320 thumb.
+ * Falls back to original if transform disabled (free plan) — still correct.
+ */
+function thumbUrl(url: string, w = 320): string {
+  if (!url) return url;
+  try {
+    const u = new URL(url);
+    // Already a render URL? just adjust width
+    if (u.pathname.includes("/storage/v1/render/image/")) {
+      u.searchParams.set("width", String(w));
+      u.searchParams.set("quality", "75");
+      return u.toString();
+    }
+    // /storage/v1/object/public/pookalams/entries/xxx.webp -> /storage/v1/render/image/public/...
+    if (u.pathname.includes("/storage/v1/object/public/")) {
+      const renderPath = u.pathname.replace(
+        "/storage/v1/object/public/",
+        "/storage/v1/render/image/public/",
+      );
+      return `${u.origin}${renderPath}?width=${w}&height=${w}&resize=contain&quality=75&format=webp`;
+    }
+    // Non-supabase or already small — add hint for Cloudflare cache
+    u.searchParams.set("width", String(w));
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
 const HOW_TO = [
   "Two pookalams, side by side. Both are anonymous — no names, no repos, no titles.",
   "Pick the one you think is better. There is no draw and no skip; a considered guess beats a blank.",
@@ -58,13 +91,13 @@ export function PookalamVoteView() {
 
   const prefetchImages = (pairs: Pair[]) => {
     if (typeof window === "undefined") return;
-    // Only prefetch next 2 pairs (4 images) — prefetching 25 pairs (50× ~400KB)
-    // at once saturates bandwidth and causes "loading artwork" hang after 3-4 votes.
+    // Only prefetch next 2 pairs (4 images) as small 320 webp thumbs — prefetching
+    // 25 pairs (50× 1024 webp) saturated bandwidth and caused hang after 3-4 votes.
     for (const p of pairs.slice(0, 2)) {
       const img1 = new Image();
-      img1.src = p.left.imageUrl;
+      img1.src = thumbUrl(p.left.imageUrl, 320);
       const img2 = new Image();
-      img2.src = p.right.imageUrl;
+      img2.src = thumbUrl(p.right.imageUrl, 320);
     }
   };
 
@@ -467,12 +500,19 @@ function Choice(props: {
             imgRef = el;
             if (el.complete) props.onLoaded();
           }}
-          src={props.entry.imageUrl}
+          src={thumbUrl(props.entry.imageUrl, 320)}
           alt=""
           loading="eager"
           decoding="async"
           onLoad={() => props.onLoaded()}
-          onError={() => props.onLoaded()}
+          onError={() => {
+            // If thumb transform 404 (free plan without transforms), fall back to original
+            if (imgRef && imgRef.src !== props.entry.imageUrl) {
+              imgRef.src = props.entry.imageUrl;
+            } else {
+              props.onLoaded();
+            }
+          }}
           class={`w-full h-full object-contain transition-opacity duration-150 ${
             props.loaded ? "opacity-100" : "opacity-0"
           }`}
