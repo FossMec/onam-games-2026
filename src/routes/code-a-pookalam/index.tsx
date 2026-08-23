@@ -1,7 +1,7 @@
 import { Meta, Title } from "@solidjs/meta";
 import { createAsync } from "@solidjs/router";
 import type { RouteDefinition } from "@solidjs/router";
-import { Pencil } from "lucide-solid";
+import { ExternalLink, MessageCircle, Pencil } from "lucide-solid";
 import { Show, Suspense, createSignal, lazy, onMount, type JSX } from "solid-js";
 
 import { LoadingScreen } from "~/components/LoadingScreen";
@@ -38,6 +38,8 @@ const STATUS_LABEL: Record<string, string> = {
   approved: "accepted",
   rejected: "not accepted",
 };
+
+const POOKALAM_WHATSAPP_LINK = "https://chat.whatsapp.com/ERr2DAwXFZICIqcoiMNL6d";
 
 function Section(props: {
   title: string;
@@ -229,6 +231,20 @@ export default function CodeAPookalam() {
             >
               {POOKALAM.tagline}
             </p>
+
+            <div class="flex justify-center pt-1">
+              <a
+                href={POOKALAM_WHATSAPP_LINK}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#25D366] text-white font-black text-xs sm:text-sm hover:brightness-105 transition-all"
+                style={{ border: "var(--ink-w-bold) solid var(--ink)" }}
+              >
+                <MessageCircle size={16} strokeWidth={2.5} />
+                <span>Join WhatsApp Group</span>
+                <ExternalLink size={13} strokeWidth={2.5} />
+              </a>
+            </div>
 
             {/* Interactive Pookalam Canvas & Studio Centerpiece */}
             <div id="studio" class="scroll-mt-28 text-left">
