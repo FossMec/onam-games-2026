@@ -59,6 +59,7 @@ export function PookalamVoteView() {
   const [target, setTarget] = createSignal(0);
   const [fetching, setFetching] = createSignal(false);
   const [done, setDone] = createSignal(false);
+  const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [error, setError] = createSignal("");
 
   const [leftLoaded, setLeftLoaded] = createSignal(false);
@@ -80,19 +81,27 @@ export function PookalamVoteView() {
   };
 
   const refillQueue = async (requestedCount = 45) => {
-    if (fetching() || done()) return;
+    if (fetching() || done() || isSubmitting()) return;
+    // Don't refetch while votes are in-flight — server still thinks those pairs are unjudged
+    // and would resend duplicates (you saw 36 → 4 refetched → 2 duplicates).
+    if (pendingVotes.length > 0) return;
     setFetching(true);
     try {
       // Fetch all remaining pairs at once (max 10 pookalams => 45 pairs). One round-trip
       // is far cheaper than sequential 25-pair fetches that each do 5 DB queries.
       const batch = (await getNextPairs(requestedCount)) as Pair[];
       if (batch.length === 0) {
-        if (queue().length === 0) {
+        if (queue().length === 0 && pendingVotes.length === 0) {
           setDone(true);
         }
       } else {
         const existingKeys = new Set(queue().map((p) => p.pairKey));
-        const fresh = batch.filter((p) => !existingKeys.has(p.pairKey));
+        const pendingKeys = new Set(
+          pendingVotes.map((v) => [v.winnerId, v.loserId].sort().join(":")),
+        );
+        const fresh = batch.filter(
+          (p) => !existingKeys.has(p.pairKey) && !pendingKeys.has(p.pairKey),
+        );
         if (fresh.length > 0) {
           setQueue((prev) => [...prev, ...fresh]);
           prefetchImages(fresh);
@@ -101,7 +110,7 @@ export function PookalamVoteView() {
             setCount(first.progress.votes);
             setTarget(first.progress.target);
           }
-        } else if (queue().length === 0) {
+        } else if (queue().length === 0 && pendingVotes.length === 0) {
           // If no fresh pairs were returned and queue is empty, voter has judged all
           setDone(true);
         }
@@ -139,16 +148,19 @@ export function PookalamVoteView() {
     setRightLoaded(false);
   });
 
+  const [pendingCount, setPendingCount] = createSignal(0);
   let pendingVotes: Array<{ winnerId: string; loserId: string }> = [];
   let batchTimer: number | undefined;
 
   const flushBatch = async () => {
     if (pendingVotes.length === 0) return;
     const batch = pendingVotes.splice(0, pendingVotes.length);
+    setPendingCount(pendingVotes.length);
     if (batchTimer) {
       clearTimeout(batchTimer);
       batchTimer = undefined;
     }
+    setIsSubmitting(true);
     try {
       // Use lightweight API route instead of _server RPC — avoids seroval/query serde overhead (~5ms CPU)
       const res = await fetch("/api/pookalam/vote", {
@@ -160,15 +172,37 @@ export function PookalamVoteView() {
       if (!r.ok) console.warn("[vote] rejected:", r.reason ?? r.errors);
     } catch (err) {
       console.error("[vote] failed:", err);
+    } finally {
+      setIsSubmitting(false);
+      setPendingCount(pendingVotes.length);
+      // If we just emptied the queue but had pending, verify truly done only after all flushed
+      if (queue().length === 0 && pendingVotes.length === 0 && !done()) {
+        await refillQueue(45);
+      }
     }
   };
 
   const scheduleBatch = () => {
-    if (batchTimer) return;
+    if (batchTimer) clearTimeout(batchTimer);
+    // Debounced: fast votes coalesce into fewer POSTs (fewer 30ms CPU hits),
+    // continuous votes still flush at least every 800ms.
     batchTimer = window.setTimeout(() => {
       void flushBatch();
-    }, 1200);
+    }, 800);
   };
+
+  // Ensure pending votes not lost on tab hide/close
+  onMount(() => {
+    const onHide = () => {
+      if (pendingVotes.length > 0) void flushBatch();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("beforeunload", onHide);
+    onCleanup(() => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("beforeunload", onHide);
+    });
+  });
 
   const pick = async (winner: PairEntry, loser: PairEntry) => {
     const curQueue = queue();
@@ -184,17 +218,19 @@ export function PookalamVoteView() {
     // Prefetch next pair's images only (not 50 at once)
     if (remaining.length > 0) prefetchImages(remaining.slice(0, 2));
 
-    // Batch votes: with max 10 pookalams (45 pairs) one fetch is enough,
-    // so we batch 3 at a time to cut round-trips from 45 to ~15.
+    // Debounced batch: fast votes hit fewer POSTs (e.g., 36 fast votes → ~4×800ms flushes),
+    // continuous slow votes still flush promptly. No loss — pending flushed on hide/unload.
+    // Flush immediately only if batch is large to bound payload.
     pendingVotes.push({ winnerId: winner.id, loserId: loser.id });
-    if (pendingVotes.length >= 3) {
+    setPendingCount(pendingVotes.length);
+    if (pendingVotes.length >= 10) {
       void flushBatch();
     } else {
       scheduleBatch();
     }
 
-    // Only refill if we truly ran out (shouldn't happen after initial 45 fetch)
-    if (remaining.length === 0 && !done()) {
+    // Only refill if we truly ran out AND no pending votes (otherwise server would resend same 4 you just voted)
+    if (remaining.length === 0 && !done() && pendingVotes.length === 0 && !isSubmitting()) {
       void refillQueue(45);
     }
   };
@@ -294,22 +330,46 @@ export function PookalamVoteView() {
             <Show
               when={pair()}
               fallback={
-                <Show when={done()} fallback={<p class="font-semibold">Finding a pair…</p>}>
-                  <div class="card pop-teal space-y-3 text-center">
-                    <ShoutBurst
-                      text={shout("triumph", "pookalam-done")}
-                      color={SHOUT_COLOR.triumph}
-                      seed="pookalam-done"
-                    />
-                    <p class="font-extrabold">
-                      That's every pair you can judge. {count()} votes in.
+                <Show
+                  when={isSubmitting() || pendingCount() > 0}
+                  fallback={
+                    <Show
+                      when={done()}
+                      fallback={
+                        <Show when={fetching()} fallback={<VoteSkeleton />}>
+                          <VoteSkeleton />
+                        </Show>
+                      }
+                    >
+                      <div class="card pop-teal space-y-3 text-center">
+                        <ShoutBurst
+                          text={shout("triumph", "pookalam-done")}
+                          color={SHOUT_COLOR.triumph}
+                          seed="pookalam-done"
+                        />
+                        <p class="font-extrabold">
+                          That's every pair you can judge. {count()} votes in.
+                        </p>
+                        <p class="comment">
+                          results go up once voting closes. no, we won't tell you who's winning.
+                        </p>
+                        <A href="/leaderboard" class="btn-brand">
+                          See the standings
+                        </A>
+                      </div>
+                    </Show>
+                  }
+                >
+                  <div class="card pop-yellow space-y-3 text-center p-6">
+                    <div class="flex justify-center">
+                      <span class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-[var(--ink)] border-t-transparent" />
+                    </div>
+                    <p class="font-extrabold">Verifying your votes…</p>
+                    <p class="comment text-sm">
+                      {pendingCount() > 0
+                        ? `${pendingCount()} vote${pendingCount() === 1 ? "" : "s"} still sending — please wait`
+                        : "Finishing up — checking what's left"}
                     </p>
-                    <p class="comment">
-                      results go up once voting closes. no, we won't tell you who's winning.
-                    </p>
-                    <A href="/leaderboard" class="btn-brand">
-                      See the standings
-                    </A>
                   </div>
                 </Show>
               }
@@ -412,6 +472,27 @@ function HowToVote() {
         </Show>
       </Show>
     </section>
+  );
+}
+
+function VoteSkeleton() {
+  return (
+    <div class="grid gap-3 sm:grid-cols-2">
+      <div class="card block w-full space-y-2.5 p-2.5">
+        <div
+          class="relative w-full aspect-square overflow-hidden bg-[var(--paper-3)] animate-pulse rounded-[var(--radius)]"
+          style={{ border: "var(--ink-w) solid var(--ink)" }}
+        />
+        <div class="h-4 w-24 mx-auto bg-[var(--paper-3)] animate-pulse rounded" />
+      </div>
+      <div class="card block w-full space-y-2.5 p-2.5">
+        <div
+          class="relative w-full aspect-square overflow-hidden bg-[var(--paper-3)] animate-pulse rounded-[var(--radius)]"
+          style={{ border: "var(--ink-w) solid var(--ink)" }}
+        />
+        <div class="h-4 w-24 mx-auto bg-[var(--paper-3)] animate-pulse rounded" />
+      </div>
+    </div>
   );
 }
 

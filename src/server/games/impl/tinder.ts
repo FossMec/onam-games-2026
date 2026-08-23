@@ -94,6 +94,9 @@ export function checkPass(
   decisions: readonly TinderDecision[],
 ): { ok: true; wrongIds: string[] } | { ok: false; reason: string } {
   const key = answerKey(seed);
+  // Fallback to pool for stale attempts after card list changes (e.g., canva)
+  // so old attempts don't get Unknown card for every swipe.
+  const poolKey = new Map(TINDER_CARDS.map((c) => [c.id, c.open]));
 
   if (decisions.length !== expectedIds.length) {
     return { ok: false, reason: "Pass length does not match the deck" };
@@ -105,8 +108,9 @@ export function checkPass(
     if (decision.id !== expectedIds[i]) {
       return { ok: false, reason: "Cards answered out of order" };
     }
-    const correct = key.get(decision.id);
-    if (correct === undefined) return { ok: false, reason: "Unknown card" };
+    let correct = key.get(decision.id);
+    if (correct === undefined) correct = poolKey.get(decision.id);
+    if (correct === undefined) return { ok: false, reason: `Unknown card: ${decision.id}` };
     if (decision.open !== correct) wrongIds.push(decision.id);
   }
   return { ok: true, wrongIds };

@@ -81,11 +81,28 @@ export async function POST({ request }: APIEvent) {
     }
 
     // Pass 1 must be the dealt deck; later passes are a subset, which the
-    // final replay re-derives anyway.
+    // final replay re-derives anyway. For stale attempts after card list changes,
+    // allow any id that exists in overall pool to avoid spurious Unknown card
+    // on every swipe (e.g., canva). The authoritative check is still checkPass
+    // which uses answerKey from same seed.
     const dealt = dealDeck(attempt.seed).map((card) => card.id);
     const dealtSet = new Set(dealt);
-    if (body.data.expectedIds.some((id) => !dealtSet.has(id))) {
-      return Response.json({ error: "Unknown card" }, { status: 400 });
+    const unknownIds = body.data.expectedIds.filter((id) => !dealtSet.has(id));
+    if (unknownIds.length > 0) {
+      // Log for diagnostics but don't block if id exists in overall pool (stale deck)
+      const poolIds = new Set(
+        (await import("~/server/games/data/tinder-cards")).TINDER_CARDS.map((c) => c.id),
+      );
+      const trulyUnknown = unknownIds.filter((id) => !poolIds.has(id));
+      if (trulyUnknown.length > 0) {
+        console.warn(
+          `[tinder check] truly unknown ids ${trulyUnknown.join(",")} seed=${attempt.seed.slice(0, 8)} dealt=${dealt.join(",")}`,
+        );
+        return Response.json({ error: `Unknown card: ${trulyUnknown[0]}` }, { status: 400 });
+      }
+      console.warn(
+        `[tinder check] stale deck ids ${unknownIds.join(",")} seed=${attempt.seed.slice(0, 8)} allowed`,
+      );
     }
 
     const result = checkPass(attempt.seed, body.data.expectedIds, body.data.decisions);
