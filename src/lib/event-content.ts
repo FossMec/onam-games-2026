@@ -129,10 +129,10 @@ export const EVENT = {
 
   prizes: [
     {
-      amount: "₹250 / Day",
+      amount: "₹250 · ₹500 Day 6",
       rank: "Daily Game Champions",
       detail:
-        "Awarded to the #1 verified player with the fastest solve time each day (7 days total).",
+        "₹250 for Days 1–5 and ₹500 for Day 6 Treasure Hunt — #1 verified finish each day wins.",
       pop: "pop-yellow",
       icon: "tux-king" as SpriteName,
       badge: "7 Winners",

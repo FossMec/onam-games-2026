@@ -801,7 +801,7 @@ export default function Home() {
                 <div class="game-hype-stage relative z-10 mt-3 md:mt-0">
                   <div class="game-hype-prize-card" aria-label="Daily prize">
                     <span class="game-hype-prize-kicker">Daily challenge prize</span>
-                    <strong>Win ₹250</strong>
+                    <strong>Win {current.gameType === "hunt" ? "₹500" : "₹250"}</strong>
                     <span>
                       {current.gameType === "jump"
                         ? "most height reached wins"

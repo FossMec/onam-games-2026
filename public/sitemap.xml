@@ -32,12 +32,12 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://onam-games.fossmec.workers.dev/games/escape-the-vallam</loc>
+    <loc>https://onam-games.fossmec.workers.dev/games/boatlock</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://onam-games.fossmec.workers.dev/games/wend</loc>
+    <loc>https://onam-games.fossmec.workers.dev/games/sudowend</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>

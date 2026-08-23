@@ -190,7 +190,7 @@ export const GAMES: readonly GameDef[] = [
 
   /* ---------------------------------------------------------------- day 3 */
   {
-    slug: "wend",
+    slug: "sudowend",
     day: 3,
     gameType: "wend",
     metric: "time",
@@ -199,7 +199,7 @@ export const GAMES: readonly GameDef[] = [
     maxDurationMs: 24 * HOUR,
     maxSubmissionBytes: 16_000,
     public: {
-      title: "Wend",
+      title: "sudoWend",
       tagline: "Six words, one grid, and absolutely no room to spare.",
       hint: "If a word leaves a tile stranded, it's the wrong word.",
       teaser: "A word puzzle entangled in banana leaves.",
@@ -216,7 +216,7 @@ export const GAMES: readonly GameDef[] = [
 
   /* ---------------------------------------------------------------- day 4 */
   {
-    slug: "escape-the-vallam",
+    slug: "boatlock",
     day: 4,
     gameType: "unblock",
     metric: "time",
@@ -225,7 +225,7 @@ export const GAMES: readonly GameDef[] = [
     maxDurationMs: 24 * HOUR,
     maxSubmissionBytes: 32_000,
     public: {
-      title: "Escape the Vallam",
+      title: "BoatLock",
       tagline: "Chundan vallam. Traffic jam. Vallamkali has never been this bureaucratic.",
       hint: "The snake boat only moves the long way. Everything else is in the way.",
       teaser: "Unblock the snake boat before the floodwaters rise.",

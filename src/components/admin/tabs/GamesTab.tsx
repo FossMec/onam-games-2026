@@ -438,8 +438,8 @@ export function GamesTab(props: GamesTabProps) {
                 >
                   <option value="tinder">tinder (Open Source Tinder)</option>
                   <option value="jigsaw">jigsaw (Pookalam Jigsaw)</option>
-                  <option value="wend">wend (Malayalam Wordle)</option>
-                  <option value="vallam">vallam (Escape the Vallam)</option>
+                  <option value="wend">wend (sudoWend)</option>
+                  <option value="unblock">unblock (BoatLock)</option>
                   <option value="jump">jump (Maveli Jump)</option>
                   <option value="hunt">hunt (FOSS Treasure Hunt)</option>
                   <option value="pookalam_vote">pookalam_vote (Code-a-Pookalam Vote)</option>
