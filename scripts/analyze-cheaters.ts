@@ -29,13 +29,13 @@ for (const envFile of [".env", ".env.local", ".dev.vars"]) {
 }
 
 import { getDb } from "../src/server/db/client";
-import {
-  devices,
-  gameAttempts,
-  games,
-  suspiciousLogs,
-  userDevices,
-  users,
+import type {
+  User,
+  Device,
+  UserDevice,
+  GameAttempt,
+  SuspiciousLog,
+  Game,
 } from "../src/server/db/schema";
 import type { FingerprintSignals } from "../src/lib/fingerprint";
 
@@ -153,12 +153,46 @@ async function runAnalysis() {
   const db = getDb();
 
   const [allUsers, allDevices, allUserDevices, allAttempts, allLogs, allGames] = await Promise.all([
-    db.select().from(users),
-    db.select().from(devices),
-    db.select().from(userDevices),
-    db.select().from(gameAttempts),
-    db.select().from(suspiciousLogs),
-    db.select().from(games),
+    db<User[]>`
+      SELECT
+        id, email, name, college, college_other AS "collegeOther", branch, batch,
+        whatsapp_number AS "whatsappNumber", trust_score AS "trustScore", ban_level AS "banLevel",
+        ban_until AS "banUntil", ban_reason AS "banReason", streak_count AS "streakCount",
+        created_at AS "createdAt", last_login_at AS "lastLoginAt"
+      FROM users
+    `,
+    db<Device[]>`
+      SELECT
+        id, device_hash AS "deviceHash", hardware_hash AS "hardwareHash", fp_visitor_id AS "fpVisitorId",
+        canvas_hash AS "canvasHash", webgl_hash AS "webglHash", font_hash AS "fontHash",
+        screen_hash AS "screenHash", audio_hash AS "audioHash", local_ip AS "localIp",
+        last_ip AS "lastIp", first_ip AS "firstIp", platform, user_agent AS "userAgent",
+        first_country AS "firstCountry", first_city AS "firstCity", last_country AS "lastCountry",
+        last_city AS "lastCity", first_seen_at AS "firstSeenAt", last_seen_at AS "lastSeenAt",
+        attempts_count AS "attemptsCount", fingerprint_json AS "fingerprintJson"
+      FROM devices
+    `,
+    db<UserDevice[]>`
+      SELECT id, user_id AS "userId", device_id AS "deviceId", first_used_at AS "firstUsedAt", last_used_at AS "lastUsedAt"
+      FROM user_devices
+    `,
+    db<GameAttempt[]>`
+      SELECT
+        id, game_id AS "gameId", user_id AS "userId", device_id AS "deviceId",
+        duration_ms AS "durationMs", score, started_at AS "startedAt", submitted_at AS "submittedAt",
+        ip, server_valid AS "serverValid", is_anomalous AS "isAnomalous", status
+      FROM game_attempts
+    `,
+    db<SuspiciousLog[]>`
+      SELECT
+        id, user_id AS "userId", device_id AS "deviceId", event_type AS "eventType",
+        severity, action_taken AS "actionTaken", ip, created_at AS "createdAt",
+        details_json AS "detailsJson"
+      FROM suspicious_logs
+    `,
+    db<Game[]>`
+      SELECT id, slug, title FROM games
+    `,
   ]);
 
   console.log(
@@ -1004,7 +1038,7 @@ function deduplicateDiffs(diffs: SignalDiffItem[]): SignalDiffItem[] {
 export function generateInteractiveDashboard(
   clusters: Cluster[],
   allUsers: UserNode[],
-  allLogs: Array<typeof suspiciousLogs.$inferSelect>,
+  allLogs: SuspiciousLog[],
   networkDensity: Map<string, NetworkSummary>,
 ): string {
   const generatedTime = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });

@@ -1,6 +1,5 @@
-import { asc, eq } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
-import { games } from "~/server/db/schema";
+import type { Game } from "~/server/db/schema";
 import type { GameMetric } from "./registry";
 import { getGameDefByType } from "./registry";
 import { getSettings } from "~/server/settings/service";
@@ -103,7 +102,7 @@ async function getScheduleSettings(): Promise<ScheduleSettings> {
   };
 }
 
-function computeRelease(game: typeof games.$inferSelect, settings: ScheduleSettings): Date | null {
+function computeRelease(game: Game, settings: ScheduleSettings): Date | null {
   if (game.releaseAt) return game.releaseAt;
   const start = parseDateSetting(settings.eventStartDate);
   const timeMs = parseTimeSetting(settings.releaseTime);
@@ -120,11 +119,7 @@ function computeRelease(game: typeof games.$inferSelect, settings: ScheduleSetti
  * release. Zero (or negative) hours means the reveal and the release are the
  * same instant, which switches the preview window off entirely.
  */
-function computePreview(
-  game: typeof games.$inferSelect,
-  releaseAt: Date,
-  settings: ScheduleSettings,
-): Date {
+function computePreview(game: Game, releaseAt: Date, settings: ScheduleSettings): Date {
   if (game.previewAt) return game.previewAt;
   // Settings come back from jsonb and have been seen stored as strings, so the
   // arithmetic is done on a number we coerced ourselves rather than a maybe.
@@ -133,7 +128,7 @@ function computePreview(
 }
 
 export async function resolveSchedule(
-  game: typeof games.$inferSelect,
+  game: Game,
   viewerRole: ViewerRole,
   settings?: ScheduleSettings,
 ): Promise<{
@@ -199,7 +194,7 @@ export async function resolveSchedule(
 }
 
 function toCard(
-  game: typeof games.$inferSelect,
+  game: Game,
   schedule: {
     releaseAt: Date | null;
     endAt: Date | null;
@@ -276,9 +271,29 @@ function maskCard(card: GameCard): GameCard {
  * status is still recomputed on every single request.
  */
 function publishedGameRows() {
-  return sharedRead("games:rows", () =>
-    getDb().select().from(games).where(eq(games.published, true)).orderBy(asc(games.day)),
-  );
+  return sharedRead("games:rows", async () => {
+    return getDb()<Game[]>`
+      SELECT
+        id,
+        slug,
+        day,
+        title,
+        hint,
+        game_type AS "gameType",
+        difficulty,
+        release_at AS "releaseAt",
+        end_at AS "endAt",
+        preview_at AS "previewAt",
+        tester_early_hours AS "testerEarlyHours",
+        status,
+        assets_json AS "assetsJson",
+        published,
+        created_at AS "createdAt"
+      FROM games
+      WHERE published = true
+      ORDER BY day ASC
+    `;
+  });
 }
 
 async function computeGamesList(viewerRole: ViewerRole): Promise<GameCard[]> {

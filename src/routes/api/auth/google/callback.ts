@@ -28,7 +28,10 @@ export async function GET({ request }: APIEvent) {
   }
 
   try {
-    const proto = request.headers.get("x-forwarded-proto") ?? "https";
+    const isLocal = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+    const proto =
+      request.headers.get("x-forwarded-proto") ??
+      (isLocal ? url.protocol.replace(":", "") : "https");
     const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? url.host;
     const origin = `${proto}://${host}`;
     await finishGoogleAuth(url, origin);

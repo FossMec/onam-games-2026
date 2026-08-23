@@ -1,11 +1,9 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import * as schema from "./schema";
+import postgres, { type Sql } from "postgres";
 
 import { getServerEnv } from "~/server/env";
 import { getRequestEvent } from "solid-js/web";
 
-let _cachedDb: Db | undefined;
+let _cachedDb: Sql | undefined;
 let _cachedUrl: string | undefined;
 
 function getDatabaseUrl(): string {
@@ -78,12 +76,23 @@ function getDatabaseUrl(): string {
   return url;
 }
 
-function createDrizzleForUrl(url: string) {
+function createPostgresForUrl(url: string): Sql {
   const isDev = process.env.NODE_ENV !== "production";
+  const isHyperdrive =
+    url.includes("hyperdrive") ||
+    url.includes("cloudflare") ||
+    url.includes("127.0.0.1:54322") ||
+    Boolean(getServerEnv("HYPERDRIVE", "SUPABASE_SG"));
 
-  const queryClient = postgres(url, {
+  // Crucial: Hyperdrive terminates SSL at the edge proxy, so worker -> Hyperdrive MUST be plaintext (ssl: false).
+  // If ssl is not false, postgres.js sends an SSLRequest (0x04D2162F) packet which workerd's Cap'n Proto RPC layer
+  // misinterprets as a massive message length header (e.g. 62949523777 words), causing traversalLimitInWords crash.
+  const ssl = isHyperdrive ? false : url.includes("sslmode=require") ? "require" : false;
+
+  return postgres(url, {
     max: 1, // Edge isolates / Hyperdrive require 1 connection per request
     prepare: false, // Hyperdrive does not support server-side prepared statements
+    ssl,
     connect_timeout: 10,
     idle_timeout: 0, // Disable background timers on edge isolates
     max_lifetime: 0,
@@ -101,26 +110,25 @@ function createDrizzleForUrl(url: string) {
         }
       : undefined,
   });
-
-  return drizzle(queryClient, { schema });
 }
 
-export function getDb(): Db {
+export function getDb(): Sql {
   const event = getRequestEvent();
   if (event) {
     if (!event.locals._db) {
       const url = getDatabaseUrl();
-      event.locals._db = createDrizzleForUrl(url);
+      event.locals._db = createPostgresForUrl(url);
     }
-    return event.locals._db as Db;
+    return event.locals._db as Sql;
   }
 
   if (!_cachedDb) {
     const url = getDatabaseUrl();
-    _cachedDb = createDrizzleForUrl(url);
+    _cachedDb = createPostgresForUrl(url);
   }
   return _cachedDb;
 }
 
-export type Db = ReturnType<typeof createDrizzleForUrl>;
+export type Db = Sql;
+export { type Sql } from "postgres";
 export * from "./schema";

@@ -1,7 +1,5 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { getCurrentUser } from "~/server/auth/service";
 import { getDb } from "~/server/db/client";
-import { collabMessageLikes, collabMessages } from "~/server/db/schema";
 import { sharedRead, invalidateShared } from "~/server/cache";
 import { censorMessageServer, MAX_MESSAGE_CHARS } from "./censor";
 import { istDayKey } from "./collab";
@@ -19,6 +17,17 @@ export interface CollabMessageItem {
   createdAt: string;
 }
 
+interface CollabMessageRow {
+  id: string;
+  day_key: string;
+  user_id: string;
+  user_name: string;
+  user_avatar: string | null;
+  message: string;
+  likes_count: number;
+  created_at: Date;
+}
+
 let tableInitPromise: Promise<void> | null = null;
 
 export async function ensureMessageTables(): Promise<void> {
@@ -26,7 +35,7 @@ export async function ensureMessageTables(): Promise<void> {
   const db = getDb();
   tableInitPromise = (async () => {
     try {
-      await db.execute(sql`
+      await db`
         CREATE TABLE IF NOT EXISTS collab_messages (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           day_key TEXT NOT NULL,
@@ -48,7 +57,7 @@ export async function ensureMessageTables(): Promise<void> {
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           CONSTRAINT collab_message_likes_user_msg_uniq UNIQUE(message_id, user_id)
         );
-      `);
+      `;
     } catch {
       /* ignore if already created */
     }
@@ -58,12 +67,13 @@ export async function ensureMessageTables(): Promise<void> {
 
 function loadCollabMessageRows(dayKey: string) {
   const db = getDb();
-  return db
-    .select()
-    .from(collabMessages)
-    .where(eq(collabMessages.dayKey, dayKey))
-    .orderBy(desc(collabMessages.likesCount), desc(collabMessages.createdAt))
-    .limit(30);
+  return db<CollabMessageRow[]>`
+    SELECT id, day_key, user_id, user_name, user_avatar, message, likes_count, created_at
+    FROM collab_messages
+    WHERE day_key = ${dayKey}
+    ORDER BY likes_count DESC, created_at DESC
+    LIMIT 30
+  `;
 }
 
 /**
@@ -97,34 +107,27 @@ export async function getCollabMessages(dayKey: string = istDayKey()): Promise<{
   // Get user's liked message ids
   let userLikedSet = new Set<string>();
   if (user) {
-    const likes = await db
-      .select({ messageId: collabMessageLikes.messageId })
-      .from(collabMessageLikes)
-      .where(
-        and(
-          eq(collabMessageLikes.userId, user.id),
-          inArray(
-            collabMessageLikes.messageId,
-            allRows.map((r) => r.id),
-          ),
-        ),
-      );
-    userLikedSet = new Set(likes.map((l) => l.messageId));
+    const ids = allRows.map((r) => r.id);
+    const likes = await db<{ message_id: string }[]>`
+      SELECT message_id FROM collab_message_likes
+      WHERE user_id = ${user.id} AND message_id = ANY(${ids})
+    `;
+    userLikedSet = new Set(likes.map((l) => l.message_id));
   }
 
-  const myRow = user ? allRows.find((r) => r.userId === user.id) : null;
+  const myRow = user ? allRows.find((r) => r.user_id === user.id) : null;
 
-  const formatItem = (row: (typeof allRows)[0]): CollabMessageItem => ({
+  const formatItem = (row: CollabMessageRow): CollabMessageItem => ({
     id: row.id,
-    dayKey: row.dayKey,
-    userId: row.userId,
-    userName: row.userName,
-    userAvatar: row.userAvatar,
+    dayKey: row.day_key,
+    userId: row.user_id,
+    userName: row.user_name,
+    userAvatar: row.user_avatar,
     message: row.message,
-    likesCount: row.likesCount,
+    likesCount: Number(row.likes_count),
     hasLiked: userLikedSet.has(row.id),
-    isMine: user ? row.userId === user.id : false,
-    createdAt: row.createdAt.toISOString(),
+    isMine: user ? row.user_id === user.id : false,
+    createdAt: new Date(row.created_at).toISOString(),
   });
 
   return {
@@ -164,51 +167,45 @@ export async function postCollabMessage(
 
   // Check if user already posted today (only for non-admins)
   if (!isAdmin) {
-    const [existing] = await db
-      .select({ id: collabMessages.id })
-      .from(collabMessages)
-      .where(and(eq(collabMessages.dayKey, dayKey), eq(collabMessages.userId, user.id)))
-      .limit(1);
+    const existing = await db<{ id: string }[]>`
+      SELECT id FROM collab_messages WHERE day_key = ${dayKey} AND user_id = ${user.id} LIMIT 1
+    `;
 
-    if (existing) {
+    if (existing[0]) {
       return { ok: false, reason: "You have already shared a wish today! Come back tomorrow." };
     }
   }
 
-  const [inserted] = await db
-    .insert(collabMessages)
-    .values({
-      dayKey,
-      userId: user.id,
-      userName: user.name || "Player",
-      userAvatar: user.avatarUrl || null,
-      message: clean,
-      likesCount: 0,
-    })
-    .returning();
+  const userName = user.name || "Player";
+  const userAvatar = user.avatarUrl || null;
+  const inserted = await db<CollabMessageRow[]>`
+    INSERT INTO collab_messages (day_key, user_id, user_name, user_avatar, message, likes_count)
+    VALUES (${dayKey}, ${user.id}, ${userName}, ${userAvatar}, ${clean}, 0)
+    RETURNING *
+  `;
+  const row = inserted[0];
 
   invalidateShared("collab:messages");
 
   return {
     ok: true,
     message: {
-      id: inserted.id,
-      dayKey: inserted.dayKey,
-      userId: inserted.userId,
-      userName: inserted.userName,
-      userAvatar: inserted.userAvatar,
-      message: inserted.message,
-      likesCount: inserted.likesCount,
+      id: row.id,
+      dayKey: row.day_key,
+      userId: row.user_id,
+      userName: row.user_name,
+      userAvatar: row.user_avatar,
+      message: row.message,
+      likesCount: Number(row.likes_count),
       hasLiked: false,
       isMine: true,
-      createdAt: inserted.createdAt.toISOString(),
+      createdAt: new Date(row.created_at).toISOString(),
     },
   };
 }
 
 /**
  * Delete a collaborative message (allowed for Admins only).
- * Normal players cannot delete their wish once posted to preserve community wishes and enforce 1 wish per day.
  */
 export async function deleteCollabMessage(
   messageId: string,
@@ -225,7 +222,7 @@ export async function deleteCollabMessage(
   }
 
   const db = getDb();
-  await db.delete(collabMessages).where(eq(collabMessages.id, messageId));
+  await db`DELETE FROM collab_messages WHERE id = ${messageId}`;
   invalidateShared("collab:messages");
   return { ok: true };
 }
@@ -244,43 +241,40 @@ export async function toggleCollabMessageLike(
 
   const db = getDb();
 
-  // Check if like exists
-  const [existing] = await db
-    .select({ id: collabMessageLikes.id })
-    .from(collabMessageLikes)
-    .where(and(eq(collabMessageLikes.messageId, messageId), eq(collabMessageLikes.userId, user.id)))
-    .limit(1);
+  const existingLikes = await db<{ id: string }[]>`
+    SELECT id FROM collab_message_likes WHERE message_id = ${messageId} AND user_id = ${user.id} LIMIT 1
+  `;
+  const existing = existingLikes[0];
 
   if (existing) {
     // Unlike
-    await db.delete(collabMessageLikes).where(eq(collabMessageLikes.id, existing.id));
+    await db`DELETE FROM collab_message_likes WHERE id = ${existing.id}`;
 
-    const [updated] = await db
-      .update(collabMessages)
-      .set({
-        likesCount: sql`greatest(0, ${collabMessages.likesCount} - 1)`,
-      })
-      .where(eq(collabMessages.id, messageId))
-      .returning({ likesCount: collabMessages.likesCount });
+    const updated = await db<{ likes_count: number }[]>`
+      UPDATE collab_messages
+      SET likes_count = GREATEST(0, likes_count - 1)
+      WHERE id = ${messageId}
+      RETURNING likes_count
+    `;
 
     invalidateShared("collab:messages");
-    return { ok: true, likesCount: updated?.likesCount ?? 0, hasLiked: false };
+    return { ok: true, likesCount: Number(updated[0]?.likes_count ?? 0), hasLiked: false };
   } else {
     // Like
-    await db
-      .insert(collabMessageLikes)
-      .values({ messageId, userId: user.id })
-      .onConflictDoNothing();
+    await db`
+      INSERT INTO collab_message_likes (message_id, user_id)
+      VALUES (${messageId}, ${user.id})
+      ON CONFLICT (message_id, user_id) DO NOTHING
+    `;
 
-    const [updated] = await db
-      .update(collabMessages)
-      .set({
-        likesCount: sql`${collabMessages.likesCount} + 1`,
-      })
-      .where(eq(collabMessages.id, messageId))
-      .returning({ likesCount: collabMessages.likesCount });
+    const updated = await db<{ likes_count: number }[]>`
+      UPDATE collab_messages
+      SET likes_count = likes_count + 1
+      WHERE id = ${messageId}
+      RETURNING likes_count
+    `;
 
     invalidateShared("collab:messages");
-    return { ok: true, likesCount: updated?.likesCount ?? 1, hasLiked: true };
+    return { ok: true, likesCount: Number(updated[0]?.likes_count ?? 1), hasLiked: true };
   }
 }

@@ -1,16 +1,14 @@
-import { eq, gte, isNull, or } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
-import { blockedIps } from "~/server/db/schema";
 import { invalidateShared, sharedRead } from "~/server/cache";
 
 const BLOCKED_IPS_CACHE_KEY = "blocked_ips:set";
 
 async function loadBlockedIpSet(): Promise<Set<string>> {
   const db = getDb();
-  const rows = await db
-    .select({ ip: blockedIps.ip })
-    .from(blockedIps)
-    .where(or(gte(blockedIps.expiresAt, new Date()), isNull(blockedIps.expiresAt)));
+  const rows = await db<{ ip: string }[]>`
+    SELECT ip FROM blocked_ips
+    WHERE expires_at >= NOW() OR expires_at IS NULL
+  `;
   return new Set(rows.map((r) => r.ip));
 }
 
@@ -35,31 +33,28 @@ export async function blockIp(opts: {
   const ip = opts.ip.trim();
   if (!ip) throw new Error("Invalid IP");
   const db = getDb();
-  await db
-    .insert(blockedIps)
-    .values({
-      ip,
-      reason: opts.reason,
-      scope: opts.scope ?? "all",
-      expiresAt: opts.expiresAt ?? null,
-      createdBy: opts.createdBy,
-    })
-    .onConflictDoUpdate({
-      target: blockedIps.ip,
-      set: {
-        reason: opts.reason,
-        scope: opts.scope ?? "all",
-        expiresAt: opts.expiresAt ?? null,
-        createdBy: opts.createdBy,
-        createdAt: new Date(),
-      },
-    });
+  const reason = opts.reason ?? null;
+  const scope = opts.scope ?? "all";
+  const expiresAt = opts.expiresAt ?? null;
+  const createdBy = opts.createdBy ?? null;
+
+  await db`
+    INSERT INTO blocked_ips (ip, reason, scope, expires_at, created_by)
+    VALUES (${ip}, ${reason}, ${scope}, ${expiresAt}, ${createdBy})
+    ON CONFLICT (ip) DO UPDATE
+    SET
+      reason = ${reason},
+      scope = ${scope},
+      expires_at = ${expiresAt},
+      created_by = ${createdBy},
+      created_at = NOW()
+  `;
   invalidateShared(BLOCKED_IPS_CACHE_KEY);
 }
 
 export async function unblockIp(ip: string): Promise<void> {
   const db = getDb();
-  await db.delete(blockedIps).where(eq(blockedIps.ip, ip));
+  await db`DELETE FROM blocked_ips WHERE ip = ${ip}`;
   invalidateShared(BLOCKED_IPS_CACHE_KEY);
 }
 
@@ -70,16 +65,17 @@ export async function listBlockedIps(
   { ip: string; reason: string | null; scope: string; expiresAt: Date | null; createdAt: Date }[]
 > {
   const db = getDb();
-  return db
-    .select({
-      ip: blockedIps.ip,
-      reason: blockedIps.reason,
-      scope: blockedIps.scope,
-      expiresAt: blockedIps.expiresAt,
-      createdAt: blockedIps.createdAt,
-    })
-    .from(blockedIps)
-    .orderBy(blockedIps.createdAt)
-    .limit(limit)
-    .offset(offset);
+  return db<
+    { ip: string; reason: string | null; scope: string; expiresAt: Date | null; createdAt: Date }[]
+  >`
+    SELECT
+      ip,
+      reason,
+      scope,
+      expires_at AS "expiresAt",
+      created_at AS "createdAt"
+    FROM blocked_ips
+    ORDER BY created_at DESC
+    LIMIT ${limit} OFFSET ${offset}
+  `;
 }

@@ -1,13 +1,5 @@
-import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
-import {
-  dailyLeaderboard,
-  gameAttempts,
-  games,
-  huntQuestions,
-  userHuntProgress,
-  type HuntQuestion,
-} from "~/server/db/schema";
+import type { HuntQuestion } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
 import { logActivity } from "~/server/anti-cheat/log";
 import { getSetting } from "~/server/settings/service";
@@ -19,53 +11,74 @@ const RATE_LIMIT_MS = 30_000;
 function getActiveHuntQuestions(): Promise<HuntQuestion[]> {
   return sharedRead(
     "hunt:questions",
-    () =>
-      getDb()
-        .select()
-        .from(huntQuestions)
-        .where(eq(huntQuestions.active, true))
-        .orderBy(huntQuestions.orderIndex),
+    async () => {
+      const db = getDb();
+      return db<HuntQuestion[]>`
+        SELECT
+          id,
+          slug,
+          title,
+          hint_html AS "hintHtml",
+          answer,
+          difficulty,
+          order_index AS "orderIndex",
+          active,
+          created_at AS "createdAt"
+        FROM hunt_questions
+        WHERE active = true
+        ORDER BY order_index ASC
+      `;
+    },
     60_000,
   );
 }
 
+interface UserHuntProgressRow {
+  id: string;
+  user_id: string;
+  current_question_id: string | null;
+  solved_question_ids: string[];
+  solved_count: number;
+  last_submitted_at: Date | null;
+  completed_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
 async function loadUserHuntProgress(userId: string, allActive: HuntQuestion[]) {
   const db = getDb();
-  let [progress] = await db
-    .select()
-    .from(userHuntProgress)
-    .where(eq(userHuntProgress.userId, userId))
-    .limit(1);
+  const rows = await db<UserHuntProgressRow[]>`
+    SELECT * FROM user_hunt_progress WHERE user_id = ${userId} LIMIT 1
+  `;
+  let progress = rows[0];
 
   if (!progress) {
     const nextQ = pickNextQuestion(allActive, new Set());
-    const [created] = await db
-      .insert(userHuntProgress)
-      .values({
-        userId,
-        currentQuestionId: nextQ?.id ?? null,
-        solvedQuestionIds: [],
-        solvedCount: 0,
-      })
-      .returning();
-    progress = created;
-  } else if (!progress.completedAt && !progress.currentQuestionId) {
-    const solvedSet = new Set(progress.solvedQuestionIds ?? []);
+    const created = await db<UserHuntProgressRow[]>`
+      INSERT INTO user_hunt_progress (user_id, current_question_id, solved_question_ids, solved_count)
+      VALUES (${userId}, ${nextQ?.id ?? null}, '[]'::jsonb, 0)
+      RETURNING *
+    `;
+    progress = created[0];
+  } else if (!progress.completed_at && !progress.current_question_id) {
+    const solvedSet = new Set(progress.solved_question_ids ?? []);
     const nextQ = pickNextQuestion(allActive, solvedSet);
     if (!nextQ) {
-      const [updated] = await db
-        .update(userHuntProgress)
-        .set({ completedAt: new Date(), updatedAt: new Date() })
-        .where(eq(userHuntProgress.id, progress.id))
-        .returning();
-      progress = updated;
+      const updated = await db<UserHuntProgressRow[]>`
+        UPDATE user_hunt_progress
+        SET completed_at = NOW(), updated_at = NOW()
+        WHERE id = ${progress.id}
+        RETURNING *
+      `;
+      progress = updated[0];
     } else {
-      const [updated] = await db
-        .update(userHuntProgress)
-        .set({ currentQuestionId: nextQ.id, updatedAt: new Date() })
-        .where(eq(userHuntProgress.id, progress.id))
-        .returning();
-      progress = updated;
+      const updated = await db<UserHuntProgressRow[]>`
+        UPDATE user_hunt_progress
+        SET current_question_id = ${nextQ.id}, updated_at = NOW()
+        WHERE id = ${progress.id}
+        RETURNING *
+      `;
+      progress = updated[0];
     }
   }
   return progress;
@@ -146,7 +159,6 @@ export interface HuntPublicState {
     difficulty: string;
     orderIndex: number;
     inputType: HuntInputType;
-    // Opaque flag for special client behavior (e.g. treasure balloon) — avoids leaking slug/hint
     isBalloon?: boolean;
   } | null;
   solvedQuestionIds: string[];
@@ -191,19 +203,17 @@ export async function getUserHuntState(
 
   const now = Date.now();
   let cooldownRemainingSec = 0;
-  if (progress.lastSubmittedAt) {
-    const elapsed = now - new Date(progress.lastSubmittedAt).getTime();
+  if (progress.last_submitted_at) {
+    const elapsed = now - new Date(progress.last_submitted_at).getTime();
     if (elapsed < RATE_LIMIT_MS) {
       cooldownRemainingSec = Math.ceil((RATE_LIMIT_MS - elapsed) / 1000);
     }
   }
 
-  const currentQ = progress.currentQuestionId
-    ? allActive.find((q) => q.id === progress.currentQuestionId)
+  const currentQ = progress.current_question_id
+    ? allActive.find((q) => q.id === progress.current_question_id)
     : null;
 
-  // Internal: detect balloon question without exposing slug/answer to client
-  // Only active when the treasure hunt game itself is open/live!
   const isBalloonQuestion = (q: HuntQuestion) => isGameActive && q.slug === "hunt-c2d5a7f9";
 
   return {
@@ -219,8 +229,8 @@ export async function getUserHuntState(
           ...(isBalloonQuestion(currentQ) ? { isBalloon: true as const } : {}),
         }
       : null,
-    solvedQuestionIds: progress.solvedQuestionIds ?? [],
-    solvedCount: (progress.solvedQuestionIds ?? []).length,
+    solvedQuestionIds: progress.solved_question_ids ?? [],
+    solvedCount: (progress.solved_question_ids ?? []).length,
     totalQuestionsCount: allActive.length,
     allQuestions: allActive.map((q) => ({
       id: q.id,
@@ -235,8 +245,8 @@ export async function getUserHuntState(
           }
         : {}),
     })),
-    completed: !!progress.completedAt,
-    completedAt: progress.completedAt?.toISOString() ?? null,
+    completed: !!progress.completed_at,
+    completedAt: progress.completed_at ? new Date(progress.completed_at).toISOString() : null,
     cooldownRemainingSec,
     ...(isTesterMode ? { isTesterMode: true as const } : {}),
   };
@@ -258,27 +268,24 @@ export async function submitHuntAnswer(
   role: ViewerRole = "player",
 ): Promise<HuntSubmitResult> {
   const db = getDb();
-
   const allActive = await getActiveHuntQuestions();
 
-  let [progress] = await db
-    .select()
-    .from(userHuntProgress)
-    .where(eq(userHuntProgress.userId, userId))
-    .limit(1);
+  const progressRows = await db<UserHuntProgressRow[]>`
+    SELECT * FROM user_hunt_progress WHERE user_id = ${userId} LIMIT 1
+  `;
+  const progress = progressRows[0];
 
   if (!progress) {
     throw new HttpError(400, "Hunt progress not initialized");
   }
 
   const now = Date.now();
-
   const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
   const isTesterMode = (role === "tester" || role === "admin") && isTesterModeEnabled;
 
   // 30-second rate limit
-  if (progress.lastSubmittedAt) {
-    const elapsed = now - new Date(progress.lastSubmittedAt).getTime();
+  if (progress.last_submitted_at) {
+    const elapsed = now - new Date(progress.last_submitted_at).getTime();
     if (elapsed < RATE_LIMIT_MS) {
       const waitSec = Math.ceil((RATE_LIMIT_MS - elapsed) / 1000);
       return {
@@ -290,9 +297,8 @@ export async function submitHuntAnswer(
     }
   }
 
-  if (progress.completedAt || !progress.currentQuestionId) {
-    // In tester mode, completedAt may be null but all treasures could already be solved
-    const solvedSetEarly = new Set(progress.solvedQuestionIds ?? []);
+  if (progress.completed_at || !progress.current_question_id) {
+    const solvedSetEarly = new Set(progress.solved_question_ids ?? []);
     const hasUnsolved = allActive.some((q) => !solvedSetEarly.has(q.id));
     if (!hasUnsolved) {
       return {
@@ -314,24 +320,23 @@ export async function submitHuntAnswer(
 
   let currentQ: HuntQuestion | undefined;
   if (isTesterMode) {
-    const solvedSet = new Set(progress.solvedQuestionIds ?? []);
+    const solvedSet = new Set(progress.solved_question_ids ?? []);
     const unsolved = allActive.filter((q) => !solvedSet.has(q.id));
     currentQ = unsolved.find((q) => checkAnswerMatch(rawAnswer, q.answer));
-    // Fallback to currentQuestionId if answer matches that specifically (allows precise tester debug)
     if (!currentQ) {
-      currentQ = allActive.find((q) => q.id === progress.currentQuestionId);
+      currentQ = allActive.find((q) => q.id === progress.current_question_id);
       if (currentQ && !checkAnswerMatch(rawAnswer, currentQ.answer)) {
         currentQ = undefined;
       }
     }
     if (!currentQ) {
-      // No unsolved matches — treat as wrong answer for the current question for logging
-      const fallbackQ = allActive.find((q) => q.id === progress.currentQuestionId) ?? unsolved[0];
+      const fallbackQ = allActive.find((q) => q.id === progress.current_question_id) ?? unsolved[0];
       if (!fallbackQ) throw new HttpError(404, "Active question not found");
-      await db
-        .update(userHuntProgress)
-        .set({ lastSubmittedAt: new Date(), updatedAt: new Date() })
-        .where(eq(userHuntProgress.id, progress.id));
+      await db`
+        UPDATE user_hunt_progress
+        SET last_submitted_at = NOW(), updated_at = NOW()
+        WHERE id = ${progress.id}
+      `;
       invalidateShared(`hunt:progress:${userId}`);
 
       await logActivity({
@@ -355,16 +360,16 @@ export async function submitHuntAnswer(
       };
     }
   } else {
-    currentQ = allActive.find((q) => q.id === progress.currentQuestionId);
+    currentQ = allActive.find((q) => q.id === progress.current_question_id);
     if (!currentQ) {
       throw new HttpError(404, "Active question not found");
     }
     if (!checkAnswerMatch(rawAnswer, currentQ.answer)) {
-      // Cooldown is applied ONLY on failed attempts
-      await db
-        .update(userHuntProgress)
-        .set({ lastSubmittedAt: new Date(), updatedAt: new Date() })
-        .where(eq(userHuntProgress.id, progress.id));
+      await db`
+        UPDATE user_hunt_progress
+        SET last_submitted_at = NOW(), updated_at = NOW()
+        WHERE id = ${progress.id}
+      `;
       invalidateShared(`hunt:progress:${userId}`);
 
       await logActivity({
@@ -388,69 +393,67 @@ export async function submitHuntAnswer(
     }
   }
 
-  // Correct answer! Reset any past cooldown and proceed immediately
   if (!currentQ) throw new HttpError(404, "Active question not found");
-  const solvedSet = new Set(progress.solvedQuestionIds ?? []);
+  const solvedSet = new Set(progress.solved_question_ids ?? []);
   solvedSet.add(currentQ!.id);
   const updatedSolvedList = Array.from(solvedSet);
 
   const nextQ = pickNextQuestion(allActive, solvedSet);
   const isComplete = !nextQ;
 
-  await db
-    .update(userHuntProgress)
-    .set({
-      solvedQuestionIds: updatedSolvedList,
-      solvedCount: updatedSolvedList.length,
-      currentQuestionId: nextQ?.id ?? null,
-      lastSubmittedAt: null,
-      completedAt: isComplete ? new Date() : null,
-      updatedAt: new Date(),
-    })
-    .where(eq(userHuntProgress.id, progress.id));
+  await db`
+    UPDATE user_hunt_progress
+    SET
+      solved_question_ids = ${JSON.stringify(updatedSolvedList)}::jsonb,
+      solved_count = ${updatedSolvedList.length},
+      current_question_id = ${nextQ?.id ?? null},
+      last_submitted_at = NULL,
+      completed_at = ${isComplete ? new Date() : null},
+      updated_at = NOW()
+    WHERE id = ${progress.id}
+  `;
   invalidateShared(`hunt:progress:${userId}`);
 
-  // Live update the Treasure Hunt ranking on dailyLeaderboard by number of treasures found
   try {
-    const [huntGame] = await db
-      .select({ id: games.id })
-      .from(games)
-      .where(eq(games.gameType, "hunt"))
-      .limit(1);
+    const huntGameRows = await db<{ id: string }[]>`
+      SELECT id FROM games WHERE game_type = 'hunt' LIMIT 1
+    `;
+    const huntGame = huntGameRows[0];
 
     if (huntGame) {
-      const [attempt] = await db
-        .select({ id: gameAttempts.id, startedAt: gameAttempts.startedAt })
-        .from(gameAttempts)
-        .where(eq(gameAttempts.userId, userId))
-        .orderBy(desc(gameAttempts.startedAt))
-        .limit(1);
+      const attemptRows = await db<{ id: string; started_at: Date }[]>`
+        SELECT id, started_at FROM game_attempts
+        WHERE user_id = ${userId}
+        ORDER BY started_at DESC
+        LIMIT 1
+      `;
+      const attempt = attemptRows[0];
 
       if (attempt) {
-        await db
-          .insert(dailyLeaderboard)
-          .values({
-            gameId: huntGame.id,
-            userId,
-            attemptId: attempt.id,
-            metric: "score",
-            score: updatedSolvedList.length,
-            durationMs: null,
-            attemptsUsed: 1,
-            startedAt: attempt.startedAt,
-            submittedAt: new Date(),
-          })
-          .onConflictDoUpdate({
-            target: [dailyLeaderboard.gameId, dailyLeaderboard.userId],
-            set: {
-              score: sql`greatest(${dailyLeaderboard.score}, ${updatedSolvedList.length})`,
-              submittedAt: new Date(),
-            },
-          });
+        await db`
+          INSERT INTO daily_leaderboard (
+            game_id, user_id, attempt_id, metric, score, duration_ms, attempts_used, started_at, submitted_at
+          )
+          VALUES (
+            ${huntGame.id},
+            ${userId},
+            ${attempt.id},
+            'score',
+            ${updatedSolvedList.length},
+            NULL,
+            1,
+            ${attempt.started_at},
+            NOW()
+          )
+          ON CONFLICT (game_id, user_id) DO UPDATE
+          SET
+            score = GREATEST(daily_leaderboard.score, ${updatedSolvedList.length}),
+            submitted_at = NOW()
+        `;
       }
     }
   } catch {
-    /* ignore leaderboard sync errors to avoid blocking answer submission */
+    /* ignore leaderboard sync errors */
   }
 
   await logActivity({

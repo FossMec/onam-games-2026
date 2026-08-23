@@ -1,6 +1,4 @@
-import { eq, sql } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
-import { users } from "~/server/db/schema";
 
 const DAY_MS = 86400000;
 
@@ -16,10 +14,6 @@ function dayDate(day: number, eventStartDate: string): string | null {
 /**
  * Called on a valid, on-time completion. A streak increments only when the
  * player completes the event's consecutive days; a missed day resets it to 1.
- *
- * `eventStartDate` comes from the schedule settings the caller already loaded
- * (see `resolveSchedule`), so this costs exactly one write - the new streak is
- * derived in SQL from the row's own previous values.
  */
 export async function updateStreak(
   userId: string,
@@ -33,18 +27,24 @@ export async function updateStreak(
     .toISOString()
     .slice(0, 10);
 
-  const newStreak = sql`case
-    when ${users.lastStreakDay} = ${current} then ${users.streakCount}
-    when ${users.lastStreakDay} = ${prev} then ${users.streakCount} + 1
-    else 1
-  end`;
-
-  await db
-    .update(users)
-    .set({
-      streakCount: newStreak,
-      bestStreak: sql`greatest(${users.bestStreak}, ${newStreak})`,
-      lastStreakDay: current,
-    })
-    .where(eq(users.id, userId));
+  await db`
+    UPDATE users
+    SET
+      streak_count = CASE
+        WHEN last_streak_day = ${current} THEN streak_count
+        WHEN last_streak_day = ${prev} THEN streak_count + 1
+        ELSE 1
+      END,
+      best_streak = GREATEST(
+        best_streak,
+        CASE
+          WHEN last_streak_day = ${current} THEN streak_count
+          WHEN last_streak_day = ${prev} THEN streak_count + 1
+          ELSE 1
+        END
+      ),
+      last_streak_day = ${current},
+      updated_at = NOW()
+    WHERE id = ${userId}
+  `;
 }

@@ -1,15 +1,7 @@
-import { and, desc, eq, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { logSuspicious } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
-import {
-  dailyLeaderboard,
-  devices,
-  gameAttempts,
-  games,
-  huntQuestions,
-  userHuntProgress,
-} from "~/server/db/schema";
+import type { Game, HuntQuestion } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
 import { revealDeck } from "./impl/tinder";
 import type { GameAssets, GameDef, GameMetric } from "./registry";
@@ -38,103 +30,77 @@ export interface StartInput {
 export interface StartResult {
   attemptToken: string;
   gameId: string;
-  /**
-   * The generated instance's client-visible half. The matching `solution` is
-   * discarded here and regenerated from the seed at verify time, so it never
-   * crosses the wire.
-   */
   view: unknown;
   startedAt: string;
   attemptNumber: number;
   attemptsRemaining: number;
-  /** True for testers and admins, who play without a run limit. */
   unlimited: boolean;
   maxDurationMs: number;
   alreadyStarted: boolean;
 }
 
-/**
- * An attempt left open past the game's `maxDurationMs` is dead. It still burns
- * an attempt - otherwise parking a tab open would be a free reroll on a
- * seed you did not like.
- */
 async function expireIfStale(
-  attempt: Pick<typeof gameAttempts.$inferSelect, "id" | "startedAt">,
+  attempt: { id: string; startedAt: Date },
   def: GameDef,
 ): Promise<boolean> {
   const age = Date.now() - attempt.startedAt.getTime();
   if (age <= def.maxDurationMs) return false;
-  await getDb()
-    .update(gameAttempts)
-    .set({ status: "expired", durationMs: age })
-    .where(eq(gameAttempts.id, attempt.id));
+  const db = getDb();
+  await db`
+    UPDATE game_attempts
+    SET status = 'expired', duration_ms = ${age}
+    WHERE id = ${attempt.id}
+  `;
   return true;
 }
 
 export async function startAttempt(input: StartInput): Promise<StartResult> {
   const game = await getGameBySlug(input.slug, input.role);
   if (!game) throw new HttpError(404, "Game not found");
-  /*
-   * `closed` is deliberately playable. Every past day stays open forever, so
-   * somebody who joins on day 5 can still go back and play days 1-4 - which is
-   * most of the point of a week-long event with a growing audience.
-   *
-   * A late run counts towards the overall table at the completion floor and
-   * never appears on that day's leaderboard; `finishAttempt` derives that from
-   * the server clock, so nothing here has to be trusted.
-   *
-   * `upcoming` and `preview` are refused, because releasing a puzzle early is
-   * the one thing that cannot be undone. Preview shows a player what the game
-   * is; the seed still only exists once the clock says so, and this check is
-   * what makes that true rather than the button being hidden - the endpoint is
-   * callable directly.
-   */
   if (game.status === "upcoming" || game.status === "preview") {
     throw new HttpError(403, "This game is not available yet");
   }
   const def = requireGameDef(game.gameType);
 
   const db = getDb();
-  const prior = await db
-    .select({
-      id: gameAttempts.id,
-      attemptToken: gameAttempts.attemptToken,
-      attemptNumber: gameAttempts.attemptNumber,
-      seed: gameAttempts.seed,
-      startedAt: gameAttempts.startedAt,
-      status: gameAttempts.status,
-    })
-    .from(gameAttempts)
-    .where(and(eq(gameAttempts.userId, input.userId), eq(gameAttempts.gameId, game.id)))
-    .orderBy(desc(gameAttempts.attemptNumber));
+  const prior = await db<
+    {
+      id: string;
+      attempt_token: string;
+      attempt_number: number;
+      seed: string;
+      started_at: Date;
+      status: string;
+    }[]
+  >`
+    SELECT id, attempt_token, attempt_number, seed, started_at, status
+    FROM game_attempts
+    WHERE user_id = ${input.userId} AND game_id = ${game.id}
+    ORDER BY attempt_number DESC
+  `;
 
   const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
   const isTester = (input.role === "tester" || input.role === "admin") && isTesterModeEnabled;
   const effectiveUnlimitedRole = isTester;
 
-  // Resume an open attempt: same seed in, same instance out. The timer keeps
-  // running from the original `startedAt`, so a refresh is never a reset.
   const open = prior.find((a) => a.status === "in_progress");
-  if (open && !(await expireIfStale(open, def))) {
+  if (open && !(await expireIfStale({ id: open.id, startedAt: open.started_at }, def))) {
     const { view } = def.generate(open.seed, game.difficulty, game.assets as GameAssets);
     return {
-      attemptToken: open.attemptToken,
+      attemptToken: open.attempt_token,
       gameId: game.id,
       view,
-      startedAt: open.startedAt.toISOString(),
-      attemptNumber: open.attemptNumber,
+      startedAt: open.started_at.toISOString(),
+      attemptNumber: open.attempt_number,
       attemptsRemaining: effectiveUnlimitedRole
         ? def.maxAttempts
-        : Math.max(0, def.maxAttempts - open.attemptNumber),
+        : Math.max(0, def.maxAttempts - open.attempt_number),
       unlimited: effectiveUnlimitedRole,
       maxDurationMs: def.maxDurationMs,
       alreadyStarted: true,
     };
   }
-  /*
-   * Testers and admins play without a run limit when tester mode is on.
-   * Closed games are accessible to testers when tester mode is on.
-   */
+
   const isClosed = game.status === "closed";
   if (isClosed && !isTester) {
     throw new HttpError(403, "This daily game has ended");
@@ -148,40 +114,33 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
     );
   }
 
-  const attemptNumber = (prior[0]?.attemptNumber ?? 0) + 1;
+  const attemptNumber = (prior[0]?.attempt_number ?? 0) + 1;
 
   if (game.gameType === "hunt") {
-    // If starting a fresh attempt (e.g. testing or cleared attempt), reset any stale completed hunt progress
-    const [existingProgress] = await db
-      .select()
-      .from(userHuntProgress)
-      .where(eq(userHuntProgress.userId, input.userId))
-      .limit(1);
+    const existingProgress = await db<{ id: string; completed_at: Date | null }[]>`
+      SELECT id, completed_at FROM user_hunt_progress WHERE user_id = ${input.userId} LIMIT 1
+    `;
 
-    if (existingProgress && existingProgress.completedAt) {
-      const allActive = await db
-        .select()
-        .from(huntQuestions)
-        .where(eq(huntQuestions.active, true))
-        .orderBy(huntQuestions.orderIndex);
+    if (existingProgress[0] && existingProgress[0].completed_at) {
+      const allActive = await db<HuntQuestion[]>`
+        SELECT * FROM hunt_questions WHERE active = true ORDER BY order_index ASC
+      `;
       const firstQ = allActive.find((q) => q.difficulty === "first") || allActive[0];
 
-      await db
-        .update(userHuntProgress)
-        .set({
-          currentQuestionId: firstQ?.id ?? null,
-          solvedQuestionIds: [],
-          solvedCount: 0,
-          completedAt: null,
-          lastSubmittedAt: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(userHuntProgress.id, existingProgress.id));
+      await db`
+        UPDATE user_hunt_progress
+        SET
+          current_question_id = ${firstQ?.id ?? null},
+          solved_question_ids = '[]'::jsonb,
+          solved_count = 0,
+          completed_at = NULL,
+          last_submitted_at = NULL,
+          updated_at = NOW()
+        WHERE id = ${existingProgress[0].id}
+      `;
     }
   }
 
-  // Generate per-attempt seeds for games where randomizing deals, piece scatter, or orientations
-  // prevents answer sharing / layout copying between players, while maintaining identical puzzle difficulty.
   let seed: string;
   if (game.gameType === "tinder" || game.gameType === "jigsaw" || game.gameType === "wend") {
     seed = sha256(`foss-onam:${game.gameType}:${game.slug}:${input.userId}:${attemptNumber}`);
@@ -194,33 +153,51 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
   const startedAt =
     def.metric === "fcfs" && releaseAtDate && releaseAtDate <= now ? releaseAtDate : now;
 
-  const [attempt] = await db
-    .insert(gameAttempts)
-    .values({
-      userId: input.userId,
-      deviceId: input.deviceId,
-      gameId: game.id,
+  const createdAttempts = await db<
+    {
+      id: string;
+      attempt_token: string;
+      started_at: Date;
+    }[]
+  >`
+    INSERT INTO game_attempts (
+      user_id,
+      device_id,
+      game_id,
       seed,
-      attemptNumber,
-      initialStateHash: sha256(JSON.stringify(view)),
-      startedAt,
-      status: "in_progress",
-      ip: input.ip,
-      userAgent: input.userAgent,
-      country: input.country,
-      city: input.city,
-    })
-    .returning({
-      id: gameAttempts.id,
-      attemptToken: gameAttempts.attemptToken,
-      startedAt: gameAttempts.startedAt,
-    });
+      attempt_number,
+      initial_state_hash,
+      started_at,
+      status,
+      ip,
+      user_agent,
+      country,
+      city
+    )
+    VALUES (
+      ${input.userId},
+      ${input.deviceId},
+      ${game.id},
+      ${seed},
+      ${attemptNumber},
+      ${sha256(JSON.stringify(view))},
+      ${startedAt},
+      'in_progress',
+      ${input.ip},
+      ${input.userAgent},
+      ${input.country},
+      ${input.city}
+    )
+    RETURNING id, attempt_token, started_at
+  `;
+
+  const attempt = createdAttempts[0];
 
   return {
-    attemptToken: attempt.attemptToken,
+    attemptToken: attempt.attempt_token,
     gameId: game.id,
     view,
-    startedAt: attempt.startedAt.toISOString(),
+    startedAt: attempt.started_at.toISOString(),
     attemptNumber,
     attemptsRemaining: unlimited ? def.maxAttempts : def.maxAttempts - attemptNumber,
     unlimited,
@@ -239,20 +216,14 @@ export interface FinishInput {
 
 export interface FinishResult {
   valid: boolean;
-  /** Ranked duration: the server-measured clock plus any in-game penalty. */
   durationMs: number;
-  /** The clock alone, so the result card can show what the penalty cost. */
   rawDurationMs: number;
-  /** Penalty added by the game's own rules, e.g. 3s per wrong Tinder swipe. */
   penaltyMs: number;
-  /** Server-derived; null for non-score games. */
   score: number | null;
   metric: GameMetric;
   afterDeadline: boolean;
   attemptsRemaining: number;
-  /** True for testers and admins, who play without a run limit. */
   unlimited: boolean;
-  /** True when this run improved the player's standing for the day. */
   isPersonalBest: boolean;
   reason?: string;
 }
@@ -267,7 +238,6 @@ export interface MyAttempt {
   attemptsUsed: number;
   attemptsRemaining: number;
   maxAttempts: number;
-  /** True for testers and admins, who play without a run limit. */
   unlimited: boolean;
   valid: boolean;
   afterDeadline: boolean;
@@ -275,67 +245,72 @@ export interface MyAttempt {
   submittedAt: string | null;
 }
 
-/**
- * The current user's standing on a game: what is open, what they have spent,
- * and their best result so far. Drives the whole game page, so it has to work
- * for both one-shot and retry games.
- */
 export async function getMyAttemptBySlug(
   slug: string,
   userId: string,
   role: ViewerRole = "player",
 ): Promise<MyAttempt | null> {
   const db = getDb();
-  const [game] = await db
-    .select({ id: games.id, gameType: games.gameType })
-    .from(games)
-    .where(eq(games.slug, slug))
-    .limit(1);
+  const gamesRows = await db<{ id: string; game_type: string }[]>`
+    SELECT id, game_type FROM games WHERE slug = ${slug} LIMIT 1
+  `;
+  const game = gamesRows[0];
   if (!game) return null;
 
-  const def = requireGameDef(game.gameType);
-  const [summary] = await db
-    .select({
-      attemptsUsed: sql<number>`count(*)::int`,
-      bestScore: sql<
-        number | null
-      >`max(${gameAttempts.score}) filter (where ${gameAttempts.serverValid} = true and ${gameAttempts.status} = 'submitted')`,
-      bestDurationMs: sql<
-        number | null
-      >`min(${gameAttempts.durationMs}) filter (where ${gameAttempts.serverValid} = true and ${gameAttempts.status} = 'submitted')`,
-    })
-    .from(gameAttempts)
-    .where(and(eq(gameAttempts.userId, userId), eq(gameAttempts.gameId, game.id)));
-  // Attempts are sequential: a new one is only started once the previous is
-  // submitted or expired, so an `in_progress` row is always the latest. One
-  // query for the newest attempt covers both the "resume me" and "my last run"
-  // cases the page draws.
-  const [latest] = await db
-    .select({
-      status: gameAttempts.status,
-      durationMs: gameAttempts.durationMs,
-      score: gameAttempts.score,
-      serverValid: gameAttempts.serverValid,
-      afterDeadline: gameAttempts.afterDeadline,
-      startedAt: gameAttempts.startedAt,
-      submittedAt: gameAttempts.submittedAt,
-      attemptNumber: gameAttempts.attemptNumber,
-    })
-    .from(gameAttempts)
-    .where(and(eq(gameAttempts.userId, userId), eq(gameAttempts.gameId, game.id)))
-    .orderBy(desc(gameAttempts.attemptNumber))
-    .limit(1);
+  const def = requireGameDef(game.game_type);
+  const summaryRows = await db<
+    {
+      attemptsUsed: number;
+      bestScore: number | null;
+      bestDurationMs: number | null;
+    }[]
+  >`
+    SELECT
+      COUNT(*)::int AS "attemptsUsed",
+      MAX(score) FILTER (WHERE server_valid = true AND status = 'submitted') AS "bestScore",
+      MIN(duration_ms) FILTER (WHERE server_valid = true AND status = 'submitted') AS "bestDurationMs"
+    FROM game_attempts
+    WHERE user_id = ${userId} AND game_id = ${game.id}
+  `;
+  const summary = summaryRows[0];
+
+  const latestRows = await db<
+    {
+      status: "none" | "in_progress" | "submitted" | "expired" | "void";
+      duration_ms: number | null;
+      score: number | null;
+      server_valid: boolean;
+      after_deadline: boolean;
+      started_at: Date;
+      submitted_at: Date | null;
+      attempt_number: number;
+    }[]
+  >`
+    SELECT
+      status,
+      duration_ms,
+      score,
+      server_valid,
+      after_deadline,
+      started_at,
+      submitted_at,
+      attempt_number
+    FROM game_attempts
+    WHERE user_id = ${userId} AND game_id = ${game.id}
+    ORDER BY attempt_number DESC
+    LIMIT 1
+  `;
+  const latest = latestRows[0];
 
   const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
   const unlimited = isTesterModeEnabled && role !== "player";
   const base = {
     metric: def.metric,
     maxAttempts: def.maxAttempts,
-    attemptsUsed: summary?.attemptsUsed ?? 0,
-    // Testers never run out unless tester mode is disabled, so the page must only draw them unlimited when true.
+    attemptsUsed: Number(summary?.attemptsUsed ?? 0),
     attemptsRemaining: unlimited
       ? def.maxAttempts
-      : Math.max(0, def.maxAttempts - (summary?.attemptsUsed ?? 0)),
+      : Math.max(0, def.maxAttempts - Number(summary?.attemptsUsed ?? 0)),
     unlimited,
   };
 
@@ -357,14 +332,14 @@ export async function getMyAttemptBySlug(
   return {
     ...base,
     status: latest.status,
-    durationMs: latest.durationMs,
-    score: latest.score,
-    bestScore: summary?.bestScore ?? null,
-    bestDurationMs: summary?.bestDurationMs ?? null,
-    valid: latest.serverValid,
-    afterDeadline: latest.afterDeadline,
-    startedAt: latest.startedAt.toISOString(),
-    submittedAt: latest.submittedAt?.toISOString() ?? null,
+    durationMs: latest.duration_ms != null ? Number(latest.duration_ms) : null,
+    score: latest.score != null ? Number(latest.score) : null,
+    bestScore: summary?.bestScore != null ? Number(summary.bestScore) : null,
+    bestDurationMs: summary?.bestDurationMs != null ? Number(summary.bestDurationMs) : null,
+    valid: latest.server_valid,
+    afterDeadline: latest.after_deadline,
+    startedAt: latest.started_at ? latest.started_at.toISOString() : null,
+    submittedAt: latest.submitted_at ? latest.submitted_at.toISOString() : null,
   };
 }
 
@@ -380,15 +355,6 @@ export interface TinderRecap {
   }[];
 }
 
-/**
- * The answer key for a Tinder deck the player has already submitted.
- *
- * Three things keep this from being a leak. It reads the caller's own attempt
- * row; it refuses unless that attempt is `submitted`; and it regenerates from
- * that attempt's seed, which is unique per player per run. So the most it can
- * ever hand over is the deck you just finished - and every card in it is one
- * you have already answered correctly, or the run would not have ended.
- */
 export async function getMyRecapBySlug(
   slug: string,
   userId: string,
@@ -400,35 +366,21 @@ export async function getMyRecapBySlug(
   const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
   const isTester = (role === "tester" || role === "admin") && isTesterModeEnabled;
 
-  // Answers remain locked until the day's challenge closes (or tester mode for testers)
   if (game.status !== "closed" && !isTester) return null;
 
   const db = getDb();
-
-  const [attempt] = await db
-    .select({ seed: gameAttempts.seed })
-    .from(gameAttempts)
-    .where(
-      and(
-        eq(gameAttempts.userId, userId),
-        eq(gameAttempts.gameId, game.id),
-        eq(gameAttempts.status, "submitted"),
-      ),
-    )
-    .orderBy(desc(gameAttempts.attemptNumber))
-    .limit(1);
+  const rows = await db<{ seed: string }[]>`
+    SELECT seed FROM game_attempts
+    WHERE user_id = ${userId} AND game_id = ${game.id} AND status = 'submitted'
+    ORDER BY attempt_number DESC
+    LIMIT 1
+  `;
+  const attempt = rows[0];
   if (!attempt) return null;
 
   return { kind: "tinder", cards: revealDeck(attempt.seed) };
 }
 
-/**
- * Writes the player's best-of-day row.
- *
- * The conflict clause is what makes retries safe: a worse run simply loses the
- * `setWhere` test and leaves the existing row alone, so twelve Maveli runs can
- * only ever move the board in one direction.
- */
 async function upsertDailyBest(params: {
   gameId: string;
   userId: string;
@@ -442,41 +394,39 @@ async function upsertDailyBest(params: {
   isFlagged: boolean;
 }): Promise<boolean> {
   const db = getDb();
-  const values = {
-    gameId: params.gameId,
-    userId: params.userId,
-    attemptId: params.attemptId,
-    metric: params.metric,
-    durationMs: params.durationMs,
-    score: params.score,
-    attemptsUsed: params.attemptsUsed,
-    startedAt: params.startedAt,
-    submittedAt: params.submittedAt,
-    isFlagged: params.isFlagged,
-  };
-
-  const better =
+  const betterCondition =
     params.metric === "score"
-      ? sql`${dailyLeaderboard.score} is null or ${dailyLeaderboard.score} < excluded.score`
-      : sql`${dailyLeaderboard.durationMs} is null or ${dailyLeaderboard.durationMs} > excluded.duration_ms`;
+      ? db`daily_leaderboard.score IS NULL OR daily_leaderboard.score < EXCLUDED.score`
+      : db`daily_leaderboard.duration_ms IS NULL OR daily_leaderboard.duration_ms > EXCLUDED.duration_ms`;
 
-  const written = await db
-    .insert(dailyLeaderboard)
-    .values(values)
-    .onConflictDoUpdate({
-      target: [dailyLeaderboard.gameId, dailyLeaderboard.userId],
-      set: {
-        attemptId: sql`excluded.attempt_id`,
-        durationMs: sql`excluded.duration_ms`,
-        score: sql`excluded.score`,
-        submittedAt: sql`excluded.submitted_at`,
-        startedAt: sql`excluded.started_at`,
-        attemptsUsed: sql`excluded.attempts_used`,
-        isFlagged: sql`excluded.is_flagged`,
-      },
-      setWhere: better,
-    })
-    .returning({ id: dailyLeaderboard.id });
+  const written = await db<{ id: string }[]>`
+    INSERT INTO daily_leaderboard (
+      game_id, user_id, attempt_id, metric, duration_ms, score, started_at, submitted_at, attempts_used, is_flagged
+    )
+    VALUES (
+      ${params.gameId},
+      ${params.userId},
+      ${params.attemptId},
+      ${params.metric},
+      ${params.durationMs},
+      ${params.score},
+      ${params.startedAt},
+      ${params.submittedAt},
+      ${params.attemptsUsed},
+      ${params.isFlagged}
+    )
+    ON CONFLICT (game_id, user_id) DO UPDATE
+    SET
+      attempt_id = EXCLUDED.attempt_id,
+      duration_ms = EXCLUDED.duration_ms,
+      score = EXCLUDED.score,
+      submitted_at = EXCLUDED.submitted_at,
+      started_at = EXCLUDED.started_at,
+      attempts_used = EXCLUDED.attempts_used,
+      is_flagged = EXCLUDED.is_flagged
+    WHERE ${betterCondition}
+    RETURNING id
+  `;
 
   if (written.length > 0) {
     invalidateShared("leaderboard:");
@@ -484,13 +434,11 @@ async function upsertDailyBest(params: {
     return true;
   }
 
-  // Not an improvement - still keep the run counter honest.
-  await db
-    .update(dailyLeaderboard)
-    .set({ attemptsUsed: params.attemptsUsed })
-    .where(
-      and(eq(dailyLeaderboard.gameId, params.gameId), eq(dailyLeaderboard.userId, params.userId)),
-    );
+  await db`
+    UPDATE daily_leaderboard
+    SET attempts_used = ${params.attemptsUsed}
+    WHERE game_id = ${params.gameId} AND user_id = ${params.userId}
+  `;
   invalidateShared("leaderboard:");
   invalidateShared("userboard:");
   return false;
@@ -498,44 +446,75 @@ async function upsertDailyBest(params: {
 
 export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
   const db = getDb();
-  const [attempt] = await db
-    .select()
-    .from(gameAttempts)
-    .where(eq(gameAttempts.attemptToken, input.attemptToken))
-    .limit(1);
+  const attemptRows = await db<
+    {
+      id: string;
+      user_id: string;
+      game_id: string;
+      device_id: string;
+      seed: string;
+      attempt_number: number;
+      started_at: Date;
+      status: string;
+      ip: string | null;
+    }[]
+  >`
+    SELECT id, user_id, game_id, device_id, seed, attempt_number, started_at, status, ip
+    FROM game_attempts
+    WHERE attempt_token = ${input.attemptToken}
+    LIMIT 1
+  `;
+  const attempt = attemptRows[0];
   if (!attempt) throw new HttpError(404, "Attempt not found");
-  if (attempt.userId !== input.userId) throw new HttpError(403, "Forbidden");
+  if (attempt.user_id !== input.userId) throw new HttpError(403, "Forbidden");
   if (attempt.status !== "in_progress") {
     throw new HttpError(409, "This attempt has already been submitted");
   }
 
-  const [game] = await db.select().from(games).where(eq(games.id, attempt.gameId)).limit(1);
+  const gameRows = await db<Game[]>`
+    SELECT
+      id,
+      slug,
+      day,
+      title,
+      hint,
+      game_type AS "gameType",
+      difficulty,
+      release_at AS "releaseAt",
+      end_at AS "endAt",
+      preview_at AS "previewAt",
+      tester_early_hours AS "testerEarlyHours",
+      status,
+      assets_json AS "assetsJson",
+      published,
+      created_at AS "createdAt"
+    FROM games
+    WHERE id = ${attempt.game_id}
+    LIMIT 1
+  `;
+  const game = gameRows[0];
   if (!game) throw new HttpError(404, "Game not found");
   const def = requireGameDef(game.gameType);
 
   const schedule = await resolveSchedule(game, input.role);
   const now = new Date();
-  // The clock is the DB's, not the client's. Nothing posted can change it.
-  const rawDurationMs = now.getTime() - attempt.startedAt.getTime();
+  const rawDurationMs = now.getTime() - attempt.started_at.getTime();
   const afterDeadline = schedule.endAt ? now.getTime() > schedule.endAt.getTime() : false;
 
-  // Attempts are numbered 1..N at creation and never deleted, so the current
-  // row's number already is the count of runs used - no recount needed.
-  const attemptsUsed = attempt.attemptNumber;
+  const attemptsUsed = attempt.attempt_number;
   const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
   const unlimited = isTesterModeEnabled && input.role !== "player";
   const attemptsRemaining = unlimited
     ? def.maxAttempts
     : Math.max(0, def.maxAttempts - attemptsUsed);
 
-  // The expiry test uses the bare clock: a time penalty is a ranking cost, not
-  // a reason to void a run somebody actually finished inside the window.
   if (rawDurationMs > def.maxDurationMs) {
-    const expired = await db
-      .update(gameAttempts)
-      .set({ status: "expired", durationMs: rawDurationMs, submittedAt: now })
-      .where(and(eq(gameAttempts.id, attempt.id), eq(gameAttempts.status, "in_progress")))
-      .returning({ id: gameAttempts.id });
+    const expired = await db<{ id: string }[]>`
+      UPDATE game_attempts
+      SET status = 'expired', duration_ms = ${rawDurationMs}, submitted_at = ${now}
+      WHERE id = ${attempt.id} AND status = 'in_progress'
+      RETURNING id
+    `;
     if (expired.length === 0) {
       throw new HttpError(409, "This attempt has already been submitted");
     }
@@ -554,57 +533,43 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
     };
   }
 
-  // The registry regenerates the answer from the seed and grades the
-  // submission. For score games the number it returns is the only score that
-  // reaches the DB - anything the client claimed is dropped on the floor.
   const result = await def.verify({
     seed: attempt.seed,
     difficulty: game.difficulty,
     submission: input.submittedState,
     durationMs: rawDurationMs,
     userId: input.userId,
-    startedAt: attempt.startedAt,
+    startedAt: attempt.started_at,
   });
 
-  /*
-   * The ranked duration. A game may charge its own time penalty - Tinder adds
-   * three seconds per wrong swipe - and that penalty is derived from the replay
-   * above, so it is as server-authoritative as the clock it is added to. This
-   * combined figure is what gets stored and ranked; `rawDurationMs` survives
-   * only to show the player what the mistakes cost them.
-   */
   const penaltyMs = result.valid ? Math.max(0, result.durationPenaltyMs ?? 0) : 0;
   const durationMs = rawDurationMs + penaltyMs;
-
   const score = def.metric === "score" ? (result.score ?? 0) : null;
-  // Anomaly detection reads the real clock. A penalty inflating a duration past
-  // the floor would launder exactly the impossibly-fast run it exists to catch.
   const isAnomalous = result.valid && rawDurationMs < def.minPlausibleMs;
 
-  const claimed = await db
-    .update(gameAttempts)
-    .set({
-      submittedAt: now,
-      durationMs,
-      score,
-      submittedStateHash: sha256(JSON.stringify(input.submittedState ?? {})),
-      serverValid: result.valid,
-      isAnomalous,
-      afterDeadline,
-      status: "submitted",
-      movesCount: result.movesCount ?? null,
-    })
-    .where(and(eq(gameAttempts.id, attempt.id), eq(gameAttempts.status, "in_progress")))
-    .returning({ id: gameAttempts.id });
+  const claimed = await db<{ id: string }[]>`
+    UPDATE game_attempts
+    SET
+      submitted_at = ${now},
+      duration_ms = ${durationMs},
+      score = ${score},
+      submitted_state_hash = ${sha256(JSON.stringify(input.submittedState ?? {}))},
+      server_valid = ${result.valid},
+      is_anomalous = ${isAnomalous},
+      after_deadline = ${afterDeadline},
+      status = 'submitted',
+      moves_count = ${result.movesCount ?? null}
+    WHERE id = ${attempt.id} AND status = 'in_progress'
+    RETURNING id
+  `;
   if (claimed.length === 0) {
     throw new HttpError(409, "This attempt has already been submitted");
   }
 
-  // Fire non-critical device counter update in background
-  void db
-    .update(devices)
-    .set({ attemptsCount: sql`${devices.attemptsCount} + 1` })
-    .where(eq(devices.id, attempt.deviceId));
+  // Non-blocking device counter update
+  void db`
+    UPDATE devices SET attempts_count = attempts_count + 1 WHERE id = ${attempt.device_id}
+  `;
 
   if (isAnomalous) {
     void logSuspicious({
@@ -629,7 +594,7 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
         metric: def.metric,
         durationMs,
         score,
-        startedAt: attempt.startedAt,
+        startedAt: attempt.started_at,
         submittedAt: now,
         attemptsUsed,
         isFlagged: isAnomalous,

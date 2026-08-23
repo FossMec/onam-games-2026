@@ -145,5 +145,13 @@ export const ADMIN_QUERY_KEYS = {
 /** Returns an `onReload` callback that revalidates exactly the given keys. */
 export const revalidateAfter =
   (...keys: string[]) =>
-  () =>
-    revalidate(keys);
+  () => {
+    if (keys.length === 0) {
+      void revalidate();
+    } else {
+      for (const k of keys) {
+        void revalidate(k);
+      }
+      void revalidate();
+    }
+  };

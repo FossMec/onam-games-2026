@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { resolveSchedule } from "./service";
-import type { games } from "~/server/db/schema";
+import type { Game } from "~/server/db/schema";
 
 /**
  * The status machine, exercised without a database.
@@ -13,7 +13,7 @@ import type { games } from "~/server/db/schema";
 
 const HOUR = 60 * 60 * 1000;
 
-type GameRow = typeof games.$inferSelect;
+type GameRow = Game;
 
 /** A published game whose release is `hoursFromNow` away (negative = past). */
 function gameAt(hoursFromNow: number, overrides: Partial<GameRow> = {}): GameRow {

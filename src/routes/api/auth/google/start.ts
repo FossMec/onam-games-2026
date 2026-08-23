@@ -11,11 +11,13 @@ function backToSignIn(message: string): Response {
 }
 
 export async function GET({ request }: APIEvent) {
-  const proto = request.headers.get("x-forwarded-proto") ?? "https";
+  const reqUrl = new URL(request.url);
+  const isLocal = reqUrl.hostname === "localhost" || reqUrl.hostname === "127.0.0.1";
+  const proto =
+    request.headers.get("x-forwarded-proto") ??
+    (isLocal ? reqUrl.protocol.replace(":", "") : "https");
   const host =
-    request.headers.get("x-forwarded-host") ??
-    request.headers.get("host") ??
-    new URL(request.url).host;
+    request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? reqUrl.host;
   const origin = `${proto}://${host}`;
   // Not configured is not an error worth showing anyone: the sign-in page only
   // routes here when the server said it was on, so this is a deploy that lost

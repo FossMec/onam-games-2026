@@ -1,6 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
-import { collabPookalam, collabPookalamDiffs } from "~/server/db/client";
 import { getSettings } from "~/server/settings/service";
 import { sharedRead, invalidateShared } from "~/server/cache";
 import {
@@ -81,33 +79,39 @@ function getConfig() {
   return sharedRead("collab:config", computeCollabConfig, 5_000);
 }
 
+interface CollabGridRow {
+  day_key: string;
+  cells: Uint8Array;
+  placed: number;
+}
+
 /**
- * Ensures the one event-wide canvas exists. Older deployments created one row
- * per day; the migration collapses those rows, and this key prevents that model
- * from returning in application code.
+ * Ensures the one event-wide canvas exists.
  */
-async function loadCommunityGrid() {
+async function loadCommunityGrid(): Promise<CollabGridRow> {
   const db = getDb();
-  const [existing] = await db
-    .select()
-    .from(collabPookalam)
-    .where(eq(collabPookalam.dayKey, COMMUNITY_GRID_KEY))
-    .limit(1);
-  if (existing) return existing;
+  const existing = await db<CollabGridRow[]>`
+    SELECT day_key, cells, placed
+    FROM collab_pookalam
+    WHERE day_key = ${COMMUNITY_GRID_KEY}
+    LIMIT 1
+  `;
+  if (existing[0]) return existing[0];
 
-  const [row] = await db
-    .insert(collabPookalam)
-    .values({ dayKey: COMMUNITY_GRID_KEY, cells: emptyGrid(), placed: 0 })
-    .onConflictDoNothing()
-    .returning();
+  const empty = emptyGrid();
+  await db`
+    INSERT INTO collab_pookalam (day_key, cells, placed)
+    VALUES (${COMMUNITY_GRID_KEY}, ${empty}, 0)
+    ON CONFLICT DO NOTHING
+  `;
 
-  if (row) return row;
-  const [created] = await db
-    .select()
-    .from(collabPookalam)
-    .where(eq(collabPookalam.dayKey, COMMUNITY_GRID_KEY))
-    .limit(1);
-  return created;
+  const created = await db<CollabGridRow[]>`
+    SELECT day_key, cells, placed
+    FROM collab_pookalam
+    WHERE day_key = ${COMMUNITY_GRID_KEY}
+    LIMIT 1
+  `;
+  return created[0];
 }
 
 function ensureCommunityGrid() {
@@ -121,7 +125,7 @@ export async function ensureDiffsTable(): Promise<void> {
   const db = getDb();
   diffsTableInitPromise = (async () => {
     try {
-      await db.execute(sql`
+      await db`
         CREATE TABLE IF NOT EXISTS collab_pookalam_diffs (
           id BIGSERIAL PRIMARY KEY,
           cell_index SMALLINT NOT NULL,
@@ -129,7 +133,7 @@ export async function ensureDiffsTable(): Promise<void> {
           placed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
         CREATE INDEX IF NOT EXISTS collab_pookalam_diffs_placed_at_idx ON collab_pookalam_diffs(placed_at);
-      `);
+      `;
     } catch {
       /* ignore if already created */
     }
@@ -137,8 +141,8 @@ export async function ensureDiffsTable(): Promise<void> {
   return diffsTableInitPromise;
 }
 
-function encode(row: { dayKey: string; cells: Uint8Array; placed: number }): CollabDay {
-  return { dayKey: row.dayKey, cells: toBase64(row.cells), placed: row.placed };
+function encode(row: CollabGridRow): CollabDay {
+  return { dayKey: row.day_key, cells: toBase64(row.cells), placed: row.placed };
 }
 
 export async function getCollabState(signedIn: boolean): Promise<CollabState> {
@@ -162,39 +166,28 @@ export type PlaceResult =
 
 /**
  * Puts one flower on today's grid, if that square is still bare.
- *
- * The check and the write are the same statement. Reading the cell, deciding it
- * is empty and then writing it would be a race that two people tapping the same
- * square at once would win *both* of — the second silently overwriting the
- * first. Here the `WHERE` tests the nibble and the `SET` fills it atomically,
- * so exactly one of them updates a row and the other is told it was taken.
- *
- * The OR is safe precisely because the guard proved the nibble was zero.
  */
 async function writeCell(index: number, flowerId: number): Promise<number | null> {
   const { byteIndex, shift, mask } = cellAddress(index);
   const shifted = flowerId << shift;
   const clearMask = 0xff - mask;
+  const db = getDb();
 
-  const updated = await getDb()
-    .update(collabPookalam)
-    .set({
-      cells: sql`set_byte(${collabPookalam.cells}, ${byteIndex}, (get_byte(${collabPookalam.cells}, ${byteIndex}) & ${clearMask}) | ${shifted})`,
-      placed: sql`case
-        when ${flowerId} = 0 and (get_byte(${collabPookalam.cells}, ${byteIndex}) & ${mask}) != 0 then greatest(0, ${collabPookalam.placed} - 1)
-        when ${flowerId} != 0 and (get_byte(${collabPookalam.cells}, ${byteIndex}) & ${mask}) = 0 then ${collabPookalam.placed} + 1
-        else ${collabPookalam.placed}
-      end`,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(collabPookalam.dayKey, COMMUNITY_GRID_KEY),
-        // Bare cell, eraser (allowed anytime), or canvas is >= 80% filled
-        sql`(${flowerId} = 0 or (get_byte(${collabPookalam.cells}, ${byteIndex}) & ${mask}) = 0 or ${collabPookalam.placed} >= ${OVERWRITE_THRESHOLD})`,
-      ),
-    )
-    .returning({ placed: collabPookalam.placed });
+  const updated = await db<{ placed: number }[]>`
+    UPDATE collab_pookalam
+    SET
+      cells = set_byte(cells, ${byteIndex}, (get_byte(cells, ${byteIndex}) & ${clearMask}) | ${shifted}),
+      placed = CASE
+        WHEN ${flowerId} = 0 AND (get_byte(cells, ${byteIndex}) & ${mask}) != 0 THEN GREATEST(0, placed - 1)
+        WHEN ${flowerId} != 0 AND (get_byte(cells, ${byteIndex}) & ${mask}) = 0 THEN placed + 1
+        ELSE placed
+      END,
+      updated_at = NOW()
+    WHERE
+      day_key = ${COMMUNITY_GRID_KEY} AND
+      (${flowerId} = 0 OR (get_byte(cells, ${byteIndex}) & ${mask}) = 0 OR placed >= ${OVERWRITE_THRESHOLD})
+    RETURNING placed
+  `;
 
   return updated.length === 0 ? null : updated[0].placed;
 }
@@ -218,29 +211,14 @@ export async function placeFlower(index: number, flowerId: number): Promise<Plac
 export const MAX_STROKE = 400;
 
 export interface StrokeResult {
-  /** Cells that actually landed. */
   written: number[];
   placed: number;
-  /**
-   * The whole grid as it now stands, base64.
-   *
-   * The reply carries the truth rather than a diff to apply against a local
-   * guess. It is 1668 characters, which is nothing, and it collapses three
-   * problems into none: rejected cells revert without the client tracking
-   * which, other people's flowers arrive for free, and a client whose optimistic
-   * copy has drifted for any reason is silently corrected on the next stroke.
-   */
   cells: string;
   reason?: string;
 }
 
 /**
  * One drag, one round trip.
- *
- * Drawing a line across the canvas is dozens of cells, and firing a request per
- * cell would hit the rate limiter mid-stroke and leave half a line on screen.
- * They still go in one at a time here — each needs its own atomic guard — but
- * the client pays for a single call and gets back exactly which ones took.
  */
 export async function placeStroke(
   cells: { index: number; flowerId: number }[],
@@ -266,7 +244,6 @@ export async function placeStroke(
 
   for (const cell of cells.slice(0, MAX_STROKE)) {
     if (!isValidIndex(cell.index) || !isValidBrush(cell.flowerId)) continue;
-    // A drag re-reports the same cell as the pointer wobbles inside it.
     if (seen.has(cell.index)) continue;
     seen.add(cell.index);
 
@@ -281,26 +258,29 @@ export async function placeStroke(
   let finalPlaced = current.placed;
   if (written.length > 0) {
     finalPlaced = countFilled(grid);
-    await getDb()
-      .update(collabPookalam)
-      .set({
-        cells: grid,
-        placed: finalPlaced,
-        updatedAt: new Date(),
-      })
-      .where(eq(collabPookalam.dayKey, COMMUNITY_GRID_KEY));
+    const db = getDb();
+    await db`
+      UPDATE collab_pookalam
+      SET cells = ${grid}, placed = ${finalPlaced}, updated_at = NOW()
+      WHERE day_key = ${COMMUNITY_GRID_KEY}
+    `;
 
     invalidateShared("collab:grid");
 
-    // Batch-insert diff rows for animation replay. Fire-and-forget after the
-    // grid read-back; a failure here must not break the stroke response.
     if (diffRows.length > 0) {
-      void getDb()
-        .insert(collabPookalamDiffs)
-        .values(diffRows)
-        .catch((err) => {
+      void (async () => {
+        try {
+          // Batch insert diff rows using raw SQL
+          for (const d of diffRows) {
+            await db`
+              INSERT INTO collab_pookalam_diffs (cell_index, flower_id)
+              VALUES (${d.cellIndex}, ${d.flowerId})
+            `;
+          }
+        } catch (err: any) {
           console.warn("[collab] diff insert failed:", err?.message ?? err);
-        });
+        }
+      })();
     }
   }
 

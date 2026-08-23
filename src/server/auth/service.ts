@@ -1,9 +1,7 @@
-import { and, eq, isNull, or } from "drizzle-orm";
 import type { FingerprintSignals } from "~/lib/fingerprint";
 import { bindDeviceToUser } from "~/server/anti-cheat/device";
 import { logActivity, logSuspicious } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
-import { authSessions, users } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
 import { getRequestMeta } from "~/server/request";
 import { getSupabaseAdmin, getSupabaseAnon } from "~/server/supabase/client";
@@ -16,32 +14,6 @@ export interface OAuthSession {
   refresh_token: string;
   expires_at?: number;
 }
-
-const USER_SELECT = {
-  id: users.id,
-  supabaseUid: users.supabaseUid,
-  email: users.email,
-  name: users.name,
-  avatarUrl: users.avatarUrl,
-  instagramHandle: users.instagramHandle,
-  whatsappNumber: users.whatsappNumber,
-  occupation: users.occupation,
-  college: users.college,
-  collegeOther: users.collegeOther,
-  branch: users.branch,
-  branchOther: users.branchOther,
-  batch: users.batch,
-  div: users.div,
-  role: users.role,
-  banLevel: users.banLevel,
-  banUntil: users.banUntil,
-  banReason: users.banReason,
-  banAckedAt: users.banAckedAt,
-  trustScore: users.trustScore,
-  streakCount: users.streakCount,
-  bestStreak: users.bestStreak,
-  onboardingCompleted: users.onboardingCompleted,
-} as const;
 
 export interface PublicUser {
   id: string;
@@ -102,31 +74,43 @@ export async function completeOAuthSignIn(
     null;
 
   const db = getDb();
-  const [existing] = await db
-    .select()
-    .from(users)
-    .where(or(eq(users.supabaseUid, sbUser.id), eq(users.email, email)))
-    .limit(1);
+  const existingUsers = await db<
+    {
+      id: string;
+      name: string;
+      avatar_url: string | null;
+      onboarding_completed: boolean;
+      role: string;
+    }[]
+  >`
+    SELECT id, name, avatar_url, onboarding_completed, role
+    FROM users
+    WHERE supabase_uid = ${sbUser.id} OR email = ${email}
+    LIMIT 1
+  `;
 
+  const existing = existingUsers[0];
   let userId: string;
   if (existing) {
     userId = existing.id;
-    await db
-      .update(users)
-      .set({
-        supabaseUid: sbUser.id,
-        email,
-        name: existing.name || name,
-        avatarUrl: existing.avatarUrl ?? googleAvatar,
-        lastLoginAt: new Date(),
-      })
-      .where(eq(users.id, existing.id));
+    await db`
+      UPDATE users
+      SET
+        supabase_uid = ${sbUser.id},
+        email = ${email},
+        name = ${existing.name || name},
+        avatar_url = ${existing.avatar_url ?? googleAvatar},
+        last_login_at = NOW(),
+        updated_at = NOW()
+      WHERE id = ${existing.id}
+    `;
   } else {
-    const [created] = await db
-      .insert(users)
-      .values({ supabaseUid: sbUser.id, email, name, avatarUrl: googleAvatar })
-      .returning({ id: users.id });
-    userId = created.id;
+    const createdUsers = await db<{ id: string }[]>`
+      INSERT INTO users (supabase_uid, email, name, avatar_url)
+      VALUES (${sbUser.id}, ${email}, ${name}, ${googleAvatar})
+      RETURNING id
+    `;
+    userId = createdUsers[0].id;
   }
 
   // Device binding + one-user-per-device enforcement.
@@ -141,24 +125,17 @@ export async function completeOAuthSignIn(
    * One live session per account, and a record of every account that needed
    * more than one.
    *
-   * Signing in anywhere revokes everywhere else, so an account cannot be played
-   * from two places at once - the shared-login case that device binding alone
-   * does not cover, because a borrowed account on a second phone is a second
-   * *device*, not a second user.
-   *
-   * The log is deliberately noisy. Most entries will be somebody moving from
-   * their phone to their laptop, which is innocent and expected; that is an
-   * acceptable price for catching the ones that are not, since nothing here
-   * blocks or bans on its own and a human reads the list before prizes go out.
+   * Signing in anywhere revokes everywhere else.
    */
-  const displaced = await db
-    .update(authSessions)
-    .set({ revokedAt: new Date() })
-    .where(and(eq(authSessions.userId, userId), isNull(authSessions.revokedAt)))
-    .returning({ id: authSessions.id, deviceId: authSessions.deviceId, ip: authSessions.ip });
+  const displaced = await db<{ id: string; device_id: string | null; ip: string | null }[]>`
+    UPDATE auth_sessions
+    SET revoked_at = NOW()
+    WHERE user_id = ${userId} AND revoked_at IS NULL
+    RETURNING id, device_id, ip
+  `;
 
   const otherDevices = [
-    ...new Set(displaced.map((row) => row.deviceId).filter((id) => id && id !== bind.deviceId)),
+    ...new Set(displaced.map((row) => row.device_id).filter((id) => id && id !== bind.deviceId)),
   ];
   if (displaced.length > 0) {
     await logSuspicious({
@@ -179,34 +156,36 @@ export async function completeOAuthSignIn(
     });
   }
 
-  const [sess] = await db
-    .insert(authSessions)
-    .values({
-      userId,
-      deviceId: bind.deviceId,
-      refreshToken: session.refresh_token,
-      accessToken: session.access_token,
-      expiresAt: session.expires_at ? new Date(session.expires_at * 1000) : null,
-      ip: meta.ip,
-      userAgent: meta.userAgent,
-      country: meta.country,
-      city: meta.city,
-    })
-    .returning({ id: authSessions.id });
+  const expiresAt = session.expires_at ? new Date(session.expires_at * 1000) : null;
+  const newSessions = await db<{ id: string }[]>`
+    INSERT INTO auth_sessions (
+      user_id,
+      device_id,
+      refresh_token,
+      access_token,
+      expires_at,
+      ip,
+      user_agent,
+      country,
+      city
+    )
+    VALUES (
+      ${userId},
+      ${bind.deviceId},
+      ${session.refresh_token},
+      ${session.access_token},
+      ${expiresAt},
+      ${meta.ip ?? null},
+      ${meta.userAgent ?? null},
+      ${meta.country ?? null},
+      ${meta.city ?? null}
+    )
+    RETURNING id
+  `;
 
+  const sess = newSessions[0];
   await writeAuthCookie({ sid: sess.id, deviceId: bind.deviceId });
 
-  /*
-   * The whole signal set, every sign-in, not just the two fields a rule
-   * happens to read today.
-   *
-   * `devices.fingerprint_json` only ever holds the *latest* fingerprint for a
-   * device - each sign-in overwrites it. Keeping a copy per login turns that
-   * into a history, which is where the interesting shapes live: a hardware
-   * signature that changes under one account, a canvas hash that appears under
-   * two, a visitor id that migrates between accounts. None of that is
-   * recoverable later from a column that was overwritten.
-   */
   await logActivity({
     userId,
     deviceId: bind.deviceId,
@@ -228,7 +207,7 @@ export async function completeOAuthSignIn(
     },
   });
 
-  return { userId, onboardingCompleted: existing?.onboardingCompleted ?? false };
+  return { userId, onboardingCompleted: existing?.onboarding_completed ?? false };
 }
 
 /** Returns the signed-in user's DB row, or null. No token refresh. */
@@ -249,12 +228,38 @@ async function getCurrentUserUncached(): Promise<PublicUser | null> {
     `session:${sid}`,
     async () => {
       const db = getDb();
-      const [row] = await db
-        .select({ ...USER_SELECT, sessionExpiresAt: authSessions.expiresAt })
-        .from(authSessions)
-        .innerJoin(users, eq(users.id, authSessions.userId))
-        .where(and(eq(authSessions.id, sid), isNull(authSessions.revokedAt)))
-        .limit(1);
+      const rows = await db<(PublicUser & { sessionExpiresAt: Date | null })[]>`
+        SELECT
+          u.id,
+          u.supabase_uid AS "supabaseUid",
+          u.email,
+          u.name,
+          u.avatar_url AS "avatarUrl",
+          u.instagram_handle AS "instagramHandle",
+          u.whatsapp_number AS "whatsappNumber",
+          u.occupation,
+          u.college,
+          u.college_other AS "collegeOther",
+          u.branch,
+          u.branch_other AS "branchOther",
+          u.batch,
+          u.div,
+          u.role,
+          u.ban_level AS "banLevel",
+          u.ban_until AS "banUntil",
+          u.ban_reason AS "banReason",
+          u.ban_acked_at AS "banAckedAt",
+          u.trust_score AS "trustScore",
+          u.streak_count AS "streakCount",
+          u.best_streak AS "bestStreak",
+          u.onboarding_completed AS "onboardingCompleted",
+          s.expires_at AS "sessionExpiresAt"
+        FROM auth_sessions s
+        INNER JOIN users u ON u.id = s.user_id
+        WHERE s.id = ${sid} AND s.revoked_at IS NULL
+        LIMIT 1
+      `;
+      const row = rows[0];
       if (!row) return null;
       const { sessionExpiresAt, ...user } = row;
       if (isRefreshDue(sessionExpiresAt)) void refreshSessionIfNeeded(sid);
@@ -318,42 +323,36 @@ export async function requireReviewer(): Promise<PublicUser> {
 
 /**
  * Refresh the stored Supabase access token.
- *
- * Callers gate this on `isRefreshDue` with the expiry they already hold, so
- * reaching here means a refresh is expected. The row is re-read anyway because
- * this runs detached from the request that triggered it, and it needs the
- * refresh token - and the expiry is re-checked in case a concurrent request
- * got there first.
  */
 async function refreshSessionIfNeeded(sessionId: string): Promise<void> {
   const db = getDb();
-  const [row] = await db
-    .select()
-    .from(authSessions)
-    .where(and(eq(authSessions.id, sessionId), isNull(authSessions.revokedAt)))
-    .limit(1);
+  const rows = await db<{ refresh_token: string; expires_at: Date | null }[]>`
+    SELECT refresh_token, expires_at
+    FROM auth_sessions
+    WHERE id = ${sessionId} AND revoked_at IS NULL
+    LIMIT 1
+  `;
+  const row = rows[0];
   if (!row) return;
-  if (!isRefreshDue(row.expiresAt)) return;
+  if (!isRefreshDue(row.expires_at)) return;
 
   const { data, error } = await getSupabaseAnon().auth.refreshSession({
-    refresh_token: row.refreshToken,
+    refresh_token: row.refresh_token,
   });
   if (error || !data.session) {
-    await db
-      .update(authSessions)
-      .set({ revokedAt: new Date() })
-      .where(eq(authSessions.id, sessionId));
+    await db`UPDATE auth_sessions SET revoked_at = NOW() WHERE id = ${sessionId}`;
     return;
   }
-  await db
-    .update(authSessions)
-    .set({
-      accessToken: data.session.access_token,
-      refreshToken: data.session.refresh_token,
-      expiresAt: data.session.expires_at ? new Date(data.session.expires_at * 1000) : null,
-      lastSeenAt: new Date(),
-    })
-    .where(eq(authSessions.id, sessionId));
+  const newExpiresAt = data.session.expires_at ? new Date(data.session.expires_at * 1000) : null;
+  await db`
+    UPDATE auth_sessions
+    SET
+      access_token = ${data.session.access_token},
+      refresh_token = ${data.session.refresh_token},
+      expires_at = ${newExpiresAt},
+      last_seen_at = NOW()
+    WHERE id = ${sessionId}
+  `;
 }
 
 export async function signOut(): Promise<void> {
@@ -361,21 +360,17 @@ export async function signOut(): Promise<void> {
   if (data?.sid) {
     invalidateShared(`session:${data.sid}`);
     const db = getDb();
-    const [row] = await db
-      .select()
-      .from(authSessions)
-      .where(eq(authSessions.id, data.sid))
-      .limit(1);
+    const rows = await db<{ refresh_token: string }[]>`
+      SELECT refresh_token FROM auth_sessions WHERE id = ${data.sid} LIMIT 1
+    `;
+    const row = rows[0];
     if (row) {
       try {
-        await getSupabaseAdmin().auth.admin.signOut(row.refreshToken);
+        await getSupabaseAdmin().auth.admin.signOut(row.refresh_token);
       } catch {
         // local revocation is the source of truth regardless
       }
-      await db
-        .update(authSessions)
-        .set({ revokedAt: new Date() })
-        .where(eq(authSessions.id, data.sid));
+      await db`UPDATE auth_sessions SET revoked_at = NOW() WHERE id = ${data.sid}`;
     }
   }
   await clearAuthCookie();

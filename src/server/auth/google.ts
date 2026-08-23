@@ -129,7 +129,7 @@ async function pkce(): Promise<{ verifier: string; challenge: string }> {
 
 export function redirectUri(origin: string): string {
   const configured = getServerEnv("AUTH_ORIGIN", "VITE_SITE_URL", "SITE_URL");
-  let base = (configured && !configured.includes("localhost") ? configured : origin).trim();
+  let base = (configured ? configured : origin).trim();
   // Reverse proxies like Render/Cloudflare forward requests over HTTP internally.
   // Force https:// for all non-local hosts so Google OAuth receives the matching https redirect URI.
   if (!base.includes("localhost") && !base.includes("127.0.0.1")) {

@@ -1,30 +1,15 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { checkRateLimit } from "~/server/anti-cheat/ratelimit";
 import { assertCanPlay } from "~/server/auth/bans";
 import { requireCurrentUser } from "~/server/auth/service";
 import { getDb } from "~/server/db/client";
-import { gameAttempts, games } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
 import { matchTrace } from "~/server/games/impl/wend";
 import { getRequestMeta } from "~/server/request";
 
 /**
  * Checks whether a traced path in Wend spells one of the hidden words.
- *
- * This exists because the words are the puzzle. The board tells a player how
- * many words there are and how long each one is, and nothing else - so the
- * browser genuinely cannot know whether a path is a word, and has to ask.
- *
- * Shipping the list, or hashes of it, was considered and rejected: an
- * eight-letter uppercase word falls to a wordlist in seconds, so any
- * client-side check hands over the answers to anyone who wants them.
- *
- * The response reveals only the word the player just traced, which they can
- * read off their own screen. It says nothing about the words they have not
- * found. And it is not authoritative - the whole board is re-validated at
- * finish, so lying to this endpoint gains nothing.
  */
 const traceSchema = z.object({
   attemptToken: z.uuid(),
@@ -40,13 +25,6 @@ export async function POST({ request }: APIEvent) {
     assertCanPlay(user);
     const meta = getRequestMeta();
 
-    /*
-     * A player traces a handful of wrong guesses per word, so this is called
-     * far more often than /check. The limit is set for a determined human
-     * rather than a patient one - anything above this is a script walking the
-     * grid, and a script gains nothing anyway since the board is re-validated
-     * at finish.
-     */
     const rate = await checkRateLimit({
       key: `game-trace:${meta.ip}:${user.id}`,
       limit: 240,
@@ -65,12 +43,17 @@ export async function POST({ request }: APIEvent) {
     }
 
     const db = getDb();
-    const [attempt] = await db
-      .select({ userId: gameAttempts.userId, seed: gameAttempts.seed, status: gameAttempts.status })
-      .from(gameAttempts)
-      .innerJoin(games, eq(games.id, gameAttempts.gameId))
-      .where(and(eq(gameAttempts.attemptToken, body.data.attemptToken), eq(games.gameType, "wend")))
-      .limit(1);
+    const attempts = await db<{ userId: string; seed: string; status: string }[]>`
+      SELECT
+        ga.user_id AS "userId",
+        ga.seed,
+        ga.status
+      FROM game_attempts ga
+      INNER JOIN games g ON g.id = ga.game_id
+      WHERE ga.attempt_token = ${body.data.attemptToken} AND g.game_type = 'wend'
+      LIMIT 1
+    `;
+    const attempt = attempts[0];
 
     if (!attempt) throw new HttpError(404, "Attempt not found");
     if (attempt.userId !== user.id) throw new HttpError(403, "Forbidden");

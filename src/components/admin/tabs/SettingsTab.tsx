@@ -282,10 +282,12 @@ export function SettingsTab(props: SettingsTabProps) {
   const [search, setSearch] = createSignal("");
   const [selectedGroup, setSelectedGroup] = createSignal<string>("all");
   const [pendingValues, setPendingValues] = createSignal<Record<string, unknown>>({});
+  const [savedValues, setSavedValues] = createSignal<Record<string, unknown>>({});
   const [savingKey, setSavingKey] = createSignal<string | null>(null);
 
   const getEffectiveValue = (key: string, originalValue: unknown) => {
     if (key in pendingValues()) return pendingValues()[key];
+    if (key in savedValues()) return savedValues()[key];
     return originalValue;
   };
 
@@ -299,13 +301,14 @@ export function SettingsTab(props: SettingsTabProps) {
     setSavingKey(key);
     try {
       await updateSetting(key, value, setting.group, setting.description ?? undefined);
-      props.onNotify(`Saved setting "${key}"`);
+      setSavedValues((prev) => ({ ...prev, [key]: value }));
       // Clear pending state for this key
       setPendingValues((prev) => {
         const next = { ...prev };
         delete next[key];
         return next;
       });
+      props.onNotify(`Saved setting "${key}"`);
       props.onReload();
     } catch (err) {
       props.onNotify(err instanceof Error ? err.message : "Failed to update setting");
@@ -415,9 +418,13 @@ export function SettingsTab(props: SettingsTabProps) {
             };
 
             const currentValue = () => getEffectiveValue(setting.key, setting.value);
-            const isDirty = () =>
-              setting.key in pendingValues() &&
-              JSON.stringify(pendingValues()[setting.key]) !== JSON.stringify(setting.value);
+            const isDirty = () => {
+              if (!(setting.key in pendingValues())) return false;
+              const pending = pendingValues()[setting.key];
+              const base =
+                setting.key in savedValues() ? savedValues()[setting.key] : setting.value;
+              return JSON.stringify(pending) !== JSON.stringify(base);
+            };
             const isSaving = () => savingKey() === setting.key;
 
             return (

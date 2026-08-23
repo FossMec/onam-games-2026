@@ -1,20 +1,11 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { requireAdmin } from "~/server/auth/service";
 import { getDb } from "~/server/db/client";
-import { collabPookalamDiffs } from "~/server/db/client";
 import { ensureDiffsTable } from "~/server/pookalam/collab";
-import { asc } from "drizzle-orm";
 
 /** Maximum diffs to return in one export (prevents absurd payloads). */
 const MAX_DIFFS = 500_000;
 
-/**
- * Returns the full ordered diff log for the community pookalam animation export.
- * Admin-only. The client replays the diffs on a hidden canvas and encodes a WebM.
- *
- * Query params:
- *   duration — target video duration in seconds (15–30, default 20)
- */
 export async function GET(event: APIEvent) {
   try {
     await requireAdmin();
@@ -29,23 +20,26 @@ export async function GET(event: APIEvent) {
   try {
     await ensureDiffsTable();
     const db = getDb();
-    const diffs = await db
-      .select({
-        cellIndex: collabPookalamDiffs.cellIndex,
-        flowerId: collabPookalamDiffs.flowerId,
-        placedAt: collabPookalamDiffs.placedAt,
-      })
-      .from(collabPookalamDiffs)
-      .orderBy(asc(collabPookalamDiffs.placedAt))
-      .limit(MAX_DIFFS);
+    const diffs = await db<
+      {
+        cell_index: number;
+        flower_id: number;
+        placed_at: Date;
+      }[]
+    >`
+      SELECT cell_index, flower_id, placed_at
+      FROM collab_pookalam_diffs
+      ORDER BY placed_at ASC
+      LIMIT ${MAX_DIFFS}
+    `;
 
     return Response.json({
       duration,
       total: diffs.length,
       diffs: diffs.map((d) => ({
-        i: Number(d.cellIndex),
-        f: Number(d.flowerId),
-        t: d.placedAt.toISOString(),
+        i: Number(d.cell_index),
+        f: Number(d.flower_id),
+        t: new Date(d.placed_at).toISOString(),
       })),
     });
   } catch (err: any) {

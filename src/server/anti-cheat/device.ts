@@ -1,7 +1,5 @@
-import { and, eq, ne, or, sql } from "drizzle-orm";
 import type { FingerprintSignals } from "~/lib/fingerprint";
-import { getDb } from "~/server/db/client";
-import { devices, userDevices, users } from "~/server/db/schema";
+import { getDb, type Db } from "~/server/db/client";
 import { getRequestMeta } from "~/server/request";
 import { getSetting } from "~/server/settings/service";
 import { computeDeviceIdentity } from "./fingerprint";
@@ -25,10 +23,6 @@ export interface BindResult {
  * Upserts a device by its peppered hash and binds it to a user. Enforces
  * "one user per device" only when the device id is persistent, so private-mode
  * (Safari) or storage-blocked browsers never cause false multi-account blocks.
- *
- * Every new (user, device) link is then scored against the accounts already on
- * record - see `detectLinkedAccounts`. That pass only ever flags: the block
- * above is the only thing here that turns anybody away.
  */
 export async function bindDeviceToUser(
   userId: string,
@@ -40,60 +34,100 @@ export async function bindDeviceToUser(
   const meta = getRequestMeta();
   const stable = signals.idStability === "persistent";
 
-  const [existing] = await db
-    .select()
-    .from(devices)
-    .where(eq(devices.deviceHash, identity.deviceHash))
-    .limit(1);
+  const existingDevices = await db<
+    {
+      id: string;
+      hardware_hash: string | null;
+      fp_visitor_id: string | null;
+      canvas_hash: string | null;
+      webgl_hash: string | null;
+      font_hash: string | null;
+      screen_hash: string | null;
+      audio_hash: string | null;
+      local_ip: string | null;
+      user_agent: string | null;
+      platform: string | null;
+      last_country: string | null;
+      last_city: string | null;
+    }[]
+  >`
+    SELECT
+      id, hardware_hash, fp_visitor_id, canvas_hash, webgl_hash, font_hash,
+      screen_hash, audio_hash, local_ip, user_agent, platform, last_country, last_city
+    FROM devices
+    WHERE device_hash = ${identity.deviceHash}
+    LIMIT 1
+  `;
 
+  const existing = existingDevices[0];
   let deviceId: string;
   if (existing) {
     deviceId = existing.id;
-    await db
-      .update(devices)
-      .set({
-        lastIp: meta.ip,
-        lastSeenAt: new Date(),
-        hardwareHash: identity.hardwareHash ?? existing.hardwareHash,
-        fpVisitorId: fpVisitorId ?? existing.fpVisitorId,
-        canvasHash: identity.canvasHash ?? existing.canvasHash,
-        webglHash: identity.webglHash ?? existing.webglHash,
-        fontHash: identity.fontHash ?? existing.fontHash,
-        screenHash: identity.screenHash ?? existing.screenHash,
-        audioHash: identity.audioHash ?? existing.audioHash,
-        localIp: identity.localIp ?? existing.localIp,
-        fingerprintJson: signals as never,
-        userAgent: meta.userAgent || existing.userAgent,
-        platform: signals.platform || existing.platform,
-        lastCountry: meta.country ?? existing.lastCountry,
-        lastCity: meta.city ?? existing.lastCity,
-      })
-      .where(eq(devices.id, existing.id));
+    await db`
+      UPDATE devices
+      SET
+        last_ip = ${meta.ip ?? null},
+        last_seen_at = NOW(),
+        hardware_hash = ${identity.hardwareHash ?? existing.hardware_hash},
+        fp_visitor_id = ${fpVisitorId ?? existing.fp_visitor_id},
+        canvas_hash = ${identity.canvasHash ?? existing.canvas_hash},
+        webgl_hash = ${identity.webglHash ?? existing.webgl_hash},
+        font_hash = ${identity.fontHash ?? existing.font_hash},
+        screen_hash = ${identity.screenHash ?? existing.screen_hash},
+        audio_hash = ${identity.audioHash ?? existing.audio_hash},
+        local_ip = ${identity.localIp ?? existing.local_ip},
+        fingerprint_json = ${JSON.stringify(signals)}::jsonb,
+        user_agent = ${meta.userAgent || existing.user_agent},
+        platform = ${signals.platform || existing.platform},
+        last_country = ${meta.country ?? existing.last_country},
+        last_city = ${meta.city ?? existing.last_city}
+      WHERE id = ${existing.id}
+    `;
   } else {
-    const [created] = await db
-      .insert(devices)
-      .values({
-        deviceHash: identity.deviceHash,
-        hardwareHash: identity.hardwareHash,
-        fpVisitorId: fpVisitorId ?? null,
-        fingerprintJson: signals as never,
-        canvasHash: identity.canvasHash,
-        webglHash: identity.webglHash,
-        fontHash: identity.fontHash,
-        screenHash: identity.screenHash,
-        audioHash: identity.audioHash,
-        localIp: identity.localIp,
-        userAgent: meta.userAgent,
-        platform: signals.platform,
-        firstIp: meta.ip,
-        lastIp: meta.ip,
-        firstCountry: meta.country,
-        firstCity: meta.city,
-        lastCountry: meta.country,
-        lastCity: meta.city,
-      })
-      .returning({ id: devices.id });
-    deviceId = created.id;
+    const createdDevices = await db<{ id: string }[]>`
+      INSERT INTO devices (
+        device_hash,
+        hardware_hash,
+        fp_visitor_id,
+        fingerprint_json,
+        canvas_hash,
+        webgl_hash,
+        font_hash,
+        screen_hash,
+        audio_hash,
+        local_ip,
+        user_agent,
+        platform,
+        first_ip,
+        last_ip,
+        first_country,
+        first_city,
+        last_country,
+        last_city
+      )
+      VALUES (
+        ${identity.deviceHash},
+        ${identity.hardwareHash ?? null},
+        ${fpVisitorId ?? null},
+        ${JSON.stringify(signals)}::jsonb,
+        ${identity.canvasHash ?? null},
+        ${identity.webglHash ?? null},
+        ${identity.fontHash ?? null},
+        ${identity.screenHash ?? null},
+        ${identity.audioHash ?? null},
+        ${identity.localIp ?? null},
+        ${meta.userAgent ?? null},
+        ${signals.platform ?? null},
+        ${meta.ip ?? null},
+        ${meta.ip ?? null},
+        ${meta.country ?? null},
+        ${meta.city ?? null},
+        ${meta.country ?? null},
+        ${meta.city ?? null}
+      )
+      RETURNING id
+    `;
+    deviceId = createdDevices[0].id;
 
     if (identity.isVm) {
       await logSuspicious({
@@ -107,17 +141,20 @@ export async function bindDeviceToUser(
     }
   }
 
-  const [binding] = await db
-    .select()
-    .from(userDevices)
-    .where(and(eq(userDevices.userId, userId), eq(userDevices.deviceId, deviceId)))
-    .limit(1);
+  const bindings = await db<{ id: string; usage_count: number }[]>`
+    SELECT id, usage_count
+    FROM user_devices
+    WHERE user_id = ${userId} AND device_id = ${deviceId}
+    LIMIT 1
+  `;
 
+  const binding = bindings[0];
   if (binding) {
-    await db
-      .update(userDevices)
-      .set({ lastUsedAt: new Date(), usageCount: binding.usageCount + 1 })
-      .where(eq(userDevices.id, binding.id));
+    await db`
+      UPDATE user_devices
+      SET last_used_at = NOW(), usage_count = ${binding.usage_count + 1}
+      WHERE id = ${binding.id}
+    `;
     return { deviceId, deviceHash: identity.deviceHash, allowed: true };
   }
 
@@ -125,29 +162,30 @@ export async function bindDeviceToUser(
   if (stable) {
     const enforce = await getSetting<boolean>("enforce_one_user_per_device", true);
     if (enforce) {
-      const [other] = await db
-        .select({ userId: userDevices.userId })
-        .from(userDevices)
-        .where(and(eq(userDevices.deviceId, deviceId), eq(userDevices.isPrimary, true)))
-        .limit(1);
-      if (other && other.userId !== userId) {
-        const [otherUser] = await db
-          .select({ banLevel: users.banLevel })
-          .from(users)
-          .where(eq(users.id, other.userId))
-          .limit(1);
+      const otherUserDevices = await db<{ user_id: string }[]>`
+        SELECT user_id
+        FROM user_devices
+        WHERE device_id = ${deviceId} AND is_primary = true
+        LIMIT 1
+      `;
+      const other = otherUserDevices[0];
+      if (other && other.user_id !== userId) {
+        const otherUsers = await db<{ ban_level: number }[]>`
+          SELECT ban_level FROM users WHERE id = ${other.user_id} LIMIT 1
+        `;
+        const otherUser = otherUsers[0];
         // A hard-banned prior owner does not get to lock the device forever.
-        if (otherUser && otherUser.banLevel < 4) {
+        if (otherUser && otherUser.ban_level < 4) {
           await logSuspicious({
             userId,
             deviceId,
             eventType: "multi_account_device",
             severity: "critical",
-            details: { otherUserId: other.userId, deviceHash: identity.deviceHash },
+            details: { otherUserId: other.user_id, deviceHash: identity.deviceHash },
             actionTaken: "block",
           });
           await logSuspicious({
-            userId: other.userId,
+            userId: other.user_id,
             deviceId,
             eventType: "multi_account_device_second_user",
             severity: "warn",
@@ -173,26 +211,24 @@ export async function bindDeviceToUser(
     });
   }
 
-  await db.insert(userDevices).values({
-    userId,
-    deviceId,
-    isPrimary: stable,
-    usageCount: 1,
-  });
+  await db`
+    INSERT INTO user_devices (user_id, device_id, is_primary, usage_count)
+    VALUES (${userId}, ${deviceId}, ${stable}, 1)
+  `;
 
   await detectLinkedAccounts(
     db,
     {
       id: deviceId,
       deviceHash: identity.deviceHash,
-      fpVisitorId: fpVisitorId ?? existing?.fpVisitorId ?? null,
-      hardwareHash: identity.hardwareHash ?? existing?.hardwareHash ?? null,
-      canvasHash: identity.canvasHash ?? existing?.canvasHash ?? null,
-      webglHash: identity.webglHash ?? existing?.webglHash ?? null,
-      fontHash: identity.fontHash ?? existing?.fontHash ?? null,
-      screenHash: identity.screenHash ?? existing?.screenHash ?? null,
-      audioHash: identity.audioHash ?? existing?.audioHash ?? null,
-      localIp: identity.localIp ?? existing?.localIp ?? null,
+      fpVisitorId: fpVisitorId ?? existing?.fp_visitor_id ?? null,
+      hardwareHash: identity.hardwareHash ?? existing?.hardware_hash ?? null,
+      canvasHash: identity.canvasHash ?? existing?.canvas_hash ?? null,
+      webglHash: identity.webglHash ?? existing?.webgl_hash ?? null,
+      fontHash: identity.fontHash ?? existing?.font_hash ?? null,
+      screenHash: identity.screenHash ?? existing?.screen_hash ?? null,
+      audioHash: identity.audioHash ?? existing?.audio_hash ?? null,
+      localIp: identity.localIp ?? existing?.local_ip ?? null,
       lastIp: meta.ip || null,
     },
     userId,
@@ -203,76 +239,68 @@ export async function bindDeviceToUser(
 }
 
 /**
- * Does this new account look like an account we already have?
- *
- * Runs whenever a user is linked to a device for the first time - which is
- * exactly the moment a second account appears, however it got there. The
- * `device_hash` block upstream only catches signing up twice in one browser
- * with storage intact; everything past that (cleared site data, a second
- * browser, a fresh profile, incognito promoted to persistent) produces a new
- * device row that sails through. Those rows still carry the FingerprintJS
- * visitor id, the canvas and WebGL hashes, the font set and the address they
- * came from, all of which this database has been dutifully storing and never
- * once comparing.
- *
- * It never blocks. The output is a scored, human-readable `suspicious_logs`
- * row naming both accounts and the evidence, so the daily prize list can be
- * checked against it. Blocking on a probabilistic match would eventually cost
- * an honest player their week; a flag costs an admin a moment.
+ * Detect linked accounts sharing hardware/canvas/IP signals.
  */
 async function detectLinkedAccounts(
-  db: ReturnType<typeof getDb>,
+  db: Db,
   device: DeviceSignals & { id: string; deviceHash: string },
   userId: string,
   signals: FingerprintSignals,
 ): Promise<void> {
-  /*
-   * One query, one pass over every device that shares *any* signal with this
-   * one. Per-signal queries would be six round trips to answer a question that
-   * an OR answers once.
-   */
-  const filters = [
-    device.fpVisitorId ? eq(devices.fpVisitorId, device.fpVisitorId) : undefined,
-    device.hardwareHash ? eq(devices.hardwareHash, device.hardwareHash) : undefined,
-    device.canvasHash ? eq(devices.canvasHash, device.canvasHash) : undefined,
-    device.audioHash ? eq(devices.audioHash, device.audioHash) : undefined,
-    device.localIp ? eq(devices.localIp, device.localIp) : undefined,
-    device.webglHash ? eq(devices.webglHash, device.webglHash) : undefined,
-    device.fontHash ? eq(devices.fontHash, device.fontHash) : undefined,
-    device.lastIp ? eq(devices.lastIp, device.lastIp) : undefined,
-  ].filter((filter) => filter !== undefined);
-  if (filters.length === 0) return;
+  const conds = [];
+  if (device.fpVisitorId) conds.push(db`d.fp_visitor_id = ${device.fpVisitorId}`);
+  if (device.hardwareHash) conds.push(db`d.hardware_hash = ${device.hardwareHash}`);
+  if (device.canvasHash) conds.push(db`d.canvas_hash = ${device.canvasHash}`);
+  if (device.audioHash) conds.push(db`d.audio_hash = ${device.audioHash}`);
+  if (device.localIp) conds.push(db`d.local_ip = ${device.localIp}`);
+  if (device.webglHash) conds.push(db`d.webgl_hash = ${device.webglHash}`);
+  if (device.fontHash) conds.push(db`d.font_hash = ${device.fontHash}`);
+  if (device.lastIp) conds.push(db`d.last_ip = ${device.lastIp}`);
 
-  const shared = await db
-    .select({
-      deviceId: devices.id,
-      linkedUserId: userDevices.userId,
-      userAgent: devices.userAgent,
-      banLevel: users.banLevel,
-      fpVisitorId: devices.fpVisitorId,
-      hardwareHash: devices.hardwareHash,
-      canvasHash: devices.canvasHash,
-      webglHash: devices.webglHash,
-      fontHash: devices.fontHash,
-      screenHash: devices.screenHash,
-      audioHash: devices.audioHash,
-      localIp: devices.localIp,
-      lastIp: devices.lastIp,
-    })
-    .from(devices)
-    .innerJoin(userDevices, eq(userDevices.deviceId, devices.id))
-    .innerJoin(users, eq(users.id, userDevices.userId))
-    .where(and(ne(devices.deviceHash, device.deviceHash), or(...filters)));
+  if (conds.length === 0) return;
 
-  /*
-   * Strongest evidence per *account*, not per device row. Somebody with four
-   * browsers on one laptop should read as one linked account with a canvas
-   * match, not as four separate accusations.
-   */
+  // Build OR condition
+  const orFilter = conds.reduce((acc, curr) => db`${acc} OR ${curr}`);
+
+  const shared = await db<
+    {
+      deviceId: string;
+      linkedUserId: string;
+      userAgent: string | null;
+      banLevel: number;
+      fpVisitorId: string | null;
+      hardwareHash: string | null;
+      canvasHash: string | null;
+      webglHash: string | null;
+      fontHash: string | null;
+      screenHash: string | null;
+      audioHash: string | null;
+      localIp: string | null;
+      lastIp: string | null;
+    }[]
+  >`
+    SELECT
+      d.id AS "deviceId",
+      ud.user_id AS "linkedUserId",
+      d.user_agent AS "userAgent",
+      u.ban_level AS "banLevel",
+      d.fp_visitor_id AS "fpVisitorId",
+      d.hardware_hash AS "hardwareHash",
+      d.canvas_hash AS "canvasHash",
+      d.webgl_hash AS "webglHash",
+      d.font_hash AS "fontHash",
+      d.screen_hash AS "screenHash",
+      d.audio_hash AS "audioHash",
+      d.local_ip AS "localIp",
+      d.last_ip AS "lastIp"
+    FROM devices d
+    INNER JOIN user_devices ud ON ud.device_id = d.id
+    INNER JOIN users u ON u.id = ud.user_id
+    WHERE d.device_hash != ${device.deviceHash} AND (${orFilter})
+  `;
+
   const perUser = new Map<string, { matched: LinkSignal[]; deviceIds: string[] }>();
   for (const row of shared) {
-    // A hard-banned prior account is already dealt with, and counting it would
-    // re-punish whoever legitimately owns the device next.
     if (row.linkedUserId === userId || row.banLevel >= 4) continue;
     const matched = matchSignals(device, row);
     if (matched.length === 0) continue;
@@ -294,16 +322,8 @@ async function detectLinkedAccounts(
     }))
     .sort((a, b) => b.confidence - a.confidence);
 
-  /*
-   * An address on its own is not evidence and must not be recorded as if it
-   * were. Indian mobile networks put whole cities behind carrier-grade NAT, so
-   * a shared public IP would otherwise write a "suspected" row for a large
-   * share of honest sign-ups and bury the real matches in noise. It still
-   * counts once something else agrees - that is what the weights are for.
-   */
   const strongest = links[0];
   if (strongest.matched.length === 1 && strongest.matched[0] === "ip") return;
-  // More than one other account on the same hardware is its own argument.
   const severity =
     links.length >= 2 && strongest.confidence >= REVIEW_THRESHOLD ? "critical" : strongest.severity;
 
@@ -328,11 +348,6 @@ async function detectLinkedAccounts(
 
   if (strongest.confidence < REVIEW_THRESHOLD) return;
 
-  /*
-   * The other side of the link gets its own row. The pair only exists in one
-   * direction otherwise - whoever signed up second - and an admin looking at
-   * the first account would see nothing at all.
-   */
   for (const link of links) {
     if (link.confidence < REVIEW_THRESHOLD) continue;
     await logSuspicious({
@@ -345,18 +360,20 @@ async function detectLinkedAccounts(
     });
   }
 
-  await db
-    .update(devices)
-    .set({
-      isFlagged: true,
-      flagReason: `Linked to ${links.length} other account(s): ${strongest.matched.join(", ")}`,
-      flagConfidence: strongest.confidence,
-      flaggedAt: new Date(),
-    })
-    .where(eq(devices.id, device.id));
+  const flagReason = `Linked to ${links.length} other account(s): ${strongest.matched.join(", ")}`;
+  await db`
+    UPDATE devices
+    SET
+      is_flagged = true,
+      flag_reason = ${flagReason},
+      flag_confidence = ${strongest.confidence},
+      flagged_at = NOW()
+    WHERE id = ${device.id}
+  `;
 
-  await db
-    .update(users)
-    .set({ trustScore: sql`greatest(0, ${users.trustScore} - ${strongest.trustPenalty})` })
-    .where(eq(users.id, userId));
+  await db`
+    UPDATE users
+    SET trust_score = GREATEST(0, trust_score - ${strongest.trustPenalty})
+    WHERE id = ${userId}
+  `;
 }

@@ -1,6 +1,4 @@
-import { eq } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
-import { users } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
 import type { PublicUser } from "./service";
 
@@ -100,7 +98,8 @@ export function assertCanPlay(user: PublicUser): void {
 
 /** Dismisses a level-1 warning. Re-armed by clearing `banAckedAt` on a new incident. */
 export async function acknowledgeWarning(userId: string): Promise<void> {
-  await getDb().update(users).set({ banAckedAt: new Date() }).where(eq(users.id, userId));
+  const db = getDb();
+  await db`UPDATE users SET ban_acked_at = NOW() WHERE id = ${userId}`;
 }
 
 /**
@@ -113,14 +112,17 @@ export async function setBanLevel(
   reason: string | null,
 ): Promise<void> {
   const duration = BAN_DURATION_MS[level];
-  await getDb()
-    .update(users)
-    .set({
-      banLevel: level,
-      banReason: level === 0 ? null : reason,
-      banUntil: duration ? new Date(Date.now() + duration) : null,
-      // Clearing the ack re-arms the warning modal for a repeat offender.
-      banAckedAt: null,
-    })
-    .where(eq(users.id, userId));
+  const banUntil = duration ? new Date(Date.now() + duration) : null;
+  const banReason = level === 0 ? null : reason;
+  const db = getDb();
+
+  await db`
+    UPDATE users
+    SET
+      ban_level = ${level},
+      ban_reason = ${banReason},
+      ban_until = ${banUntil},
+      ban_acked_at = NULL
+    WHERE id = ${userId}
+  `;
 }

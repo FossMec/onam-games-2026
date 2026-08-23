@@ -1,6 +1,5 @@
-import { eq } from "drizzle-orm";
 import { getDb } from "~/server/db/client";
-import { huntQuestions, userHuntProgress } from "~/server/db/schema";
+import type { HuntQuestion } from "~/server/db/schema";
 import * as jigsaw from "./impl/jigsaw";
 import * as jump from "./impl/jump";
 import * as tinder from "./impl/tinder";
@@ -322,24 +321,33 @@ export const GAMES: readonly GameDef[] = [
       }
 
       const db = getDb();
-      const [progress] = await db
-        .select()
-        .from(userHuntProgress)
-        .where(eq(userHuntProgress.userId, userId))
-        .limit(1);
+      const progressRows = await db<
+        {
+          completed_at: Date | null;
+          solved_question_ids: string[];
+        }[]
+      >`
+        SELECT completed_at, solved_question_ids
+        FROM user_hunt_progress
+        WHERE user_id = ${userId}
+        LIMIT 1
+      `;
+      const progress = progressRows[0];
 
-      const allActive = await db.select().from(huntQuestions).where(eq(huntQuestions.active, true));
+      const allActive = await db<HuntQuestion[]>`
+        SELECT id FROM hunt_questions WHERE active = true
+      `;
 
       if (
         !progress ||
-        !progress.completedAt ||
-        (progress.solvedQuestionIds?.length ?? 0) < allActive.length
+        !progress.completed_at ||
+        (progress.solved_question_ids?.length ?? 0) < allActive.length
       ) {
         return { valid: false, reason: "You have not discovered all 10 treasure hunt relics yet." };
       }
 
       // Verify that completedAt was achieved during this attempt (or within 15s grace of startedAt)
-      if (startedAt && new Date(progress.completedAt).getTime() < startedAt.getTime() - 15_000) {
+      if (startedAt && new Date(progress.completed_at).getTime() < startedAt.getTime() - 15_000) {
         return {
           valid: false,
           reason:

@@ -1,11 +1,9 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { checkRateLimit } from "~/server/anti-cheat/ratelimit";
 import { assertCanPlay } from "~/server/auth/bans";
 import { requireCurrentUser } from "~/server/auth/service";
 import { getDb } from "~/server/db/client";
-import { gameAttempts, games } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
 import { checkPass, dealDeck, explainCards } from "~/server/games/impl/tinder";
 import { getRequestMeta } from "~/server/request";
@@ -64,14 +62,17 @@ export async function POST({ request }: APIEvent) {
     }
 
     const db = getDb();
-    const [attempt] = await db
-      .select({ userId: gameAttempts.userId, seed: gameAttempts.seed, status: gameAttempts.status })
-      .from(gameAttempts)
-      .innerJoin(games, eq(games.id, gameAttempts.gameId))
-      .where(
-        and(eq(gameAttempts.attemptToken, body.data.attemptToken), eq(games.gameType, "tinder")),
-      )
-      .limit(1);
+    const attempts = await db<{ userId: string; seed: string; status: string }[]>`
+      SELECT
+        ga.user_id AS "userId",
+        ga.seed,
+        ga.status
+      FROM game_attempts ga
+      INNER JOIN games g ON g.id = ga.game_id
+      WHERE ga.attempt_token = ${body.data.attemptToken} AND g.game_type = 'tinder'
+      LIMIT 1
+    `;
+    const attempt = attempts[0];
 
     if (!attempt) throw new HttpError(404, "Attempt not found");
     if (attempt.userId !== user.id) throw new HttpError(403, "Forbidden");

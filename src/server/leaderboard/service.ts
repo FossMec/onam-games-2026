@@ -1,6 +1,4 @@
-import { and, asc, eq, lt, ne, or, sql } from "drizzle-orm";
 import { getDb, type Db } from "~/server/db/client";
-import { dailyLeaderboard, games, users } from "~/server/db/schema";
 import type { GameMetric } from "~/server/games/registry";
 import { getGameDefByType } from "~/server/games/registry";
 import type { ViewerRole } from "~/server/games/service";
@@ -55,13 +53,39 @@ export function metricLabel(metric: GameMetric, gameType?: string): string {
 
 async function getGameType(gameId: string, db: Db): Promise<string | undefined> {
   return sharedRead(`game:type:${gameId}`, async () => {
-    const [game] = await db
-      .select({ gameType: games.gameType })
-      .from(games)
-      .where(eq(games.id, gameId))
-      .limit(1);
-    return game?.gameType;
+    const rows = await db<{ game_type: string }[]>`
+      SELECT game_type FROM games WHERE id = ${gameId} LIMIT 1
+    `;
+    return rows[0]?.game_type;
   });
+}
+
+function getRankingOrderSql(metric: GameMetric): string {
+  if (metric === "score") {
+    return "score DESC, COALESCE(submitted_at, started_at) ASC";
+  }
+  if (metric === "fcfs") {
+    return "submitted_at ASC, started_at ASC";
+  }
+  return "duration_ms ASC, started_at ASC";
+}
+
+interface RankedLeaderboardRow {
+  userId: string;
+  durationMs: number | null;
+  score: number | null;
+  attemptsUsed: number;
+  startedAt: Date;
+  submittedAt: Date;
+  name: string;
+  avatarUrl: string | null;
+  college: string | null;
+  branch: string | null;
+  batch: string | null;
+  streakCount: number;
+  role: string;
+  rank: number | string;
+  fieldSize: number | string;
 }
 
 /**
@@ -87,88 +111,106 @@ export async function getDailyLeaderboard(
     true,
   );
 
-  let rows: any[] = [];
-  let fieldSize = 0;
+  const orderSql = getRankingOrderSql(metric);
+  const roleClause =
+    viewMode === "tester"
+      ? db`AND (u.role = 'tester' OR u.role = 'admin')`
+      : hideTestersFromPlayerBoard
+        ? db`AND (u.role != 'tester' AND u.role != 'admin')`
+        : db``;
 
-  if (safePage === 1) {
-    const cached = await sharedRead(
-      `leaderboard:${gameId}:${viewMode}:${viewerRole}:${safePageSize}`,
-      async () => {
-        const ranked = rankedBoard(
-          db,
-          gameId,
-          viewerRole,
-          viewMode,
-          metric,
-          hideTestersFromPlayerBoard,
-        );
-        const inSlice = and(sql`${ranked.rank} > 0`, sql`${ranked.rank} <= ${safePageSize}`);
-        const resultRows = await db
-          .with(ranked)
-          .select()
-          .from(ranked)
-          .where(inSlice)
-          .orderBy(asc(ranked.rank));
-        return {
-          rows: resultRows,
-          fieldSize: resultRows[0]?.fieldSize ?? 0,
-        };
-      },
-      15_000,
-    );
-    rows = [...cached.rows];
-    fieldSize = cached.fieldSize;
+  // Cached public page read (60s TTL)
+  const cached = await sharedRead(
+    `leaderboard:${gameId}:${viewMode}:${safePage}:${safePageSize}`,
+    async () => {
+      const resultRows = await db<RankedLeaderboardRow[]>`
+        WITH ranked AS (
+          SELECT
+            dl.user_id AS "userId",
+            dl.duration_ms AS "durationMs",
+            dl.score AS "score",
+            dl.attempts_used AS "attemptsUsed",
+            dl.started_at AS "startedAt",
+            dl.submitted_at AS "submittedAt",
+            u.name AS "name",
+            u.avatar_url AS "avatarUrl",
+            u.college AS "college",
+            u.branch AS "branch",
+            u.batch AS "batch",
+            u.streak_count AS "streakCount",
+            u.role AS "role",
+            ROW_NUMBER() OVER (ORDER BY ${db.unsafe(orderSql)}) AS "rank",
+            COUNT(*) OVER () AS "fieldSize"
+          FROM daily_leaderboard dl
+          INNER JOIN users u ON u.id = dl.user_id
+          WHERE dl.game_id = ${gameId}
+            AND dl.is_flagged = false
+            AND u.ban_level < 4
+            ${roleClause}
+        )
+        SELECT * FROM ranked
+        WHERE "rank" > ${offset} AND "rank" <= ${offset + safePageSize}
+        ORDER BY "rank" ASC
+      `;
+      const fieldSize = Number(resultRows[0]?.fieldSize ?? 0);
+      return {
+        rows: resultRows,
+        fieldSize,
+      };
+    },
+    60_000,
+  );
 
-    if (viewerUserId && !rows.some((r) => r.userId === viewerUserId)) {
-      const myRowCached = await sharedRead(
-        `userboard:${gameId}:${viewMode}:${viewerRole}:${viewerUserId}`,
+  const rows = [...cached.rows];
+  const fieldSize = cached.fieldSize;
+
+  let myRow: RankedLeaderboardRow | null = null;
+  if (viewerUserId) {
+    const existing = rows.find((r) => r.userId === viewerUserId);
+    if (existing) {
+      myRow = existing;
+    } else {
+      myRow = await sharedRead(
+        `userboard:${gameId}:${viewMode}:${viewerUserId}`,
         async () => {
-          const ranked = rankedBoard(
-            db,
-            gameId,
-            viewerRole,
-            viewMode,
-            metric,
-            hideTestersFromPlayerBoard,
-          );
-          const myRow = await db
-            .with(ranked)
-            .select()
-            .from(ranked)
-            .where(eq(ranked.userId, viewerUserId))
-            .limit(1);
-          return myRow[0] || null;
+          const res = await db<RankedLeaderboardRow[]>`
+            WITH ranked AS (
+              SELECT
+                dl.user_id AS "userId",
+                dl.duration_ms AS "durationMs",
+                dl.score AS "score",
+                dl.attempts_used AS "attemptsUsed",
+                dl.started_at AS "startedAt",
+                dl.submitted_at AS "submittedAt",
+                u.name AS "name",
+                u.avatar_url AS "avatarUrl",
+                u.college AS "college",
+                u.branch AS "branch",
+                u.batch AS "batch",
+                u.streak_count AS "streakCount",
+                u.role AS "role",
+                ROW_NUMBER() OVER (ORDER BY ${db.unsafe(orderSql)}) AS "rank",
+                COUNT(*) OVER () AS "fieldSize"
+              FROM daily_leaderboard dl
+              INNER JOIN users u ON u.id = dl.user_id
+              WHERE dl.game_id = ${gameId}
+                AND dl.is_flagged = false
+                AND u.ban_level < 4
+                ${roleClause}
+            )
+            SELECT * FROM ranked
+            WHERE "userId" = ${viewerUserId}
+            LIMIT 1
+          `;
+          return res[0] ?? null;
         },
-        15_000,
+        30_000,
       );
-      if (myRowCached) {
-        rows.push(myRowCached);
-      }
     }
-  } else {
-    const ranked = rankedBoard(
-      db,
-      gameId,
-      viewerRole,
-      viewMode,
-      metric,
-      hideTestersFromPlayerBoard,
-    );
-    const inSlice = and(
-      sql`${ranked.rank} > ${offset}`,
-      sql`${ranked.rank} <= ${offset + safePageSize}`,
-    );
-    rows = await db
-      .with(ranked)
-      .select()
-      .from(ranked)
-      .where(viewerUserId ? or(inSlice, eq(ranked.userId, viewerUserId)) : inSlice)
-      .orderBy(asc(ranked.rank));
-    fieldSize = rows[0]?.fieldSize ?? 0;
   }
 
   const totalPages = Math.max(1, Math.ceil(fieldSize / safePageSize));
-  const toEntry = (row: (typeof rows)[number], rank: number): DailyEntry => ({
+  const toEntry = (row: RankedLeaderboardRow, rank: number): DailyEntry => ({
     rank,
     userId: row.userId,
     name: row.name,
@@ -176,25 +218,21 @@ export async function getDailyLeaderboard(
     college: row.college,
     branch: row.branch,
     batch: row.batch,
-    streakCount: row.streakCount,
+    streakCount: Number(row.streakCount ?? 0),
     metric,
     gameType,
-    durationMs: row.durationMs,
-    score: row.score,
+    durationMs: row.durationMs != null ? Number(row.durationMs) : null,
+    score: row.score != null ? Number(row.score) : null,
     submittedAt: row.submittedAt
       ? new Date(row.submittedAt).toISOString()
       : new Date().toISOString(),
-    attemptsUsed: row.attemptsUsed,
+    attemptsUsed: Number(row.attemptsUsed ?? 1),
     isTester: row.role === "tester",
     isMe: row.userId === viewerUserId,
   });
 
-  const entries = rows
-    .filter((row) => row.rank > offset && row.rank <= offset + safePageSize)
-    .map((row) => toEntry(row, row.rank));
-
-  const myRow = viewerUserId ? rows.find((r) => r.userId === viewerUserId) : null;
-  const myEntry = myRow ? toEntry(myRow, myRow.rank) : null;
+  const entries = rows.map((row) => toEntry(row, Number(row.rank)));
+  const myEntry = myRow ? toEntry(myRow, Number(myRow.rank)) : null;
 
   return {
     metric,
@@ -210,93 +248,8 @@ export async function getDailyLeaderboard(
 }
 
 /**
- * The window-function core both board reads share. Every row of the filtered
- * field gets its true global rank and the full field size before any
- * LIMIT/OFFSET, so a viewer's own position is known no matter which page they
- * asked for - the caller then filters out the slice (or the viewer) it wants.
- */
-function rankedBoard(
-  db: Db,
-  gameId: string,
-  viewerRole: ViewerRole,
-  viewMode: "main" | "tester",
-  metric: GameMetric,
-  hideTestersFromPlayerBoard = true,
-) {
-  return db.$with("ranked").as(
-    db
-      .select({
-        userId: dailyLeaderboard.userId,
-        durationMs: dailyLeaderboard.durationMs,
-        score: dailyLeaderboard.score,
-        attemptsUsed: dailyLeaderboard.attemptsUsed,
-        startedAt: dailyLeaderboard.startedAt,
-        submittedAt: dailyLeaderboard.submittedAt,
-        name: users.name,
-        avatarUrl: users.avatarUrl,
-        college: users.college,
-        branch: users.branch,
-        batch: users.batch,
-        streakCount: users.streakCount,
-        role: users.role,
-        /*
-         * The aliases are load-bearing, not decoration.
-         *
-         * These two are raw SQL inside a CTE, and the outer query filters and
-         * orders by `ranked.rank`. Without an explicit alias drizzle cannot
-         * name the column from outside, so touching `ranked.rank` throws while
-         * the query is still being *built* - before a single byte reaches the
-         * database. That failure mode is nastier than it sounds: it surfaced as
-         * an unhandled rejection that killed the process mid-stream, so the
-         * response was never terminated and every page hung until the platform
-         * timed it out, with no query in the database logs to explain why.
-         */
-        rank: sql<number>`row_number() over (order by ${rankingOrder(metric)})`.as("rank"),
-        fieldSize: sql<number>`count(*) over ()`.as("field_size"),
-      })
-      .from(dailyLeaderboard)
-      .innerJoin(users, eq(users.id, dailyLeaderboard.userId))
-      .where(and(...boardConditions(gameId, viewerRole, viewMode, hideTestersFromPlayerBoard))),
-  );
-}
-
-function boardConditions(
-  gameId: string,
-  viewerRole: ViewerRole,
-  viewMode: "main" | "tester",
-  hideTestersFromPlayerBoard = true,
-) {
-  const roleFilter =
-    viewMode === "tester"
-      ? or(eq(users.role, "tester"), eq(users.role, "admin"))
-      : hideTestersFromPlayerBoard
-        ? and(ne(users.role, "tester"), ne(users.role, "admin"))
-        : undefined;
-
-  const conditions = [
-    eq(dailyLeaderboard.gameId, gameId),
-    eq(dailyLeaderboard.isFlagged, false),
-    lt(users.banLevel, 4),
-  ];
-  if (roleFilter) {
-    conditions.push(roleFilter);
-  }
-  return conditions;
-}
-
-function rankingOrder(metric: GameMetric) {
-  return metric === "score"
-    ? sql`${dailyLeaderboard.score} desc, coalesce(${dailyLeaderboard.submittedAt}, ${dailyLeaderboard.startedAt}) asc`
-    : metric === "fcfs"
-      ? sql`${dailyLeaderboard.submittedAt} asc, ${dailyLeaderboard.startedAt} asc`
-      : sql`${dailyLeaderboard.durationMs} asc, ${dailyLeaderboard.startedAt} asc`;
-}
-
-/**
  * Just the caller's own position on a day's board - the share card needs a
- * rank and a field size and nothing else. The window functions compute both
- * over the whole field in one query, so there is no page slice to over-fetch
- * and no second copy of the ranking rules to keep in step.
+ * rank and a field size and nothing else.
  */
 export async function getMyStanding(
   gameId: string,
@@ -304,29 +257,42 @@ export async function getMyStanding(
   viewerUserId: string,
 ): Promise<{ rank: number; fieldSize: number } | null> {
   const db = getDb();
-  const [game] = await db
-    .select({ gameType: games.gameType })
-    .from(games)
-    .where(eq(games.id, gameId))
-    .limit(1);
-  const metric: GameMetric = game ? (getGameDefByType(game.gameType)?.metric ?? "time") : "time";
+  const gameType = (await getGameType(gameId, db)) ?? "time";
+  const metric: GameMetric = getGameDefByType(gameType)?.metric ?? "time";
   const hideTestersFromPlayerBoard = await getSetting<boolean>(
     "access.tester_real_leaderboard",
     true,
   );
   const viewMode = viewerRole === "player" ? "main" : "tester";
-  const ranked = rankedBoard(db, gameId, viewerRole, viewMode, metric, hideTestersFromPlayerBoard);
-  const [row] = await db
-    .with(ranked)
-    .select()
-    .from(ranked)
-    .where(eq(ranked.userId, viewerUserId))
-    .limit(1);
-  if (!row) return null;
+  const orderSql = getRankingOrderSql(metric);
+  const roleClause =
+    viewMode === "tester"
+      ? db`AND (u.role = 'tester' OR u.role = 'admin')`
+      : hideTestersFromPlayerBoard
+        ? db`AND (u.role != 'tester' AND u.role != 'admin')`
+        : db``;
+
+  const rows = await db<{ rank: number | string; fieldSize: number | string }[]>`
+    WITH ranked AS (
+      SELECT
+        dl.user_id AS "userId",
+        ROW_NUMBER() OVER (ORDER BY ${db.unsafe(orderSql)}) AS "rank",
+        COUNT(*) OVER () AS "fieldSize"
+      FROM daily_leaderboard dl
+      INNER JOIN users u ON u.id = dl.user_id
+      WHERE dl.game_id = ${gameId}
+        AND dl.is_flagged = false
+        AND u.ban_level < 4
+        ${roleClause}
+    )
+    SELECT "rank", "fieldSize" FROM ranked
+    WHERE "userId" = ${viewerUserId}
+    LIMIT 1
+  `;
+
+  if (rows.length === 0) return null;
   return {
-    rank: row.rank,
-    fieldSize: row.fieldSize,
+    rank: Number(rows[0].rank),
+    fieldSize: Number(rows[0].fieldSize),
   };
 }
-
-// Global leaderboard removed in favor of daily leaderboards.

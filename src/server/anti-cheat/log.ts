@@ -1,5 +1,4 @@
 import { getDb } from "~/server/db/client";
-import { activityLogs, suspiciousLogs } from "~/server/db/schema";
 
 interface BaseEvent {
   userId?: string;
@@ -9,15 +8,17 @@ interface BaseEvent {
 }
 
 export async function logActivity(event: BaseEvent & { meta?: unknown }): Promise<void> {
-  await getDb()
-    .insert(activityLogs)
-    .values({
-      userId: event.userId,
-      deviceId: event.deviceId,
-      ip: event.ip,
-      eventType: event.eventType,
-      metaJson: event.meta ?? {},
-    });
+  const db = getDb();
+  await db`
+    INSERT INTO activity_logs (user_id, device_id, ip, event_type, meta_json)
+    VALUES (
+      ${event.userId ?? null},
+      ${event.deviceId ?? null},
+      ${event.ip ?? null},
+      ${event.eventType},
+      ${JSON.stringify(event.meta ?? {})}::jsonb
+    )
+  `;
 }
 
 type Severity = "info" | "warn" | "critical";
@@ -30,15 +31,17 @@ export async function logSuspicious(
     actionTaken?: ActionTaken;
   },
 ): Promise<void> {
-  await getDb()
-    .insert(suspiciousLogs)
-    .values({
-      userId: event.userId,
-      deviceId: event.deviceId,
-      ip: event.ip,
-      eventType: event.eventType,
-      severity: event.severity,
-      detailsJson: event.details ?? {},
-      actionTaken: event.actionTaken ?? "none",
-    });
+  const db = getDb();
+  await db`
+    INSERT INTO suspicious_logs (user_id, device_id, ip, event_type, severity, details_json, action_taken)
+    VALUES (
+      ${event.userId ?? null},
+      ${event.deviceId ?? null},
+      ${event.ip ?? null},
+      ${event.eventType},
+      ${event.severity},
+      ${JSON.stringify(event.details ?? {})}::jsonb,
+      ${event.actionTaken ?? "none"}
+    )
+  `;
 }

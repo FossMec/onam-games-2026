@@ -1,5 +1,4 @@
 import { getDb } from "~/server/db/client";
-import { appSettings } from "~/server/db/schema";
 import { setSetting } from "./service";
 
 export interface SettingDef {
@@ -261,7 +260,8 @@ export const settingsRegistry: SettingDef[] = [
 /** Inserts any missing default settings so the app always has sane config. */
 export async function ensureDefaultSettings(): Promise<void> {
   try {
-    const existing = await getDb().select({ key: appSettings.key }).from(appSettings);
+    const db = getDb();
+    const existing = await db<{ key: string }[]>`SELECT key FROM app_settings`;
     const present = new Set(existing.map((row) => row.key));
     for (const def of settingsRegistry) {
       if (!present.has(def.key)) {

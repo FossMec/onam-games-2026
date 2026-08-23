@@ -1,8 +1,6 @@
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { logSuspicious } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
-import { users } from "~/server/db/schema";
 import { getSupabaseAdmin } from "~/server/supabase/client";
 import { invalidateShared } from "~/server/cache";
 import {
@@ -122,11 +120,9 @@ export async function completeOnboarding(input: OnboardingInput): Promise<void> 
 
   // Check if phone number was already used on another account
   if (parsed.whatsappNumber) {
-    const existingWithPhone = await db
-      .select({ id: users.id, email: users.email })
-      .from(users)
-      .where(eq(users.whatsappNumber, parsed.whatsappNumber))
-      .limit(1);
+    const existingWithPhone = await db<{ id: string; email: string }[]>`
+      SELECT id, email FROM users WHERE whatsapp_number = ${parsed.whatsappNumber} LIMIT 1
+    `;
 
     if (existingWithPhone[0] && existingWithPhone[0].id !== user.id) {
       await logSuspicious({
@@ -142,23 +138,31 @@ export async function completeOnboarding(input: OnboardingInput): Promise<void> 
     }
   }
 
-  await db
-    .update(users)
-    .set({
-      occupation: parsed.occupation ?? "student",
-      college: parsed.college,
-      // Only stored when the matching enum actually says "other", so a stale
-      // free-text value can never shadow a real selection.
-      collegeOther: parsed.college === "other" ? parsed.collegeOther?.trim() || null : null,
-      branch,
-      branchOther: branch === "other" ? parsed.branchOther?.trim() || null : null,
-      batch: parsed.batch ?? null,
-      div: parsed.div ?? "none",
-      instagramHandle: parsed.instagramHandle?.trim() || null,
-      whatsappNumber: parsed.whatsappNumber?.trim() || null,
-      onboardingCompleted: true,
-    })
-    .where(eq(users.id, user.id));
+  const collegeOther = parsed.college === "other" ? parsed.collegeOther?.trim() || null : null;
+  const branchOther = branch === "other" ? parsed.branchOther?.trim() || null : null;
+  const occupation = parsed.occupation ?? "student";
+  const college = parsed.college;
+  const batch = parsed.batch ?? null;
+  const div = parsed.div ?? "none";
+  const instagramHandle = parsed.instagramHandle?.trim() || null;
+  const whatsappNumber = parsed.whatsappNumber?.trim() || null;
+
+  await db`
+    UPDATE users
+    SET
+      occupation = ${occupation},
+      college = ${college},
+      college_other = ${collegeOther},
+      branch = ${branch},
+      branch_other = ${branchOther},
+      batch = ${batch},
+      div = ${div},
+      instagram_handle = ${instagramHandle},
+      whatsapp_number = ${whatsappNumber},
+      onboarding_completed = true,
+      updated_at = NOW()
+    WHERE id = ${user.id}
+  `;
 
   invalidateShared("session:");
 }
@@ -181,6 +185,7 @@ export async function uploadAvatar(dataUrl: string): Promise<string> {
   if (error) throw new Error("Upload failed");
 
   const { data } = storage.from("avatars").getPublicUrl(path);
-  await getDb().update(users).set({ avatarUrl: data.publicUrl }).where(eq(users.id, user.id));
+  const db = getDb();
+  await db`UPDATE users SET avatar_url = ${data.publicUrl}, updated_at = NOW() WHERE id = ${user.id}`;
   return data.publicUrl;
 }

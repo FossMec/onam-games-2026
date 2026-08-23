@@ -72,6 +72,7 @@ export async function POST({ params, request }: APIEvent) {
     if (error instanceof HttpError) {
       return Response.json({ error: error.message }, { status: error.status });
     }
+    console.error("[API FINISH ERROR]", error);
     return Response.json({ error: "Internal error" }, { status: 500 });
   }
 }
