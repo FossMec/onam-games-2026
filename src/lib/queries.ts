@@ -152,6 +152,5 @@ export const revalidateAfter =
       for (const k of keys) {
         void revalidate(k);
       }
-      void revalidate();
     }
   };

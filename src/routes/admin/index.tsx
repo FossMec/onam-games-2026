@@ -1,5 +1,5 @@
 import { Title } from "@solidjs/meta";
-import { createAsync, revalidate } from "@solidjs/router";
+import { createAsync } from "@solidjs/router";
 import { CheckCircle, RefreshCw, ShieldAlert, X } from "lucide-solid";
 import { Show, Suspense, createSignal } from "solid-js";
 import { AdminTabs, type AdminTabId } from "~/components/admin/AdminTabs";
@@ -48,11 +48,15 @@ export default function Admin() {
   const me = () => shellData()?.me ?? undefined;
   const [activeTab, setActiveTab] = createSignal<AdminTabId>("overview");
   const [page, setPage] = createSignal(0);
+  const [pookalamSub, setPookalamSub] = createSignal<"review" | "gallery" | "wishes" | "animation">(
+    "review",
+  );
 
   // Per-tab data is a cached query behind a suspending resource. The tab body
   // has its own <Suspense> (below) so a cache miss on a tab switch shows a
   // localized loader here instead of tripping the route-level one into a
-  // full-screen reload.
+  // full-screen reload. Each resource only subscribes to page() when its tab is
+  // active, so paging the Users table does NOT refetch Attempts, etc.
   const users = createAsync(() =>
     activeTab() === "users" ? adminUsers(page()) : Promise.resolve(null),
   );
@@ -93,6 +97,44 @@ export default function Admin() {
     }, 4500);
   };
 
+  // Refresh only admin keys — never revalidate shell which would recreate the
+  // whole page shell and flash the outer Suspense.
+  const refreshCurrentTab = () => {
+    switch (activeTab()) {
+      case "users":
+        revalidateAfter(ADMIN_QUERY_KEYS.users, ADMIN_QUERY_KEYS.dashboard)();
+        break;
+      case "attempts":
+        revalidateAfter(ADMIN_QUERY_KEYS.attempts, ADMIN_QUERY_KEYS.dashboard)();
+        break;
+      case "hunt":
+        revalidateAfter(ADMIN_QUERY_KEYS.hunt)();
+        break;
+      case "settings":
+        revalidateAfter(ADMIN_QUERY_KEYS.settings)();
+        break;
+      case "security":
+        revalidateAfter(
+          ADMIN_QUERY_KEYS.suspicious,
+          ADMIN_QUERY_KEYS.blockedIps,
+          ADMIN_QUERY_KEYS.testers,
+          ADMIN_QUERY_KEYS.dashboard,
+        )();
+        break;
+      case "logs":
+        revalidateAfter(ADMIN_QUERY_KEYS.activity)();
+        break;
+      case "pookalam":
+        revalidateAfter(ADMIN_QUERY_KEYS.collabMessages, ADMIN_QUERY_KEYS.dashboard)();
+        break;
+      case "games":
+        revalidateAfter(ADMIN_QUERY_KEYS.dashboard)();
+        break;
+      default:
+        revalidateAfter(ADMIN_QUERY_KEYS.dashboard)();
+    }
+  };
+
   return (
     <main class="container space-y-5 py-6 max-w-6xl">
       <Title>Admin Control Center - Onam Games</Title>
@@ -122,7 +164,7 @@ export default function Admin() {
         <div class="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => revalidate()}
+            onClick={refreshCurrentTab}
             class="btn-ghost text-xs px-3.5 py-1.5 inline-flex items-center gap-1.5 cursor-pointer font-extrabold"
           >
             <RefreshCw size={13} strokeWidth={2.5} />
@@ -150,11 +192,6 @@ export default function Admin() {
 
       {/*
         Testers get the shortlisting gallery and nothing else.
-
-        They are the people who actually do the day-6 pass over every entry, so
-        bouncing them off this page entirely would mean building a second page
-        somewhere public for one privileged job. They see no metrics, no users,
-        no logs - and no author names, which is the whole point of the gallery.
       */}
       <Show when={me()?.role === "tester"}>
         <div class="space-y-4">
@@ -223,8 +260,7 @@ export default function Admin() {
                   disabled={
                     activeTab() === "overview" ||
                     activeTab() === "games" ||
-                    activeTab() === "settings" ||
-                    activeTab() === "pookalam"
+                    activeTab() === "settings"
                   }
                   onClick={() => setPage((current) => current + 1)}
                 >
@@ -234,7 +270,8 @@ export default function Admin() {
 
               {/* Tab body has its own Suspense so a cache-miss refetch on a tab
                   switch shows a localized loader instead of the route-level
-                  full-screen one. */}
+                  full-screen one. The inner Show-when-users() etc keeps tables
+                  mounted while their query revalidates in background (stale-while-revalidate) */}
               <Suspense fallback={<TabLoading />}>
                 {/* 1. Overview Tab */}
                 <Show when={activeTab() === "overview"}>
@@ -260,7 +297,7 @@ export default function Admin() {
                     <UsersTab
                       users={users()!}
                       games={d.games}
-                      onReload={revalidateAfter(ADMIN_QUERY_KEYS.users)}
+                      onReload={revalidateAfter(ADMIN_QUERY_KEYS.users, ADMIN_QUERY_KEYS.dashboard)}
                       onNotify={showNotification}
                     />
                   </Show>
@@ -319,82 +356,73 @@ export default function Admin() {
 
                 {/* 8. Code-a-Pookalam Review & Collab Management Tab */}
                 <Show when={activeTab() === "pookalam"}>
-                  {(() => {
-                    const [pookalamSub, setPookalamSub] = createSignal<
-                      "review" | "gallery" | "wishes" | "animation"
-                    >("review");
-                    return (
-                      <div class="space-y-5">
-                        <div class="inline-flex rounded-md border-2 border-[var(--ink)] p-0.5 bg-[var(--paper)] flex-wrap gap-1">
-                          <button
-                            type="button"
-                            onClick={() => setPookalamSub("review")}
-                            class={`px-3 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
-                              pookalamSub() === "review"
-                                ? "bg-[var(--pop-yellow)] text-[var(--ink)]"
-                                : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
-                            }`}
-                          >
-                            Review queue
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPookalamSub("gallery")}
-                            class={`px-3 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
-                              pookalamSub() === "gallery"
-                                ? "bg-[var(--pop-teal)] text-[var(--ink)]"
-                                : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
-                            }`}
-                          >
-                            Shortlisting gallery
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPookalamSub("wishes")}
-                            class={`px-3 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
-                              pookalamSub() === "wishes"
-                                ? "bg-[var(--pop-pink)] text-[var(--ink)]"
-                                : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
-                            }`}
-                          >
-                            Community Wishes
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPookalamSub("animation")}
-                            class={`px-3 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
-                              pookalamSub() === "animation"
-                                ? "bg-[var(--pop-purple)] text-[var(--ink)]"
-                                : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
-                            }`}
-                          >
-                            Animation Export
-                          </button>
-                        </div>
+                  <div class="space-y-5">
+                    <div class="inline-flex rounded-md border-2 border-[var(--ink)] p-0.5 bg-[var(--paper)] flex-wrap gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPookalamSub("review")}
+                        class={`px-3 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
+                          pookalamSub() === "review"
+                            ? "bg-[var(--pop-yellow)] text-[var(--ink)]"
+                            : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                        }`}
+                      >
+                        Review queue
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPookalamSub("gallery")}
+                        class={`px-3 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
+                          pookalamSub() === "gallery"
+                            ? "bg-[var(--pop-teal)] text-[var(--ink)]"
+                            : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                        }`}
+                      >
+                        Shortlisting gallery
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPookalamSub("wishes")}
+                        class={`px-3 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
+                          pookalamSub() === "wishes"
+                            ? "bg-[var(--pop-pink)] text-[var(--ink)]"
+                            : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                        }`}
+                      >
+                        Community Wishes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPookalamSub("animation")}
+                        class={`px-3 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
+                          pookalamSub() === "animation"
+                            ? "bg-[var(--pop-purple)] text-[var(--ink)]"
+                            : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                        }`}
+                      >
+                        Animation Export
+                      </button>
+                    </div>
 
-                        <Show when={pookalamSub() === "review"}>
-                          {/* Approve, shortlist, see who made what. */}
-                          <PookalamReview />
-                        </Show>
-                        <Show when={pookalamSub() === "gallery"}>
-                          {/* The same anonymous gallery the testers judge in. */}
-                          <PookalamGallery />
-                        </Show>
-                        <Show when={pookalamSub() === "wishes"}>
-                          <Show when={collabMessages()} fallback={<TabLoading />}>
-                            <CollabWishesTab
-                              messages={collabMessages()!}
-                              onReload={revalidateAfter(ADMIN_QUERY_KEYS.collabMessages)}
-                              onNotify={showNotification}
-                            />
-                          </Show>
-                        </Show>
-                        <Show when={pookalamSub() === "animation"}>
-                          <PookalamAnimationExport />
-                        </Show>
-                      </div>
-                    );
-                  })()}
+                    <Show when={pookalamSub() === "review"}>
+                      <PookalamReview />
+                    </Show>
+                    <Show when={pookalamSub() === "gallery"}>
+                      <PookalamGallery />
+                    </Show>
+                    <Show when={pookalamSub() === "wishes"}>
+                      <Show when={collabMessages()} fallback={<TabLoading />}>
+                        <CollabWishesTab
+                          messages={collabMessages()!}
+                          onReload={revalidateAfter(ADMIN_QUERY_KEYS.collabMessages)}
+                          onNotify={showNotification}
+                        />
+                      </Show>
+                    </Show>
+                    <Show when={pookalamSub() === "animation"}>
+                      <PookalamAnimationExport />
+                    </Show>
+                  </div>
                 </Show>
 
                 {/* 9. Activity Logs Tab */}

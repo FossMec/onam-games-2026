@@ -16,8 +16,15 @@ export async function adminListUsers(limit = 100, offset = 0) {
       name: string;
       role: "player" | "tester" | "admin" | null;
       college: string | null;
+      collegeOther: string | null;
       branch: string | null;
+      branchOther: string | null;
       batch: string | null;
+      div: string | null;
+      occupation: string | null;
+      instagramHandle: string | null;
+      whatsappNumber: string | null;
+      avatarUrl: string | null;
       banLevel: number;
       banUntil: Date | null;
       banReason: string | null;
@@ -34,8 +41,15 @@ export async function adminListUsers(limit = 100, offset = 0) {
       name,
       role,
       college,
+      college_other AS "collegeOther",
       branch,
+      branch_other AS "branchOther",
       batch,
+      div,
+      occupation,
+      instagram_handle AS "instagramHandle",
+      whatsapp_number AS "whatsappNumber",
+      avatar_url AS "avatarUrl",
       ban_level AS "banLevel",
       ban_until AS "banUntil",
       ban_reason AS "banReason",
