@@ -17,8 +17,8 @@
  * into a round that is supposed to be anonymous.
  */
 
-/** Longest side we store. Comfortably above any display size we use. */
-export const OUTPUT_SIZE = 1024;
+/** Longest side we store. 512 is enough for voting (≈300px) and keeps webp small. */
+export const OUTPUT_SIZE = 512;
 
 /** Matches the server's `pookalam.aspect_tolerance_pct` default. */
 export const DEFAULT_ASPECT_TOLERANCE_PCT = 5;
@@ -26,8 +26,8 @@ export const DEFAULT_ASPECT_TOLERANCE_PCT = 5;
 /** Server refuses anything under this. Checked here so the message is early. */
 const MIN_SIDE = 320;
 
-/** Aim below this; the server's hard limit is 1.2 MB. */
-const TARGET_BYTES = 900_000;
+/** Aim below this; the server's hard limit is 600KB for 512. */
+const TARGET_BYTES = 350_000;
 
 export interface PreparedImage {
   /** WebP (or JPEG, on browsers without WebP encoding) data URL. */

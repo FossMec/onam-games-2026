@@ -30,8 +30,8 @@ import { getSupabaseAdmin } from "~/server/supabase/client";
 /** Bucket holding contest artwork. Public-read, service-role write. */
 export const POOKALAM_BUCKET = "pookalams";
 
-/** Hard ceiling on a stored entry. The client aims well under this. */
-export const MAX_IMAGE_BYTES = 1_200_000;
+/** Hard ceiling on a stored entry. 512 webp ~350KB, limit 600KB. */
+export const MAX_IMAGE_BYTES = 600_000;
 
 /** Below this an image is too small to judge on a laptop screen. */
 export const MIN_IMAGE_SIDE = 320;
