@@ -55,16 +55,22 @@ function clockTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
+let _cachedPookalamBoards: Boards | null = null;
+
 export function PookalamBoards() {
-  const [boards, setBoards] = createSignal<Boards | null>(null);
-  const [loaded, setLoaded] = createSignal(false);
+  const [boards, setBoards] = createSignal<Boards | null>(_cachedPookalamBoards);
+  const [loaded, setLoaded] = createSignal(!!_cachedPookalamBoards);
   const [busy, setBusy] = createSignal(false);
   const [tab, setTab] = createSignal<"pookalams" | "judges">("pookalams");
 
   const load = async () => {
     setBusy(true);
     try {
-      setBoards(await getArenaBoards());
+      const res = await getArenaBoards();
+      if (res) {
+        _cachedPookalamBoards = res;
+        setBoards(res);
+      }
     } catch {
       // A failed refresh keeps the last good board on screen. Blanking a
       // leaderboard because one fetch timed out is worse than showing it stale.

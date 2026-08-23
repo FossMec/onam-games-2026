@@ -280,13 +280,7 @@ export function LeaderboardView() {
   };
 
   return (
-    <main
-      class="container min-h-[30rem] relative space-y-4 py-6 max-w-4xl mx-auto"
-      style={{
-        opacity: pending() ? 0.65 : 1,
-        transition: "opacity 140ms ease-out",
-      }}
-    >
+    <main class="container min-h-[30rem] relative space-y-4 py-6 max-w-4xl mx-auto">
       {/* Desktop Inked Sidebar: Festival Meme + Share Card Widget */}
       <aside class="hidden 2xl:flex flex-col gap-3 absolute left-[calc(100%+2rem)] top-6 w-68 pointer-events-auto">
         <div>
@@ -596,14 +590,14 @@ export function LeaderboardView() {
                             </p>
                             <Show
                               when={entry.college || entry.branch}
-                              fallback={<span class="comment text-[11px]">Player</span>}
+                              fallback={<span class="comment text-[11px] uppercase">Player</span>}
                             >
                               <div
-                                class="flex items-center gap-1 text-[11px] truncate"
+                                class="flex items-center gap-1 text-[11px] uppercase truncate"
                                 style={{ color: "var(--ink-soft)" }}
                               >
                                 <GraduationCap size={11} class="shrink-0" />
-                                <span class="truncate">
+                                <span class="truncate uppercase font-bold">
                                   {entry.college ?? "Independent"}
                                   {entry.branch ? ` · ${entry.branch}` : ""}
                                 </span>
@@ -643,7 +637,9 @@ export function LeaderboardView() {
                               >
                                 College
                               </span>
-                              <span class="font-bold">{entry.college || "Not shared"}</span>
+                              <span class="font-bold uppercase">
+                                {entry.college || "Not shared"}
+                              </span>
                             </div>
                             <div>
                               <span
@@ -652,7 +648,7 @@ export function LeaderboardView() {
                               >
                                 Branch / Batch
                               </span>
-                              <span class="font-bold">
+                              <span class="font-bold uppercase">
                                 {entry.branch || "—"} {entry.batch ? `'${entry.batch}` : ""}
                               </span>
                             </div>

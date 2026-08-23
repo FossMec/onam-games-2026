@@ -31,6 +31,27 @@ function getCryptoKey(): Promise<CryptoKey> {
   return _cachedKeyPromise;
 }
 
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlToBytes(base64url: string): Uint8Array {
+  let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+  while (base64.length % 4 !== 0) {
+    base64 += "=";
+  }
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
 async function fastSeal(data: AuthCookieData): Promise<string> {
   const key = await getCryptoKey();
   const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -40,21 +61,22 @@ async function fastSeal(data: AuthCookieData): Promise<string> {
   const combined = new Uint8Array(iv.length + ciphertext.byteLength);
   combined.set(iv, 0);
   combined.set(new Uint8Array(ciphertext), iv.length);
-  return Buffer.from(combined).toString("base64url");
+  return bytesToBase64Url(combined);
 }
 
 async function fastUnseal(raw: string): Promise<AuthCookieData | null> {
   try {
     const key = await getCryptoKey();
-    const combined = Buffer.from(raw, "base64url");
+    const combined = base64UrlToBytes(raw);
     if (combined.length <= 12) return null;
-    const iv = combined.subarray(0, 12);
-    const ciphertext = combined.subarray(12);
+    const iv = combined.slice(0, 12);
+    const ciphertext = combined.slice(12);
     const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
     const json = new TextDecoder().decode(decrypted);
     const data = JSON.parse(json) as AuthCookieData;
     return data?.sid ? data : null;
-  } catch {
+  } catch (err) {
+    console.error("[auth] fastUnseal error:", err);
     return null;
   }
 }

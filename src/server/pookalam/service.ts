@@ -514,19 +514,32 @@ async function readCached<T>(
   const age = cached
     ? Date.now() - new Date(cached.computedAt).getTime()
     : Number.POSITIVE_INFINITY;
-  if (cached && age < delayMs) {
-    return {
-      rows: cached.payload as T[],
-      computedAt: new Date(cached.computedAt).toISOString(),
-      nextUpdateInMs: delayMs - age,
-    };
+  if (cached && age < delayMs && cached.payload) {
+    let parsed = cached.payload;
+    if (typeof parsed === "string") {
+      try {
+        parsed = JSON.parse(parsed);
+      } catch {}
+    }
+    if (typeof parsed === "string") {
+      try {
+        parsed = JSON.parse(parsed);
+      } catch {}
+    }
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return {
+        rows: parsed as T[],
+        computedAt: new Date(cached.computedAt).toISOString(),
+        nextUpdateInMs: delayMs - age,
+      };
+    }
   }
 
   const rows = await compute();
   const computedAt = new Date();
   await db`
     INSERT INTO pookalam_standings (key, payload, computed_at)
-    VALUES (${key}, ${JSON.stringify(rows)}::jsonb, ${computedAt})
+    VALUES (${key}, ${db.json(rows as any)}, ${computedAt})
     ON CONFLICT (key) DO UPDATE
     SET payload = EXCLUDED.payload, computed_at = EXCLUDED.computed_at
   `;
