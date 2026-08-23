@@ -12,6 +12,7 @@ import {
   type SubmissionInput,
   adjustRating,
   autoShortlist,
+  batchVote,
   castVote,
   countMyVotes,
   getConfig,
@@ -125,7 +126,25 @@ export async function votePookalam(winnerId: string, loserId: string) {
   });
   if (limit.unavailable) return { ok: false, reason: "Rate limiter unavailable." };
   if (!limit.success) return { ok: false, reason: "Too fast. Look at them properly." };
-  return castVote(user.id, winnerId, loserId);
+  return castVote(user.id, winnerId, loserId, { skipNextPair: true });
+}
+
+export async function batchVotePookalam(votes: Array<{ winnerId: string; loserId: string }>) {
+  const user = await requireCurrentUser();
+  assertCanPlay(user);
+  if (!Array.isArray(votes) || votes.length === 0) return { ok: 0, errors: [] as string[] };
+  if (votes.length > 50) throw new Error("Too many votes in one batch.");
+  const limit = await checkRateLimit({
+    key: `pookalam:vote:${user.id}`,
+    limit: 60,
+    windowMs: 60_000,
+  });
+  if (limit.unavailable) return { ok: 0, errors: ["Rate limiter unavailable."] };
+  // Allow burst: if batch is 5, count as 5 toward limit
+  if (votes.length > limit.remaining + 1) {
+    return { ok: 0, errors: ["Too fast. Look at them properly."] };
+  }
+  return batchVote(user.id, votes);
 }
 
 export async function getMyProgress() {

@@ -8,7 +8,7 @@ import { Countdown } from "~/components/Countdown";
 import { POOKALAM } from "~/lib/event-content";
 import { SHOUT_COLOR, shout } from "~/lib/shouts";
 import { PookalamVoteMath } from "~/components/pookalam/PookalamVoteMath";
-import { getNextPairs, votePookalam } from "~/server/pookalam/actions";
+import { getNextPairs } from "~/server/pookalam/actions";
 import { pookalamState } from "~/lib/queries";
 
 /**
@@ -58,7 +58,9 @@ export function PookalamVoteView() {
 
   const prefetchImages = (pairs: Pair[]) => {
     if (typeof window === "undefined") return;
-    for (const p of pairs) {
+    // Only prefetch next 2 pairs (4 images) — prefetching 25 pairs (50× ~400KB)
+    // at once saturates bandwidth and causes "loading artwork" hang after 3-4 votes.
+    for (const p of pairs.slice(0, 2)) {
       const img1 = new Image();
       img1.src = p.left.imageUrl;
       const img2 = new Image();
@@ -66,10 +68,12 @@ export function PookalamVoteView() {
     }
   };
 
-  const refillQueue = async (requestedCount = 25) => {
+  const refillQueue = async (requestedCount = 45) => {
     if (fetching() || done()) return;
     setFetching(true);
     try {
+      // Fetch all remaining pairs at once (max 10 pookalams => 45 pairs). One round-trip
+      // is far cheaper than sequential 25-pair fetches that each do 5 DB queries.
       const batch = (await getNextPairs(requestedCount)) as Pair[];
       if (batch.length === 0) {
         if (queue().length === 0) {
@@ -105,14 +109,14 @@ export function PookalamVoteView() {
     setOpensAt(state.phases.voting.opensAt ? new Date(state.phases.voting.opensAt) : null);
     setCount(state.votesCast);
     if (state.phases.voting.open && state.signedIn) {
-      await refillQueue(25);
+      await refillQueue(45);
     }
   });
 
-  // Auto-refill if queue ever runs dry and not done
+  // Auto-refill if queue ever runs dry and not done (fetch all at once)
   createEffect(() => {
     if (gateOpen() && signedIn() && queue().length === 0 && !done() && !fetching()) {
-      void refillQueue(25);
+      void refillQueue(45);
     }
   });
 
@@ -124,30 +128,63 @@ export function PookalamVoteView() {
     setRightLoaded(false);
   });
 
+  let pendingVotes: Array<{ winnerId: string; loserId: string }> = [];
+  let batchTimer: number | undefined;
+
+  const flushBatch = async () => {
+    if (pendingVotes.length === 0) return;
+    const batch = pendingVotes.splice(0, pendingVotes.length);
+    if (batchTimer) {
+      clearTimeout(batchTimer);
+      batchTimer = undefined;
+    }
+    try {
+      // Use lightweight API route instead of _server RPC — avoids seroval/query serde overhead (~5ms CPU)
+      const res = await fetch("/api/pookalam/vote", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(batch.length === 1 ? batch[0] : { votes: batch }),
+      });
+      const r = (await res.json()) as { ok: boolean; reason?: string; errors?: string[] };
+      if (!r.ok) console.warn("[vote] rejected:", r.reason ?? r.errors);
+    } catch (err) {
+      console.error("[vote] failed:", err);
+    }
+  };
+
+  const scheduleBatch = () => {
+    if (batchTimer) return;
+    batchTimer = window.setTimeout(() => {
+      void flushBatch();
+    }, 1200);
+  };
+
   const pick = async (winner: PairEntry, loser: PairEntry) => {
     const curQueue = queue();
     if (curQueue.length === 0) return;
 
-    // Instant local advance
+    // Instant local advance — never wait for network
     const remaining = curQueue.slice(1);
     setQueue(remaining);
     setCount((c) => c + 1);
     setLeftLoaded(false);
     setRightLoaded(false);
 
-    // If buffer is running low, eagerly fetch next batch
-    if (remaining.length <= 5) {
-      void refillQueue(25);
+    // Prefetch next pair's images only (not 50 at once)
+    if (remaining.length > 0) prefetchImages(remaining.slice(0, 2));
+
+    // Batch votes: with max 10 pookalams (45 pairs) one fetch is enough,
+    // so we batch 3 at a time to cut round-trips from 45 to ~15.
+    pendingVotes.push({ winnerId: winner.id, loserId: loser.id });
+    if (pendingVotes.length >= 3) {
+      void flushBatch();
+    } else {
+      scheduleBatch();
     }
 
-    // Fire vote asynchronously in background
-    try {
-      const result = await votePookalam(winner.id, loser.id);
-      if (!result.ok) {
-        console.warn("[vote] vote rejected:", result.reason);
-      }
-    } catch (err) {
-      console.error("[vote] failed:", err);
+    // Only refill if we truly ran out (shouldn't happen after initial 45 fetch)
+    if (remaining.length === 0 && !done()) {
+      void refillQueue(45);
     }
   };
 
@@ -379,12 +416,27 @@ function Choice(props: {
   onPick: (winner: PairEntry, loser: PairEntry) => void;
 }) {
   let imgRef: HTMLImageElement | undefined;
+  let fallbackTimer: number | undefined;
 
   createEffect(() => {
     const _url = props.entry.imageUrl;
     if (imgRef && imgRef.complete) {
       props.onLoaded();
+      return;
     }
+    // If artwork is slow/broken (hangs after 3-4 items often due to stale jpg or
+    // large 1MB webp throttling), unblock after 4s so voting never stalls.
+    if (fallbackTimer) clearTimeout(fallbackTimer);
+    fallbackTimer = window.setTimeout(() => {
+      if (!props.loaded) {
+        console.warn("[vote] image load timeout, unblocking:", _url);
+        props.onLoaded();
+      }
+    }, 4000);
+    // cleanup
+    return () => {
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+    };
   });
 
   return (

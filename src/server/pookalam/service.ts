@@ -361,12 +361,13 @@ export async function nextPair(voterId: string): Promise<VotingPair | null> {
 
 /* ----------------------------------------------------------------- vote */
 
-export type VoteResult = { ok: true; nextPair: VotingPair | null } | { ok: false; reason: string };
+export type VoteResult = { ok: true; nextPair?: VotingPair | null } | { ok: false; reason: string };
 
 export async function castVote(
   voterId: string,
   winnerId: string,
   loserId: string,
+  opts: { skipNextPair?: boolean } = {},
 ): Promise<VoteResult> {
   const config = await getConfig();
   if (!config.voting.open) return { ok: false, reason: "Voting is not open." };
@@ -420,28 +421,39 @@ export async function castVote(
   }
 
   const next = applyResult(winner.rating, winner.matches, loser.rating, loser.matches);
-  await Promise.all([
-    db`
-      UPDATE pookalam_submissions
-      SET
-        rating = ${next.winner},
-        matches = matches + 1,
-        wins = wins + 1,
-        updated_at = NOW()
-      WHERE id = ${winnerId}
-    `,
-    db`
-      UPDATE pookalam_submissions
-      SET
-        rating = ${next.loser},
-        matches = matches + 1,
-        updated_at = NOW()
-      WHERE id = ${loserId}
-    `,
-  ]);
+  // Single DB round-trip for both Elo updates (was 2 separate UPDATEs → 30ms CPU)
+  await db`
+    UPDATE pookalam_submissions
+    SET
+      rating = CASE
+        WHEN id = ${winnerId} THEN ${next.winner}
+        WHEN id = ${loserId} THEN ${next.loser}
+      END,
+      matches = matches + 1,
+      wins = wins + CASE WHEN id = ${winnerId} THEN 1 ELSE 0 END,
+      updated_at = NOW()
+    WHERE id IN (${winnerId}, ${loserId})
+  `;
 
+  if (opts.skipNextPair) {
+    return { ok: true };
+  }
   const upcoming = await nextPair(voterId);
   return { ok: true, nextPair: upcoming };
+}
+
+export async function batchVote(
+  voterId: string,
+  votes: Array<{ winnerId: string; loserId: string }>,
+): Promise<{ ok: number; errors: string[] }> {
+  const errors: string[] = [];
+  let ok = 0;
+  for (const v of votes.slice(0, 50)) {
+    const r = await castVote(voterId, v.winnerId, v.loserId, { skipNextPair: true });
+    if (r.ok) ok++;
+    else errors.push(r.reason);
+  }
+  return { ok, errors };
 }
 
 export async function countMyVotes(voterId: string): Promise<number> {
