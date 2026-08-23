@@ -123,13 +123,38 @@ export default defineConfig({
         },
       },
       routeRules: {
-        // Home is the only SSR page — cache at edge with SWR so repeated hits
-        // don't pay 10-15ms Worker CPU. Games are fully CSR (see [slug].tsx
-        // window guard) so they cost ~1ms shell only.
+        // SSR pages with personalized shell (me, ban, access) must NEVER be
+        // public cached — SSR serializes `getShellData()` (full PublicUser incl.
+        // whatsapp) into HTML payload, and `public, s-maxage` would serve User A's
+        // HTML to User B. See src/server/shell.ts:77 / src/server/auth/service.ts:214.
         "/": {
-          cache: { maxAge: 60, staleMaxAge: 600, swr: true },
           headers: {
-            "cache-control": "public, max-age=10, s-maxage=60, stale-while-revalidate=600",
+            "cache-control": "private, no-cache, no-store, must-revalidate",
+            vary: "Cookie",
+          },
+        },
+        "/games/**": {
+          headers: {
+            "cache-control": "private, no-cache, no-store, must-revalidate",
+            vary: "Cookie",
+          },
+        },
+        "/leaderboard/**": {
+          headers: {
+            "cache-control": "private, no-cache, no-store, must-revalidate",
+            vary: "Cookie",
+          },
+        },
+        "/onboarding": {
+          headers: {
+            "cache-control": "private, no-cache, no-store, must-revalidate",
+            vary: "Cookie",
+          },
+        },
+        "/code-a-pookalam/**": {
+          headers: {
+            "cache-control": "private, no-cache, no-store, must-revalidate",
+            vary: "Cookie",
           },
         },
         // Server RPC & API endpoints: NEVER cache at the edge

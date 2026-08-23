@@ -737,11 +737,23 @@ export function GamesHubView() {
                         return (
                           <button
                             type="button"
-                            onClick={() => selectGame(item.day, item.slug)}
-                            class={`flex flex-col items-center gap-1.5 p-2 rounded-lg text-center transition-all cursor-pointer select-none shrink-0 w-24 sm:w-auto ${
+                            disabled={isLock}
+                            onClick={() => {
+                              if (isLock) return;
+                              selectGame(item.day, item.slug);
+                            }}
+                            aria-disabled={isLock}
+                            title={isLock ? "Locked — opens on schedule" : item.title}
+                            class={`flex flex-col items-center gap-1.5 p-2 rounded-lg text-center transition-all select-none shrink-0 w-24 sm:w-auto ${
+                              isLock
+                                ? "opacity-60 cursor-not-allowed"
+                                : "cursor-pointer hover:opacity-100"
+                            } ${
                               isSelected
                                 ? "pop-yellow shadow-md scale-[1.02]"
-                                : "bg-[var(--paper-2)] opacity-85 hover:opacity-100"
+                                : isLock
+                                  ? "bg-[var(--paper-2)]"
+                                  : "bg-[var(--paper-2)] opacity-85"
                             }`}
                             style={{
                               border: isSelected

@@ -1032,7 +1032,7 @@ export default function Home() {
                   class="badge text-[9px] sm:text-xs font-black uppercase"
                   style={{ "--pop": "var(--pop-pink)" }}
                 >
-                  ₹5,000+ Pool
+                  ₹5,000 Pool
                 </span>
               </div>
 
@@ -1040,7 +1040,7 @@ export default function Home() {
                 class="text-base sm:text-2xl md:text-3xl font-black text-[var(--ink)] m-0 leading-tight"
                 style={{ "font-family": "var(--font-stack-display)" }}
               >
-                ₹5,000+ in festival bounties.
+                ₹5,000 in festival bounties.
               </h3>
 
               <p

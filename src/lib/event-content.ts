@@ -30,7 +30,7 @@ export const EVENT = {
     { value: "7", label: "days" },
     { value: "6", label: "mini-games" },
     { value: "1", label: "pookalam" },
-    { value: "₹5K+", label: "prize pool" },
+    { value: "₹5K", label: "prize pool" },
   ],
 
   /**
@@ -129,13 +129,12 @@ export const EVENT = {
 
   prizes: [
     {
-      amount: "₹250 · ₹500 Day 6",
+      amount: "₹250 / Day",
       rank: "Daily Game Champions",
-      detail:
-        "₹250 for Days 1–5 and ₹500 for Day 6 Treasure Hunt — #1 verified finish each day wins.",
+      detail: "Top verified finish on Days 1–5 — fastest verified time wins each day.",
       pop: "pop-yellow",
       icon: "tux-king" as SpriteName,
-      badge: "7 Winners",
+      badge: "5 Winners",
     },
     {
       amount: "₹1,500",
@@ -154,12 +153,12 @@ export const EVENT = {
       badge: "Podium Runners-up",
     },
     {
-      amount: "₹250",
-      rank: "Best Voter Bounty",
-      detail: "Awarded to the sharpest eyes on Day 7 pairwise pookalam matchmaking voting.",
+      amount: "₹500",
+      rank: "Treasure Hunt Champion",
+      detail: "Day 6 special bounty — first to uncover all 10 hidden relics wins the ₹500 prize.",
       pop: "pop-purple",
-      icon: "nilavilakku" as SpriteName,
-      badge: "Community Jury",
+      icon: "gopher-king" as SpriteName,
+      badge: "Day 6",
     },
   ],
 
