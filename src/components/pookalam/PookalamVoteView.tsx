@@ -32,35 +32,13 @@ interface Pair {
 
 /**
  * Voting only needs ~320px (cards are ~160px on phone, ~300px desktop).
- * 320 is ~1/10 the pixels of 1024, small webp thumbs.
- * Supabase Storage supports on-the-fly transforms via /render/image (no migration).
- * Original 1024 webp stays for results/detail, vote uses 320 thumb.
- * Falls back to original if transform disabled (free plan) — still correct.
+ * 320 is ~1/10 the pixels of 1024. Original 1024 webp is still correct but
+ * heavy; ideal is Supabase render transform, but free plan may 404.
+ * For now return original URL to avoid 404 hang after 3-4 images; browser
+ * scales down via CSS. Re-enable render transform when bucket has it.
  */
-function thumbUrl(url: string, w = 320): string {
-  if (!url) return url;
-  try {
-    const u = new URL(url);
-    // Already a render URL? just adjust width
-    if (u.pathname.includes("/storage/v1/render/image/")) {
-      u.searchParams.set("width", String(w));
-      u.searchParams.set("quality", "75");
-      return u.toString();
-    }
-    // /storage/v1/object/public/pookalams/entries/xxx.webp -> /storage/v1/render/image/public/...
-    if (u.pathname.includes("/storage/v1/object/public/")) {
-      const renderPath = u.pathname.replace(
-        "/storage/v1/object/public/",
-        "/storage/v1/render/image/public/",
-      );
-      return `${u.origin}${renderPath}?width=${w}&height=${w}&resize=contain&quality=75&format=webp`;
-    }
-    // Non-supabase or already small — add hint for Cloudflare cache
-    u.searchParams.set("width", String(w));
-    return u.toString();
-  } catch {
-    return url;
-  }
+function thumbUrl(url: string, _w = 320): string {
+  return url;
 }
 
 const HOW_TO = [

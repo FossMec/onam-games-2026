@@ -422,12 +422,13 @@ export async function castVote(
 
   const next = applyResult(winner.rating, winner.matches, loser.rating, loser.matches);
   // Single DB round-trip for both Elo updates (was 2 separate UPDATEs → 30ms CPU)
+  // Explicit ::double precision avoids "column is double precision but expression is text" when CASE infers text
   await db`
     UPDATE pookalam_submissions
     SET
       rating = CASE
-        WHEN id = ${winnerId} THEN ${next.winner}
-        WHEN id = ${loserId} THEN ${next.loser}
+        WHEN id = ${winnerId} THEN ${next.winner}::double precision
+        WHEN id = ${loserId} THEN ${next.loser}::double precision
       END,
       matches = matches + 1,
       wins = wins + CASE WHEN id = ${winnerId} THEN 1 ELSE 0 END,
