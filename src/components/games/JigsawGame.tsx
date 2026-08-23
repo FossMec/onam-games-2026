@@ -202,9 +202,22 @@ export function JigsawGame(props: JigsawGameProps) {
 
   const onPointerMove = (event: PointerEvent) => {
     if (pointerId !== event.pointerId || activeGroup() === null) return;
-    const dx = (event.clientX - origin.x) / unitX();
-    const dy = (event.clientY - origin.y) / unitY();
+    let dx = (event.clientX - origin.x) / unitX();
+    let dy = (event.clientY - origin.y) / unitY();
     const group = activeGroup();
+    // Keep whole group inside board so edge drag can't fling it outside and make it ungrabbable.
+    // Pieces are 1 cell wide/tall at origin x,y — clamp origin to [0, w-1] × [0, h-1].
+    const w = viewport().w;
+    const h = viewport().h;
+    const groupStarts = startPositions.filter((p) => p.groupId === group);
+    const minX = Math.min(...groupStarts.map((p) => p.x));
+    const maxX = Math.max(...groupStarts.map((p) => p.x));
+    const minY = Math.min(...groupStarts.map((p) => p.y));
+    const maxY = Math.max(...groupStarts.map((p) => p.y));
+    if (minX + dx < 0) dx = -minX;
+    if (maxX + dx > w - 1) dx = w - 1 - maxX;
+    if (minY + dy < 0) dy = -minY;
+    if (maxY + dy > h - 1) dy = h - 1 - maxY;
     setPieces(
       startPositions.map((p) => (p.groupId === group ? { ...p, x: p.x + dx, y: p.y + dy } : p)),
     );
@@ -262,6 +275,30 @@ export function JigsawGame(props: JigsawGameProps) {
       const snapped = trySnap(next, next.find((p) => p.groupId === group)?.groupId ?? group);
       if (!snapped) break;
       next = snapped;
+    }
+    // Final clamp — snap offset could nudge partly outside
+    {
+      const w = viewport().w;
+      const h = viewport().h;
+      const groupId = next.find((p) => p.groupId === group)?.groupId ?? group;
+      const grp = next.filter((p) => p.groupId === groupId);
+      if (grp.length > 0) {
+        const minX = Math.min(...grp.map((p) => p.x));
+        const maxX = Math.max(...grp.map((p) => p.x));
+        const minY = Math.min(...grp.map((p) => p.y));
+        const maxY = Math.max(...grp.map((p) => p.y));
+        let shiftX = 0;
+        let shiftY = 0;
+        if (minX < 0) shiftX = -minX;
+        else if (maxX > w - 1) shiftX = w - 1 - maxX;
+        if (minY < 0) shiftY = -minY;
+        else if (maxY > h - 1) shiftY = h - 1 - maxY;
+        if (shiftX !== 0 || shiftY !== 0) {
+          next = next.map((p) =>
+            p.groupId === groupId ? { ...p, x: p.x + shiftX, y: p.y + shiftY } : p,
+          );
+        }
+      }
     }
     setPieces(next);
 

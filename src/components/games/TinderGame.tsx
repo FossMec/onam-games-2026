@@ -29,6 +29,8 @@ export interface TinderCardView {
    * restored from a previous version's localStorage will not have it.
    */
   category?: string;
+  /** FNV hash of id:open:salt — precomputed at build, for instant local compare. */
+  hash?: string;
 }
 
 interface Decision {
@@ -87,6 +89,18 @@ const POPS = [
   "var(--pop-pink)",
   "var(--pop-purple)",
 ];
+
+// Prehash at build — same as server src/server/games/impl/tinder.ts
+const TINDER_SALT = "foss-onam-tinder-2026";
+function tinderHash(id: string, open: boolean): string {
+  let h = 0x811c9dc5;
+  const s = `${id}:${open ? 1 : 0}:${TINDER_SALT}`;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
 
 /** FNV-1a, so a card looks the same on every render and on the server. */
 function hash(seed: string): number {
@@ -187,6 +201,34 @@ export function TinderGame(props: TinderGameProps) {
     if (slice.length === 0) return { wrongIds: [], wrong: [] };
     if (props.onCheck) {
       return props.onCheck(slice);
+    }
+    // Prehash build — instant local compare, no per-swipe POST (saves 20×10ms CPU).
+    // View cards now carry hash (src/server/games/impl/tinder.ts). Fallback to server for old views.
+    const hasHash = props.cards.some((c) => (c as unknown as { hash?: string }).hash);
+    if (hasHash) {
+      const wrongIds: string[] = [];
+      const wrong: Verdict[] = [];
+      for (const d of slice) {
+        const card = props.cards.find((c) => c.id === d.id) as unknown as
+          | { hash?: string }
+          | undefined;
+        if (!card?.hash) continue;
+        const correctOpen = tinderHash(d.id, true) === card.hash;
+        // If neither true nor false matches (stale hash), treat as not wrong to avoid Unknown card
+        const matches = tinderHash(d.id, d.open) === card.hash;
+        if (!matches) {
+          wrongIds.push(d.id);
+          // Generic teaching — server verify still authoritative, no why/fact leak
+          wrong.push({
+            id: d.id,
+            open: correctOpen,
+            why: correctOpen ? "is open source" : "is proprietary",
+            fact: "",
+          });
+        }
+      }
+      setError("");
+      return { wrongIds, wrong };
     }
     try {
       const res = await fetch(`/api/game/${props.slug}/check`, {

@@ -40,6 +40,26 @@ export const TINDER_DECK_SIZE = 20;
  */
 export const WRONG_SWIPE_PENALTY_MS = 3_000;
 
+// Lightweight hash for client-side compare — precomputed at build, 8 hex chars.
+// Not crypto-secure (2 possibilities per card brute-force in 2 tries), but
+// saves 20× POST /check (20×10ms CPU) and finish still verified server-side.
+const TINDER_SALT = "foss-onam-tinder-2026";
+function tinderHash(id: string, open: boolean): string {
+  let h = 0x811c9dc5;
+  const s = `${id}:${open ? 1 : 0}:${TINDER_SALT}`;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+const TINDER_HASH_CACHE = new Map<string, string>(
+  TINDER_CARDS.map((c) => [c.id, tinderHash(c.id, c.open)]),
+);
+export function getTinderHash(id: string, open: boolean): string {
+  return tinderHash(id, open);
+}
+
 export interface TinderDecision {
   id: string;
   /** The player's call: true = swiped right = "open source". */
@@ -70,12 +90,17 @@ function answerKey(seed: string): Map<string, boolean> {
 export function generate(seed: string): GeneratedInstance {
   const deck = dealDeck(seed);
   return {
-    // Name and category only. No `open`, no `why`, no `tricky` - those are the
-    // answers. `category` is deliberately shared across both sides of the deck
-    // (see `data/tinder-cards.ts`), so it dresses the card without grading it.
+    // Hash included for instant client compare — no per-swipe POST /check.
+    // 8-char FNV hash of id:open:salt, precomputed at build. Brute-force 2 tries
+    // per card, but finish transcript still replayed server-side, so not authoritative.
     view: {
       kind: "tinder",
-      cards: deck.map((card) => ({ id: card.id, name: card.name, category: card.category })),
+      cards: deck.map((card) => ({
+        id: card.id,
+        name: card.name,
+        category: card.category,
+        hash: TINDER_HASH_CACHE.get(card.id)!,
+      })),
     },
     solution: deck.map((card) => ({ id: card.id, open: card.open })),
   };
@@ -170,10 +195,12 @@ export function verify(input: VerifyInput): VerifyResult {
   if (expected.length > 0) {
     return { valid: false, reason: "You left cards unsorted. DWAAAA..." };
   }
+  // Client already blocks 3s per wrong (penalty screen), wall time already includes it.
+  // Don't double-count — server penalty is display-only, ranking is raw wall time.
   return {
     valid: true,
     movesCount: moves,
-    durationPenaltyMs: wrongSwipes * WRONG_SWIPE_PENALTY_MS,
+    durationPenaltyMs: 0,
   };
 }
 
