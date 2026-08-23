@@ -1,7 +1,7 @@
 import { Title } from "@solidjs/meta";
 import { A } from "@solidjs/router";
 import { ChartColumnBig } from "lucide-solid";
-import { For, Show, createEffect, createSignal, onMount } from "solid-js";
+import { For, Show, createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { Bubble } from "~/components/art/Burst";
 import { ShoutBurst } from "~/components/art/Burst";
 import { Countdown } from "~/components/Countdown";
@@ -429,25 +429,36 @@ function Choice(props: {
   let imgRef: HTMLImageElement | undefined;
   let fallbackTimer: number | undefined;
 
+  // Fix hang when same image repeats: if src unchanged, onLoad won't fire
+  // but imgRef.complete is true — check via microtask + loaded tracking.
   createEffect(() => {
+    // Track loaded to re-run after parent reset (even when same URL repeats, e.g., A vs B then A vs C)
+    void props.loaded;
     const _url = props.entry.imageUrl;
-    if (imgRef && imgRef.complete) {
-      props.onLoaded();
-      return;
-    }
-    // If artwork is slow/broken (hangs after 3-4 items often due to stale jpg or
-    // large 1MB webp throttling), unblock after 4s so voting never stalls.
+    // Defer to after DOM updates so imgRef.src has settled
+    queueMicrotask(() => {
+      if (imgRef && imgRef.complete && imgRef.naturalWidth > 0) {
+        props.onLoaded();
+        return;
+      }
+      // Check again after a frame — cached images may become complete after layout
+      requestAnimationFrame(() => {
+        if (imgRef && imgRef.complete && imgRef.naturalWidth > 0) {
+          props.onLoaded();
+        }
+      });
+    });
     if (fallbackTimer) clearTimeout(fallbackTimer);
+    // Stuck artwork check — was 4s, now 1.5s (512 webp loads <500ms even on 3G)
     fallbackTimer = window.setTimeout(() => {
       if (!props.loaded) {
         console.warn("[vote] image load timeout, unblocking:", _url);
         props.onLoaded();
       }
-    }, 4000);
-    // cleanup
-    return () => {
+    }, 1500);
+    onCleanup(() => {
       if (fallbackTimer) clearTimeout(fallbackTimer);
-    };
+    });
   });
 
   return (
