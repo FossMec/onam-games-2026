@@ -4,6 +4,7 @@ import { Check, ImageUp, Lock, Pencil, TriangleAlert } from "lucide-solid";
 import { For, Show, createEffect, createSignal } from "solid-js";
 import { Bubble } from "~/components/art/Burst";
 import { Countdown } from "~/components/Countdown";
+import { LoadingScreen } from "~/components/LoadingScreen";
 import { POOKALAM } from "~/lib/event-content";
 import { ImageRejected, preparePookalamImage } from "~/lib/pookalam-image";
 import { RoadRecap, RoadSendOff, shouldShowRecap } from "~/components/pookalam/RoadRecap";
@@ -181,7 +182,7 @@ export default function SubmitPookalam() {
         <p class="comment">a repo and a render. we run the code.</p>
       </header>
 
-      <Show when={state()} fallback={<p class="font-semibold">Loading…</p>}>
+      <Show when={state()} fallback={<LoadingScreen compact message="Loading submission state…" />}>
         <Show
           when={state()!.signedIn}
           fallback={

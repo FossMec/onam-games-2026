@@ -91,10 +91,11 @@ export async function readAuthCookie(): Promise<AuthCookieData | null> {
 }
 
 export async function writeAuthCookie(data: AuthCookieData): Promise<void> {
+  const isLocal = getServerEnv("NODE_ENV") === "development" && !getServerEnv("CF_PAGES");
   const sealed = await fastSeal(data);
   setCookie(SESSION_NAME, sealed, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: !isLocal,
     sameSite: "lax",
     path: "/",
     maxAge: MAX_AGE_S,
@@ -102,9 +103,10 @@ export async function writeAuthCookie(data: AuthCookieData): Promise<void> {
 }
 
 export async function clearAuthCookie(): Promise<void> {
+  const isLocal = getServerEnv("NODE_ENV") === "development" && !getServerEnv("CF_PAGES");
   deleteCookie(SESSION_NAME, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: !isLocal,
     sameSite: "lax",
     path: "/",
   });

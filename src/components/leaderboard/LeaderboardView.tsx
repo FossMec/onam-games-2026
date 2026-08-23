@@ -4,7 +4,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
-  Clock,
   Flame,
   FlaskConical,
   GraduationCap,
@@ -162,6 +161,7 @@ export function LeaderboardView() {
   const [pending, startTransition] = useTransition();
   const [sharing, setSharing] = createSignal(false);
   const [page, setPage] = createSignal(1);
+  const [lastKnownBoard, setLastKnownBoard] = createSignal<DailyBoard | null>(null);
 
   const daily = createAsync<DailyBoard | null>(async () => {
     const v = version();
@@ -172,21 +172,26 @@ export function LeaderboardView() {
     const cacheKey = `${g.id}:${mode}:${page()}:${v}`;
     const nowTime = Date.now();
     const cached = clientBoardCache.get(cacheKey);
-    if (cached && nowTime - cached.timestamp < 30_000) {
+    if (cached && nowTime - cached.timestamp < 60_000) {
+      setLastKnownBoard(cached.data);
       return cached.data;
     }
 
     const res = await dailyBoard(g.id, mode, page(), 50);
     clientBoardCache.set(cacheKey, { data: res, timestamp: nowTime });
+    setLastKnownBoard(res);
     return res;
   });
+
+  const activeBoard = () => daily() ?? lastKnownBoard();
+  const isEmpty = () => !activeBoard() || activeBoard()!.entries.length === 0;
 
   /**
    * The viewer's own row, as a share card.
    */
   const shareData = createMemo<ShareCardData | null>(() => {
     const g = selectedGame();
-    const board = daily();
+    const board = activeBoard();
     const entry = board?.myEntry;
     const user = me();
     if (!g || !entry || !user) return null;
@@ -237,8 +242,7 @@ export function LeaderboardView() {
     void startTransition(() => setVersion((v) => v + 1));
   };
 
-  const isEmpty = () => (daily()?.entries.length ?? 0) === 0;
-  const topDailyWinner = () => (daily()?.entries.length ? daily()!.entries[0] : null);
+  const topDailyWinner = () => (activeBoard()?.entries.length ? activeBoard()!.entries[0] : null);
 
   const prevDay = () => {
     void startTransition(() => {
@@ -506,14 +510,14 @@ export function LeaderboardView() {
         </Show>
 
         {/* Loading State */}
-        <Show when={!isLockedForPlayer() && daily() === undefined}>
+        <Show when={!isLockedForPlayer() && !activeBoard()}>
           <div class="card card-plain bg-[var(--paper-2)] border-2 border-[var(--ink)]">
             <LoadingScreen compact message={`Inking Day ${selectedDay()} leaderboard…`} />
           </div>
         </Show>
 
         {/* Empty State */}
-        <Show when={!isLockedForPlayer() && daily() !== undefined && isEmpty()}>
+        <Show when={!isLockedForPlayer() && activeBoard() && isEmpty()}>
           <div class="card card-plain pop-yellow text-center p-8 space-y-2">
             <SpriteIcon name="octocat-garland" size={44} animate="wobble" class="mx-auto" />
             <p class="font-black text-lg">No submissions yet for Day {selectedDay()}.</p>
@@ -522,18 +526,18 @@ export function LeaderboardView() {
         </Show>
 
         {/* DAILY LEADERBOARD TABLE */}
-        <Show when={!isLockedForPlayer() && daily() && daily()!.entries.length > 0}>
+        <Show when={!isLockedForPlayer() && activeBoard() && activeBoard()!.entries.length > 0}>
           <div class="card card-plain p-0 overflow-hidden">
             <div
               class="bg-[var(--paper-2)] px-4 py-2.5 border-b-2 border-[var(--ink)] flex items-center justify-between text-xs font-extrabold uppercase tracking-wider"
               style={{ color: "var(--ink-soft)" }}
             >
               <span>Rank & Player</span>
-              <span class="text-right">{daily()!.metricLabel}</span>
+              <span class="text-right">{activeBoard()!.metricLabel}</span>
             </div>
 
             <div class="divide-y divide-[var(--ink-soft)]/20">
-              <For each={daily()!.entries}>
+              <For each={activeBoard()!.entries}>
                 {(entry) => {
                   const isExpanded = () => expandedId() === `daily-${entry.userId}`;
                   return (
@@ -590,49 +594,90 @@ export function LeaderboardView() {
                                 </span>
                               )}
                             </p>
+                            <Show
+                              when={entry.college || entry.branch}
+                              fallback={<span class="comment text-[11px]">Player</span>}
+                            >
+                              <div
+                                class="flex items-center gap-1 text-[11px] truncate"
+                                style={{ color: "var(--ink-soft)" }}
+                              >
+                                <GraduationCap size={11} class="shrink-0" />
+                                <span class="truncate">
+                                  {entry.college ?? "Independent"}
+                                  {entry.branch ? ` · ${entry.branch}` : ""}
+                                </span>
+                              </div>
+                            </Show>
                           </div>
                         </div>
 
-                        <div class="flex items-center gap-3 shrink-0 text-right">
-                          <div class="font-mono tabular-nums text-sm font-extrabold">
-                            <span>{formatMetric(entry)}</span>
-                          </div>
-                          <span class="text-[var(--ink-soft)] select-none">
-                            <Show
-                              when={isExpanded()}
-                              fallback={<ChevronDown size={15} strokeWidth={2.5} />}
-                            >
-                              <ChevronUp size={15} strokeWidth={2.5} />
-                            </Show>
+                        {/* Metric & Expand Chevron */}
+                        <div class="flex items-center gap-2 shrink-0">
+                          <span
+                            class="font-mono font-black text-xs sm:text-sm text-[var(--ink)]"
+                            title={`Finished: ${new Date(entry.submittedAt).toLocaleTimeString()}`}
+                          >
+                            {formatMetric(entry)}
                           </span>
+                          <Show
+                            when={isExpanded()}
+                            fallback={<ChevronDown size={14} class="opacity-50" />}
+                          >
+                            <ChevronUp size={14} class="opacity-75" />
+                          </Show>
                         </div>
                       </div>
 
-                      {/* Expandable Details Drawer */}
+                      {/* Expandable Player Details Drawer */}
                       <Show when={isExpanded()}>
-                        <div class="px-4 py-3 text-xs border-t border-[var(--ink-soft)]/15 bg-[var(--paper-3)]/70 flex flex-wrap items-center justify-between gap-3">
-                          <div class="flex items-center gap-1.5">
-                            <GraduationCap size={14} class="shrink-0 opacity-70" />
-                            <span class="font-semibold uppercase">
-                              {entry.college ?? "Independent"}
-                              {entry.branch ? ` · ${entry.branch}` : ""}
-                            </span>
-                          </div>
-                          <div class="flex items-center gap-3 font-mono text-[11px] opacity-85">
-                            <Show when={entry.streakCount > 0}>
-                              <span class="inline-flex items-center gap-1">
-                                <Flame size={12} />
-                                {entry.streakCount} day
-                                {entry.streakCount === 1 ? "" : "s"} in a row
+                        <div
+                          class="px-4 py-3 bg-[var(--paper-2)] border-t border-[var(--ink-soft)]/20 space-y-2 text-xs"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <div>
+                              <span
+                                class="uppercase text-[9px] font-black block"
+                                style={{ color: "var(--ink-soft)" }}
+                              >
+                                College
                               </span>
-                            </Show>
-                            <Show when={daily()!.metric === "score"}>
-                              <span>Runs: {entry.attemptsUsed}</span>
-                            </Show>
-                            <span class="inline-flex items-center gap-1">
-                              <Clock size={12} />
-                              {formatClock(entry.submittedAt)}
-                            </span>
+                              <span class="font-bold">{entry.college || "Not shared"}</span>
+                            </div>
+                            <div>
+                              <span
+                                class="uppercase text-[9px] font-black block"
+                                style={{ color: "var(--ink-soft)" }}
+                              >
+                                Branch / Batch
+                              </span>
+                              <span class="font-bold">
+                                {entry.branch || "—"} {entry.batch ? `'${entry.batch}` : ""}
+                              </span>
+                            </div>
+                            <div>
+                              <span
+                                class="uppercase text-[9px] font-black block"
+                                style={{ color: "var(--ink-soft)" }}
+                              >
+                                Current Streak
+                              </span>
+                              <span class="font-bold">
+                                {entry.streakCount} {entry.streakCount === 1 ? "day" : "days"}
+                              </span>
+                            </div>
+                            <div>
+                              <span
+                                class="uppercase text-[9px] font-black block"
+                                style={{ color: "var(--ink-soft)" }}
+                              >
+                                Finished At
+                              </span>
+                              <span class="font-mono font-bold">
+                                {formatClock(entry.submittedAt)}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </Show>
@@ -641,40 +686,35 @@ export function LeaderboardView() {
                 }}
               </For>
             </div>
-          </div>
 
-          {/* Pagination Controls */}
-          <Show when={daily() && daily()!.totalPages > 1}>
-            <div class="card card-plain p-3 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[var(--paper-2)]">
-              <span class="text-xs font-bold text-[var(--ink-soft)]">
-                Showing {(daily()!.page - 1) * daily()!.pageSize + 1}–
-                {Math.min(daily()!.page * daily()!.pageSize, daily()!.fieldSize)} of{" "}
-                {daily()!.fieldSize} players
+            {/* Inked Pagination Footer */}
+            <div
+              class="px-4 py-3 bg-[var(--paper-2)] border-t-2 border-[var(--ink)] flex items-center justify-between gap-3 flex-wrap text-xs font-bold"
+              style={{ color: "var(--ink-soft)" }}
+            >
+              <span>
+                Page {activeBoard()!.page} of {activeBoard()!.totalPages} · Total{" "}
+                {activeBoard()!.fieldSize} players
               </span>
 
               <div class="flex items-center gap-1.5">
                 <button
                   type="button"
-                  class="btn-ghost text-xs px-3 py-1.5 cursor-pointer"
-                  disabled={daily()!.page <= 1}
+                  class="btn-ghost text-xs px-2.5 py-1 disabled:opacity-35 cursor-pointer"
+                  disabled={activeBoard()!.page <= 1}
                   onClick={() => {
                     void startTransition(() => setPage((p) => Math.max(1, p - 1)));
                   }}
                 >
-                  Previous
+                  Prev
                 </button>
-
-                <span class="text-xs font-black px-2.5 py-1 bg-[var(--paper)] rounded border border-[var(--ink)]">
-                  Page {daily()!.page} of {daily()!.totalPages}
-                </span>
-
                 <button
                   type="button"
-                  class="btn-ghost text-xs px-3 py-1.5 cursor-pointer"
-                  disabled={daily()!.page >= daily()!.totalPages}
+                  class="btn-ghost text-xs px-2.5 py-1 disabled:opacity-35 cursor-pointer"
+                  disabled={activeBoard()!.page >= activeBoard()!.totalPages}
                   onClick={() => {
                     void startTransition(() =>
-                      setPage((p) => Math.min(daily()!.totalPages, p + 1)),
+                      setPage((p) => Math.min(activeBoard()!.totalPages, p + 1)),
                     );
                   }}
                 >
@@ -682,27 +722,27 @@ export function LeaderboardView() {
                 </button>
               </div>
             </div>
-          </Show>
+          </div>
 
-          <Show when={daily()!.myEntry && !daily()!.entries.some((e) => e.isMe)}>
+          <Show when={activeBoard()!.myEntry && !activeBoard()!.entries.some((e) => e.isMe)}>
             <div class="card pop-yellow p-3.5 flex items-center justify-between">
               <div class="flex items-center gap-2.5">
                 <SpriteIcon name="foss-mec-badge" size={24} />
                 <p class="font-extrabold text-sm">
-                  Your Rank: #{daily()!.myEntry!.rank} of {daily()!.fieldSize}
+                  Your Rank: #{activeBoard()!.myEntry!.rank} of {activeBoard()!.fieldSize}
                 </p>
               </div>
-              <p class="font-mono font-black text-sm">{formatMetric(daily()!.myEntry!)}</p>
+              <p class="font-mono font-black text-sm">{formatMetric(activeBoard()!.myEntry!)}</p>
             </div>
           </Show>
 
           {/* On mobile / small screens, show share card at the bottom */}
           <Show when={shareData()}>
             <div class="2xl:hidden card pop-pink p-3.5 space-y-2">
-              <Show when={daily()?.myEntry}>
+              <Show when={activeBoard()?.myEntry}>
                 <div class="flex items-center justify-between text-xs font-black text-[var(--ink)] pb-1 border-b border-[var(--ink)]/20">
-                  <span>Your Rank: #{daily()!.myEntry!.rank}</span>
-                  <span class="font-mono">{formatMetric(daily()!.myEntry!)}</span>
+                  <span>Your Rank: #{activeBoard()!.myEntry!.rank}</span>
+                  <span class="font-mono">{formatMetric(activeBoard()!.myEntry!)}</span>
                 </div>
               </Show>
               <div class="flex flex-wrap items-center justify-between gap-3">

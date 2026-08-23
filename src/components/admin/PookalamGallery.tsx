@@ -1,5 +1,6 @@
 import { ExternalLink, ThumbsDown, ThumbsUp } from "lucide-solid";
 import { For, Show, createMemo, createSignal, onMount } from "solid-js";
+import { LoadingScreen } from "~/components/LoadingScreen";
 import { reviewerListPookalams, reviewerSetVerdict } from "~/server/pookalam/actions";
 
 /**
@@ -73,7 +74,7 @@ export function PookalamGallery() {
         </p>
       </Show>
 
-      <Show when={rows()} fallback={<p class="text-sm">Loading…</p>}>
+      <Show when={rows()} fallback={<LoadingScreen compact message="Loading submissions…" />}>
         <Show when={rows()!.length > 0} fallback={<p class="text-sm">Nothing submitted yet.</p>}>
           <div class="grid gap-3 md:grid-cols-2">
             <For each={rows()!}>

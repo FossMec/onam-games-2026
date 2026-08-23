@@ -149,32 +149,15 @@ export default defineConfig({
         },
       },
       routeRules: {
-        // Landing page: SSR enabled with Cloudflare Edge caching
-        "/": {
+        // Server RPC & API endpoints: NEVER cache at the edge
+        "/_server/**": {
           headers: {
-            "cache-control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
+            "cache-control": "private, no-cache, no-store, must-revalidate",
           },
         },
-        // Leaderboard: Edge CDN cached (60s) so hard reloads are served instantly by CDN
-        "/leaderboard": {
+        "/api/**": {
           headers: {
-            "cache-control": "public, max-age=15, s-maxage=60, stale-while-revalidate=120",
-          },
-        },
-        "/leaderboard/**": {
-          headers: {
-            "cache-control": "public, max-age=15, s-maxage=60, stale-while-revalidate=120",
-          },
-        },
-        // Interactive game lists and schedules
-        "/games": {
-          headers: {
-            "cache-control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
-          },
-        },
-        "/games/**": {
-          headers: {
-            "cache-control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
+            "cache-control": "private, no-cache, no-store, must-revalidate",
           },
         },
         // Static content pages: Prerendered / 24h Edge Caching

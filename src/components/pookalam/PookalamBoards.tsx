@@ -2,6 +2,7 @@ import { A } from "@solidjs/router";
 import { Gavel, RefreshCw, Timer, Trophy } from "lucide-solid";
 import { For, Show, createSignal, onMount } from "solid-js";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
+import { LoadingScreen } from "~/components/LoadingScreen";
 import { POOKALAM } from "~/lib/event-content";
 import { getArenaBoards } from "~/server/pookalam/actions";
 
@@ -76,7 +77,7 @@ export function PookalamBoards() {
   onMount(() => void load());
 
   return (
-    <Show when={loaded()} fallback={<p class="font-semibold">Loading…</p>}>
+    <Show when={loaded()} fallback={<LoadingScreen compact message="Inking pookalam standings…" />}>
       <Show
         when={boards()}
         fallback={

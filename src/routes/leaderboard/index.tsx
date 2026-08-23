@@ -1,13 +1,6 @@
-import { clientOnly } from "@solidjs/start";
 import { Meta, Title } from "@solidjs/meta";
-import { LoadingScreen } from "~/components/LoadingScreen";
+import { LeaderboardView } from "~/components/leaderboard/LeaderboardView";
 import { SITE_URL } from "~/lib/site";
-
-const LeaderboardView = clientOnly(() =>
-  import("~/components/leaderboard/LeaderboardView").then((m) => ({
-    default: m.LeaderboardView,
-  })),
-);
 
 export default function Leaderboard() {
   return (
@@ -34,7 +27,7 @@ export default function Leaderboard() {
       />
       <Meta name="twitter:image" content={`${SITE_URL}/images/lb-og.webp`} />
 
-      <LeaderboardView fallback={<LoadingScreen message="Inking leaderboard..." />} />
+      <LeaderboardView />
     </>
   );
 }

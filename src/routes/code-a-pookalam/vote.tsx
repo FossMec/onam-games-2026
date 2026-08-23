@@ -1,7 +1,7 @@
 import { Title } from "@solidjs/meta";
 import { A } from "@solidjs/router";
 import { ChartColumnBig } from "lucide-solid";
-import { For, Show, createSignal, onMount } from "solid-js";
+import { For, Show, createEffect, createSignal, onMount } from "solid-js";
 import { Bubble } from "~/components/art/Burst";
 import { ShoutBurst } from "~/components/art/Burst";
 import { Countdown } from "~/components/Countdown";
@@ -109,8 +109,22 @@ export default function VotePookalam() {
     }
   });
 
+  // Auto-refill if queue ever runs dry and not done
+  createEffect(() => {
+    if (gateOpen() && signedIn() && queue().length === 0 && !done() && !fetching()) {
+      void refillQueue(25);
+    }
+  });
+
+  // Reset load states per pair, but fall back if already complete
+  createEffect(() => {
+    const p = pair();
+    if (!p) return;
+    setLeftLoaded(false);
+    setRightLoaded(false);
+  });
+
   const pick = async (winner: PairEntry, loser: PairEntry) => {
-    if (!bothLoaded()) return;
     const curQueue = queue();
     if (curQueue.length === 0) return;
 
@@ -130,10 +144,10 @@ export default function VotePookalam() {
     try {
       const result = await votePookalam(winner.id, loser.id);
       if (!result.ok) {
-        setError(result.reason ?? "That vote did not count.");
+        console.warn("[vote] vote rejected:", result.reason);
       }
-    } catch {
-      setError("Could not record that vote.");
+    } catch (err) {
+      console.error("[vote] failed:", err);
     }
   };
 
@@ -267,6 +281,7 @@ export default function VotePookalam() {
                   bothLoaded={bothLoaded()}
                   onLoaded={() => setLeftLoaded(true)}
                   onPick={pick}
+                  disabled={!bothLoaded()}
                 />
                 <Choice
                   entry={pair()!.right}
@@ -277,6 +292,7 @@ export default function VotePookalam() {
                   bothLoaded={bothLoaded()}
                   onLoaded={() => setRightLoaded(true)}
                   onPick={pick}
+                  disabled={!bothLoaded()}
                 />
               </div>
             </Show>
@@ -298,32 +314,21 @@ export default function VotePookalam() {
  *
  * Its own small component rather than `HowToPlayPanel` because that one is
  * built around a game type: it renders an animated demo and a playable trial,
- * and neither exists for "look at two pictures". Same shell, same numbered
- * steps, no tabs to a trial that would be blank.
+ * neither of which applies to a binary choice.
  */
 function HowToVote() {
   const [open, setOpen] = createSignal(false);
   const [showMath, setShowMath] = createSignal(false);
+
   return (
-    <section class="card card-plain space-y-3">
+    <section class="card card-plain space-y-2 p-3">
       <button
         type="button"
-        class="flex w-full items-center justify-between gap-3 text-left"
+        class="flex w-full items-center justify-between font-extrabold text-xs"
         onClick={() => setOpen((v) => !v)}
-        aria-expanded={open()}
       >
-        <span class="rule flex-1">How voting works</span>
-        <span
-          class="grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm"
-          style={{
-            background: "var(--paper-3)",
-            border: "2px solid var(--ink)",
-            "font-family": "var(--font-stack-display)",
-            "font-weight": 800,
-          }}
-        >
-          {open() ? "−" : "+"}
-        </span>
+        <span>How voting works</span>
+        <span>{open() ? "−" : "+"}</span>
       </button>
 
       <Show when={open()}>
@@ -373,16 +378,25 @@ function Choice(props: {
   onLoaded: () => void;
   onPick: (winner: PairEntry, loser: PairEntry) => void;
 }) {
+  let imgRef: HTMLImageElement | undefined;
+
+  createEffect(() => {
+    const _url = props.entry.imageUrl;
+    if (imgRef && imgRef.complete) {
+      props.onLoaded();
+    }
+  });
+
   return (
     <button
       type="button"
       class="card block w-full space-y-2.5 p-2.5 text-left transition-transform active:scale-[0.99]"
       style={{
         "--pop": props.pop,
-        cursor: props.disabled || !props.bothLoaded ? "wait" : "pointer",
-        opacity: props.bothLoaded ? "1" : "0.85",
+        cursor: props.disabled ? "wait" : "pointer",
+        opacity: props.bothLoaded ? "1" : "0.9",
       }}
-      disabled={props.disabled || !props.bothLoaded}
+      disabled={props.disabled}
       aria-label={`Pick the ${props.label.toLowerCase()}`}
       onClick={() => props.onPick(props.entry, props.other)}
     >
@@ -397,11 +411,16 @@ function Choice(props: {
         </Show>
 
         <img
+          ref={(el) => {
+            imgRef = el;
+            if (el.complete) props.onLoaded();
+          }}
           src={props.entry.imageUrl}
           alt=""
           loading="eager"
           decoding="async"
           onLoad={() => props.onLoaded()}
+          onError={() => props.onLoaded()}
           class={`w-full h-full object-contain transition-opacity duration-150 ${
             props.loaded ? "opacity-100" : "opacity-0"
           }`}
@@ -412,7 +431,7 @@ function Choice(props: {
         class="text-center font-extrabold m-0"
         style={{ "font-family": "var(--font-stack-display)" }}
       >
-        {props.bothLoaded ? "THIS ONE" : "LOADING…"}
+        THIS ONE
       </p>
     </button>
   );

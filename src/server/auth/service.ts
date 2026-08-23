@@ -271,7 +271,8 @@ async function getCurrentUserUncached(): Promise<PublicUser | null> {
 
 /** A session is worth refreshing once it is within a minute of expiring. */
 function isRefreshDue(expiresAt: Date | null): boolean {
-  return (expiresAt?.getTime() ?? 0) <= Date.now() + 60_000;
+  if (!expiresAt) return false;
+  return expiresAt.getTime() <= Date.now() + 60_000;
 }
 
 /** Device id bound to the current session, if any. */
@@ -325,34 +326,38 @@ export async function requireReviewer(): Promise<PublicUser> {
  * Refresh the stored Supabase access token.
  */
 async function refreshSessionIfNeeded(sessionId: string): Promise<void> {
-  const db = getDb();
-  const rows = await db<{ refresh_token: string; expires_at: Date | null }[]>`
-    SELECT refresh_token, expires_at
-    FROM auth_sessions
-    WHERE id = ${sessionId} AND revoked_at IS NULL
-    LIMIT 1
-  `;
-  const row = rows[0];
-  if (!row) return;
-  if (!isRefreshDue(row.expires_at)) return;
+  try {
+    const db = getDb();
+    const rows = await db<{ refresh_token: string | null; expires_at: Date | null }[]>`
+      SELECT refresh_token, expires_at
+      FROM auth_sessions
+      WHERE id = ${sessionId} AND revoked_at IS NULL
+      LIMIT 1
+    `;
+    const row = rows[0];
+    if (!row || !row.refresh_token) return;
+    if (!isRefreshDue(row.expires_at)) return;
 
-  const { data, error } = await getSupabaseAnon().auth.refreshSession({
-    refresh_token: row.refresh_token,
-  });
-  if (error || !data.session) {
-    await db`UPDATE auth_sessions SET revoked_at = NOW() WHERE id = ${sessionId}`;
-    return;
+    const { data, error } = await getSupabaseAnon().auth.refreshSession({
+      refresh_token: row.refresh_token,
+    });
+    if (error || !data.session) {
+      console.warn("[auth] background refreshSession failed:", error?.message);
+      return;
+    }
+    const newExpiresAt = data.session.expires_at ? new Date(data.session.expires_at * 1000) : null;
+    await db`
+      UPDATE auth_sessions
+      SET
+        access_token = ${data.session.access_token},
+        refresh_token = ${data.session.refresh_token},
+        expires_at = ${newExpiresAt},
+        last_seen_at = NOW()
+      WHERE id = ${sessionId}
+    `;
+  } catch (err) {
+    console.warn("[auth] refreshSession error:", err);
   }
-  const newExpiresAt = data.session.expires_at ? new Date(data.session.expires_at * 1000) : null;
-  await db`
-    UPDATE auth_sessions
-    SET
-      access_token = ${data.session.access_token},
-      refresh_token = ${data.session.refresh_token},
-      expires_at = ${newExpiresAt},
-      last_seen_at = NOW()
-    WHERE id = ${sessionId}
-  `;
 }
 
 export async function signOut(): Promise<void> {
