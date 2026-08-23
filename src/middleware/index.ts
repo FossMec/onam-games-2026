@@ -16,9 +16,13 @@ const ASSET_EXT =
 
 export default createMiddleware([
   async (event, next) => {
-    const start = performance.now();
     const requestEvent = getRequestEvent();
-    if (requestEvent) {
+    // Only allocate a requestId for sensitive paths to save CPU on hot GETs
+    const pathEarly = new URL(event.req.url).pathname;
+    const isMutatingEarly = MUTATING.has(event.req.method);
+    const needsRequestId =
+      pathEarly.startsWith("/api") || pathEarly.startsWith("/auth") || isMutatingEarly;
+    if (requestEvent && needsRequestId) {
       requestEvent.locals.requestId = crypto.randomUUID();
     }
 
@@ -65,12 +69,6 @@ export default createMiddleware([
       }
     }
 
-    try {
-      return await next();
-    } finally {
-      const duration = Math.round((performance.now() - start) * 100) / 100;
-      event.res.headers.set("Server-Timing", `total;dur=${duration}`);
-      console.log(`[CPU_PROFILER] ${event.req.method} ${path} ${duration}ms`);
-    }
+    return next();
   },
 ]);

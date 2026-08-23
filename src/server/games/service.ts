@@ -271,8 +271,11 @@ function maskCard(card: GameCard): GameCard {
  * status is still recomputed on every single request.
  */
 function publishedGameRows() {
-  return sharedRead("games:rows", async () => {
-    return getDb()<Game[]>`
+  // Game rows rarely change (admin edits only). Aggressive TTL reduces DB + CPU on hot paths.
+  return sharedRead(
+    "games:rows",
+    async () => {
+      return getDb()<Game[]>`
       SELECT
         id,
         slug,
@@ -293,7 +296,9 @@ function publishedGameRows() {
       WHERE published = true
       ORDER BY day ASC
     `;
-  });
+    },
+    300_000,
+  );
 }
 
 async function computeGamesList(viewerRole: ViewerRole): Promise<GameCard[]> {
@@ -317,7 +322,9 @@ async function computeGamesList(viewerRole: ViewerRole): Promise<GameCard[]> {
 }
 
 export function getGamesList(viewerRole: ViewerRole): Promise<GameCard[]> {
-  return sharedRead(`games:list:${viewerRole}`, () => computeGamesList(viewerRole), 5_000);
+  // Aggressive 5min TTL: list is derived from rows+schedule, both rarely change.
+  // Admin writes invalidate via invalidateShared("games:") in settings/service.ts
+  return sharedRead(`games:list:${viewerRole}`, () => computeGamesList(viewerRole), 300_000);
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;

@@ -123,6 +123,15 @@ export default defineConfig({
         },
       },
       routeRules: {
+        // Home is the only SSR page — cache at edge with SWR so repeated hits
+        // don't pay 10-15ms Worker CPU. Games are fully CSR (see [slug].tsx
+        // window guard) so they cost ~1ms shell only.
+        "/": {
+          cache: { maxAge: 60, staleMaxAge: 600, swr: true },
+          headers: {
+            "cache-control": "public, max-age=10, s-maxage=60, stale-while-revalidate=600",
+          },
+        },
         // Server RPC & API endpoints: NEVER cache at the edge
         "/_server/**": {
           headers: {

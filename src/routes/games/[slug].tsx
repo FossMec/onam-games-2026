@@ -1,7 +1,6 @@
 import { clientOnly } from "@solidjs/start";
 import { Link, Meta, Title } from "@solidjs/meta";
 import { A, createAsync, useNavigate, useParams, revalidate } from "@solidjs/router";
-import type { RouteDefinition } from "@solidjs/router";
 import { ChevronLeft } from "lucide-solid";
 import { SITE_URL } from "~/lib/site";
 import { formatAdaptiveClock, formatAdaptiveDuration } from "~/lib/time";
@@ -71,12 +70,13 @@ import {
 } from "~/lib/game-session";
 import { SHOUT_COLOR, moodForResult, shout } from "~/lib/shouts";
 
-export const route = {
-  preload: ({ params }: any) => {
-    void gameBySlug(params.slug);
-    void myAttemptQuery(params.slug);
-  },
-} satisfies RouteDefinition;
+/**
+ * Fully CSR: SSR bails early (see GameArenaPage window guard below).
+ * Preload is intentionally removed — it would run gameBySlug/myAttempt on the
+ * server and burn 10-15ms CPU per hit. Data loads client-side via query cache
+ * after hydration, which keeps SSR to a ~1ms shell.
+ * Warm the game chunk as soon as the slug is known instead.
+ */
 
 function warmChunkForGameType(type: string) {
   switch (type) {
@@ -142,6 +142,15 @@ const FRIENDLY_ERRORS: Record<string, string> = {
 const friendly = (raw: string) => FRIENDLY_ERRORS[raw] ?? raw;
 
 export default function GameArenaPage() {
+  // SSR bail: render a cheap shell on the server, do zero DB/CPU.
+  // Matches admin/index.tsx pattern; Cloudflare Pages free has 10ms CPU budget.
+  if (typeof window === "undefined") {
+    return (
+      <div class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[var(--paper)]">
+        <LoadingScreen compact message="Inking daily challenge…" />
+      </div>
+    );
+  }
   const params = useParams();
   const navigate = useNavigate();
   const slug = () => params.slug ?? "";
@@ -244,6 +253,22 @@ export default function GameArenaPage() {
   });
 
   const fetchAttemptView = async () => {
+    // Ensure game metadata is loaded before starting — otherwise the server
+    // clock (started_at) begins while the client is still downloading the
+    // game chunk/view, and the player loses wall time. Poll briefly for game.
+    if (game() === undefined) {
+      for (let i = 0; i < 40 && game() === undefined; i++) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      if (game() === undefined) {
+        setError("Game data is still loading. Retrying…");
+        return;
+      }
+    }
+    // Warm the correct game chunk *before* POST /start so view+chunk overlap,
+    // but never start the timer until the view is ready.
+    const g = game();
+    if (g?.gameType) await warmChunkForGameType(g.gameType).catch(() => {});
     setBusy(true);
     try {
       const res = await fetch(`/api/game/${slug()}/start`, { method: "POST" });
