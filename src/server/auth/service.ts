@@ -359,6 +359,7 @@ async function refreshSessionIfNeeded(sessionId: string): Promise<void> {
 export async function signOut(): Promise<void> {
   const data = await readAuthCookie();
   if (data?.sid) {
+    invalidateShared(`user:session:${data.sid}`);
     invalidateShared(`session:${data.sid}`);
     const db = getDb();
     const rows = await db<{ refresh_token: string }[]>`

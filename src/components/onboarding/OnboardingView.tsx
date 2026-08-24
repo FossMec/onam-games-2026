@@ -1,5 +1,5 @@
 import { Title } from "@solidjs/meta";
-import { createAsync, useNavigate } from "@solidjs/router";
+import { createAsync, revalidate, useNavigate } from "@solidjs/router";
 import {
   BookOpen,
   Briefcase,
@@ -158,10 +158,20 @@ export function OnboardingView() {
         whatsappNumber: whatsapp().replace(/[\s\-()]/g, ""),
       });
       if (result.ok) {
+        // `shell` is cached by `query`/`createAsync` on the client.
+        // Without this, `me().onboardingCompleted` stays `false` after the
+        // mutation and the hub's `if (!onboardingCompleted) redirect to
+        // /onboarding` bounces the player straight back.
+        // `getCurrentUser` server cache was also prefixed wrong (`session:` vs
+        // `user:session:`) and left per-request memo stale — fixed server side
+        // in onboarding.ts, but client still needs an explicit revalidation.
+        await Promise.all([revalidate("shell"), revalidate("viewer")]);
         if (me()?.onboardingCompleted) {
           setMessage("Profile updated successfully!");
           setTimeout(() => navigate("/", { replace: true }), 600);
         } else {
+          // revalidation above already flipped me(); keep justCompleted UI
+          // but ensure the next navigation sees onboardingCompleted=true
           setJustCompleted(true);
           setMessage("Profile completed! Welcome aboard 🎉");
         }
@@ -270,7 +280,10 @@ export function OnboardingView() {
 
                 <button
                   type="button"
-                  onClick={() => navigate("/", { replace: true })}
+                  onClick={async () => {
+                    await Promise.all([revalidate("shell"), revalidate("viewer")]);
+                    navigate("/", { replace: true });
+                  }}
                   class="btn-brand w-full py-2.5 text-sm font-black cursor-pointer"
                 >
                   Continue to Games →

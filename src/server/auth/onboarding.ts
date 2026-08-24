@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getRequestEvent } from "solid-js/web";
 import { logSuspicious } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
 import { getSupabaseAdmin } from "~/server/supabase/client";
@@ -11,6 +12,7 @@ import {
   occupationValues,
 } from "~/lib/profile";
 import { requireCurrentUser } from "./service";
+import { readAuthCookie } from "./session";
 
 const optionalTrimmed = (min: number, max: number, pattern?: RegExp) =>
   z
@@ -164,6 +166,30 @@ export async function completeOnboarding(input: OnboardingInput): Promise<void> 
     WHERE id = ${user.id}
   `;
 
+  // getCurrentUser() is memoized per-request on two layers:
+  //   1. event.locals.currentUserPromise
+  //   2. requestMemo(`user:session:${sid}`)  -> event.locals.__memo
+  // invalidateShared only clears the shared global Map, so the stale
+  // per-request memo would survive for the rest of this request and
+  // the next server read in the same isolate would still see
+  // onboardingCompleted=false. Clear both, and also clear the shared
+  // store with the CORRECT prefix (`user:session:` not `session:`).
+  const event = getRequestEvent();
+  if (event) {
+    (event.locals as Record<string, unknown>).currentUserPromise = undefined;
+    const bag = (event.locals as Record<string, unknown>).__memo as
+      | Map<string, unknown>
+      | undefined;
+    if (bag) {
+      // we need sid to delete the exact key; read from already-decrypted cookie
+      const sid = (await readAuthCookie())?.sid;
+      if (sid) bag.delete(`user:session:${sid}`);
+      // also drop the cookie memo so a re-read decrypts fresh
+      bag.delete("auth:cookie");
+    }
+  }
+  invalidateShared("user:session:");
+  // keep legacy prefix too in case any isolate still has old keys
   invalidateShared("session:");
 }
 
