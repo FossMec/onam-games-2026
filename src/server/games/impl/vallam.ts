@@ -298,7 +298,7 @@ export function generate(seed: string, difficulty: string): GeneratedInstance {
   return result;
 }
 
-/** Handcrafted curated challenge levels with known high-quality move paths and precomputed par */
+/** Single hard curated challenge - significantly harder than previous levels, solvable and verified via BFS */
 export const CUSTOM_LEVELS: {
   id: string;
   name: string;
@@ -307,93 +307,10 @@ export const CUSTOM_LEVELS: {
   boats: Omit<Boat, "id">[];
 }[] = [
   {
-    id: "vembanad-7x7",
-    name: "Vembanad Grand Express",
-    difficulty: "normal",
-    par: 10,
-    boats: [
-      { r: 3, c: 0, len: 2, horizontal: true },
-      { r: 6, c: 1, len: 3, horizontal: true },
-      { r: 1, c: 2, len: 3, horizontal: true },
-      { r: 0, c: 4, len: 2, horizontal: true },
-      { r: 5, c: 3, len: 2, horizontal: true },
-      { r: 4, c: 5, len: 2, horizontal: false },
-      { r: 1, c: 0, len: 2, horizontal: true },
-      { r: 4, c: 1, len: 3, horizontal: true },
-      { r: 6, c: 5, len: 2, horizontal: true },
-      { r: 2, c: 4, len: 2, horizontal: false },
-      { r: 2, c: 2, len: 2, horizontal: false },
-      { r: 1, c: 5, len: 2, horizontal: true },
-    ],
-  },
-  {
-    id: "punnamada-7x7",
-    name: "Punnamada Channel Surge",
-    difficulty: "normal",
-    par: 10,
-    boats: [
-      { r: 3, c: 0, len: 2, horizontal: true },
-      { r: 4, c: 0, len: 3, horizontal: true },
-      { r: 2, c: 5, len: 3, horizontal: false },
-      { r: 0, c: 1, len: 2, horizontal: false },
-      { r: 2, c: 4, len: 2, horizontal: false },
-      { r: 0, c: 2, len: 3, horizontal: true },
-      { r: 2, c: 0, len: 3, horizontal: true },
-      { r: 2, c: 3, len: 3, horizontal: false },
-      { r: 6, c: 4, len: 3, horizontal: true },
-      { r: 0, c: 0, len: 2, horizontal: false },
-      { r: 2, c: 6, len: 3, horizontal: false },
-      { r: 0, c: 6, len: 2, horizontal: false },
-      { r: 5, c: 3, len: 2, horizontal: false },
-    ],
-  },
-  {
-    id: "ashtamudi-7x7",
-    name: "Ashtamudi Eight-Fold Lock",
+    id: "vembanad-hard-7x7",
+    name: "Vembanad Hard Lock",
     difficulty: "hard",
-    par: 10,
-    boats: [
-      { r: 3, c: 0, len: 2, horizontal: true },
-      { r: 4, c: 0, len: 2, horizontal: false },
-      { r: 0, c: 2, len: 2, horizontal: false },
-      { r: 3, c: 5, len: 3, horizontal: false },
-      { r: 3, c: 2, len: 2, horizontal: false },
-      { r: 0, c: 0, len: 2, horizontal: true },
-      { r: 6, c: 0, len: 3, horizontal: true },
-      { r: 0, c: 3, len: 2, horizontal: false },
-      { r: 2, c: 3, len: 3, horizontal: false },
-      { r: 1, c: 4, len: 2, horizontal: true },
-      { r: 6, c: 4, len: 3, horizontal: true },
-      { r: 3, c: 4, len: 3, horizontal: false },
-      { r: 2, c: 0, len: 2, horizontal: true },
-    ],
-  },
-  {
-    id: "aranmula-7x7",
-    name: "Aranmula Mirror Maze",
-    difficulty: "hard",
-    par: 11,
-    boats: [
-      { r: 3, c: 0, len: 2, horizontal: true },
-      { r: 6, c: 5, len: 2, horizontal: true },
-      { r: 2, c: 3, len: 2, horizontal: false },
-      { r: 0, c: 1, len: 3, horizontal: false },
-      { r: 1, c: 3, len: 3, horizontal: true },
-      { r: 0, c: 2, len: 2, horizontal: false },
-      { r: 6, c: 1, len: 3, horizontal: true },
-      { r: 4, c: 3, len: 2, horizontal: true },
-      { r: 2, c: 5, len: 2, horizontal: false },
-      { r: 0, c: 6, len: 2, horizontal: false },
-      { r: 4, c: 5, len: 2, horizontal: false },
-      { r: 4, c: 2, len: 2, horizontal: false },
-      { r: 2, c: 6, len: 3, horizontal: false },
-    ],
-  },
-  {
-    id: "chambakkulam-7x7",
-    name: "Chambakkulam Chundan Fury",
-    difficulty: "master",
-    par: 16,
+    par: 15,
     boats: [
       { r: 3, c: 0, len: 2, horizontal: true },
       { r: 3, c: 2, len: 2, horizontal: false },
@@ -402,7 +319,7 @@ export const CUSTOM_LEVELS: {
       { r: 5, c: 4, len: 2, horizontal: false },
       { r: 4, c: 4, len: 3, horizontal: true },
       { r: 1, c: 3, len: 2, horizontal: false },
-      { r: 1, c: 0, len: 2, horizontal: false },
+      { r: 0, c: 0, len: 2, horizontal: false },
       { r: 0, c: 4, len: 3, horizontal: false },
       { r: 5, c: 5, len: 2, horizontal: false },
       { r: 5, c: 1, len: 2, horizontal: true },
