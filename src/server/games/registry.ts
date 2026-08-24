@@ -134,7 +134,7 @@ const HOUR = 60 * MINUTE;
 export const GAMES: readonly GameDef[] = [
   /* ---------------------------------------------------------------- day 1 */
   {
-    slug: "open-source-tinder",
+    slug: "fosswipe",
     day: 1,
     gameType: "tinder",
     metric: "time",
@@ -143,10 +143,11 @@ export const GAMES: readonly GameDef[] = [
     maxDurationMs: 24 * HOUR,
     maxSubmissionBytes: 32_000,
     public: {
-      title: "Open Source Tinder",
-      tagline: "Swipe right on freedom. Swipe left on the EULA.",
+      title: "FOSSwipe",
+      tagline:
+        "Why sign a proprietary contract when you can have it fully permissive with no strings attached?",
       hint: "Some of these logos are lying to you.",
-      teaser: "An interface you'll find most useful in your life.",
+      teaser: "Swipe right, no long-term commitment required. Tomorrow, you finally Git Laid.",
       howTo: [
         "Swipe right if it's open source. Swipe left if it's proprietary. Arrow keys work too.",
         "Open source means you can read the code, change it, and share it. Not just that it's free to download - plenty of things cost nothing and still own you.",
@@ -200,8 +201,8 @@ export const GAMES: readonly GameDef[] = [
     maxSubmissionBytes: 16_000,
     public: {
       title: "sudoWend",
-      tagline: "Six words, one grid, and absolutely no room to spare.",
-      hint: "If a word leaves a tile stranded, it's the wrong word.",
+      tagline: "Word hunt with root permissions.",
+      hint: "Word hunt with root permissions.",
       teaser: "A word puzzle entangled in banana leaves.",
       howTo: [
         "Drag across the letters to trace a word. Paths bend - up, down, left, right, never diagonally.",
@@ -255,7 +256,7 @@ export const GAMES: readonly GameDef[] = [
     maxSubmissionBytes: 128_000,
     public: {
       title: "Maveli Jump",
-      tagline: "One year of freedom. Infinite platforms. Zero dignity.",
+      tagline: "Paathalam is below. Kerala is above. Start climbing.",
       hint: "Paathalam is below. Kerala is above. Start climbing.",
       teaser: "Help the king hop the platforms back to earth.",
       howTo: [

@@ -79,6 +79,7 @@ export function UsersTab(props: UsersTabProps) {
   const [sortBy, setSortBy] = createSignal<"newest" | "oldest" | "name" | "streak" | "trust">(
     "newest",
   );
+  const [showAllExact, setShowAllExact] = createSignal(false);
 
   // Ban Modal state
   const [targetUser, setTargetUser] = createSignal<UserRow | null>(null);
@@ -302,160 +303,6 @@ export function UsersTab(props: UsersTabProps) {
         </div>
       </div>
 
-      {/* PRIMARY INSIGHTS — MEC year & batch are the hero graphs */}
-      <div class="grid lg:grid-cols-2 gap-3">
-        {/* MEC by Year — MOST IMPORTANT */}
-        <div class="card p-3 bg-[var(--paper)] border-2 border-[var(--ink)] space-y-2">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="p-1.5 rounded bg-[var(--pop-yellow)] border border-[var(--ink)]">
-                <GraduationCap size={14} strokeWidth={2.5} />
-              </span>
-              <h3 class="font-black text-sm leading-none">
-                MEC Students by Year
-                <span class="ml-1.5 font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--pop-yellow)] border border-[var(--ink)] align-middle">
-                  PRIMARY
-                </span>
-              </h3>
-            </div>
-            <span class="text-[11px] font-mono font-bold opacity-70">
-              MEC {stats().mecTotal}/{stats().total}
-            </span>
-          </div>
-          <p class="text-[11px] font-semibold opacity-70 -mt-1">
-            Batch → year mapping: ’30=1st, ’29=2nd, ’28=3rd, ’27=4th
-          </p>
-          <MiniBarChart
-            entries={Array.from(stats().mecYearMap.entries()).map(([label, count]) => ({
-              label,
-              count,
-            }))}
-            total={stats().mecTotal}
-            color="var(--pop-yellow)"
-            emptyLabel="No MEC users in this filtered set"
-          />
-        </div>
-
-        {/* MEC by Exact Class — SECOND HERO: Year + Branch + Division combined */}
-        <div class="card p-3 bg-[var(--paper)] border-2 border-[var(--ink)] space-y-2">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="p-1.5 rounded bg-[var(--pop-teal)] border border-[var(--ink)]">
-                <Layers size={14} strokeWidth={2.5} />
-              </span>
-              <h3 class="font-black text-sm leading-none">
-                MEC Students by Exact Class
-                <span class="ml-1.5 font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--pop-teal)] border border-[var(--ink)] align-middle">
-                  PRIMARY
-                </span>
-              </h3>
-            </div>
-            <span class="text-[11px] font-mono font-bold opacity-70">{stats().mecTotal} total</span>
-          </div>
-          <p class="text-[11px] font-semibold opacity-70 -mt-1">
-            Year + Batch + Branch + Division — each bar is one classroom (e.g. 3rd Yr ’28 · CS · A)
-          </p>
-          <MiniBarChart
-            entries={stats().mecExactEntries}
-            total={stats().mecTotal}
-            color="var(--pop-teal)"
-            emptyLabel="No MEC classes in this filtered set"
-          />
-        </div>
-      </div>
-
-      {/* SECONDARY INSIGHTS — lightweight, pure CSS */}
-      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <SmallStatCard title="MEC Division" icon={<Layers size={13} />}>
-          <MiniBarChart
-            entries={[
-              { label: "A", count: stats().mecDivMap.get("a") ?? 0 },
-              { label: "B", count: stats().mecDivMap.get("b") ?? 0 },
-              { label: "C", count: stats().mecDivMap.get("c") ?? 0 },
-              { label: "— / none", count: stats().mecDivMap.get("none") ?? 0 },
-            ]}
-            total={stats().mecTotal}
-            color="var(--pop-pink)"
-            compact
-          />
-        </SmallStatCard>
-
-        <SmallStatCard title="MEC Branch (class)" icon={<GraduationCap size={13} />}>
-          <MiniBarChart
-            entries={BRANCH_ORDER.map((b) => ({
-              label: branchShort(b).toUpperCase(),
-              count: stats().mecBranch.map.get(b) ?? 0,
-            }))}
-            total={stats().mecTotal}
-            color="var(--pop-purple)"
-            compact
-          />
-        </SmallStatCard>
-
-        <SmallStatCard title="College split" icon={<GraduationCap size={13} />}>
-          <div class="flex gap-2 text-[11px] font-bold">
-            <span class="px-2 py-1 rounded bg-[var(--pop-yellow)] border border-[var(--ink)] flex-1 text-center">
-              MEC {stats().collegeMec}
-            </span>
-            <span class="px-2 py-1 rounded bg-[var(--paper-2)] border border-[var(--ink)] flex-1 text-center">
-              Other {stats().collegeOther}
-            </span>
-          </div>
-          <div class="mt-2 flex h-2 rounded-full overflow-hidden border border-[var(--ink)]">
-            <div
-              class="bg-[var(--pop-yellow)] transition-all"
-              style={{
-                width: `${stats().total ? (stats().collegeMec / stats().total) * 100 : 0}%`,
-              }}
-            />
-            <div class="bg-[var(--ink-soft)] transition-all flex-1" />
-          </div>
-          <div class="mt-1 flex justify-between text-[10px] font-mono opacity-60">
-            <span>
-              {stats().total ? Math.round((stats().collegeMec / stats().total) * 100) : 0}% MEC
-            </span>
-            <span>{stats().banned} banned in view</span>
-          </div>
-        </SmallStatCard>
-
-        <SmallStatCard title="Contact given" icon={<Phone size={13} />}>
-          <div class="space-y-1.5">
-            <div class="flex items-center justify-between text-[11px] font-bold">
-              <span class="inline-flex items-center gap-1">
-                <AtSign size={12} /> Instagram
-              </span>
-              <span class="font-mono">
-                {stats().instaYes}/{stats().total}
-              </span>
-            </div>
-            <div class="h-1.5 rounded-full bg-[var(--paper-2)] border border-[var(--ink)] overflow-hidden">
-              <div
-                class="h-full bg-[var(--pop-pink)] transition-all"
-                style={{
-                  width: `${stats().total ? (stats().instaYes / stats().total) * 100 : 0}%`,
-                }}
-              />
-            </div>
-            <div class="flex items-center justify-between text-[11px] font-bold pt-1">
-              <span class="inline-flex items-center gap-1">
-                <Phone size={12} /> WhatsApp
-              </span>
-              <span class="font-mono">
-                {stats().phoneYes}/{stats().total}
-              </span>
-            </div>
-            <div class="h-1.5 rounded-full bg-[var(--paper-2)] border border-[var(--ink)] overflow-hidden">
-              <div
-                class="h-full bg-[var(--pop-teal)] transition-all"
-                style={{
-                  width: `${stats().total ? (stats().phoneYes / stats().total) * 100 : 0}%`,
-                }}
-              />
-            </div>
-          </div>
-        </SmallStatCard>
-      </div>
-
       {/* Filter & Search Bar — every data element filterable, graphs + table share same filteredUsers */}
       <div class="card card-plain p-3 bg-[var(--paper-2)] space-y-3">
         <div class="grid sm:grid-cols-12 gap-2.5">
@@ -468,7 +315,7 @@ export function UsersTab(props: UsersTabProps) {
               type="text"
               value={search()}
               onInput={(e) => setSearch(e.currentTarget.value)}
-              placeholder="Search name, email, college, batch, phone, instagram…"
+              placeholder="Search name, email, college, batch, phone…"
               class="input w-full pl-8 text-xs font-semibold"
             />
             <Show when={search()}>
@@ -608,10 +455,177 @@ export function UsersTab(props: UsersTabProps) {
           </button>
         </div>
         <p class="text-[11px] font-semibold opacity-60">
-          Filters drive both the graphs above and the table below — e.g. pick “Players only”, “MEC
-          only”, or “’30” and the year/batch hero charts update instantly (no refetch). Click any
-          row to see phone number & full profile — table stays mounted on ban/role edits.
+          Filters drive both the graphs and the table below — e.g. pick “Players only”, “MEC only”,
+          or “’30” and the year/batch hero charts update instantly (no refetch). Click any row to
+          see phone number & full profile — table stays mounted on ban/role edits.
         </p>
+      </div>
+
+      {/* PRIMARY INSIGHTS — MEC year & batch are the hero graphs */}
+      <div class="grid lg:grid-cols-2 gap-3">
+        {/* MEC by Year — MOST IMPORTANT */}
+        <div class="card p-3 bg-[var(--paper)] border-2 border-[var(--ink)] space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="p-1.5 rounded bg-[var(--pop-yellow)] border border-[var(--ink)]">
+                <GraduationCap size={14} strokeWidth={2.5} />
+              </span>
+              <h3 class="font-black text-sm leading-none">
+                MEC Students by Year
+                <span class="ml-1.5 font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--pop-yellow)] border border-[var(--ink)] align-middle">
+                  PRIMARY
+                </span>
+              </h3>
+            </div>
+            <span class="text-[11px] font-mono font-bold opacity-70">
+              MEC {stats().mecTotal}/{stats().total}
+            </span>
+          </div>
+          <p class="text-[11px] font-semibold opacity-70 -mt-1">
+            Batch → year mapping: ’30=1st, ’29=2nd, ’28=3rd, ’27=4th
+          </p>
+          <MiniBarChart
+            entries={Array.from(stats().mecYearMap.entries()).map(([label, count]) => ({
+              label,
+              count,
+            }))}
+            total={stats().mecTotal}
+            color="var(--pop-yellow)"
+            emptyLabel="No MEC users in this filtered set"
+          />
+        </div>
+
+        {/* MEC by Exact Class — SECOND HERO: Year + Branch + Division combined */}
+        <div class="card p-3 bg-[var(--paper)] border-2 border-[var(--ink)] space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="p-1.5 rounded bg-[var(--pop-teal)] border border-[var(--ink)]">
+                <Layers size={14} strokeWidth={2.5} />
+              </span>
+              <h3 class="font-black text-sm leading-none">
+                MEC Students by Exact Class
+                <span class="ml-1.5 font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--pop-teal)] border border-[var(--ink)] align-middle">
+                  PRIMARY
+                </span>
+              </h3>
+            </div>
+            <span class="text-[11px] font-mono font-bold opacity-70">{stats().mecTotal} total</span>
+          </div>
+          <p class="text-[11px] font-semibold opacity-70 -mt-1">
+            Year + Batch + Branch + Division — each bar is one classroom (e.g. 3rd Yr ’28 · CS · A)
+          </p>
+          <div class={`${showAllExact() ? "max-h-64 overflow-y-auto pr-1 scrollbar-thin" : ""}`}>
+            <MiniBarChart
+              entries={
+                showAllExact() ? stats().mecExactEntries : stats().mecExactEntries.slice(0, 6)
+              }
+              total={stats().mecTotal}
+              color="var(--pop-teal)"
+              emptyLabel="No MEC classes in this filtered set"
+            />
+          </div>
+          <Show when={stats().mecExactEntries.length > 6}>
+            <button
+              type="button"
+              onClick={() => setShowAllExact((v) => !v)}
+              class="text-[11px] font-black underline decoration-2 underline-offset-2 hover:opacity-70 cursor-pointer"
+            >
+              {showAllExact() ? "Show less" : `Show ${stats().mecExactEntries.length - 6} more`}
+            </button>
+          </Show>
+        </div>
+      </div>
+
+      {/* SECONDARY INSIGHTS — lightweight, pure CSS */}
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <SmallStatCard title="MEC Division" icon={<Layers size={13} />}>
+          <MiniBarChart
+            entries={[
+              { label: "A", count: stats().mecDivMap.get("a") ?? 0 },
+              { label: "B", count: stats().mecDivMap.get("b") ?? 0 },
+              { label: "C", count: stats().mecDivMap.get("c") ?? 0 },
+              { label: "— / none", count: stats().mecDivMap.get("none") ?? 0 },
+            ]}
+            total={stats().mecTotal}
+            color="var(--pop-pink)"
+            compact
+          />
+        </SmallStatCard>
+
+        <SmallStatCard title="MEC Branch (class)" icon={<GraduationCap size={13} />}>
+          <MiniBarChart
+            entries={BRANCH_ORDER.map((b) => ({
+              label: branchShort(b).toUpperCase(),
+              count: stats().mecBranch.map.get(b) ?? 0,
+            }))}
+            total={stats().mecTotal}
+            color="var(--pop-purple)"
+            compact
+          />
+        </SmallStatCard>
+
+        <SmallStatCard title="College split" icon={<GraduationCap size={13} />}>
+          <div class="flex gap-2 text-[11px] font-bold">
+            <span class="px-2 py-1 rounded bg-[var(--pop-yellow)] border border-[var(--ink)] flex-1 text-center">
+              MEC {stats().collegeMec}
+            </span>
+            <span class="px-2 py-1 rounded bg-[var(--paper-2)] border border-[var(--ink)] flex-1 text-center">
+              Other {stats().collegeOther}
+            </span>
+          </div>
+          <div class="mt-2 flex h-2 rounded-full overflow-hidden border border-[var(--ink)]">
+            <div
+              class="bg-[var(--pop-yellow)] transition-all"
+              style={{
+                width: `${stats().total ? (stats().collegeMec / stats().total) * 100 : 0}%`,
+              }}
+            />
+            <div class="bg-[var(--ink-soft)] transition-all flex-1" />
+          </div>
+          <div class="mt-1 flex justify-between text-[10px] font-mono opacity-60">
+            <span>
+              {stats().total ? Math.round((stats().collegeMec / stats().total) * 100) : 0}% MEC
+            </span>
+            <span>{stats().banned} banned in view</span>
+          </div>
+        </SmallStatCard>
+
+        <SmallStatCard title="Contact given" icon={<Phone size={13} />}>
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between text-[11px] font-bold">
+              <span class="inline-flex items-center gap-1">
+                <AtSign size={12} /> Instagram
+              </span>
+              <span class="font-mono">
+                {stats().instaYes}/{stats().total}
+              </span>
+            </div>
+            <div class="h-1.5 rounded-full bg-[var(--paper-2)] border border-[var(--ink)] overflow-hidden">
+              <div
+                class="h-full bg-[var(--pop-pink)] transition-all"
+                style={{
+                  width: `${stats().total ? (stats().instaYes / stats().total) * 100 : 0}%`,
+                }}
+              />
+            </div>
+            <div class="flex items-center justify-between text-[11px] font-bold pt-1">
+              <span class="inline-flex items-center gap-1">
+                <Phone size={12} /> WhatsApp
+              </span>
+              <span class="font-mono">
+                {stats().phoneYes}/{stats().total}
+              </span>
+            </div>
+            <div class="h-1.5 rounded-full bg-[var(--paper-2)] border border-[var(--ink)] overflow-hidden">
+              <div
+                class="h-full bg-[var(--pop-teal)] transition-all"
+                style={{
+                  width: `${stats().total ? (stats().phoneYes / stats().total) * 100 : 0}%`,
+                }}
+              />
+            </div>
+          </div>
+        </SmallStatCard>
       </div>
 
       {/* Users Table — stable: only filteredUsers memo changes, outer page does NOT remount */}
@@ -673,11 +687,6 @@ export function UsersTab(props: UsersTabProps) {
                           </Show>
                         </div>
                         <div class="font-mono text-[11px] opacity-75">{u.email}</div>
-                        <Show when={u.instagramHandle}>
-                          <div class="text-[10px] opacity-60 inline-flex items-center gap-1">
-                            <AtSign size={10} /> {u.instagramHandle}
-                          </div>
-                        </Show>
                       </td>
                       <td class="p-3">
                         <div>{collegeLabel(u.college, u.collegeOther) ?? u.college ?? "—"}</div>
@@ -864,19 +873,6 @@ export function UsersTab(props: UsersTabProps) {
                     </Show>
                   </div>
 
-                  <div>
-                    <div class="font-black text-[11px] uppercase tracking-wide opacity-60">
-                      Instagram
-                    </div>
-                    <Show
-                      when={u.instagramHandle?.trim()}
-                      fallback={<div class="font-bold opacity-50">—</div>}
-                    >
-                      <div class="font-bold inline-flex items-center gap-1">
-                        <AtSign size={12} /> {u.instagramHandle}
-                      </div>
-                    </Show>
-                  </div>
                   <div>
                     <div class="font-black text-[11px] uppercase tracking-wide opacity-60">
                       Occupation

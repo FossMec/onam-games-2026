@@ -3,16 +3,18 @@
  *
  * - >= 1h  → `Xh Ym` (e.g. 2h 13m)
  * - >= 1m  → `Xm Ys` (e.g. 4m 12s)
- * - < 1m   → `Xs`    (e.g. 42s)
+ * - < 1m   → `S.cc s` with 2 decimal places (e.g. 42.35s)
  *
- * Seconds are integer-floored to keep the value stable next to a ticking
- * countdown. Callers that need sub-second (leaderboard tenths) should use
- * `formatDurationTenths` directly.
+ * Below 1 minute the leaderboard (and every other consumer) now shows
+ * seconds + centiseconds (`SS.cc s`, e.g. `12.34s`) so sub-minute time
+ * games can be ranked visually at 10ms precision. Callers that
+ * need the old integer-second view should floor before calling.
  */
 
 export function formatAdaptiveDuration(ms: number | null | undefined): string {
   if (ms == null || !Number.isFinite(ms) || ms <= 0) return "0s";
-  const totalSec = Math.floor(ms / 1000);
+  const totalMs = Math.floor(ms);
+  const totalSec = Math.floor(totalMs / 1000);
   if (totalSec >= 3600) {
     const h = Math.floor(totalSec / 3600);
     const m = Math.floor((totalSec % 3600) / 60);
@@ -23,7 +25,16 @@ export function formatAdaptiveDuration(ms: number | null | undefined): string {
     const s = totalSec % 60;
     return `${m}m ${s}s`;
   }
-  return `${totalSec}s`;
+  // 2 decimal places (centiseconds) — round to nearest 10ms
+  const totalCs = Math.round(totalMs / 10);
+  const sec = Math.floor(totalCs / 100);
+  const cs = totalCs % 100;
+  if (sec >= 60) {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}m ${s}s`;
+  }
+  return `${sec}.${String(cs).padStart(2, "0")}s`;
 }
 
 export function formatAdaptiveClock(totalSeconds: number): string {

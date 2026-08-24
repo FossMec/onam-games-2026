@@ -70,8 +70,8 @@ describe("figureFor", () => {
       value: "1,482",
       label: "M ABOVE PAATHALAM",
     });
-    expect(figureFor({ metric: "time", score: null, durationMs: 12_400 }).value).toBe("12s");
-    expect(figureFor({ metric: "fcfs", score: null, durationMs: 9_000 }).value).toBe("9s");
+    expect(figureFor({ metric: "time", score: null, durationMs: 12_400 }).value).toBe("12.40s");
+    expect(figureFor({ metric: "fcfs", score: null, durationMs: 9_000 }).value).toBe("9.00s");
   });
 
   it("survives a missing number rather than printing NaN", () => {

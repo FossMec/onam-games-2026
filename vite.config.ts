@@ -157,6 +157,18 @@ export default defineConfig({
             vary: "Cookie",
           },
         },
+        "/admin/**": {
+          headers: {
+            "cache-control": "private, no-cache, no-store, must-revalidate",
+            vary: "Cookie",
+          },
+        },
+        "/admin": {
+          headers: {
+            "cache-control": "private, no-cache, no-store, must-revalidate",
+            vary: "Cookie",
+          },
+        },
         // Server RPC & API endpoints: NEVER cache at the edge
         "/_server/**": {
           headers: {
