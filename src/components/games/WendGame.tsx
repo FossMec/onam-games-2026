@@ -25,8 +25,10 @@ export interface WendViewData {
   size: number;
   /** Letters; an empty string is a wall. */
   grid: string[][];
-  /** How long each hidden word is. Never the words themselves. */
+  /** How long each hidden word is. */
   wordLengths: number[];
+  /** Salted hashes of valid target words for instant matching without plaintext word exposure. */
+  wordHashes?: string[];
   openCells: number;
 }
 
@@ -36,9 +38,21 @@ export interface WendFound {
   isTarget?: boolean;
 }
 
+const WEND_SALT = "foss-onam-wend-2026";
+
+export function hashWendWord(word: string): string {
+  let h = 0x811c9dc5;
+  const s = `${word.trim().toUpperCase()}:${WEND_SALT}`;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+
 export interface WendGameProps {
   view: WendViewData;
-  /** Asks the server whether a traced path spells a word. Null when it does not. */
+  /** Optional trace callback (not required for client-side mode) */
   onTrace?: (cells: Cell[]) => Promise<string | null>;
   onFinish: (submission: { found: WendFound[] }) => void;
   disabled?: boolean;
@@ -83,7 +97,6 @@ export function WendGame(props: WendGameProps) {
   const [found, setFound] = createSignal<WendFound[]>(props.initialFound ?? []);
   const [path, setPath] = createSignal<Cell[]>([]);
   const [drawing, setDrawing] = createSignal(false);
-  const [checking, setChecking] = createSignal(false);
   const [flash, setFlash] = createSignal("");
 
   const letterAt = (cell: Cell) => props.view.grid[cell.r][cell.c];
@@ -130,7 +143,7 @@ export function WendGame(props: WendGameProps) {
 
   /** Extends the live trace to `cell` if that is a legal next step. */
   const extend = (r: number, c: number) => {
-    if (props.disabled || checking() || isWall(r, c)) return;
+    if (props.disabled || isWall(r, c)) return;
     const cell = { r, c };
     const k = key(cell);
     if (lockedCells().has(k)) return;
@@ -153,8 +166,8 @@ export function WendGame(props: WendGameProps) {
     setPath([...current, cell]);
   };
 
-  /** Lets go of the trace: checks target status and places word without discarding */
-  const release = async () => {
+  /** Lets go of the trace: checks target status instantly on client via salted hash comparison */
+  const release = () => {
     setDrawing(false);
     const cells = path();
     if (cells.length < 3) {
@@ -162,35 +175,23 @@ export function WendGame(props: WendGameProps) {
       return;
     }
 
-    const candidateWord = cells.map(letterAt).join("");
+    const candidateWord = cells.map(letterAt).join("").toUpperCase();
+    const candidateHash = hashWendWord(candidateWord);
+    const isTarget = props.view.wordHashes?.includes(candidateHash) ?? false;
 
-    if (!props.onTrace) {
+    if (isTarget && !found().some((f) => f.word === candidateWord && f.isTarget !== false)) {
+      commit([...found(), { word: candidateWord, cells, isTarget: true }]);
+    } else {
+      // Keep candidate path on board without throwing away or erroring
       commit([...found(), { word: candidateWord, cells, isTarget: false }]);
-      setPath([]);
-      return;
     }
-
-    setChecking(true);
-    try {
-      const verified = await props.onTrace(cells);
-      if (verified && !found().some((f) => f.word === verified && f.isTarget !== false)) {
-        commit([...found(), { word: verified, cells, isTarget: true }]);
-      } else {
-        // Keep candidate path on board without throwing away or erroring
-        commit([...found(), { word: candidateWord, cells, isTarget: false }]);
-      }
-      setFlash("");
-    } catch {
-      commit([...found(), { word: candidateWord, cells, isTarget: false }]);
-    } finally {
-      setChecking(false);
-      setPath([]);
-    }
+    setFlash("");
+    setPath([]);
   };
 
   /** Releasing outside the grid must still end the trace. */
   const onWindowUp = () => {
-    if (drawing()) void release();
+    if (drawing()) release();
   };
   if (typeof window !== "undefined") {
     window.addEventListener("pointerup", onWindowUp);
@@ -214,7 +215,7 @@ export function WendGame(props: WendGameProps) {
   };
 
   const tapCell = (r: number, c: number) => {
-    if (props.disabled || checking()) return;
+    if (props.disabled) return;
     const k = key({ r, c });
     // Tapping a locked word releases it - one tap to undo a wrong-but-real word
     // that turned out to strand a tile.
@@ -252,7 +253,7 @@ export function WendGame(props: WendGameProps) {
           when={path().length > 0}
           fallback={
             <span class="badge text-xs" style={{ "--pop": "var(--paper-3)" }}>
-              {checking() ? "checking…" : "drag across letters to trace"}
+              drag across letters to trace
             </span>
           }
         >

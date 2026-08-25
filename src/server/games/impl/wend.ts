@@ -105,21 +105,27 @@ export function applyTransform(cell: Cell, t: WendTransform): Cell {
   return { r, c };
 }
 
+const WEND_SALT = "foss-onam-wend-2026";
+
+export function hashWendWord(word: string): string {
+  let h = 0x811c9dc5;
+  const s = `${word.trim().toUpperCase()}:${WEND_SALT}`;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+
 export interface WendView {
   kind: "wend";
   size: number;
   /** Transformed letters. An empty string is a wall. */
   grid: string[][];
-  /**
-   * How long each hidden word is, ascending. NOT the words themselves.
-   *
-   * Deducing which routes spell which words is the puzzle. An earlier version
-   * shipped the word list to the browser, which gave the whole thing away -
-   * with the answers in hand the board is a five-minute tracing exercise.
-   * The player gets what the real game gives them: how many words, and how
-   * long each one is.
-   */
+  /** How long each hidden word is, ascending. */
   wordLengths: number[];
+  /** Salted 8-char FNV hashes of valid target words for instant client verification without leaking plaintext words in network payloads. */
+  wordHashes: string[];
   /** How many tiles must end up covered. Lets the UI show honest progress. */
   openCells: number;
 }
@@ -155,6 +161,7 @@ export function generate(seed: string): GeneratedInstance {
       size: GRID_SIZE,
       grid,
       wordLengths: [...WORDS].map((w) => w.length).sort((a, b) => a - b),
+      wordHashes: WORDS.map((w) => hashWendWord(w)),
       openCells: countOpen(grid),
     } satisfies WendView,
     /*

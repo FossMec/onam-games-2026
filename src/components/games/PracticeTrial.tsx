@@ -5,7 +5,7 @@ import { JigsawGame } from "./JigsawGame";
 import { JumpGame } from "./JumpGame";
 import { TinderGame } from "./TinderGame";
 import { VallamGame } from "./VallamGame";
-import { WendGame } from "./WendGame";
+import { WendGame, hashWendWord } from "./WendGame";
 import { memeImage } from "~/lib/img";
 
 export interface InteractiveTrialProps {
@@ -166,6 +166,7 @@ export function InteractiveTrial(props: InteractiveTrialProps) {
                     ["N", "I", "L"],
                   ],
                   wordLengths: [4, 5],
+                  wordHashes: ["FOSS", "LINUX"].map(hashWendWord),
                   openCells: 9,
                 }}
                 onTrace={async (cells) => {
