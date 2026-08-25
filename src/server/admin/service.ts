@@ -176,8 +176,11 @@ export async function adminAddTester(email: string, earlyHours = 24) {
   if (rows.length === 0) {
     // No existing user — user must sign in first; keep dead-table insert as no-op for backward compat
     // Do not create placeholder user without supabase_uid
-    const exists = await db<{ id: string }[]>`SELECT id FROM users WHERE email = ${normalized} LIMIT 1`;
-    if (exists.length === 0) throw new Error("User not found — they must sign in once before being promoted to tester");
+    const exists = await db<
+      { id: string }[]
+    >`SELECT id FROM users WHERE email = ${normalized} LIMIT 1`;
+    if (exists.length === 0)
+      throw new Error("User not found — they must sign in once before being promoted to tester");
     // Already tester/admin, nothing to do
   }
 }

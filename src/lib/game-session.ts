@@ -28,6 +28,8 @@ import { getMultiStoreSync, removeMultiStoreSync, setMultiStoreSync } from "./mu
 export interface StoredAttempt {
   attemptToken: string;
   startedAt: string;
+  /** Cached view from the single POST /start — lets the arena hydrate without a second POST. */
+  view?: unknown;
 }
 
 function read<T>(key: string): T | null {

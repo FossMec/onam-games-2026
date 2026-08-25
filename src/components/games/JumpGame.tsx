@@ -18,6 +18,7 @@ import {
   enemyX,
   initialState,
   isSpikesExtended,
+  INPUT_LEVELS,
   INPUT_RESOLUTION,
   packInput,
   platformX,
@@ -109,7 +110,16 @@ export function JumpGame(props: JumpGameProps) {
     }
     // Record for anti-cheat replay — but never let a full buffer freeze controls
     if (inputs.length >= MAX_INPUTS) return;
-    inputs.push(packInput(state.frame - lastInputFrame, next));
+    const delta = state.frame - lastInputFrame;
+    // Fast toggle within same frame (e.g. quick key tap) would produce delta 0.
+    // Instead of emitting an invalid trace, coalesce to last entry's direction.
+    // Server now also tolerates delta 0, but this keeps traces tidy and 0-false-positive.
+    if (delta === 0 && inputs.length > 0) {
+      const base = Math.floor(inputs[inputs.length - 1] / INPUT_LEVELS) * INPUT_LEVELS;
+      inputs[inputs.length - 1] = base + (next + INPUT_RESOLUTION);
+      return;
+    }
+    inputs.push(packInput(delta, next));
     lastInputFrame = state.frame;
   };
 

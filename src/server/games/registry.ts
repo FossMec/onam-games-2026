@@ -275,7 +275,14 @@ export const GAMES: readonly GameDef[] = [
      * simulation to derive the height, and cross-checks the trace's implied
      * duration against the server clock. See `impl/jump.ts`.
      */
-    generate: () => jump.generate(),
+    /**
+     * IMPORTANT: seed must be forwarded to jump.generate() so the client
+     * plays the exact level the server will verify against. Previously this
+     * was `() => jump.generate()` which silently dropped the seed, sending
+     * LEVEL_SEED to the client while verify used the real per-attempt SHA256
+     * hash — different platforms → different physics → score mismatch.
+     */
+    generate: (seed) => jump.generate(seed),
     verify: (input) => jump.verify(input),
   },
 

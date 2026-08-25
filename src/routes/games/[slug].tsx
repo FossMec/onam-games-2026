@@ -57,6 +57,7 @@ import {
 import { getMyStanding, type MyStanding } from "~/server/leaderboard/actions";
 import { collegeLabel } from "~/lib/profile";
 import type { ShareCardData } from "~/lib/share-card";
+import { jumpSprite } from "~/lib/img";
 import {
   clearAttempt,
   clearProgress,
@@ -67,6 +68,7 @@ import {
   saveProgress,
   storeAttempt,
   enteredArenaFromHub,
+  type StoredAttempt,
 } from "~/lib/game-session";
 import { SHOUT_COLOR, moodForResult, shout } from "~/lib/shouts";
 
@@ -190,6 +192,9 @@ export default function GameArenaPage() {
     queueMicrotask(() => saveProgress(token, progress));
   };
 
+  // Dedupe concurrent fetchAttemptView calls (hub->arena double POST race)
+  let fetchInflight: Promise<void> | null = null;
+
   createEffect((prevSlug?: string) => {
     const currentSlug = slug();
     if (!currentSlug) return currentSlug;
@@ -215,70 +220,118 @@ export default function GameArenaPage() {
         });
       }
 
-      const stored = getStoredAttempt(currentSlug);
-      if (stored) {
+      const stored = getStoredAttempt(currentSlug) as (StoredAttempt & { view?: GameView }) | null;
+      // Fast path: Hub already stored the view with the token — hydrate instantly, zero extra POST.
+      // This is the 2-request path (Hub POST start + eventual finish). Arena does NOT re-POST.
+      if (stored?.attemptToken) {
+        if (stored.view) {
+          setView(stored.view as GameView);
+          setAttemptToken(stored.attemptToken);
+          setStartedAt(new Date(stored.startedAt).getTime());
+          setNow(Date.now());
+          setRestored(getProgress(stored.attemptToken));
+          const g = game();
+          if (g?.gameType) void warmChunkForGameType(g.gameType);
+          else if ((stored.view as { kind?: string })?.kind)
+            void warmChunkForGameType((stored.view as { kind?: string }).kind ?? "");
+          return currentSlug;
+        }
+        // Stored token but no view (legacy or cleared) — fall through to fetch via game() gate below
         setAttemptToken(stored.attemptToken);
         setStartedAt(new Date(stored.startedAt).getTime());
         setNow(Date.now());
         setRestored(getProgress(stored.attemptToken));
-        // Warm today's chunk in parallel with view fetch — both race, not sequential.
-        // Timer already ticking from hub's `startedAt`, so chunk+view overlap saves 1-2s.
         const g = game();
         if (g?.gameType) void warmChunkForGameType(g.gameType);
-        void fetchAttemptView();
+        // Trigger fetch reactively once game() is defined (see gate below)
       }
     }
 
     return currentSlug;
   });
 
+  // Gate: when game() becomes defined and we have a stored token but no view yet,
+  // fetch exactly once. Replaces the old 40×50ms polling anti-pattern with a
+  // reactive Solid gate — zero timers, zero CPU burn on the 10ms Cloudflare path.
+  createEffect(() => {
+    const g = game();
+    if (g === undefined) return;
+    if (view() !== null) return;
+    const stored = getStoredAttempt(slug()) as (StoredAttempt & { view?: GameView }) | null;
+    if (stored?.view) {
+      // Hub view might have arrived after initial effect — hydrate now
+      setView(stored.view as GameView);
+      if (!attemptToken()) {
+        setAttemptToken(stored.attemptToken);
+        setStartedAt(new Date(stored.startedAt).getTime());
+        setNow(Date.now());
+        setRestored(getProgress(stored.attemptToken));
+      }
+      return;
+    }
+    // No view yet — need to fetch. This is the deep-link / cleared-storage path
+    // (the only case that legitimately does a POST from the arena).
+    if (!g || g.status === "upcoming") return;
+    if (busy()) return;
+    if (hasFinishedRun()) return;
+    // For jump unlimited we still rely on start/finish pair; Hub path already short-circuited.
+    // Only fetch if we don't have a token or we have token but no view and server says in_progress
+    const attempt = myAttempt();
+    if (attempt && attempt.status === "submitted" && !stored) return;
+    void fetchAttemptView();
+  });
+
   // Automatically restore in-progress attempt if localStorage was cleared or missing
+  // (legacy guard — now covered by gate above, kept minimal)
   createEffect(() => {
     const attempt = myAttempt();
     const currentSlug = slug();
     if (!currentSlug || !attempt) return;
-
-    if (attempt.status === "in_progress" && !attemptToken() && !busy()) {
-      const stored = getStoredAttempt(currentSlug);
-      if (stored) {
+    if (attempt.status === "in_progress" && !attemptToken() && !busy() && !view()) {
+      const stored = getStoredAttempt(currentSlug) as (StoredAttempt & { view?: GameView }) | null;
+      if (stored?.view) {
+        setView(stored.view as GameView);
         setAttemptToken(stored.attemptToken);
         setStartedAt(new Date(stored.startedAt).getTime());
         setNow(Date.now());
         setRestored(getProgress(stored.attemptToken));
         const g = game();
         if (g?.gameType) void warmChunkForGameType(g.gameType);
+        return;
       }
-      void fetchAttemptView();
+      // Deep-link without stored token — gate will handle it once game() is ready
     }
   });
 
   const fetchAttemptView = async () => {
-    // Ensure game metadata is loaded before starting — otherwise the server
-    // clock (started_at) begins while the client is still downloading the
-    // game chunk/view, and the player loses wall time. Poll briefly for game.
-    if (game() === undefined) {
-      for (let i = 0; i < 40 && game() === undefined; i++) {
-        await new Promise((r) => setTimeout(r, 50));
-      }
-      if (game() === undefined) {
-        setError("Game data is still loading. Retrying…");
-        return;
+    if (fetchInflight) return fetchInflight;
+    const g = game();
+    // Reactive gate guarantees game() is defined; bail quietly if not (gate will retry when defined)
+    if (g === undefined || g === null) return;
+    if (g.status === "upcoming") return;
+    // Ensure chunk is ready BEFORE starting the server clock — but hub already did this.
+    // This await only runs on the deep-link path where hub prewarm didn't happen.
+    if (g?.gameType) {
+      try {
+        await warmChunkForGameType(g.gameType);
+      } catch {
+        // Non-fatal — still start; rendering will Suspense on chunk
       }
     }
-    // Warm the correct game chunk *before* POST /start so view+chunk overlap,
-    // but never start the timer until the view is ready.
-    const g = game();
-    if (g?.gameType) await warmChunkForGameType(g.gameType).catch(() => {});
     setBusy(true);
-    try {
-      const res = await fetch(`/api/game/${slug()}/start`, { method: "POST" });
-      const data = (await res.json()) as {
-        attemptToken?: string;
-        startedAt?: string;
-        view?: GameView;
-        error?: string;
-      };
-      if (res.ok && data.view) {
+    const task = (async () => {
+      try {
+        const res = await fetch(`/api/game/${slug()}/start`, { method: "POST" });
+        const data = (await res.json()) as {
+          attemptToken?: string;
+          startedAt?: string;
+          view?: GameView;
+          error?: string;
+        };
+        if (!res.ok || !data.view) {
+          setError(friendly(data.error ?? "Failed to start attempt"));
+          return;
+        }
         setView(data.view);
         if (data.attemptToken) {
           setAttemptToken(data.attemptToken);
@@ -286,14 +339,20 @@ export default function GameArenaPage() {
           storeAttempt(slug(), {
             attemptToken: data.attemptToken,
             startedAt: data.startedAt || new Date().toISOString(),
+            view: data.view,
           });
         }
         if (data.startedAt) setStartedAt(new Date(data.startedAt).getTime());
+        setNow(Date.now());
+      } catch {
+        setError("Network hiccup - please check your connection and retry.");
+      } finally {
+        setBusy(false);
+        fetchInflight = null;
       }
-    } catch {
-    } finally {
-      setBusy(false);
-    }
+    })();
+    fetchInflight = task;
+    return task;
   };
 
   // As soon as we know today's gameType, warm its chunk — don't wait for view fetch.
@@ -365,7 +424,7 @@ export default function GameArenaPage() {
       setStartedAt(null);
       void revalidate("my-attempt");
       void revalidate("games");
-      setResult({
+      const finalResult = {
         valid: data.valid ?? false,
         durationMs: data.durationMs ?? 0,
         rawDurationMs: data.rawDurationMs ?? data.durationMs ?? 0,
@@ -377,7 +436,11 @@ export default function GameArenaPage() {
         unlimited: data.unlimited ?? false,
         isPersonalBest: data.isPersonalBest ?? false,
         reason: data.reason,
-      });
+      };
+      setResult(finalResult);
+      // Sync the live score badge with the server-verified score so the
+      // GameBar and ResultFigures always show the same number.
+      if (data.score != null) setJumpScore(data.score);
     } catch {
       setError("Network hiccup - submission did not land. Check connection and try again.");
     } finally {
@@ -403,7 +466,11 @@ export default function GameArenaPage() {
         setError(data.error ?? "Failed to start new run");
         return;
       }
-      storeAttempt(slug(), { attemptToken: data.attemptToken, startedAt: data.startedAt });
+      storeAttempt(slug(), {
+        attemptToken: data.attemptToken,
+        startedAt: data.startedAt,
+        view: data.view,
+      });
       setAttemptToken(data.attemptToken);
       setStartedAt(new Date(data.startedAt).getTime());
       setNow(Date.now());
@@ -675,6 +742,7 @@ export default function GameArenaPage() {
                       : null
               }
               liveScore={game()!.gameType === "jump" ? jumpScore() : null}
+              scoreIsLive={game()!.gameType === "jump" && !!attemptToken()}
               onHowTo={(game()!.howTo?.length ?? 0) > 0 ? () => setShowHowTo(true) : undefined}
             />
           </div>
@@ -909,7 +977,84 @@ export default function GameArenaPage() {
                     class="space-y-3 pt-2 text-center w-full"
                     style={{ "border-top": "var(--ink-w) dashed var(--ink)" }}
                   >
-                    <ResultFigures result={settledResult()!} />
+                    <Show when={isJump()}>
+                      {(() => {
+                        const isWin = () => {
+                          const r = settledResult()!;
+                          if (!r.valid || (r.score ?? 0) <= 0) return false;
+                          // Personal best OR tied/beat current stored best (covers afterDeadline where isPersonalBest is false)
+                          const storedBest = myAttempt()?.bestScore ?? 0;
+                          const best = Math.max(storedBest, r.score ?? 0);
+                          return (
+                            (r.score ?? 0) >= best &&
+                            (r.isPersonalBest || (r.score ?? 0) >= storedBest)
+                          );
+                        };
+                        const win = isWin();
+                        return (
+                          <div class="flex flex-col items-center gap-1.5 pt-3 pb-1">
+                            <div class="relative grid place-items-center">
+                              <Show
+                                when={win}
+                                fallback={
+                                  <img
+                                    src={jumpSprite("maveli-tumble.webp")}
+                                    alt="Maveli tumbles — try again"
+                                    width="84"
+                                    height="84"
+                                    class="w-[84px] h-[84px] object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.2)] opacity-95"
+                                    style={{
+                                      transform: "rotate(-12deg)",
+                                      animation: "sprite-pulse 1.3s ease-in-out infinite",
+                                    }}
+                                    loading="eager"
+                                  />
+                                }
+                              >
+                                <div
+                                  class="absolute -inset-3 rounded-full blur-[14px] -z-10"
+                                  style={{ background: "var(--pop-yellow)", opacity: "0.5" }}
+                                />
+                                <span
+                                  class="absolute -top-1.5 -right-3 text-[10px] font-black px-1.5 py-0.5 rounded-full rotate-[10deg] leading-none"
+                                  style={{
+                                    background: "var(--pop-yellow)",
+                                    border: "1.5px solid var(--ink)",
+                                  }}
+                                >
+                                  NEW BEST!
+                                </span>
+                                <img
+                                  src={jumpSprite("maveli-balloon.webp")}
+                                  alt="Maveli soaring — new best!"
+                                  width="96"
+                                  height="96"
+                                  class="w-[96px] h-[96px] object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.28)] anim-sprite-float"
+                                  style={
+                                    {
+                                      "--sprite-tilt": "2deg",
+                                      "--anim-duration": "2.1s",
+                                    } as unknown as Record<string, string>
+                                  }
+                                  loading="eager"
+                                />
+                              </Show>
+                            </div>
+                            <p
+                              class="text-[11px] font-black uppercase tracking-widest"
+                              style={{
+                                color: win ? "var(--pop-teal)" : "var(--ink-soft)",
+                              }}
+                            >
+                              {win
+                                ? "Kerala calls — keep climbing!"
+                                : "Ayyo — Paathalam pulls again"}
+                            </p>
+                          </div>
+                        );
+                      })()}
+                    </Show>
+                    <ResultFigures result={settledResult()!} gameType={game()?.gameType} />
                     <Show
                       when={
                         isJump() &&
@@ -1009,8 +1154,47 @@ export default function GameArenaPage() {
           valid={result()!.valid}
           reason={result()!.reason}
           figures={
-            <div class="space-y-1">
-              <ResultFigures result={result()!} />
+            <div class="space-y-2">
+              <Show when={isJump() && result()}>
+                {(() => {
+                  const r = result()!;
+                  const best = myAttempt()?.bestScore ?? r.score ?? 0;
+                  const win =
+                    r.valid && (r.score ?? 0) > 0 && (r.isPersonalBest || (r.score ?? 0) >= best);
+                  return (
+                    <div class="flex justify-center">
+                      <Show
+                        when={win}
+                        fallback={
+                          <img
+                            src={jumpSprite("maveli-tumble.webp")}
+                            alt="Maveli tumbles"
+                            width="72"
+                            height="72"
+                            class="w-[72px] h-[72px] object-contain opacity-90"
+                            style={{ transform: "rotate(-10deg)" }}
+                          />
+                        }
+                      >
+                        <img
+                          src={jumpSprite("maveli-balloon.webp")}
+                          alt="Maveli soaring"
+                          width="84"
+                          height="84"
+                          class="w-[84px] h-[84px] object-contain anim-sprite-float"
+                          style={
+                            {
+                              "--sprite-tilt": "2deg",
+                              "--anim-duration": "2s",
+                            } as unknown as Record<string, string>
+                          }
+                        />
+                      </Show>
+                    </div>
+                  );
+                })()}
+              </Show>
+              <ResultFigures result={result()!} gameType={game()?.gameType} />
               <Show
                 when={
                   isJump() &&
@@ -1065,7 +1249,10 @@ function GameBar(props: {
   isTester?: boolean;
   elapsed: number | null;
   gameType?: string;
+  /** The score to display for jump. */
   liveScore?: number | null;
+  /** True while the attempt is still in-progress (score is live). False after game ends. */
+  scoreIsLive?: boolean;
   onHowTo?: () => void;
 }) {
   const chip = () =>
@@ -1140,7 +1327,9 @@ function GameBar(props: {
               border: "var(--ink-w) solid var(--ink)",
             }}
           >
-            <span class="inline-block h-2 w-2 rounded-full bg-[var(--pop-yellow)] animate-pulse" />
+            <span
+              class={`inline-block h-2 w-2 rounded-full bg-[var(--pop-yellow)] ${props.scoreIsLive ? "animate-pulse" : "opacity-60"}`}
+            />
             <span>{(props.liveScore ?? 0).toLocaleString("en-IN")} m</span>
           </div>
         </Show>
@@ -1162,15 +1351,18 @@ function GameBar(props: {
   );
 }
 
-function ResultFigures(props: { result: FinishPayload }) {
+function ResultFigures(props: { result: FinishPayload; gameType?: string }) {
   const isTime = () => props.result.metric === "time" || props.result.metric === "fcfs";
+  const isJump = () => props.gameType === "jump";
 
   return (
     <div class="space-y-1">
       <p class="font-mono text-4xl sm:text-5xl font-black tabular-nums tracking-tight">
         {isTime()
           ? formatAdaptiveDuration(props.result.durationMs)
-          : `${props.result.score ?? 0} pts`}
+          : isJump()
+            ? `${props.result.score ?? 0} m`
+            : `${props.result.score ?? 0} pts`}
       </p>
       <Show when={props.result.penaltyMs > 0}>
         <p class="text-xs text-muted font-semibold">

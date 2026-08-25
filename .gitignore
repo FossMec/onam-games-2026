@@ -32,3 +32,4 @@ config/profanity-dictionary.json
 *.profanity.json
 .data/profanity-rules.json
 
+.envrc

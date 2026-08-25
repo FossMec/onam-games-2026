@@ -211,11 +211,12 @@ export async function bindDeviceToUser(
 /**
  * Detect linked accounts sharing hardware/canvas/IP signals.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function detectLinkedAccounts(
   db: Db,
   device: DeviceSignals & { id: string; deviceHash: string },
   userId: string,
-  signals: FingerprintSignals,
+  _signals: FingerprintSignals,
 ): Promise<void> {
   const conds = [];
   if (device.fpVisitorId) conds.push(db`d.fp_visitor_id = ${device.fpVisitorId}`);

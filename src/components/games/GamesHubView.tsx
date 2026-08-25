@@ -272,6 +272,7 @@ export function GamesHubView() {
       const data = (await res.json()) as {
         attemptToken?: string;
         startedAt?: string;
+        view?: unknown;
         error?: string;
       };
       if (!res.ok || !data.attemptToken || !data.startedAt) {
@@ -282,6 +283,7 @@ export function GamesHubView() {
       storeAttempt(game.slug, {
         attemptToken: data.attemptToken,
         startedAt: data.startedAt,
+        view: data.view,
       });
       setActiveModalGame(null);
       markArenaFromHub();

@@ -24,25 +24,8 @@ import type { GeneratedInstance, VerifyInput, VerifyResult } from "../registry";
  * readers, anyone using a keyboard). Twelve attempts a day bounds the damage.
  */
 
-/**
- * ONE level for the whole event, not one per player.
- *
- * Same policy as Wend, for the same reason. A per-player seed was measured
- * first and the spread was indefensible: on identical bot play, one seed
- * scored 11,858 and another 256. That is not a leaderboard, it is a lottery
- * with a skill garnish, and the user's own call on Wend applies exactly -
- * different levels mean different difficulty and you cannot rank people across
- * puzzles that are not equally hard.
- *
- * The accepted cost is that a player going late has heard about the mean
- * stretch at 2,000. That is worth far less than it sounds - knowing a moving
- * platform is coming does not make you land on it - and it is a smaller
- * unfairness than handing one player a level forty times harder than another's.
- *
- * Never change this string once the day is live: it would invalidate every
- * score already on the board.
- */
-const LEVEL_SEED = "maveli-jump-canonical-v1";
+/** Fallback seed for legacy attempts that predate per-attempt seeding. */
+export const LEVEL_SEED = "maveli-jump-canonical-v1";
 
 /**
  * A known and accepted property: the score has a ceiling of roughly 11,200.
@@ -74,9 +57,9 @@ export interface JumpSubmission {
   inputs: number[];
 }
 
-export function generate(): GeneratedInstance {
+export function generate(seed: string = LEVEL_SEED): GeneratedInstance {
   return {
-    view: { kind: "jump", seed: LEVEL_SEED, fps: FPS, maxFrames: MAX_FRAMES } satisfies JumpView,
+    view: { kind: "jump", seed, fps: FPS, maxFrames: MAX_FRAMES } satisfies JumpView,
     // There is no solution to withhold: the level is public and the score is
     // derived from the player's own inputs at verify time.
     solution: null,
@@ -105,11 +88,12 @@ export function verify(input: VerifyInput): VerifyResult {
     return { valid: false, reason: "That is more steering than anyone has ever done." };
   }
 
-  // The attempt's own seed is deliberately ignored: every player climbs the
-  // same level, so the replay must too.
-  const run = simulate(LEVEL_SEED, submission.inputs);
+  // Replay on the attempt's own seed — deterministic per-attempt level via sha256,
+  // no Math.random. Legacy attempts fall back to the canonical seed.
+  const seed = typeof input.seed === "string" && input.seed.length > 0 ? input.seed : LEVEL_SEED;
+  const run = simulate(seed, submission.inputs);
   if (!run) {
-    return { valid: false, reason: "That input trace does not make sense. DWAAAA..." };
+    return { valid: false, reason: "That run could not be verified — please try again." };
   }
 
   const impliedMs = (run.frames / FPS) * 1000;

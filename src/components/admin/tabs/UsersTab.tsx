@@ -93,7 +93,8 @@ export function UsersTab(props: UsersTabProps) {
     {},
   );
 
-  const userRole = (u: UserRow) => localRoles()[u.id] ?? u.role ?? "player";
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _userRole = (u: UserRow) => localRoles()[u.id] ?? u.role ?? "player";
 
   const openBanModal = (user: UserRow) => {
     setTargetUser(user);

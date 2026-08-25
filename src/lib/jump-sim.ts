@@ -21,19 +21,25 @@ export const VIEW_H = 170;
 export const PLAYER_W = 7;
 export const PLAYER_H = 9;
 export const PLATFORM_W = 12;
-export const PLATFORM_H = 2.5;
+export const PLATFORM_H = 1.8;
 
 export const FPS = 60;
 export const MAX_FRAMES = 6 * 60 * FPS;
 
 export const GRAVITY = 1 / 20;
-/** Normal jump: apex = JUMP_V^2 / (2 * GRAVITY) = ~47 units (clears missed middle platform) */
+/** Normal jump: apex = JUMP_V^2 / (2 * GRAVITY) = ~44.5 units */
 const JUMP_V = 2.11;
-/** Special Umbrella/Spring floor: max jump reaches ~188 units */
+/** Special Umbrella/Spring floor: max jump reaches ~178 units */
 const SPRING_MULT = 2.0;
 const BALLOON_VY = 2.1;
-const BALLOON_DURATION = 150; // 2.5 seconds of auto-climb glide
+// Balloon now equals spring height: spring apex ≈178, so 178/2.1 ≈85 frames
+const BALLOON_DURATION = 85; // 1.42s climb, matches spring apex
 const MAX_VX = 1.5;
+
+/** Constant vertical gap — every platform is exactly this far above the last.
+ *  Both N+1 (18) and N+2 (36) are < normal apex 44.5, so from any normal
+ *  platform the next two are always reachable. Difficulty comes from breakable/moving/spring. */
+export const PLATFORM_GAP = 18;
 
 const CAMERA_ANCHOR = VIEW_H * 0.55;
 
@@ -104,7 +110,13 @@ export class Level {
   private lastBalloonY = -999;
 
   constructor(seed: string) {
-    this.rand = makeRng(`${seed}:maveli-jump-v5`);
+    // The seed is a SHA256 hash computed in attempts.ts — it already encodes
+    // game type, slug, user ID and attempt number. Do NOT append a version
+    // suffix here: changing it mid-event invalidates all in-flight games
+    // (client runs one level, server re-simulates on a different one →
+    // score mismatch). If level generation ever needs a breaking change,
+    // update the hash formula in attempts.ts so the DB stores a new seed.
+    this.rand = makeRng(seed);
     // Starting base platform
     this.platforms.push({
       id: this.nextId++,
@@ -128,9 +140,10 @@ export class Level {
     const last = this.platforms[this.platforms.length - 1];
     const height = last.y;
 
-    // Progressive platform spacing: gaps grow from 14 to 26 units
-    const spread = Math.min(4 + Math.floor(height / 350) * 3, 12);
-    const gap = 14 + Math.floor(this.rand() * (spread + 1));
+    // Constant gap — every platform is exactly PLATFORM_GAP above the last,
+    // so from any normal platform both N+1 and N+2 are reachable. Progressive
+    // difficulty now comes from breakable/moving/spring frequencies only.
+    const gap = PLATFORM_GAP;
 
     const roll = this.rand();
     let type = PLATFORM_NORMAL;
@@ -139,9 +152,17 @@ export class Level {
     let phase = 0;
 
     if (height > 25) {
-      const spring = 0.1; // Umbrella spring appears right away (10% chance)
-      const moving = spring + (height > 60 ? Math.min((height - 60) / 800, 0.35) : 0);
-      const breakable = moving + (height > 90 ? Math.min((height - 90) / 1000, 0.28) : 0);
+      // Exponential difficulty ramp → logarithmic score distribution.
+      // Target 5k ceiling (high-skill ~5k, not 10k): many die early, few reach 5k.
+      // Uses 1 - exp(-h/scale) so growth is slow early, fast mid, saturates by 5k.
+      // Math.exp is deterministic and cheap (~1 call per platform, ~300 calls per verify).
+      const spring = height < 1200 ? 0.07 : 0.05; // slightly rarer at altitude
+      const movingCap = 0.3;
+      const breakableCap = 0.36;
+      const movingProb = height > 25 ? movingCap * (1 - Math.exp(-(height - 25) / 1800)) : 0;
+      const breakableProb = height > 25 ? breakableCap * (1 - Math.exp(-(height - 25) / 1400)) : 0;
+      const moving = spring + movingProb;
+      const breakable = moving + breakableProb;
 
       if (roll < spring) type = PLATFORM_SPRING;
       else if (roll < moving) type = PLATFORM_MOVING;
@@ -152,10 +173,13 @@ export class Level {
     if (type === PLATFORM_MOVING) {
       range = 14 + Math.floor(this.rand() * 20);
       x = Math.floor(this.rand() * (WORLD_W - PLATFORM_W - range + 1));
-      const fastest = Math.max(35, 90 - Math.floor(height / 600) * 12);
+      // Speed increases gradually with height: exponential period decay, 90 → ~32 at 5k
+      const periodBase = 90 - 58 * (1 - Math.exp(-height / 1800));
+      const fastest = Math.max(32, Math.floor(periodBase));
       period = fastest + Math.floor(this.rand() * 8) * 16;
       phase = Math.floor(this.rand() * period);
     } else {
+      // Pure random uniform — no horizontal constraints based on previous position
       x = Math.floor(this.rand() * (WORLD_W - PLATFORM_W + 1));
     }
 
@@ -175,12 +199,18 @@ export class Level {
       }
     }
 
-    // Underworld Hazards (Moving Retracting Spiked Orbs & Aerial Spikes)
-    // NEVER placed on Spring platforms, Moving platforms, or Breakable platforms!
+    // Underworld Hazards (Moving Retracting Spiked Orbs) — separate entity by design:
+    // Orbs float *between* platforms (platY+10) and move independently of the platform
+    // they are attached to, creating a timing hazard. If merged into the platform
+    // they would move with it (for moving platforms) or be trivial to avoid. Kept
+    // separate for 5k-target log distribution; cheap: one exp per platform.
     let enemy: Enemy | null = null;
     if (platY > 80 && item === null && type === PLATFORM_NORMAL) {
       const enemyRoll = this.rand();
-      if (enemyRoll < 0.12) {
+      // Exponential: 8% at ground → ~28% at 5k (harder, 5k target)
+      const enemyCap = 0.2;
+      const enemyChance = 0.08 + enemyCap * (1 - Math.exp(-(platY - 80) / 2200));
+      if (enemyRoll < enemyChance) {
         // Moving geometric orb floating in the airspace between platforms
         const eRange = 16 + Math.floor(this.rand() * 18);
         const ePeriod = 90 + Math.floor(this.rand() * 4) * 20;
@@ -260,7 +290,6 @@ export function unpackInputs(packed: unknown): JumpInput[] | null {
   for (let i = 0; i < packed.length; i += 1) {
     const value = packed[i];
     if (typeof value !== "number" || !Number.isInteger(value) || value < 0) return null;
-    if (i > 0 && value < INPUT_LEVELS) return null;
     frame += Math.floor(value / INPUT_LEVELS);
     if (frame > MAX_FRAMES) return null;
     inputs.push({ f: frame, d: (value % INPUT_LEVELS) - INPUT_RESOLUTION });

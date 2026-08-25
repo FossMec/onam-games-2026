@@ -142,7 +142,14 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
   }
 
   let seed: string;
-  if (game.gameType === "tinder" || game.gameType === "jigsaw" || game.gameType === "wend") {
+  if (
+    game.gameType === "tinder" ||
+    game.gameType === "jigsaw" ||
+    game.gameType === "wend" ||
+    game.gameType === "jump"
+  ) {
+    // Deterministic per-attempt RNG via sha256 — no Math.random. Same user+attempt → same level,
+    // different attempt (Play Again) → new random level. Still reproducible for anti-cheat replay.
     seed = sha256(`foss-onam:${game.gameType}:${game.slug}:${input.userId}:${attemptNumber}`);
   } else {
     seed = sha256(`foss-onam:daily-game:${game.slug}:day-${game.day}`);
