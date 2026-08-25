@@ -3,6 +3,7 @@ import {
   Download,
   Eye,
   EyeOff,
+  ImageUp,
   Maximize2,
   RefreshCw,
   Share2,
@@ -413,12 +414,11 @@ export function ShareCard(props: ShareCardProps) {
           </Show>
         </div>
 
-        {/* File upload fallback */}
+        {/* File upload input */}
         <input
           id="card-photo-input"
           type="file"
           accept="image/*"
-          capture="user"
           class="sr-only"
           onChange={(e) => onPhotoSelect(e.currentTarget.files?.[0])}
         />
@@ -429,27 +429,67 @@ export function ShareCard(props: ShareCardProps) {
   const actions = () => (
     <Show when={phase() !== "failed"}>
       <div class="flex flex-1 flex-col justify-center gap-2 w-full">
-        {/* Prominent Live Selfie Button */}
-        <div class="flex items-center gap-1.5 w-full">
-          <button
-            type="button"
-            onClick={() => void startCamera()}
-            class="btn-ghost flex-1 py-2 px-3 text-xs sm:text-sm font-black flex items-center justify-center gap-2 cursor-pointer border-2 border-[var(--ink)] bg-[var(--pop-yellow)] hover:opacity-90 transition-all text-[var(--ink)]"
-          >
-            <Camera size={16} strokeWidth={2.5} />
-            <span>{customPhoto() ? "Retake Live Selfie" : "Take a Selfie for Card"}</span>
-          </button>
-          <Show when={customPhoto()}>
+        {/* Photo Selection Buttons */}
+        <Show
+          when={!props.data.isWinner}
+          fallback={
+            /* Winner Card: Direct Gallery Upload Button Only */
+            <div class="flex items-center gap-1.5 w-full">
+              <button
+                type="button"
+                onClick={() => document.getElementById("card-photo-input")?.click()}
+                class="btn-ghost flex-1 py-2 px-3 text-xs sm:text-sm font-black flex items-center justify-center gap-2 cursor-pointer border-2 border-[var(--ink)] bg-[var(--pop-yellow)] hover:opacity-90 transition-all text-[var(--ink)]"
+              >
+                <ImageUp size={16} strokeWidth={2.5} />
+                <span>
+                  {customPhoto()
+                    ? "Change Winner Photo (from Gallery)"
+                    : "Upload Winner Photo (from Gallery)"}
+                </span>
+              </button>
+              <Show when={customPhoto()}>
+                <button
+                  type="button"
+                  onClick={() => setCustomPhoto(null)}
+                  class="btn-ghost py-2 px-2.5 text-xs font-bold text-[var(--pop-red)] flex items-center justify-center cursor-pointer border-2 border-[var(--ink)]"
+                  title="Remove photo"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </Show>
+            </div>
+          }
+        >
+          {/* Regular Player Card: Gallery Upload & Live Selfie */}
+          <div class="flex items-center gap-1.5 w-full">
             <button
               type="button"
-              onClick={() => setCustomPhoto(null)}
-              class="btn-ghost py-2 px-2.5 text-xs font-bold text-[var(--pop-red)] flex items-center justify-center cursor-pointer border-2 border-[var(--ink)]"
-              title="Remove selfie"
+              onClick={() => document.getElementById("card-photo-input")?.click()}
+              class="btn-ghost flex-1 py-2 px-2.5 text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer border-2 border-[var(--ink)] bg-[var(--paper-2)] hover:bg-[var(--paper-3)] transition-all text-[var(--ink)]"
             >
-              <Trash2 size={15} />
+              <ImageUp size={15} strokeWidth={2.5} />
+              <span>{customPhoto() ? "Change Photo" : "Upload Photo"}</span>
             </button>
-          </Show>
-        </div>
+            <button
+              type="button"
+              onClick={() => void startCamera()}
+              class="btn-ghost flex-1 py-2 px-2.5 text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer border-2 border-[var(--ink)] bg-[var(--pop-yellow)] hover:opacity-90 transition-all text-[var(--ink)]"
+            >
+              <Camera size={15} strokeWidth={2.5} />
+              <span>Selfie</span>
+            </button>
+            <Show when={customPhoto()}>
+              <button
+                type="button"
+                onClick={() => setCustomPhoto(null)}
+                class="btn-ghost py-2 px-2 text-xs font-bold text-[var(--pop-red)] flex items-center justify-center cursor-pointer border-2 border-[var(--ink)]"
+                title="Remove photo"
+              >
+                <Trash2 size={15} />
+              </button>
+            </Show>
+          </div>
+        </Show>
 
         <button
           type="button"
