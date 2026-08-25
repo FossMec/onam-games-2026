@@ -10,6 +10,8 @@ export const pookalamDailyLimit = () => {
   return Number.isFinite(val) && val > 0 ? val : DEFAULT_DAILY_LIMIT;
 };
 
+export const pookalamMaxCredits = (daily: number) => Math.ceil(daily / 3);
+
 export function setPookalamDailyLimit(value: number): void {
   if (typeof window !== "undefined" && Number.isFinite(value) && value >= 0) {
     setMultiStoreSync(DAILY_LIMIT_KEY, String(Math.floor(value)));
@@ -27,7 +29,7 @@ export function addPookalamCredits(amount: number): void {
     const today = new Date().toISOString().slice(0, 10);
     const bucket = current?.day === today ? current : null;
     if (!bucket || (bucket.balloonsToday ?? 0) < maxBalloons) {
-      const cap = Math.min(Math.ceil(daily / 3), 100);
+      const cap = pookalamMaxCredits(daily);
       setMultiStoreSync(
         key,
         JSON.stringify({
@@ -59,7 +61,7 @@ export interface PookalamCreditState {
 export function getPookalamCreditState(): PookalamCreditState {
   if (typeof window === "undefined") {
     const daily = DEFAULT_DAILY_LIMIT;
-    const maxCredits = Math.min(Math.ceil(daily / 3), 100);
+    const maxCredits = pookalamMaxCredits(daily);
     return {
       credits: maxCredits,
       maxCredits,
@@ -72,7 +74,7 @@ export function getPookalamCreditState(): PookalamCreditState {
   }
 
   const daily = pookalamDailyLimit();
-  const maxCredits = Math.min(Math.ceil(daily / 3), 100);
+  const maxCredits = pookalamMaxCredits(daily);
   const maxBalloonsToday = Math.max(1, Math.floor(daily / 5));
 
   if (daily <= 0) {

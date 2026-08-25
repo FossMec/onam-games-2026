@@ -16,6 +16,8 @@
     "db:seed": "node  scripts/seed.mjs",
     "db:seed:hunt": "node  scripts/seed-treasure-hunt-questions.mjs",
     "db:seed:pookalams": "node  scripts/seed-pookalams.mjs",
+    "pookalam:snapshot": "node --env-file=.env scripts/snapshot-pookalam-from-prod.mjs",
+    "pookalam:backfill": "node --env-file=.env scripts/backfill-pookalam-diffs.mjs",
     "storage:buckets": "node  scripts/ensure-buckets.mjs",
     "fonts:fetch": "node scripts/fetch-fonts.mjs",
     "sprites:jump": "python3 scripts/process-jump-sprites.py",

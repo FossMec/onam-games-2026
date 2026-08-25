@@ -7,6 +7,7 @@ import { PADDING_SCALE, SLOTS } from "~/lib/pookalam-layout";
 const GROUND = "#2b2733";
 const CANVAS_PX = 800;
 const FPS = 30;
+const FINAL_HOLD_S = 2;
 
 type ExportPhase =
   | { type: "idle" }
@@ -24,12 +25,19 @@ interface DiffEntry {
   t: string;
 }
 
-function drawGridToCanvas(ctx: CanvasRenderingContext2D, grid: Uint8Array, size: number) {
+function drawGridToCanvas(
+  ctx: CanvasRenderingContext2D,
+  grid: Uint8Array,
+  size: number,
+  transparent = false,
+) {
   ctx.clearRect(0, 0, size, size);
-  ctx.beginPath();
-  ctx.arc(size / 2, size / 2, (size / 2) * PADDING_SCALE, 0, Math.PI * 2);
-  ctx.fillStyle = GROUND;
-  ctx.fill();
+  if (!transparent) {
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, (size / 2) * PADDING_SCALE, 0, Math.PI * 2);
+    ctx.fillStyle = GROUND;
+    ctx.fill();
+  }
 
   for (let i = 0; i < CELL_COUNT; i++) {
     const byteIdx = i >> 1;
@@ -57,6 +65,8 @@ const LARGE_DATA_WARN = 150_000;
 
 export function PookalamAnimationExport() {
   const [duration, setDuration] = createSignal(20);
+  const [transparentBg, setTransparentBg] = createSignal(false);
+  const [finalHold, setFinalHold] = createSignal(false);
   const [phase, setPhase] = createSignal<ExportPhase>({ type: "idle" });
   let previousUrl: string | null = null;
 
@@ -121,7 +131,9 @@ export function PookalamAnimationExport() {
     }
 
     const targetDur = duration(); // seconds
-    const totalFrames = Math.ceil(targetDur * FPS);
+    const animFrames = Math.ceil(targetDur * FPS);
+    const holdFrames = finalHold() ? FINAL_HOLD_S * FPS : 0;
+    const totalFrames = animFrames + holdFrames;
     const frameDuration = 1 / FPS;
 
     // Grid starts empty, will be built incrementally
@@ -142,14 +154,19 @@ export function PookalamAnimationExport() {
         const { Output, BufferTarget, Mp4OutputFormat, WebMOutputFormat, CanvasSource } =
           await import("mediabunny");
 
-        // Prefer MP4 (H.264) for widest compatibility, fallback to WebM/VP9 if needed
+        // Prefer MP4 (H.264) for widest compatibility; transparency needs WebM/VP9
         let format: any;
         let mimeType = "video/mp4";
-        try {
-          format = new Mp4OutputFormat();
-        } catch {
+        if (transparentBg()) {
           format = new WebMOutputFormat();
           mimeType = "video/webm";
+        } else {
+          try {
+            format = new Mp4OutputFormat();
+          } catch {
+            format = new WebMOutputFormat();
+            mimeType = "video/webm";
+          }
         }
 
         const output = new Output({
@@ -158,8 +175,9 @@ export function PookalamAnimationExport() {
         });
 
         const source = new CanvasSource(canvas as any, {
-          codec: "avc",
+          codec: transparentBg() ? ("vp9" as const) : "avc",
           bitrate: 8_000_000,
+          ...(transparentBg() ? { alpha: "keep" as const } : {}),
         });
         output.addVideoTrack(source as any);
 
@@ -167,15 +185,24 @@ export function PookalamAnimationExport() {
 
         for (let frame = 0; frame < totalFrames; frame++) {
           const elapsed = frame * frameDuration; // seconds
-          const progress = elapsed / targetDur;
-          const wallTarget = dMin + progress * span;
 
-          while (diffIdx < diffs.length && times[diffIdx] <= wallTarget) {
-            writeCell(grid, diffs[diffIdx].i, diffs[diffIdx].f);
-            diffIdx++;
+          if (frame < animFrames) {
+            const wallTarget = dMin + (elapsed / targetDur) * span;
+            while (diffIdx < diffs.length && times[diffIdx] <= wallTarget) {
+              writeCell(grid, diffs[diffIdx].i, diffs[diffIdx].f);
+              diffIdx++;
+            }
+            drawGridToCanvas(ctx as CanvasRenderingContext2D, grid, CANVAS_PX, transparentBg());
+          } else if (frame === animFrames) {
+            // Final hold: flush every remaining diff so the last frames are the
+            // complete artwork, then keep encoding the same canvas for 2s.
+            while (diffIdx < diffs.length) {
+              writeCell(grid, diffs[diffIdx].i, diffs[diffIdx].f);
+              diffIdx++;
+            }
+            drawGridToCanvas(ctx as CanvasRenderingContext2D, grid, CANVAS_PX, transparentBg());
           }
 
-          drawGridToCanvas(ctx as CanvasRenderingContext2D, grid, CANVAS_PX);
           // CanvasSource.add expects timestamp in seconds
           await (source as any).add(elapsed, frameDuration);
 
@@ -190,17 +217,6 @@ export function PookalamAnimationExport() {
             // Yield to UI thread periodically
             await new Promise((r) => setTimeout(r, 0));
           }
-        }
-
-        // Ensure final state is fully drawn (all diffs applied) on last frame if span not fully covered due to rounding
-        if (diffIdx < diffs.length) {
-          while (diffIdx < diffs.length) {
-            writeCell(grid, diffs[diffIdx].i, diffs[diffIdx].f);
-            diffIdx++;
-          }
-          drawGridToCanvas(ctx as CanvasRenderingContext2D, grid, CANVAS_PX);
-          // Replace last frame with final state for clean finish (re-add last timestamp)
-          // We already added totalFrames frames; if we missed tail, we can add one more at exact duration
         }
 
         await output.finalize();
@@ -279,26 +295,43 @@ export function PookalamAnimationExport() {
     const startReal = performance.now();
     const targetMs = targetDur * 1000;
 
+    const holdMs = finalHold() ? FINAL_HOLD_S * 1000 : 0;
     await new Promise<void>((resolve) => {
       let rafId = 0;
+      let tailApplied = false;
       const step = () => {
         const elapsedMs = performance.now() - startReal;
-        const progress = Math.min(1, elapsedMs / targetMs);
-        const wallTarget = dMin + progress * span;
 
-        while (fallbackIdx < diffs.length && times[fallbackIdx] <= wallTarget) {
-          writeCell(fallbackGrid, diffs[fallbackIdx].i, diffs[fallbackIdx].f);
-          fallbackIdx++;
+        if (elapsedMs < targetMs) {
+          const progress = elapsedMs / targetMs;
+          const wallTarget = dMin + progress * span;
+
+          while (fallbackIdx < diffs.length && times[fallbackIdx] <= wallTarget) {
+            writeCell(fallbackGrid, diffs[fallbackIdx].i, diffs[fallbackIdx].f);
+            fallbackIdx++;
+          }
+
+          drawGridToCanvas(captureCtx, fallbackGrid, CANVAS_PX, transparentBg());
+          setPhase({
+            type: "encoding",
+            progress: Math.round(progress * 100),
+            detail: isTruncated ? `Truncated` : undefined,
+          });
+          rafId = requestAnimationFrame(step);
+          return;
         }
 
-        drawGridToCanvas(captureCtx, fallbackGrid, CANVAS_PX);
-        setPhase({
-          type: "encoding",
-          progress: Math.round(progress * 100),
-          detail: isTruncated ? `Truncated` : undefined,
-        });
+        if (!tailApplied) {
+          tailApplied = true;
+          while (fallbackIdx < diffs.length) {
+            writeCell(fallbackGrid, diffs[fallbackIdx].i, diffs[fallbackIdx].f);
+            fallbackIdx++;
+          }
+          drawGridToCanvas(captureCtx, fallbackGrid, CANVAS_PX, transparentBg());
+          setPhase({ type: "encoding", progress: 100 });
+        }
 
-        if (progress < 1) {
+        if (holdMs > 0 && elapsedMs < targetMs + holdMs) {
           rafId = requestAnimationFrame(step);
         } else {
           cancelAnimationFrame(rafId);
@@ -345,7 +378,10 @@ export function PookalamAnimationExport() {
           <h3 class="font-black text-sm m-0">Export Pookalam Timelapse</h3>
           <p class="text-[10.5px] font-semibold m-0" style={{ color: "var(--ink-soft)" }}>
             Continuous replay of the community pookalam — timelapse compressed to your chosen
-            duration. Background is filled ground color.
+            duration.{" "}
+            {transparentBg()
+              ? "Background is transparent (WebM/VP9 alpha)."
+              : "Background is filled ground color."}
           </p>
         </div>
       </div>
@@ -368,6 +404,38 @@ export function PookalamAnimationExport() {
               </button>
             ))}
           </div>
+          <label class="text-xs font-black">Background</label>
+          <div class="flex items-center gap-1">
+            {([false, true] as const).map((t) => (
+              <button
+                type="button"
+                onClick={() => setTransparentBg(t)}
+                class={`px-2.5 py-1 rounded text-xs font-extrabold border-2 cursor-pointer transition-all ${
+                  transparentBg() === t
+                    ? "bg-[var(--pop-yellow)] border-[var(--ink)]"
+                    : "bg-[var(--paper-2)] border-[var(--ink-soft)]/30 hover:border-[var(--ink)]"
+                }`}
+              >
+                {t ? "Transparent" : "Solid"}
+              </button>
+            ))}
+          </div>
+          <label class="text-xs font-black">End</label>
+          <div class="flex items-center gap-1">
+            {([false, true] as const).map((t) => (
+              <button
+                type="button"
+                onClick={() => setFinalHold(t)}
+                class={`px-2.5 py-1 rounded text-xs font-extrabold border-2 cursor-pointer transition-all ${
+                  finalHold() === t
+                    ? "bg-[var(--pop-yellow)] border-[var(--ink)]"
+                    : "bg-[var(--paper-2)] border-[var(--ink-soft)]/30 hover:border-[var(--ink)]"
+                }`}
+              >
+                {t ? `+${FINAL_HOLD_S}s final hold` : "Timelapse only"}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             onClick={startExport}
@@ -383,6 +451,12 @@ export function PookalamAnimationExport() {
           caps at {MAX_DIFFS_SERVER.toLocaleString()}; if reached, export is sampled to the latest{" "}
           {MAX_DIFFS_SERVER.toLocaleString()} strokes.
         </p>
+        <Show when={transparentBg()}>
+          <p class="text-[10px] font-medium m-0" style={{ color: "var(--ink-soft)" }}>
+            Transparent output uses the deterministic encoder (Chromium); browsers without WebCodecs
+            fall back to an opaque recording.
+          </p>
+        </Show>
       </Show>
 
       <Show when={phase().type === "fetching"}>
