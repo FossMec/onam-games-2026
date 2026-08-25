@@ -34,8 +34,8 @@ export interface AccessState {
 /**
  * Who is allowed past the front door during the closed beta.
  *
- * Tester status is decided at sign-in from the `testers` email list, so this is
- * just a role read. Note that it gates the *shell*: it is a door, not a vault.
+ * Source of truth is users.role (tester/admin). The legacy testers table is dead code.
+ * This just reads role — it gates the *shell*: it is a door, not a vault.
  * Everything that matters - starting an attempt, submitting a score, reading an
  * unreleased game - is already checked server-side on its own, and none of
  * those checks depend on this one.

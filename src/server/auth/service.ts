@@ -92,16 +92,11 @@ export async function completeOAuthSignIn(
   const existing = existingUsers[0];
   let userId: string;
 
-  // Check tester whitelist
-  const testerRows = await db<{ active: boolean }[]>`
-    SELECT active FROM testers WHERE email = ${email} LIMIT 1
-  `;
-  const isWhitelistedTester = testerRows[0]?.active === true;
-
+  // Source of truth is users.role — testers table is dead code
   if (existing) {
     userId = existing.id;
-    const nextRole =
-      existing.role === "admin" ? "admin" : isWhitelistedTester ? "tester" : "player";
+    // Preserve stored role; do not demote/promote based on testers whitelist
+    const nextRole = existing.role as "player" | "tester" | "admin";
 
     await db`
       UPDATE users
@@ -116,7 +111,7 @@ export async function completeOAuthSignIn(
       WHERE id = ${existing.id}
     `;
   } else {
-    const initialRole = isWhitelistedTester ? "tester" : "player";
+    const initialRole = "player" as const;
     const createdUsers = await db<{ id: string }[]>`
       INSERT INTO users (supabase_uid, email, name, avatar_url, role)
       VALUES (${sbUser.id}, ${email}, ${name}, ${googleAvatar}, ${initialRole}::role)

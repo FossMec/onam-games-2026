@@ -122,24 +122,10 @@ export async function adminListUsers(limit?: number, offset = 0) {
 export async function adminSetUserRole(userId: string, role: "player" | "tester" | "admin") {
   await requireAdmin();
   const db = getDb();
-  const rows = await db<{ email: string }[]>`
-    UPDATE users SET role = ${role}::role, updated_at = NOW() WHERE id = ${userId} RETURNING email
+  await db`
+    UPDATE users SET role = ${role}::role, updated_at = NOW() WHERE id = ${userId}
   `;
-  const email = rows[0]?.email?.trim().toLowerCase();
-  if (email) {
-    if (role === "player") {
-      // Demoted to player: also mark inactive in testers table so they don't remain as an active tester
-      await db`UPDATE testers SET active = false WHERE email = ${email}`;
-    } else if (role === "tester") {
-      // Promoted to tester: also insert or activate in testers table
-      await db`
-        INSERT INTO testers (email, early_hours)
-        VALUES (${email}, 24)
-        ON CONFLICT (email) DO UPDATE
-        SET active = true, activated_at = NOW()
-      `;
-    }
-  }
+  // testers table is dead code — role is the source of truth
   invalidateShared("user:");
   invalidateShared("games:");
 }
@@ -152,6 +138,7 @@ export async function adminSetUserBanLevel(userId: string, level: BanLevel, reas
 export async function adminListTesters(limit = 100, offset = 0) {
   await requireAdmin();
   const db = getDb();
+  // Source of truth is users.role; map to legacy TesterRow shape for UI
   return db<
     {
       id: string;
@@ -165,11 +152,12 @@ export async function adminListTesters(limit = 100, offset = 0) {
     SELECT
       id,
       email,
-      early_hours AS "earlyHours",
-      active,
-      activated_at AS "activatedAt",
+      24 AS "earlyHours",
+      true AS active,
+      updated_at AS "activatedAt",
       created_at AS "createdAt"
-    FROM testers
+    FROM users
+    WHERE role = 'tester'
     ORDER BY created_at DESC
     LIMIT ${limit} OFFSET ${offset}
   `;
@@ -179,43 +167,37 @@ export async function adminAddTester(email: string, earlyHours = 24) {
   await requireAdmin();
   const normalized = email.trim().toLowerCase();
   if (!normalized) throw new Error("Invalid email");
+  void earlyHours; // legacy param ignored — role is source of truth
   const db = getDb();
-  await db`
-    INSERT INTO testers (email, early_hours)
-    VALUES (${normalized}, ${earlyHours})
-    ON CONFLICT (email) DO UPDATE
-    SET active = true, early_hours = ${earlyHours}, activated_at = NOW()
+  // testers table is dead code; promote existing user only
+  const rows = await db<{ id: string }[]>`
+    UPDATE users SET role = 'tester', updated_at = NOW() WHERE email = ${normalized} AND role = 'player' RETURNING id
   `;
-  // Sync users table if user already exists
-  await db`UPDATE users SET role = 'tester', updated_at = NOW() WHERE email = ${normalized} AND role = 'player'`;
+  if (rows.length === 0) {
+    // No existing user — user must sign in first; keep dead-table insert as no-op for backward compat
+    // Do not create placeholder user without supabase_uid
+    const exists = await db<{ id: string }[]>`SELECT id FROM users WHERE email = ${normalized} LIMIT 1`;
+    if (exists.length === 0) throw new Error("User not found — they must sign in once before being promoted to tester");
+    // Already tester/admin, nothing to do
+  }
 }
 
 export async function adminSetTesterActive(id: string, active: boolean) {
   await requireAdmin();
   const db = getDb();
-  const rows = await db<{ email: string }[]>`
-    UPDATE testers SET active = ${active} WHERE id = ${id} RETURNING email
-  `;
-  const email = rows[0]?.email?.trim().toLowerCase();
-  if (email) {
-    if (!active) {
-      await db`UPDATE users SET role = 'player', updated_at = NOW() WHERE email = ${email} AND role = 'tester'`;
-    } else {
-      await db`UPDATE users SET role = 'tester', updated_at = NOW() WHERE email = ${email} AND role = 'player'`;
-    }
+  // id is now users.id (legacy callers pass tester id; we support both by updating users directly)
+  if (active) {
+    await db`UPDATE users SET role = 'tester', updated_at = NOW() WHERE id = ${id} AND role = 'player'`;
+  } else {
+    await db`UPDATE users SET role = 'player', updated_at = NOW() WHERE id = ${id} AND role = 'tester'`;
   }
 }
 
 export async function adminDeleteTester(id: string) {
   await requireAdmin();
   const db = getDb();
-  const rows = await db<{ email: string }[]>`
-    DELETE FROM testers WHERE id = ${id} RETURNING email
-  `;
-  const email = rows[0]?.email?.trim().toLowerCase();
-  if (email) {
-    await db`UPDATE users SET role = 'player', updated_at = NOW() WHERE email = ${email} AND role = 'tester'`;
-  }
+  // Demote tester to player; id is users.id
+  await db`UPDATE users SET role = 'player', updated_at = NOW() WHERE id = ${id} AND role = 'tester'`;
 }
 
 export async function adminListSuspicious(limit = 100, offset = 0) {
@@ -517,7 +499,7 @@ export async function adminGetMetrics() {
   const [userCount, testerCount, gameCount, suspiciousCount, attemptCount, pookalamCount] =
     await Promise.all([
       db<{ count: number }[]>`SELECT count(*)::int AS count FROM users`,
-      db<{ count: number }[]>`SELECT count(*)::int AS count FROM testers WHERE active = true`,
+      db<{ count: number }[]>`SELECT count(*)::int AS count FROM users WHERE role = 'tester'`,
       db<{ count: number }[]>`SELECT count(*)::int AS count FROM games`,
       db<{ count: number }[]>`SELECT count(*)::int AS count FROM suspicious_logs`,
       db<{ count: number }[]>`SELECT count(*)::int AS count FROM game_attempts`,
@@ -671,15 +653,11 @@ export async function adminResetTesterAttempts(input: {
   let testerUsers: { id: string }[];
   if (input.allTesters) {
     testerUsers = await db<{ id: string }[]>`
-      SELECT u.id FROM users u
-      INNER JOIN testers t ON t.email = u.email
-      WHERE u.role = 'tester'
+      SELECT id FROM users WHERE role = 'tester'
     `;
   } else {
     testerUsers = await db<{ id: string }[]>`
-      SELECT u.id FROM users u
-      INNER JOIN testers t ON t.email = u.email
-      WHERE u.role = 'tester' AND u.email = ANY(${emails})
+      SELECT id FROM users WHERE role = 'tester' AND email = ANY(${emails})
     `;
   }
   const userIds = testerUsers.map((user) => user.id);
