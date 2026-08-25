@@ -1,5 +1,6 @@
-import { Eye, Search, X } from "lucide-solid";
+import { Eye, Search, Trash2, X } from "lucide-solid";
 import { For, Show, createMemo, createSignal } from "solid-js";
+import { purgeThreatLogsAction } from "~/server/admin/actions";
 
 export interface ActivityRow {
   id: string;
@@ -12,12 +13,30 @@ export interface ActivityRow {
 
 interface LogsTabProps {
   logs: ActivityRow[];
+  onReload?: () => void;
+  onNotify?: (msg: string) => void;
 }
 
 export function LogsTab(props: LogsTabProps) {
   const [search, setSearch] = createSignal("");
   const [typeFilter, setTypeFilter] = createSignal<string>("all");
   const [selectedLog, setSelectedLog] = createSignal<ActivityRow | null>(null);
+  const [busy, setBusy] = createSignal(false);
+
+  const handlePurge = async () => {
+    if (!confirm("Are you sure you want to permanently clear all activity and threat logs?"))
+      return;
+    setBusy(true);
+    try {
+      await purgeThreatLogsAction();
+      props.onNotify?.("All logs purged and database storage reclaimed");
+      props.onReload?.();
+    } catch (err) {
+      props.onNotify?.(err instanceof Error ? err.message : "Failed to purge logs");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const eventTypes = createMemo(() => {
     return Array.from(new Set(props.logs.map((l) => l.eventType)));
@@ -53,8 +72,20 @@ export function LogsTab(props: LogsTabProps) {
           </p>
         </div>
 
-        <div class="font-mono text-xs font-black px-2.5 py-1 rounded bg-[var(--paper-2)] border border-[var(--ink)]">
-          {filteredLogs().length} / {props.logs.length} Events
+        <div class="flex items-center gap-2">
+          <div class="font-mono text-xs font-black px-2.5 py-1 rounded bg-[var(--paper-2)] border border-[var(--ink)]">
+            {filteredLogs().length} / {props.logs.length} Events
+          </div>
+          <button
+            type="button"
+            onClick={handlePurge}
+            disabled={busy()}
+            class="btn-ghost text-xs px-2.5 py-1 text-red-700 hover:bg-red-100 border border-red-300 font-extrabold inline-flex items-center gap-1 cursor-pointer"
+            title="Clear all activity logs to reclaim database space"
+          >
+            <Trash2 size={13} />
+            <span>Purge Logs</span>
+          </button>
         </div>
       </div>
 

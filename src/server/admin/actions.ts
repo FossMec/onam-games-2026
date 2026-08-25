@@ -16,6 +16,7 @@ import {
   adminListSuspicious,
   adminListTesters,
   adminListUsers,
+  adminPurgeThreatLogs,
   adminRemoveLeaderboardEntry,
   adminResetTesterAttempts,
   adminResetGameAttempts,
@@ -166,6 +167,10 @@ export async function listSuspicious(page = 0) {
 
 export async function listActivity(page = 0) {
   return adminListActivity(100, Math.max(0, page) * 100);
+}
+
+export async function purgeThreatLogsAction() {
+  await adminPurgeThreatLogs();
 }
 
 export async function listSettings() {

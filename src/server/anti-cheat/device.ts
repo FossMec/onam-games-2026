@@ -128,17 +128,6 @@ export async function bindDeviceToUser(
       RETURNING id
     `;
     deviceId = createdDevices[0].id;
-
-    if (identity.isVm) {
-      await logSuspicious({
-        userId,
-        deviceId,
-        ip: meta.ip,
-        eventType: "vm_or_headless",
-        severity: "info",
-        details: { webgl: signals.webgl },
-      });
-    }
   }
 
   const bindings = await db<{ id: string; usage_count: number }[]>`
@@ -216,25 +205,6 @@ export async function bindDeviceToUser(
     VALUES (${userId}, ${deviceId}, ${stable}, 1)
   `;
 
-  await detectLinkedAccounts(
-    db,
-    {
-      id: deviceId,
-      deviceHash: identity.deviceHash,
-      fpVisitorId: fpVisitorId ?? existing?.fp_visitor_id ?? null,
-      hardwareHash: identity.hardwareHash ?? existing?.hardware_hash ?? null,
-      canvasHash: identity.canvasHash ?? existing?.canvas_hash ?? null,
-      webglHash: identity.webglHash ?? existing?.webgl_hash ?? null,
-      fontHash: identity.fontHash ?? existing?.font_hash ?? null,
-      screenHash: identity.screenHash ?? existing?.screen_hash ?? null,
-      audioHash: identity.audioHash ?? existing?.audio_hash ?? null,
-      localIp: identity.localIp ?? existing?.local_ip ?? null,
-      lastIp: meta.ip || null,
-    },
-    userId,
-    signals,
-  );
-
   return { deviceId, deviceHash: identity.deviceHash, allowed: true };
 }
 
@@ -255,7 +225,6 @@ async function detectLinkedAccounts(
   if (device.localIp) conds.push(db`d.local_ip = ${device.localIp}`);
   if (device.webglHash) conds.push(db`d.webgl_hash = ${device.webglHash}`);
   if (device.fontHash) conds.push(db`d.font_hash = ${device.fontHash}`);
-  if (device.lastIp) conds.push(db`d.last_ip = ${device.lastIp}`);
 
   if (conds.length === 0) return;
 
@@ -323,9 +292,9 @@ async function detectLinkedAccounts(
     .sort((a, b) => b.confidence - a.confidence);
 
   const strongest = links[0];
-  if (strongest.matched.length === 1 && strongest.matched[0] === "ip") return;
-  const severity =
-    links.length >= 2 && strongest.confidence >= REVIEW_THRESHOLD ? "critical" : strongest.severity;
+  if (!strongest || strongest.confidence < REVIEW_THRESHOLD) return;
+
+  const severity = links.length >= 2 ? "critical" : strongest.severity;
 
   await logSuspicious({
     userId,
@@ -333,22 +302,16 @@ async function detectLinkedAccounts(
     ip: device.lastIp ?? undefined,
     eventType: "multi_account_suspected",
     severity,
-    actionTaken: strongest.confidence >= REVIEW_THRESHOLD ? "flag" : "none",
+    actionTaken: "flag",
     details: {
       confidence: strongest.confidence,
       matched: strongest.matched,
-      linkedUserIds: links.map((link) => link.linkedUserId),
-      links,
-      browsers: shared.map((row) => row.userAgent),
-      localIp: signals.localIp,
-      uaModel: signals.uaModel,
-      mdnsProtected: signals.mdnsProtected,
+      linkedUserIds: links.slice(0, 3).map((link) => link.linkedUserId),
+      linkCount: links.length,
     },
   });
 
-  if (strongest.confidence < REVIEW_THRESHOLD) return;
-
-  for (const link of links) {
+  for (const link of links.slice(0, 3)) {
     if (link.confidence < REVIEW_THRESHOLD) continue;
     await logSuspicious({
       userId: link.linkedUserId,

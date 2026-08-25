@@ -4,6 +4,7 @@ import {
   addTester,
   blockIpAction,
   deleteTesterAction,
+  purgeThreatLogsAction,
   setTesterActive,
   unblockIpAction,
 } from "~/server/admin/actions";
@@ -97,6 +98,25 @@ export function SecurityTab(props: SecurityTabProps) {
       props.onReload();
     } catch (err) {
       props.onNotify(err instanceof Error ? err.message : "Failed to remove tester");
+    }
+  };
+
+  const handlePurgeLogs = async () => {
+    if (
+      !confirm(
+        "Are you sure you want to permanently clear all threat/suspicious logs and free database storage?",
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      await purgeThreatLogsAction();
+      props.onNotify("Purged all threat/activity logs and reclaimed database storage");
+      props.onReload();
+    } catch (err) {
+      props.onNotify(err instanceof Error ? err.message : "Failed to purge threat logs");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -396,6 +416,17 @@ export function SecurityTab(props: SecurityTabProps) {
                 placeholder="Search threat logs..."
                 class="input text-xs font-semibold py-1 px-2 w-44"
               />
+
+              <button
+                type="button"
+                onClick={handlePurgeLogs}
+                disabled={busy()}
+                class="btn-ghost text-xs px-2.5 py-1 text-red-700 hover:bg-red-100 border border-red-300 font-extrabold inline-flex items-center gap-1 cursor-pointer"
+                title="Wipe all threat/activity log rows to reclaim database storage"
+              >
+                <Trash2 size={13} />
+                <span>Purge Logs</span>
+              </button>
             </div>
           </div>
 

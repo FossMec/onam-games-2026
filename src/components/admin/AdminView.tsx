@@ -421,7 +421,14 @@ export function AdminView() {
                 {/* 9. Activity Logs Tab */}
                 <Show when={activeTab() === "logs"}>
                   <Show when={activity()} fallback={<TabLoading />}>
-                    <LogsTab logs={activity()!} />
+                    <LogsTab
+                      logs={activity()!}
+                      onReload={revalidateAfter(
+                        ADMIN_QUERY_KEYS.activity,
+                        ADMIN_QUERY_KEYS.dashboard,
+                      )}
+                      onNotify={showNotification}
+                    />
                   </Show>
                 </Show>
               </Suspense>

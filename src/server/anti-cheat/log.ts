@@ -31,6 +31,9 @@ export async function logSuspicious(
     actionTaken?: ActionTaken;
   },
 ): Promise<void> {
+  // Discard informational noise - only persist genuine warnings and critical threats to keep database lean
+  if (event.severity === "info") return;
+
   const db = getDb();
   await db`
     INSERT INTO suspicious_logs (user_id, device_id, ip, event_type, severity, details_json, action_taken)

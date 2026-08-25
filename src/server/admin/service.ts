@@ -279,6 +279,13 @@ export async function adminListActivity(limit = 100, offset = 0) {
   `;
 }
 
+export async function adminPurgeThreatLogs() {
+  await requireAdmin();
+  const db = getDb();
+  await db`DELETE FROM suspicious_logs`;
+  await db`DELETE FROM activity_logs`;
+}
+
 function unwrapDoubleEncoded(value: unknown): unknown {
   if (typeof value !== "string") return value;
   const trimmed = value.trim();
