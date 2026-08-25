@@ -279,7 +279,7 @@ export function LeaderboardView() {
         {/* Code-a-Pookalam Mega Prize Card */}
         <A
           href="/code-a-pookalam"
-          class="card pop-yellow p-4 space-y-2.5 text-center block transition-transform hover:-translate-y-1 hover:brightness-105 no-underline cursor-pointer border-2 border-[var(--ink)]"
+          class="card pop-yellow p-4 space-y-2.5 text-center block  hover:brightness-105 no-underline cursor-pointer border-2 border-[var(--ink)]"
         >
           <div class="flex items-center justify-center gap-1.5">
             <SpriteIcon name="pookalam-flower" size={20} />
