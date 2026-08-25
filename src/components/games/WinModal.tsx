@@ -138,6 +138,13 @@ export function WinModal(props: WinModalProps) {
                 {props.valid ? "My board" : "Close"}
               </button>
             </div>
+            <a
+              href="/code-a-pookalam"
+              class="text-xs font-extrabold underline decoration-2 hover:opacity-75 block text-center pt-1"
+              style={{ color: "var(--ink)" }}
+            >
+              Waiting for tomorrow? Check out Code-a-Pookalam (open all week) →
+            </a>
           </div>
         </div>
       </div>

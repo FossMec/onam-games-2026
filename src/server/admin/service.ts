@@ -6,9 +6,65 @@ import { setBanLevel } from "~/server/auth/bans";
 import { ensureDefaultSettings } from "~/server/settings/defaults";
 import { ensureMessageTables } from "~/server/pookalam/comments";
 
-export async function adminListUsers(limit = 100, offset = 0) {
+export async function adminListUsers(limit?: number, offset = 0) {
   await requireAdmin();
   const db = getDb();
+  if (limit && limit > 0) {
+    return db<
+      {
+        id: string;
+        email: string;
+        name: string;
+        role: "player" | "tester" | "admin" | null;
+        college: string | null;
+        collegeOther: string | null;
+        branch: string | null;
+        branchOther: string | null;
+        batch: string | null;
+        div: string | null;
+        occupation: string | null;
+        instagramHandle: string | null;
+        whatsappNumber: string | null;
+        avatarUrl: string | null;
+        banLevel: number;
+        banUntil: Date | null;
+        banReason: string | null;
+        trustScore: number;
+        streakCount: number;
+        onboardingCompleted: boolean;
+        createdAt: Date;
+        lastLoginAt: Date | null;
+      }[]
+    >`
+      SELECT
+        id,
+        email,
+        name,
+        role,
+        college,
+        college_other AS "collegeOther",
+        branch,
+        branch_other AS "branchOther",
+        batch,
+        div,
+        occupation,
+        instagram_handle AS "instagramHandle",
+        whatsapp_number AS "whatsappNumber",
+        avatar_url AS "avatarUrl",
+        ban_level AS "banLevel",
+        ban_until AS "banUntil",
+        ban_reason AS "banReason",
+        trust_score AS "trustScore",
+        streak_count AS "streakCount",
+        onboarding_completed AS "onboardingCompleted",
+        created_at AS "createdAt",
+        last_login_at AS "lastLoginAt"
+      FROM users
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+  }
+
   return db<
     {
       id: string;
@@ -60,7 +116,6 @@ export async function adminListUsers(limit = 100, offset = 0) {
       last_login_at AS "lastLoginAt"
     FROM users
     ORDER BY created_at DESC
-    LIMIT ${limit} OFFSET ${offset}
   `;
 }
 

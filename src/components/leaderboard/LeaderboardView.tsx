@@ -68,14 +68,7 @@ function formatMetric(entry: DailyEntry): string {
   }
 }
 
-const rankPop = (rank: number): string =>
-  rank === 1
-    ? "var(--pop-yellow)"
-    : rank === 2
-      ? "var(--paper-3)"
-      : rank === 3
-        ? "var(--pop-red)"
-        : "transparent";
+const rankPop = (rank: number): string => (rank === 1 ? "var(--pop-yellow)" : "transparent");
 
 const clientBoardCache = new Map<string, { data: DailyBoard | null; timestamp: number }>();
 
@@ -780,7 +773,7 @@ function RankChip(props: { rank: number }) {
         "min-width": "1.75rem",
         padding: "0.15rem 0.4rem",
         background: rankPop(props.rank),
-        border: props.rank <= 3 ? "var(--ink-w) solid var(--ink)" : "1px solid var(--ink-soft)",
+        border: props.rank === 1 ? "var(--ink-w) solid var(--ink)" : "1px solid var(--ink-soft)",
         "border-radius": "999px",
       }}
     >

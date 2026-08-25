@@ -13,12 +13,12 @@ export default function GamesPage() {
       <Title>Daily Mini-Games Arena - Onam Games</Title>
       <Meta
         name="description"
-        content="Play a fun new mini-game every evening at Onam Games by FOSSMEC — six daily puzzle challenges across the festival week, with ₹250 daily bounties and a ₹5K+ prize pool."
+        content="Play a fun new mini-game at 1 PM everyday at Onam Games by FOSSMEC — six daily puzzle challenges across the festival week, with ₹250 daily bounties and a ₹5K+ prize pool."
       />
       <Meta property="og:title" content="Daily Mini-Games Arena - Onam Games" />
       <Meta
         property="og:description"
-        content="Play a fun new mini-game every evening at Onam Games by FOSSMEC — six daily puzzle challenges across the festival week, with ₹250 daily bounties and a ₹5K+ prize pool."
+        content="Play a fun new mini-game at 1 PM everyday at Onam Games by FOSSMEC — six daily puzzle challenges across the festival week, with ₹250 daily bounties and a ₹5K+ prize pool."
       />
       <Meta property="og:url" content={`${SITE_URL}/games`} />
       <Meta property="og:image" content={`${SITE_URL}/images/games-og.webp`} />
@@ -28,7 +28,7 @@ export default function GamesPage() {
       <Meta name="twitter:title" content="Daily Mini-Games Arena - Onam Games" />
       <Meta
         name="twitter:description"
-        content="Play a fun new mini-game every evening at Onam Games by FOSSMEC — six daily puzzle challenges across the festival week, with ₹250 daily bounties and a ₹5K+ prize pool."
+        content="Play a fun new mini-game at 1 PM everyday at Onam Games by FOSSMEC — six daily puzzle challenges across the festival week, with ₹250 daily bounties and a ₹5K+ prize pool."
       />
       <Meta name="twitter:image" content={`${SITE_URL}/images/games-og.webp`} />
 

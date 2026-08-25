@@ -45,9 +45,7 @@ export function AdminView() {
   // localized loader here instead of tripping the route-level one into a
   // full-screen reload. Each resource only subscribes to page() when its tab is
   // active, so paging the Users table does NOT refetch Attempts, etc.
-  const users = createAsync(() =>
-    activeTab() === "users" ? adminUsers(page()) : Promise.resolve(null),
-  );
+  const users = createAsync(() => (activeTab() === "users" ? adminUsers() : Promise.resolve(null)));
   const attempts = createAsync(() =>
     activeTab() === "attempts" ? adminAttempts(page()) : Promise.resolve(null),
   );
@@ -230,29 +228,33 @@ export function AdminView() {
                 }}
               />
 
-              <div class="flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  class="btn-ghost text-xs"
-                  disabled={page() === 0}
-                  onClick={() => setPage((current) => Math.max(0, current - 1))}
-                >
-                  Previous page
-                </button>
-                <span class="text-xs font-bold">Page {page() + 1}</span>
-                <button
-                  type="button"
-                  class="btn-ghost text-xs"
-                  disabled={
-                    activeTab() === "overview" ||
-                    activeTab() === "games" ||
-                    activeTab() === "settings"
-                  }
-                  onClick={() => setPage((current) => current + 1)}
-                >
-                  Next page
-                </button>
-              </div>
+              <Show
+                when={
+                  activeTab() === "attempts" ||
+                  activeTab() === "security" ||
+                  activeTab() === "logs" ||
+                  activeTab() === "pookalam"
+                }
+              >
+                <div class="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    class="btn-ghost text-xs"
+                    disabled={page() === 0}
+                    onClick={() => setPage((current) => Math.max(0, current - 1))}
+                  >
+                    Previous page
+                  </button>
+                  <span class="text-xs font-bold">Page {page() + 1}</span>
+                  <button
+                    type="button"
+                    class="btn-ghost text-xs"
+                    onClick={() => setPage((current) => current + 1)}
+                  >
+                    Next page
+                  </button>
+                </div>
+              </Show>
 
               {/* Tab body has its own Suspense so a cache-miss refetch on a tab
                   switch shows a localized loader instead of the route-level

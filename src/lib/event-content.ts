@@ -42,7 +42,7 @@ export const EVENT = {
    * an intermediate draft cut it to a terse list and lost all of the warmth.
    */
   blurb:
-    "A celebration of Onam and open source, run by fossmec. Create an intricate flower carpet purely with code in Code-a-Pookalam (open all week), and play a fun new mini-game every evening to climb the leaderboard and win daily cash prizes!",
+    "A celebration of Onam and open source, run by fossmec. Create an intricate pookalam purely with code in Code-a-Pookalam (open all week), and play a fun new mini-game at 1 PM everyday to climb the leaderboard and win daily cash prizes!",
   // TODO: confirm before launch.
   dates: "TODO - event dates",
   registerNote: "Sign in with Google. Takes about eleven seconds.",
@@ -59,13 +59,13 @@ export const EVENT = {
           title: "6 Daily Puzzle Challenges",
           icon: "maveli-laptop" as SpriteName,
           pop: "pop-yellow",
-          body: "A fresh mini-game unlocks each evening. Complete the challenge fast to top that day's board.",
+          body: "A fresh mini-game unlocks at 1 PM everyday. Complete the challenge fast to top that day's board.",
         },
         {
           title: "Code-a-Pookalam Contest",
           icon: "pookalam-flower" as SpriteName,
           pop: "pop-teal",
-          body: "Design a flower carpet purely with code (Canvas, SVG, CSS, Python). Judged by peer ELO voting.",
+          body: "Design a pookalam purely with code (Canvas, SVG, CSS, Python). Judged by peer ELO voting.",
         },
         {
           title: "Live Community Pookalam",
@@ -107,7 +107,7 @@ export const EVENT = {
   howItWorks: [
     {
       title: "A new puzzle unlocks daily",
-      body: "One fresh mini-game drops every evening. Solve it fast to race against the clock.",
+      body: "One fresh mini-game drops at 1 PM everyday. Solve it fast to race against the clock.",
     },
     {
       title: "One ranked shot per game",
@@ -115,7 +115,7 @@ export const EVENT = {
     },
     {
       title: "Code-a-Pookalam all week",
-      body: "Create an intricate floral carpet purely using code (HTML Canvas, SVG, CSS, Shaders or Python).",
+      body: "Create an intricate pookalam purely using code (HTML Canvas, SVG, CSS, Shaders or Python).",
     },
     {
       title: "Community Elo voting arena",

@@ -1,11 +1,14 @@
-import { Clock, Edit2, Plus, Trash2, X } from "lucide-solid";
+import { Clock, Edit2, Plus, Trash2, Trophy, X } from "lucide-solid";
 import { For, Show, createSignal } from "solid-js";
 import {
   createGame,
   deleteGame,
+  getGameWinnerAction,
   resetGameAttemptsAction,
   updateGame,
 } from "~/server/admin/actions";
+import { canvasToBlob, renderShareCard, type ShareCardData } from "~/lib/share-card";
+import { collegeLabel } from "~/lib/profile";
 
 export interface GameRow {
   id: string;
@@ -75,6 +78,60 @@ export function GamesTab(props: GamesTabProps) {
       props.onNotify(err instanceof Error ? err.message : "Failed to reset game attempts");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const [downloadingWinnerId, setDownloadingWinnerId] = createSignal<string | null>(null);
+
+  const handleDownloadWinnerCard = async (game: GameRow) => {
+    setDownloadingWinnerId(game.id);
+    try {
+      const res = await getGameWinnerAction(game.id);
+      if (!res || !res.winner) {
+        props.onNotify(`No submissions found yet for Day ${game.day}: ${game.title}`);
+        return;
+      }
+      const w = res.winner;
+      const shareData: ShareCardData = {
+        playerName: w.name,
+        avatarUrl: w.avatarUrl,
+        college: collegeLabel(w.college, null),
+        branch: w.branch,
+        batch: w.batch,
+        gameTitle: game.title,
+        gameSlug: game.slug,
+        gameType: game.gameType,
+        day: game.day,
+        metric: res.metric,
+        durationMs: w.durationMs,
+        score: w.score,
+        rank: 1,
+        fieldSize: res.fieldSize,
+        afterDeadline: false,
+        origin: typeof window !== "undefined" ? window.location.origin : "",
+        seed: `winner-${game.slug}-${w.userId}`,
+        isWinner: true,
+        options: {
+          hideMeme: true,
+        },
+      };
+
+      const canvas = await renderShareCard(shareData);
+      const blob = await canvasToBlob(canvas);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const safeName = (w.name || "Winner").trim().replace(/[^a-zA-Z0-9_-]/g, "_");
+      a.download = `Day-${game.day}-WINNER-${safeName}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      props.onNotify(`Downloaded winner card for ${w.name} (Day ${game.day})`);
+    } catch (err) {
+      props.onNotify(err instanceof Error ? err.message : "Failed to generate winner card");
+    } finally {
+      setDownloadingWinnerId(null);
     }
   };
 
@@ -342,6 +399,15 @@ export function GamesTab(props: GamesTabProps) {
 
                       <td class="p-3 text-right">
                         <div class="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadWinnerCard(g)}
+                            disabled={downloadingWinnerId() === g.id}
+                            class="p-1.5 rounded hover:bg-[var(--pop-yellow)] border border-transparent hover:border-[var(--ink)] cursor-pointer text-[var(--ink)] disabled:opacity-40"
+                            title="Download Winner Card"
+                          >
+                            <Trophy size={14} />
+                          </button>
                           <button
                             type="button"
                             onClick={() => openEdit(g)}

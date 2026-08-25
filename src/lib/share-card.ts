@@ -711,14 +711,15 @@ export interface ShareCardData {
   origin: string;
   /** Stable per attempt, so the same run always draws the same card. */
   seed: string;
-  /** When the card was drawn. Defaults to now; injectable so tests can pin it. */
   generatedAt?: Date;
+  isWinner?: boolean;
   options?: {
     hideAvatar?: boolean;
     hideCollege?: boolean;
     hideBranch?: boolean;
     hideBatch?: boolean;
     hideInstagram?: boolean;
+    hideMeme?: boolean;
   };
 }
 
@@ -830,9 +831,17 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   ctx.fillText("BY FOSSMEC", 254 + markWidth, 182);
   ctx.textAlign = "left";
 
-  ctx.font = font("mono", 30, 700);
-  ctx.fillStyle = INK_SOFT;
-  ctx.fillText(`DAY ${data.day} · ${data.gameTitle.toUpperCase()}`, 256, 228);
+  if (data.isWinner) {
+    const winHeaderText = `DAY ${data.day} WINNER · ${data.gameTitle.toUpperCase()}`;
+    const winHSize = fitSize(ctx, winHeaderText, 620, "display", 32, 20, 800);
+    ctx.font = font("display", winHSize, 800);
+    ctx.fillStyle = POP.red;
+    ctx.fillText(winHeaderText, 256, 228);
+  } else {
+    ctx.font = font("mono", 30, 700);
+    ctx.fillStyle = INK_SOFT;
+    ctx.fillText(`DAY ${data.day} · ${data.gameTitle.toUpperCase()}`, 256, 228);
+  }
 
   ctx.font = font("display", 27, 800);
   ctx.fillStyle = TEAL_DEEP;
@@ -1029,9 +1038,11 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   const figure = figureFor(data);
 
   // Game name as a small ribbon riding the top edge of the score panel.
-  const ribbonText = data.gameTitle.toUpperCase();
+  const ribbonText = data.isWinner
+    ? `${data.gameTitle.toUpperCase()} · WINNER`
+    : data.gameTitle.toUpperCase();
   ctx.textAlign = "center";
-  const ribbonSize = fitSize(ctx, ribbonText, chipW * 0.72, "display", 30, 16, 800);
+  const ribbonSize = fitSize(ctx, ribbonText, chipW * 0.76, "display", 30, 16, 800);
   ctx.font = font("display", ribbonSize, 800);
   const ribbonW = ctx.measureText(ribbonText).width + 52;
   const ribbonH = ribbonSize + 26;
@@ -1121,82 +1132,7 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   }
   ctx.restore();
 
-  /* ---- 8. meme sticker (Priority #4: ALWAYS the festival comic meme) ---- */
-  if (memeImg) {
-    ctx.save();
-    ctx.translate(memeBox.x + memeBox.w / 2, memeBox.y + memeBox.h / 2);
-    ctx.rotate(rad(-3.5));
-    const frame = memeBox.w;
-    // Cover-crop to a square so a portrait meme is never squashed.
-    const side = Math.min(memeImg.width, memeImg.height);
-    const sx = (memeImg.width - side) / 2;
-    const sy = (memeImg.height - side) / 2;
-    ctx.save();
-    roundRectPath(ctx, -frame / 2, -frame / 2, frame, frame, 22);
-    ctx.clip();
-    ctx.fillStyle = PAPER_2;
-    ctx.fillRect(-frame / 2, -frame / 2, frame, frame);
-    ctx.drawImage(memeImg, sx, sy, side, side, -frame / 2, -frame / 2, frame, frame);
-    ctx.restore();
-    roundRectPath(ctx, -frame / 2, -frame / 2, frame, frame, 22);
-    ctx.lineWidth = 9;
-    ctx.strokeStyle = INK;
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  /* ---- 9. the taunt --------------------------------------------------- */
-  burst(ctx, SHOUT.cx, SHOUT.cy, SHOUT.r, 14, burstColor, `${seed}-shout`, 8);
-  ctx.save();
-  ctx.translate(SHOUT.cx, SHOUT.cy);
-  ctx.rotate(rad(-4));
-  // Two lines at most, split as evenly as the words allow. Three or four
-  // stacked words shrink the type to the point where the shout stops shouting.
-  const shoutLines = balanceLines(taunt(tier, seed), 2);
-  const longest = shoutLines.reduce((a, b) => (a.length > b.length ? a : b));
-  const shoutSize = fitSize(ctx, longest, SHOUT.r * 1.55, "comic", 116, 48);
-  ctx.font = font("comic", shoutSize);
-  ctx.textAlign = "center";
-  const lineH = shoutSize * 0.86;
-  shoutLines.forEach((line, i) => {
-    inkedText(
-      ctx,
-      line,
-      0,
-      (i - (shoutLines.length - 1) / 2) * lineH + shoutSize * 0.3,
-      PAPER_2,
-      9,
-    );
-  });
-  ctx.restore();
-
-  /* ---- 10. the brag, in its own band under the meme and the shout ----- */
-  ctx.textAlign = "center";
-  ctx.font = font("body", 34, 800);
-  ctx.fillStyle = INK;
-  const bragLines = wrapLines(ctx, brag(tier, seed), CARD_W - 180, 2);
-  bragLines.forEach((line, i) => {
-    ctx.fillText(line, CARD_W / 2, BRAG_Y + i * BRAG_LINE_H);
-  });
-
-  /* ---- 11. the handwritten aside -------------------------------------- */
-  // One line, always: this is a margin note, and a margin note that wraps is a
-  // paragraph. The type shrinks instead.
-  ctx.save();
-  ctx.translate(70, ASIDE_Y);
-  ctx.rotate(rad(-1.2));
-  ctx.textAlign = "left";
-  ctx.font = font("hand", 46);
-  ctx.fillStyle = POP.teal;
-  ctx.fillText("↳", 0, 0);
-  const asideText = aside(seed);
-  const asideSize = fitSize(ctx, asideText, CARD_W - 220, "hand", 46, 30);
-  ctx.font = font("hand", asideSize);
-  ctx.fillStyle = INK;
-  ctx.fillText(asideText, 46, 0);
-  ctx.restore();
-
-  /* ---- 12. sprites, tilted like stickers ------------------------------ */
+  /* ---- Helper for drawing tilted sprite stickers ---- */
   const stick = (
     img: HTMLImageElement | null,
     x: number,
@@ -1211,8 +1147,131 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
     ctx.drawImage(img, -size / 2, -size / 2, size, size);
     ctx.restore();
   };
-  stick(spriteImg, 1005, 1315, 160, SPRITE_REGISTRY[spriteName]?.defaultTilt ?? -3);
-  stick(secondSpriteImg, 852, 208, 130, 6);
+
+  /* ---- 8. meme sticker & message or winner banner --------------------- */
+  if (data.isWinner) {
+    /* ---- WINNER MODE: Large celebration burst & prominent game champion banner ---- */
+    const winnerBurstColor = POP.yellow;
+    burst(ctx, CARD_W / 2, 1355, 235, 16, winnerBurstColor, `${seed}-winner-shout`, 9);
+
+    ctx.save();
+    ctx.translate(CARD_W / 2, 1355);
+    ctx.rotate(rad(-3));
+    const shoutText = "WINNER!";
+    const shoutSize = fitSize(ctx, shoutText, 460, "comic", 130, 64);
+    ctx.font = font("comic", shoutSize);
+    ctx.textAlign = "center";
+    inkedText(ctx, shoutText, 0, shoutSize * 0.35, PAPER_2, 11);
+    ctx.restore();
+
+    // Prominent Winner Panel Box
+    const winBoxX = 70;
+    const winBoxY = 1530;
+    const winBoxW = CARD_W - 140;
+    const winBoxH = 220;
+    stickerRect(ctx, winBoxX, winBoxY, winBoxW, winBoxH, 26, PAPER_2, 8, 12, 12);
+
+    ctx.textAlign = "center";
+    // Game Name prominently
+    const winTitle = data.gameTitle.toUpperCase();
+    const winTitleSize = fitSize(ctx, winTitle, winBoxW - 40, "display", 40, 22, 800);
+    ctx.font = font("display", winTitleSize, 800);
+    ctx.fillStyle = INK;
+    ctx.fillText(winTitle, CARD_W / 2, winBoxY + 54);
+
+    // Subtitle
+    ctx.font = font("display", 28, 800);
+    ctx.fillStyle = POP.red;
+    ctx.fillText(`DAY ${data.day} CHAMPION · ₹250 CASH PRIZE`, CARD_W / 2, winBoxY + 112);
+
+    // Official badge
+    ctx.font = font("mono", 22, 700);
+    ctx.fillStyle = TEAL_DEEP;
+    ctx.fillText(`OFFICIAL 1ST PLACE · FOSS MEC ONAM GAMES`, CARD_W / 2, winBoxY + 168);
+
+    /* ---- Sprites for winner ---- */
+    stick(spriteImg, 1005, 1315, 160, -3);
+    stick(secondSpriteImg, 852, 208, 130, 6);
+  } else {
+    /* ---- 8. meme sticker (Priority #4: ALWAYS the festival comic meme) ---- */
+    if (memeImg && !data.options?.hideMeme) {
+      ctx.save();
+      ctx.translate(memeBox.x + memeBox.w / 2, memeBox.y + memeBox.h / 2);
+      ctx.rotate(rad(-3.5));
+      const frame = memeBox.w;
+      // Cover-crop to a square so a portrait meme is never squashed.
+      const side = Math.min(memeImg.width, memeImg.height);
+      const sx = (memeImg.width - side) / 2;
+      const sy = (memeImg.height - side) / 2;
+      ctx.save();
+      roundRectPath(ctx, -frame / 2, -frame / 2, frame, frame, 22);
+      ctx.clip();
+      ctx.fillStyle = PAPER_2;
+      ctx.fillRect(-frame / 2, -frame / 2, frame, frame);
+      ctx.drawImage(memeImg, sx, sy, side, side, -frame / 2, -frame / 2, frame, frame);
+      ctx.restore();
+      roundRectPath(ctx, -frame / 2, -frame / 2, frame, frame, 22);
+      ctx.lineWidth = 9;
+      ctx.strokeStyle = INK;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    /* ---- 9. the taunt --------------------------------------------------- */
+    burst(ctx, SHOUT.cx, SHOUT.cy, SHOUT.r, 14, burstColor, `${seed}-shout`, 8);
+    ctx.save();
+    ctx.translate(SHOUT.cx, SHOUT.cy);
+    ctx.rotate(rad(-4));
+    // Two lines at most, split as evenly as the words allow. Three or four
+    // stacked words shrink the type to the point where the shout stops shouting.
+    const shoutLines = balanceLines(taunt(tier, seed), 2);
+    const longest = shoutLines.reduce((a, b) => (a.length > b.length ? a : b));
+    const shoutSize = fitSize(ctx, longest, SHOUT.r * 1.55, "comic", 116, 48);
+    ctx.font = font("comic", shoutSize);
+    ctx.textAlign = "center";
+    const lineH = shoutSize * 0.86;
+    shoutLines.forEach((line, i) => {
+      inkedText(
+        ctx,
+        line,
+        0,
+        (i - (shoutLines.length - 1) / 2) * lineH + shoutSize * 0.3,
+        PAPER_2,
+        9,
+      );
+    });
+    ctx.restore();
+
+    /* ---- 10. the brag, in its own band under the meme and the shout ----- */
+    ctx.textAlign = "center";
+    ctx.font = font("body", 34, 800);
+    ctx.fillStyle = INK;
+    const bragLines = wrapLines(ctx, brag(tier, seed), CARD_W - 180, 2);
+    bragLines.forEach((line, i) => {
+      ctx.fillText(line, CARD_W / 2, BRAG_Y + i * BRAG_LINE_H);
+    });
+
+    /* ---- 11. the handwritten aside -------------------------------------- */
+    // One line, always: this is a margin note, and a margin note that wraps is a
+    // paragraph. The type shrinks instead.
+    ctx.save();
+    ctx.translate(70, ASIDE_Y);
+    ctx.rotate(rad(-1.2));
+    ctx.textAlign = "left";
+    ctx.font = font("hand", 46);
+    ctx.fillStyle = POP.teal;
+    ctx.fillText("↳", 0, 0);
+    const asideText = aside(seed);
+    const asideSize = fitSize(ctx, asideText, CARD_W - 220, "hand", 46, 30);
+    ctx.font = font("hand", asideSize);
+    ctx.fillStyle = INK;
+    ctx.fillText(asideText, 46, 0);
+    ctx.restore();
+
+    /* ---- 12. sprites, tilted like stickers ------------------------------ */
+    stick(spriteImg, 1005, 1315, 160, SPRITE_REGISTRY[spriteName]?.defaultTilt ?? -3);
+    stick(secondSpriteImg, 852, 208, 130, 6);
+  }
 
   /* ---- 13. footer ----------------------------------------------------- */
   inkedRect(ctx, 60, FOOTER_Y, CARD_W - 120, FOOTER_H, 28, PAPER_3, 8);
@@ -1229,16 +1288,14 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   ctx.fillText("fossmec", CARD_W - 100, baseline);
 
   /*
-   * When the card was made.
-   *
-   * A leaderboard moves all week, so "#3 of 47" is only true as of a moment -
-   * and a card doing the rounds three days later should say when it was true
-   * rather than quietly claim to be current. IST, because the whole event is.
+   * When the card was made (omitted on winner cards).
    */
-  ctx.textAlign = "center";
-  ctx.font = font("mono", 22, 400);
-  ctx.fillStyle = INK_SOFT;
-  ctx.fillText(stampedAt(data.generatedAt), CARD_W / 2, FOOTER_Y + FOOTER_H - 18);
+  if (!data.isWinner) {
+    ctx.textAlign = "center";
+    ctx.font = font("mono", 22, 400);
+    ctx.fillStyle = INK_SOFT;
+    ctx.fillText(stampedAt(data.generatedAt), CARD_W / 2, FOOTER_Y + FOOTER_H - 18);
+  }
 
   return canvas;
 }

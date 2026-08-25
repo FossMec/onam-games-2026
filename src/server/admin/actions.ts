@@ -69,8 +69,27 @@ export async function resetUserAttemptsAction(userId: string, gameId?: string) {
   return adminResetUserAttempts(userId, gameId);
 }
 
-export async function listUsers(page = 0) {
-  return adminListUsers(100, Math.max(0, page) * 100);
+import { getDailyLeaderboard } from "~/server/leaderboard/service";
+
+export async function listUsers(page?: number, limit?: number) {
+  if (limit !== undefined && limit > 0) {
+    const p = page ?? 0;
+    return adminListUsers(limit, Math.max(0, p) * limit);
+  }
+  return adminListUsers();
+}
+
+export async function getGameWinnerAction(gameId: string) {
+  await requireAdmin();
+  const board = await getDailyLeaderboard(gameId, "admin", null, "main", 1, 1);
+  if (!board.entries || board.entries.length === 0) return null;
+  const winner = board.entries[0];
+  return {
+    winner,
+    metric: board.metric,
+    gameType: board.gameType,
+    fieldSize: board.fieldSize,
+  };
 }
 
 export async function setUserRole(userId: string, role: "player" | "tester" | "admin") {

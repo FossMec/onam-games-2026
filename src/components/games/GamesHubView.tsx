@@ -570,7 +570,7 @@ export function GamesHubView() {
                         <Show when={locked && !current.releaseAt}>
                           <div class="card card-plain text-center py-2">
                             <p class="comment font-semibold">
-                              Unlocks on Day {current.day} evening
+                              Unlocks on Day {current.day} at 1 PM
                             </p>
                           </div>
                         </Show>
@@ -651,6 +651,57 @@ export function GamesHubView() {
                                 Vote in ELO Showdown →
                               </Show>
                             </A>
+                          </Show>
+
+                          <Show when={isCompleted() && !isDay7}>
+                            <div class="relative overflow-hidden rounded-xl p-3.5 sm:p-4 text-left space-y-2.5 bg-[var(--paper-2)] border-2 border-[var(--ink)]">
+                              <div class="flex items-start gap-2.5 sm:gap-3">
+                                <SpriteIcon
+                                  name="pookalam-flower"
+                                  size={36}
+                                  animate="wobble"
+                                  interactive
+                                  class="shrink-0 mt-0.5"
+                                />
+                                <div class="min-w-0 flex-1 space-y-1">
+                                  <div class="flex flex-wrap items-center gap-1.5">
+                                    <span class="badge text-[10px] py-0.5 px-2 bg-[var(--pop-yellow)] uppercase font-black">
+                                      🏆 Higher Prize Pool
+                                    </span>
+                                    <span class="badge text-[10px] py-0.5 px-2 bg-[var(--pop-teal)] uppercase font-black">
+                                      ⏳ Open All Week
+                                    </span>
+                                  </div>
+                                  <h4 class="text-sm sm:text-base font-black text-[var(--ink)] leading-snug m-0">
+                                    Finished today's game? Waiting for tomorrow?
+                                  </h4>
+                                  <p
+                                    class="text-xs font-semibold leading-relaxed"
+                                    style={{ color: "var(--ink-soft)" }}
+                                  >
+                                    Don't wait around — check out{" "}
+                                    <strong class="text-[var(--ink)]">Code-a-Pookalam</strong>!
+                                    Design an intricate pookalam purely using code (Canvas, SVG,
+                                    CSS, or Python). Higher prize pool, open all week, and voted in
+                                    the Day 7 arena!
+                                  </p>
+                                </div>
+                              </div>
+                              <div class="flex flex-wrap items-center gap-2 pt-0.5">
+                                <A
+                                  href="/code-a-pookalam"
+                                  class="btn-brand text-xs py-1.5 px-3 font-extrabold inline-flex items-center gap-1"
+                                >
+                                  <span>Go to Code-a-Pookalam →</span>
+                                </A>
+                                <A
+                                  href="/code-a-pookalam/submit"
+                                  class="btn-accent text-xs py-1.5 px-3 font-extrabold"
+                                >
+                                  Submit a Pookalam
+                                </A>
+                              </div>
+                            </div>
                           </Show>
                         </Show>
 
@@ -831,7 +882,7 @@ export function GamesHubView() {
               <h3 class="font-black text-base m-0">1. A Game a Day</h3>
             </div>
             <p class="text-xs font-semibold leading-relaxed text-muted m-0">
-              A new puzzle unlocks each evening. Complete the challenge fast to take home daily{" "}
+              A new puzzle unlocks at 1 PM everyday. Complete the challenge fast to take home daily{" "}
               {activeGame()?.gameType === "hunt" ? "₹500" : "₹250"} cash bounties.
             </p>
           </div>
