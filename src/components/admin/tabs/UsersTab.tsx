@@ -89,6 +89,11 @@ export function UsersTab(props: UsersTabProps) {
 
   // Detail drawer state - clicking a row shows full profile inc. phone
   const [detailUser, setDetailUser] = createSignal<UserRow | null>(null);
+  const [localRoles, setLocalRoles] = createSignal<Record<string, "player" | "tester" | "admin">>(
+    {},
+  );
+
+  const userRole = (u: UserRow) => localRoles()[u.id] ?? u.role ?? "player";
 
   const openBanModal = (user: UserRow) => {
     setTargetUser(user);
@@ -117,11 +122,17 @@ export function UsersTab(props: UsersTabProps) {
   };
 
   const handleRoleChange = async (user: UserRow, role: "player" | "tester" | "admin") => {
+    setLocalRoles((prev) => ({ ...prev, [user.id]: role }));
     try {
       await setUserRole(user.id, role);
       props.onNotify(`Role for ${user.name} changed to ${role}`);
       props.onReload();
     } catch (err) {
+      setLocalRoles((prev) => {
+        const next = { ...prev };
+        delete next[user.id];
+        return next;
+      });
       props.onNotify(err instanceof Error ? err.message : "Failed to update role");
     }
   };

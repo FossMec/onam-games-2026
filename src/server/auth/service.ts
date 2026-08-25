@@ -91,8 +91,18 @@ export async function completeOAuthSignIn(
 
   const existing = existingUsers[0];
   let userId: string;
+
+  // Check tester whitelist
+  const testerRows = await db<{ active: boolean }[]>`
+    SELECT active FROM testers WHERE email = ${email} LIMIT 1
+  `;
+  const isWhitelistedTester = testerRows[0]?.active === true;
+
   if (existing) {
     userId = existing.id;
+    const nextRole =
+      existing.role === "admin" ? "admin" : isWhitelistedTester ? "tester" : "player";
+
     await db`
       UPDATE users
       SET
@@ -100,14 +110,16 @@ export async function completeOAuthSignIn(
         email = ${email},
         name = ${existing.name || name},
         avatar_url = ${existing.avatar_url ?? googleAvatar},
+        role = ${nextRole}::role,
         last_login_at = NOW(),
         updated_at = NOW()
       WHERE id = ${existing.id}
     `;
   } else {
+    const initialRole = isWhitelistedTester ? "tester" : "player";
     const createdUsers = await db<{ id: string }[]>`
-      INSERT INTO users (supabase_uid, email, name, avatar_url)
-      VALUES (${sbUser.id}, ${email}, ${name}, ${googleAvatar})
+      INSERT INTO users (supabase_uid, email, name, avatar_url, role)
+      VALUES (${sbUser.id}, ${email}, ${name}, ${googleAvatar}, ${initialRole}::role)
       RETURNING id
     `;
     userId = createdUsers[0].id;

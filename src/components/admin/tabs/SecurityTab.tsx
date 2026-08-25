@@ -1,6 +1,12 @@
-import { AlertTriangle, Lock, Search, ShieldAlert } from "lucide-solid";
+import { AlertTriangle, Lock, Search, ShieldAlert, Trash2 } from "lucide-solid";
 import { For, Show, createMemo, createSignal } from "solid-js";
-import { addTester, blockIpAction, setTesterActive, unblockIpAction } from "~/server/admin/actions";
+import {
+  addTester,
+  blockIpAction,
+  deleteTesterAction,
+  setTesterActive,
+  unblockIpAction,
+} from "~/server/admin/actions";
 
 export interface TesterRow {
   id: string;
@@ -80,6 +86,17 @@ export function SecurityTab(props: SecurityTabProps) {
       props.onReload();
     } catch (err) {
       props.onNotify(err instanceof Error ? err.message : "Failed to toggle tester");
+    }
+  };
+
+  const handleDeleteTester = async (t: TesterRow) => {
+    if (!confirm(`Permanently remove tester access for ${t.email}?`)) return;
+    try {
+      await deleteTesterAction(t.id);
+      props.onNotify(`Tester ${t.email} removed and reverted to player`);
+      props.onReload();
+    } catch (err) {
+      props.onNotify(err instanceof Error ? err.message : "Failed to remove tester");
     }
   };
 
@@ -236,17 +253,27 @@ export function SecurityTab(props: SecurityTabProps) {
                         {t.earlyHours}h early · Added {new Date(t.createdAt).toLocaleDateString()}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleTester(t)}
-                      class={`px-2 py-1 rounded text-[11px] font-extrabold border cursor-pointer ${
-                        t.active
-                          ? "bg-green-100 text-green-800 border-green-400 hover:bg-red-100 hover:text-red-700"
-                          : "bg-gray-100 text-gray-600 border-gray-300 hover:bg-green-100 hover:text-green-800"
-                      }`}
-                    >
-                      {t.active ? "Active" : "Inactive"}
-                    </button>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleTester(t)}
+                        class={`px-2 py-1 rounded text-[11px] font-extrabold border cursor-pointer ${
+                          t.active
+                            ? "bg-green-100 text-green-800 border-green-400 hover:bg-amber-100 hover:text-amber-800"
+                            : "bg-gray-100 text-gray-600 border-gray-300 hover:bg-green-100 hover:text-green-800"
+                        }`}
+                      >
+                        {t.active ? "Active" : "Inactive"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTester(t)}
+                        class="p-1 rounded text-red-600 hover:bg-red-100 border border-transparent hover:border-[var(--ink)] cursor-pointer"
+                        title="Remove Tester"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 )}
               </For>

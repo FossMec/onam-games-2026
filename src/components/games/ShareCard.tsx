@@ -726,7 +726,11 @@ export function ShareCard(props: ShareCardProps) {
   );
 }
 
-export function ShareCardModal(props: { data: ShareCardData; onClose: () => void }) {
+export function ShareCardModal(props: {
+  data: ShareCardData;
+  title?: string;
+  onClose: () => void;
+}) {
   onMount(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") props.onClose();
@@ -746,7 +750,9 @@ export function ShareCardModal(props: { data: ShareCardData; onClose: () => void
       style={{ background: "rgb(34 32 43 / 0.78)" }}
       role="dialog"
       aria-modal="true"
-      aria-label="Share your score"
+      aria-label={
+        props.title ?? (props.data.isWinner ? "Official Winner Card" : "Share your score")
+      }
       onClick={(e) => {
         if (e.target === e.currentTarget) props.onClose();
       }}
@@ -769,7 +775,10 @@ export function ShareCardModal(props: { data: ShareCardData; onClose: () => void
         >
           <X size={18} strokeWidth={2.5} />
         </button>
-        <h2 class="font-display text-2xl font-extrabold">Share your score</h2>
+        <h2 class="font-display text-2xl font-extrabold">
+          {props.title ??
+            (props.data.isWinner ? "Official Winner Card Studio" : "Share your score")}
+        </h2>
         <ShareCard data={props.data} />
       </div>
     </div>

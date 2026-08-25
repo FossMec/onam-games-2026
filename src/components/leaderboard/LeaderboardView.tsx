@@ -274,8 +274,50 @@ export function LeaderboardView() {
 
   return (
     <main class="container min-h-[30rem] relative space-y-4 py-6 max-w-4xl mx-auto">
-      {/* Desktop Inked Sidebar: Festival Meme + Share Card Widget */}
-      <aside class="hidden 2xl:flex flex-col gap-3 absolute left-[calc(100%+2rem)] top-6 w-68 pointer-events-auto">
+      {/* Desktop Inked Sidebar: Code-a-Pookalam Card + Festival Meme + Share Card Widget */}
+      <aside class="hidden 2xl:flex flex-col gap-3.5 absolute left-[calc(100%+2rem)] top-6 w-68 pointer-events-auto">
+        {/* Code-a-Pookalam Mega Prize Card */}
+        <A
+          href="/code-a-pookalam"
+          class="card pop-yellow p-4 space-y-2.5 text-center block transition-transform hover:-translate-y-1 hover:brightness-105 no-underline cursor-pointer border-2 border-[var(--ink)]"
+        >
+          <div class="flex items-center justify-center gap-1.5">
+            <SpriteIcon name="pookalam-flower" size={20} />
+            <span class="badge text-[10px] py-0.5 px-2 bg-[var(--pop-teal)] uppercase font-black text-[var(--ink)]">
+              Open All Week
+            </span>
+          </div>
+
+          <div class="space-y-0.5">
+            <p class="text-[10px] font-black uppercase tracking-wider text-[var(--ink-soft)]">
+              Featured Competition
+            </p>
+            <h3 class="font-display font-black text-base uppercase text-[var(--ink)] leading-tight m-0">
+              Code-a-Pookalam
+            </h3>
+          </div>
+
+          <div class="py-2 px-2 bg-[var(--paper-2)] rounded-lg border-2 border-[var(--ink)] inline-block w-full">
+            <span class="text-[10px] font-black uppercase text-[var(--pop-red)] block leading-none">
+              Cash Prize Pool
+            </span>
+            <span class="font-display font-black text-4xl text-[var(--ink)] block leading-tight my-0.5">
+              ₹3,000
+            </span>
+            <span class="text-[9px] font-mono font-extrabold text-[var(--ink-soft)] block">
+              1st ₹1,500 · 2nd ₹1,000 · 3rd ₹500
+            </span>
+          </div>
+
+          <p class="text-[11px] font-extrabold text-[var(--ink)] leading-snug m-0">
+            Design an intricate pookalam purely using code!
+          </p>
+
+          <span class="btn-brand text-xs py-1.5 px-2 w-full font-black inline-flex items-center justify-center gap-1">
+            <span>Explore & Submit →</span>
+          </span>
+        </A>
+
         <div>
           <img
             src={memeImage("failure-is-not-an-option.webp")}
@@ -746,6 +788,41 @@ export function LeaderboardView() {
           </Show>
         </Show>
       </Show>
+
+      {/* Mobile Code-a-Pookalam Promo Card */}
+      <div class="2xl:hidden pt-2">
+        <A
+          href="/code-a-pookalam"
+          class="card pop-yellow p-4 space-y-2.5 text-center block no-underline cursor-pointer border-2 border-[var(--ink)]"
+        >
+          <div class="flex items-center justify-center gap-1.5">
+            <SpriteIcon name="pookalam-flower" size={20} />
+            <span class="badge text-[10px] py-0.5 px-2 bg-[var(--pop-teal)] uppercase font-black text-[var(--ink)]">
+              Open All Week
+            </span>
+          </div>
+
+          <div class="py-2 px-2 bg-[var(--paper-2)] rounded-lg border-2 border-[var(--ink)] inline-block w-full">
+            <span class="text-[10px] font-black uppercase text-[var(--pop-red)] block leading-none">
+              Cash Prize Pool
+            </span>
+            <span class="font-display font-black text-3xl sm:text-4xl text-[var(--ink)] block leading-tight my-0.5">
+              ₹3,000
+            </span>
+            <span class="text-[10px] font-mono font-extrabold text-[var(--ink-soft)] block">
+              1st ₹1,500 · 2nd ₹1,000 · 3rd ₹500
+            </span>
+          </div>
+
+          <p class="text-xs font-extrabold text-[var(--ink)] leading-snug m-0">
+            Waiting for tomorrow's game? Code your pookalam using Canvas, SVG, CSS or Python!
+          </p>
+
+          <span class="btn-brand text-xs py-1.5 px-3 w-full font-black inline-flex items-center justify-center gap-1">
+            <span>Enter Code-a-Pookalam →</span>
+          </span>
+        </A>
+      </div>
 
       {/* Mobile Bottom Meme Sticker */}
       <div class="2xl:hidden flex justify-center py-4">

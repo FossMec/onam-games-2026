@@ -285,7 +285,11 @@ export function AdminView() {
                     <UsersTab
                       users={users()!}
                       games={d.games}
-                      onReload={revalidateAfter(ADMIN_QUERY_KEYS.users, ADMIN_QUERY_KEYS.dashboard)}
+                      onReload={revalidateAfter(
+                        ADMIN_QUERY_KEYS.users,
+                        ADMIN_QUERY_KEYS.testers,
+                        ADMIN_QUERY_KEYS.dashboard,
+                      )}
                       onNotify={showNotification}
                     />
                   </Show>
@@ -333,6 +337,7 @@ export function AdminView() {
                       suspicious={security()!.suspicious}
                       onReload={revalidateAfter(
                         ADMIN_QUERY_KEYS.testers,
+                        ADMIN_QUERY_KEYS.users,
                         ADMIN_QUERY_KEYS.blockedIps,
                         ADMIN_QUERY_KEYS.suspicious,
                         ADMIN_QUERY_KEYS.dashboard,

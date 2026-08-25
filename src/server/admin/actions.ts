@@ -5,6 +5,7 @@ import {
   adminAddTester,
   adminCreateGame,
   adminDeleteGame,
+  adminDeleteTester,
   adminGetHuntOverview,
   adminGetMetrics,
   adminListActivity,
@@ -70,6 +71,7 @@ export async function resetUserAttemptsAction(userId: string, gameId?: string) {
 }
 
 import { getDailyLeaderboard } from "~/server/leaderboard/service";
+import { getDb } from "~/server/db/client";
 
 export async function listUsers(page?: number, limit?: number) {
   if (limit !== undefined && limit > 0) {
@@ -84,8 +86,50 @@ export async function getGameWinnerAction(gameId: string) {
   const board = await getDailyLeaderboard(gameId, "admin", null, "main", 1, 1);
   if (!board.entries || board.entries.length === 0) return null;
   const winner = board.entries[0];
+
+  const db = getDb();
+  const userRows = await db<
+    {
+      id: string;
+      email: string;
+      name: string;
+      avatarUrl: string | null;
+      instagramHandle: string | null;
+      whatsappNumber: string | null;
+      occupation: string | null;
+      college: string | null;
+      collegeOther: string | null;
+      branch: string | null;
+      branchOther: string | null;
+      batch: string | null;
+      div: string | null;
+      trustScore: number;
+    }[]
+  >`
+    SELECT
+      id,
+      email,
+      name,
+      avatar_url AS "avatarUrl",
+      instagram_handle AS "instagramHandle",
+      whatsapp_number AS "whatsappNumber",
+      occupation,
+      college,
+      college_other AS "collegeOther",
+      branch,
+      branch_other AS "branchOther",
+      batch,
+      div,
+      trust_score AS "trustScore"
+    FROM users
+    WHERE id = ${winner.userId}
+    LIMIT 1
+  `;
+  const profile = userRows[0] ?? null;
+
   return {
     winner,
+    profile,
     metric: board.metric,
     gameType: board.gameType,
     fieldSize: board.fieldSize,
@@ -110,6 +154,10 @@ export async function addTester(email: string, earlyHours = 24) {
 
 export async function setTesterActive(id: string, active: boolean) {
   await adminSetTesterActive(id, active);
+}
+
+export async function deleteTesterAction(id: string) {
+  await adminDeleteTester(id);
 }
 
 export async function listSuspicious(page = 0) {

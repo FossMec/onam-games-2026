@@ -122,7 +122,26 @@ export async function adminListUsers(limit?: number, offset = 0) {
 export async function adminSetUserRole(userId: string, role: "player" | "tester" | "admin") {
   await requireAdmin();
   const db = getDb();
-  await db`UPDATE users SET role = ${role}, updated_at = NOW() WHERE id = ${userId}`;
+  const rows = await db<{ email: string }[]>`
+    UPDATE users SET role = ${role}::role, updated_at = NOW() WHERE id = ${userId} RETURNING email
+  `;
+  const email = rows[0]?.email?.trim().toLowerCase();
+  if (email) {
+    if (role === "player") {
+      // Demoted to player: also mark inactive in testers table so they don't remain as an active tester
+      await db`UPDATE testers SET active = false WHERE email = ${email}`;
+    } else if (role === "tester") {
+      // Promoted to tester: also insert or activate in testers table
+      await db`
+        INSERT INTO testers (email, early_hours)
+        VALUES (${email}, 24)
+        ON CONFLICT (email) DO UPDATE
+        SET active = true, activated_at = NOW()
+      `;
+    }
+  }
+  invalidateShared("user:");
+  invalidateShared("games:");
 }
 
 export async function adminSetUserBanLevel(userId: string, level: BanLevel, reason?: string) {
@@ -167,12 +186,36 @@ export async function adminAddTester(email: string, earlyHours = 24) {
     ON CONFLICT (email) DO UPDATE
     SET active = true, early_hours = ${earlyHours}, activated_at = NOW()
   `;
+  // Sync users table if user already exists
+  await db`UPDATE users SET role = 'tester', updated_at = NOW() WHERE email = ${normalized} AND role = 'player'`;
 }
 
 export async function adminSetTesterActive(id: string, active: boolean) {
   await requireAdmin();
   const db = getDb();
-  await db`UPDATE testers SET active = ${active} WHERE id = ${id}`;
+  const rows = await db<{ email: string }[]>`
+    UPDATE testers SET active = ${active} WHERE id = ${id} RETURNING email
+  `;
+  const email = rows[0]?.email?.trim().toLowerCase();
+  if (email) {
+    if (!active) {
+      await db`UPDATE users SET role = 'player', updated_at = NOW() WHERE email = ${email} AND role = 'tester'`;
+    } else {
+      await db`UPDATE users SET role = 'tester', updated_at = NOW() WHERE email = ${email} AND role = 'player'`;
+    }
+  }
+}
+
+export async function adminDeleteTester(id: string) {
+  await requireAdmin();
+  const db = getDb();
+  const rows = await db<{ email: string }[]>`
+    DELETE FROM testers WHERE id = ${id} RETURNING email
+  `;
+  const email = rows[0]?.email?.trim().toLowerCase();
+  if (email) {
+    await db`UPDATE users SET role = 'player', updated_at = NOW() WHERE email = ${email} AND role = 'tester'`;
+  }
 }
 
 export async function adminListSuspicious(limit = 100, offset = 0) {

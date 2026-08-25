@@ -1,4 +1,4 @@
-import { Clock, Edit2, Plus, Trash2, Trophy, X } from "lucide-solid";
+import { Clock, Edit2, ExternalLink, Plus, Trash2, Trophy, X } from "lucide-solid";
 import { For, Show, createSignal } from "solid-js";
 import {
   createGame,
@@ -7,8 +7,34 @@ import {
   resetGameAttemptsAction,
   updateGame,
 } from "~/server/admin/actions";
-import { canvasToBlob, renderShareCard, type ShareCardData } from "~/lib/share-card";
+import { ShareCard } from "~/components/games/ShareCard";
+import type { ShareCardData } from "~/lib/share-card";
 import { collegeLabel } from "~/lib/profile";
+import type { DailyEntry } from "~/server/leaderboard/service";
+
+interface WinnerInfo {
+  game: GameRow;
+  winner: DailyEntry;
+  profile: {
+    id: string;
+    email: string;
+    name: string;
+    avatarUrl: string | null;
+    instagramHandle: string | null;
+    whatsappNumber: string | null;
+    occupation: string | null;
+    college: string | null;
+    collegeOther: string | null;
+    branch: string | null;
+    branchOther: string | null;
+    batch: string | null;
+    div: string | null;
+    trustScore: number;
+  } | null;
+  metric: string;
+  fieldSize: number;
+  shareData: ShareCardData;
+}
 
 export interface GameRow {
   id: string;
@@ -82,6 +108,20 @@ export function GamesTab(props: GamesTabProps) {
   };
 
   const [downloadingWinnerId, setDownloadingWinnerId] = createSignal<string | null>(null);
+  const [winnerInfo, setWinnerInfo] = createSignal<WinnerInfo | null>(null);
+
+  const formatWinnerScore = (
+    metric: string,
+    durationMs: number | null,
+    score: number | null,
+  ): string => {
+    if (metric === "score") return `${score ?? 0} pts`;
+    if (durationMs !== null && durationMs !== undefined) {
+      const s = durationMs / 1000;
+      return `${s.toFixed(2)}s`;
+    }
+    return "—";
+  };
 
   const handleDownloadWinnerCard = async (game: GameRow) => {
     setDownloadingWinnerId(game.id);
@@ -92,12 +132,15 @@ export function GamesTab(props: GamesTabProps) {
         return;
       }
       const w = res.winner;
+      const p = res.profile;
       const shareData: ShareCardData = {
-        playerName: w.name,
-        avatarUrl: w.avatarUrl,
-        college: collegeLabel(w.college, null),
-        branch: w.branch,
-        batch: w.batch,
+        playerName: p?.name || w.name,
+        avatarUrl: p?.avatarUrl || w.avatarUrl,
+        college: collegeLabel(p?.college || w.college, p?.collegeOther),
+        branch: p?.branch || w.branch,
+        batch: p?.batch || w.batch,
+        instagram: p?.instagramHandle || null,
+        occupation: p?.occupation || null,
         gameTitle: game.title,
         gameSlug: game.slug,
         gameType: game.gameType,
@@ -116,20 +159,17 @@ export function GamesTab(props: GamesTabProps) {
         },
       };
 
-      const canvas = await renderShareCard(shareData);
-      const blob = await canvasToBlob(canvas);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const safeName = (w.name || "Winner").trim().replace(/[^a-zA-Z0-9_-]/g, "_");
-      a.download = `Day-${game.day}-WINNER-${safeName}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      props.onNotify(`Downloaded winner card for ${w.name} (Day ${game.day})`);
+      setWinnerInfo({
+        game,
+        winner: w,
+        profile: p,
+        metric: res.metric,
+        fieldSize: res.fieldSize,
+        shareData,
+      });
+      props.onNotify(`Viewing winner studio for ${w.name} (Day ${game.day})`);
     } catch (err) {
-      props.onNotify(err instanceof Error ? err.message : "Failed to generate winner card");
+      props.onNotify(err instanceof Error ? err.message : "Failed to load winner details");
     } finally {
       setDownloadingWinnerId(null);
     }
@@ -618,6 +658,229 @@ export function GamesTab(props: GamesTabProps) {
             </form>
           </div>
         </div>
+      </Show>
+
+      {/* Winner Details & Card Studio Modal */}
+      <Show when={winnerInfo()}>
+        {(() => {
+          const info = winnerInfo()!;
+          const p = info.profile;
+          const w = info.winner;
+          const g = info.game;
+
+          return (
+            <div
+              class="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-3 sm:p-6"
+              style={{ background: "rgb(34 32 43 / 0.82)" }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Day Winner Details & Card Studio"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setWinnerInfo(null);
+              }}
+            >
+              <div class="card anim-sheet-in pop-yellow my-auto w-full max-w-5xl space-y-4 max-h-[94vh] overflow-y-auto p-4 sm:p-6 relative text-[var(--ink)]">
+                {/* Close Button */}
+                <button
+                  type="button"
+                  class="absolute top-3.5 right-3.5 grid place-items-center rounded-full cursor-pointer bg-[var(--paper-2)] border-2 border-[var(--ink)] w-9 h-9 hover:bg-[var(--paper-3)]"
+                  onClick={() => setWinnerInfo(null)}
+                  aria-label="Close"
+                >
+                  <X size={18} strokeWidth={2.5} />
+                </button>
+
+                {/* Top Banner */}
+                <div class="space-y-1 pr-10">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="badge py-0.5 px-2 bg-[var(--pop-teal)] uppercase font-black text-xs">
+                      Day {g.day} Champion
+                    </span>
+                    <span class="badge py-0.5 px-2 bg-[var(--paper-3)] uppercase font-mono text-xs">
+                      {g.title}
+                    </span>
+                  </div>
+                  <h2 class="font-display font-black text-2xl sm:text-3xl m-0 flex items-center gap-2">
+                    <Trophy size={24} class="text-[var(--pop-red)] shrink-0" />
+                    <span>{w.name}</span>
+                  </h2>
+                </div>
+
+                {/* 2-Column Responsive Layout */}
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                  {/* Left Column: Full Winner Contact & Verification Details (Admin Only) */}
+                  <div class="lg:col-span-5 space-y-3.5 bg-[var(--paper)] p-4 rounded-xl border-2 border-[var(--ink)] text-xs font-semibold">
+                    <div class="flex items-center gap-2.5 pb-2.5 border-b-2 border-[var(--ink)]">
+                      <Show
+                        when={p?.avatarUrl || w.avatarUrl}
+                        fallback={
+                          <div class="w-12 h-12 rounded-full border-2 border-[var(--ink)] bg-[var(--pop-yellow)] grid place-items-center font-black text-base shrink-0">
+                            {w.name.slice(0, 1).toUpperCase()}
+                          </div>
+                        }
+                      >
+                        <img
+                          src={(p?.avatarUrl || w.avatarUrl)!}
+                          alt={w.name}
+                          class="w-12 h-12 rounded-full border-2 border-[var(--ink)] object-cover shrink-0"
+                        />
+                      </Show>
+                      <div class="min-w-0">
+                        <h4 class="font-extrabold text-base truncate text-[var(--ink)]">
+                          {w.name}
+                        </h4>
+                        <div class="flex items-center gap-1.5 text-[11px] font-mono text-[var(--ink-soft)]">
+                          <span>Rank 1 of {info.fieldSize}</span>
+                          <span>·</span>
+                          <span class="font-bold text-green-700">Winner</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="space-y-2.5">
+                      <h5 class="font-black uppercase tracking-wider text-[10px] text-[var(--ink-soft)]">
+                        Contact & Social Identity
+                      </h5>
+
+                      {/* Instagram */}
+                      <div class="p-2.5 rounded-lg bg-[var(--paper-2)] border border-[var(--ink)]/40 flex items-center justify-between gap-2">
+                        <div>
+                          <span class="text-[10px] font-black uppercase text-[var(--ink-soft)] block">
+                            Instagram Handle
+                          </span>
+                          <Show
+                            when={p?.instagramHandle}
+                            fallback={<span class="font-mono text-gray-500">Not provided</span>}
+                          >
+                            <a
+                              href={`https://instagram.com/${p!.instagramHandle!.replace(/^@+/, "")}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              class="font-black text-sm text-[var(--pop-red)] hover:underline inline-flex items-center gap-1"
+                            >
+                              <span>@{p!.instagramHandle!.replace(/^@+/, "")}</span>
+                              <ExternalLink size={12} />
+                            </a>
+                          </Show>
+                        </div>
+                      </div>
+
+                      {/* WhatsApp / Phone */}
+                      <div class="p-2.5 rounded-lg bg-[var(--paper-2)] border border-[var(--ink)]/40 flex items-center justify-between gap-2">
+                        <div>
+                          <span class="text-[10px] font-black uppercase text-[var(--ink-soft)] block">
+                            WhatsApp / Phone
+                          </span>
+                          <Show
+                            when={p?.whatsappNumber}
+                            fallback={<span class="font-mono text-gray-500">Not provided</span>}
+                          >
+                            <div class="flex items-center gap-2 mt-0.5">
+                              <span class="font-mono font-bold text-sm text-[var(--ink)]">
+                                {p!.whatsappNumber}
+                              </span>
+                              <a
+                                href={`https://wa.me/91${p!.whatsappNumber!.replace(/\D/g, "").slice(-10)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 border border-green-400 hover:bg-green-200"
+                              >
+                                WhatsApp ↗
+                              </a>
+                            </div>
+                          </Show>
+                        </div>
+                      </div>
+
+                      {/* Email */}
+                      <div class="p-2.5 rounded-lg bg-[var(--paper-2)] border border-[var(--ink)]/40">
+                        <span class="text-[10px] font-black uppercase text-[var(--ink-soft)] block">
+                          Google / Email
+                        </span>
+                        <a
+                          href={`mailto:${p?.email || ""}`}
+                          class="font-mono text-xs font-bold text-[var(--ink)] hover:underline truncate block"
+                        >
+                          {p?.email || "—"}
+                        </a>
+                      </div>
+
+                      <h5 class="font-black uppercase tracking-wider text-[10px] text-[var(--ink-soft)] pt-1">
+                        Academic / Profile
+                      </h5>
+
+                      <div class="p-2.5 rounded-lg bg-[var(--paper-2)] border border-[var(--ink)]/40 space-y-1.5">
+                        <div class="flex items-center justify-between">
+                          <span class="text-[10px] font-bold opacity-75">College:</span>
+                          <span class="font-extrabold uppercase">
+                            {collegeLabel(p?.college, p?.collegeOther) ?? p?.college ?? "—"}
+                          </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                          <span class="text-[10px] font-bold opacity-75">Branch & Batch:</span>
+                          <span class="font-extrabold uppercase">
+                            {p?.branch?.toUpperCase() ?? "—"}
+                            {p?.branchOther ? ` (${p?.branchOther})` : ""} · Batch {p?.batch ?? "—"}
+                          </span>
+                        </div>
+                        <Show when={p?.div && p.div !== "none"}>
+                          <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-bold opacity-75">Division:</span>
+                            <span class="font-mono font-bold">Div {p!.div?.toUpperCase()}</span>
+                          </div>
+                        </Show>
+                        <div class="flex items-center justify-between">
+                          <span class="text-[10px] font-bold opacity-75">Occupation:</span>
+                          <span class="font-bold capitalize">
+                            {p?.occupation?.replace(/_/g, " ") ?? "Student"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <h5 class="font-black uppercase tracking-wider text-[10px] text-[var(--ink-soft)] pt-1">
+                        Run Metrics
+                      </h5>
+                      <div class="p-2.5 rounded-lg bg-[var(--paper-2)] border border-[var(--ink)]/40 space-y-1 text-xs">
+                        <div class="flex items-center justify-between">
+                          <span class="text-[10px] font-bold opacity-75">Winning Result:</span>
+                          <span class="font-mono font-black text-sm text-[var(--ink)]">
+                            {formatWinnerScore(info.metric, w.durationMs, w.score)}
+                          </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                          <span class="text-[10px] font-bold opacity-75">Finished Timestamp:</span>
+                          <span class="font-mono text-[11px]">
+                            {new Date(w.submittedAt).toLocaleTimeString("en-IN", {
+                              timeZone: "Asia/Kolkata",
+                            })}{" "}
+                            IST
+                          </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                          <span class="text-[10px] font-bold opacity-75">Trust Score:</span>
+                          <span class="font-mono font-bold text-green-700">
+                            {p?.trustScore ?? 100} / 100
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Full ShareCard Studio with Photo Upload & Detail Toggles */}
+                  <div class="lg:col-span-7 bg-[var(--paper)] p-4 rounded-xl border-2 border-[var(--ink)] space-y-2.5">
+                    <h4 class="font-display font-black text-lg m-0 text-center">
+                      Official Winner Card Studio
+                    </h4>
+                    <p class="text-xs font-semibold text-center opacity-75 m-0 pb-1">
+                      Upload winner's photo from gallery, toggle fields, preview live and download.
+                    </p>
+                    <ShareCard data={info.shareData} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </Show>
     </div>
   );

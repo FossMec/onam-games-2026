@@ -832,7 +832,7 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   ctx.textAlign = "left";
 
   if (data.isWinner) {
-    const winHeaderText = `DAY ${data.day} WINNER · ${data.gameTitle.toUpperCase()}`;
+    const winHeaderText = `DAY ${data.day} · OFFICIAL WINNER CARD`;
     const winHSize = fitSize(ctx, winHeaderText, 620, "display", 32, 20, 800);
     ctx.font = font("display", winHSize, 800);
     ctx.fillStyle = POP.red;
@@ -1038,9 +1038,7 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   const figure = figureFor(data);
 
   // Game name as a small ribbon riding the top edge of the score panel.
-  const ribbonText = data.isWinner
-    ? `${data.gameTitle.toUpperCase()} · WINNER`
-    : data.gameTitle.toUpperCase();
+  const ribbonText = data.gameTitle.toUpperCase();
   ctx.textAlign = "center";
   const ribbonSize = fitSize(ctx, ribbonText, chipW * 0.76, "display", 30, 16, 800);
   ctx.font = font("display", ribbonSize, 800);
@@ -1172,9 +1170,9 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
     stickerRect(ctx, winBoxX, winBoxY, winBoxW, winBoxH, 26, PAPER_2, 8, 12, 12);
 
     ctx.textAlign = "center";
-    // Game Name prominently
-    const winTitle = data.gameTitle.toUpperCase();
-    const winTitleSize = fitSize(ctx, winTitle, winBoxW - 40, "display", 40, 22, 800);
+    // Title
+    const winTitle = `DAY ${data.day} CHAMPION`;
+    const winTitleSize = fitSize(ctx, winTitle, winBoxW - 40, "display", 42, 24, 800);
     ctx.font = font("display", winTitleSize, 800);
     ctx.fillStyle = INK;
     ctx.fillText(winTitle, CARD_W / 2, winBoxY + 54);
@@ -1182,12 +1180,12 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
     // Subtitle
     ctx.font = font("display", 28, 800);
     ctx.fillStyle = POP.red;
-    ctx.fillText(`DAY ${data.day} CHAMPION · ₹250 CASH PRIZE`, CARD_W / 2, winBoxY + 112);
+    ctx.fillText("₹250 DAILY PRIZE WINNER", CARD_W / 2, winBoxY + 112);
 
     // Official badge
     ctx.font = font("mono", 22, 700);
     ctx.fillStyle = TEAL_DEEP;
-    ctx.fillText(`OFFICIAL 1ST PLACE · FOSS MEC ONAM GAMES`, CARD_W / 2, winBoxY + 168);
+    ctx.fillText("OFFICIAL 1ST PLACE · FOSS MEC ONAM GAMES", CARD_W / 2, winBoxY + 168);
 
     /* ---- Sprites for winner ---- */
     stick(spriteImg, 1005, 1315, 160, -3);
