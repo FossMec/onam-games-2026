@@ -267,20 +267,21 @@ export async function placeStroke(
 
     invalidateShared("collab:grid");
 
+    /*
+     * Must be awaited before returning: on Cloudflare Workers the isolate is
+     * frozen the moment the response is sent, so any background promise here
+     * would never run and the animation replay would silently lose strokes.
+     * One batched statement keeps the added latency to a single round trip.
+     */
     if (diffRows.length > 0) {
-      void (async () => {
-        try {
-          // Batch insert diff rows using raw SQL
-          for (const d of diffRows) {
-            await db`
-              INSERT INTO collab_pookalam_diffs (cell_index, flower_id)
-              VALUES (${d.cellIndex}, ${d.flowerId})
-            `;
-          }
-        } catch (err: any) {
-          console.warn("[collab] diff insert failed:", err?.message ?? err);
-        }
-      })();
+      try {
+        await ensureDiffsTable();
+        await db`
+          INSERT INTO collab_pookalam_diffs ${db(diffRows.map((d) => ({ cell_index: d.cellIndex, flower_id: d.flowerId })))}
+        `;
+      } catch (err: any) {
+        console.error("[collab] diff insert failed:", err?.message ?? err);
+      }
     }
   }
 
