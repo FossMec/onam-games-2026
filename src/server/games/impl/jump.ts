@@ -1,4 +1,4 @@
-import { FPS, MAX_FRAMES, MAX_INPUTS, simulate } from "~/lib/jump-sim";
+import { FPS, INPUT_LEVELS, MAX_FRAMES, MAX_INPUTS, simulate } from "~/lib/jump-sim";
 import type { GeneratedInstance, VerifyInput, VerifyResult } from "../registry";
 
 /**
@@ -55,6 +55,17 @@ export interface JumpView {
 export interface JumpSubmission {
   /** Packed steering deltas. Note the absence of a score field. */
   inputs: number[];
+  /**
+   * Total frames the client's simulation ran (state.frame at game-end).
+   *
+   * Sent so the server can do an O(1) clock check instead of scanning the
+   * entire input array.  The server treats it as a hint only:
+   *   - Too low  → frameCap shrinks → server-derived score is lower (self-punishing)
+   *   - Too high → clock check rejects the run
+   * Omitting it falls back to the O(inputs) scan for backwards compatibility
+   * with any in-flight requests from old client builds.
+   */
+  traceFrames?: number;
 }
 
 export function generate(seed: string = LEVEL_SEED): GeneratedInstance {
@@ -88,18 +99,58 @@ export function verify(input: VerifyInput): VerifyResult {
     return { valid: false, reason: "That is more steering than anyone has ever done." };
   }
 
-  // Replay on the attempt's own seed — deterministic per-attempt level via sha256,
-  // no Math.random. Legacy attempts fall back to the canonical seed.
-  const seed = typeof input.seed === "string" && input.seed.length > 0 ? input.seed : LEVEL_SEED;
-  const run = simulate(seed, submission.inputs);
-  if (!run) {
-    return { valid: false, reason: "That run could not be verified — please try again." };
+  // ── O(1) clock check ─────────────────────────────────────────────────────
+  //
+  // The client sends state.frame at game-end as `traceFrames`.  One integer
+  // read replaces the O(inputs) delta-accumulation scan.
+  //
+  // If the client is an old build that didn't send traceFrames, fall back to
+  // the O(inputs) scan so no in-flight session is rejected mid-game.
+  let traceFrames: number;
+  if (typeof submission.traceFrames === "number" && Number.isFinite(submission.traceFrames)) {
+    traceFrames = Math.max(0, Math.floor(submission.traceFrames));
+  } else {
+    // Fallback: scan packed input deltas (O(inputs))
+    let lastInputFrame = -1;
+    for (const packed of submission.inputs) {
+      if (typeof packed !== "number" || !Number.isInteger(packed) || packed < 0) break;
+      lastInputFrame += Math.floor(packed / INPUT_LEVELS);
+    }
+    traceFrames = Math.max(0, lastInputFrame + 1);
   }
 
-  const impliedMs = (run.frames / FPS) * 1000;
+  const impliedMs = (traceFrames / FPS) * 1000;
   if (impliedMs > input.durationMs * CLOCK_TOLERANCE + CLOCK_GRACE_MS) {
-    // Either a fast-forwarded bot or a tampered clock. Both are the same answer.
     return { valid: false, reason: "That run claims more play time than actually passed." };
+  }
+
+  // ── Frame-capped replay ───────────────────────────────────────────────────
+  //
+  // Simulate only as far as the trace needs, plus a 1 800-frame (30 s) grace
+  // period.  The grace covers:
+  //   • spring / balloon combos that add height after the last steering input
+  //   • moving platforms drifting into position and catching the player
+  //   • the full arc of any jump still in flight when inputs end
+  //
+  // For real players this is always generous — maxY peaks during or well before
+  // the grace window, never after.  The savings are proportional to how early
+  // the player's run ended:
+  //
+  //   8 000 score (~2 min, ~7 200 trace frames) → ~9 000 replay frames
+  //                                                 instead of 21 600  (2.4×)
+  //   5 000 score (~75 s, ~4 500 trace frames)  → ~6 300 replay frames  (3.4×)
+  //   ceiling run (6 min, ~21 600 trace frames)  → 21 600 replay frames (same)
+  //
+  // No false positives: the score is Math.floor(state.maxY), which increases
+  // only while the player is still climbing.  Once maxY is set it never falls,
+  // so stopping simulation after the peak costs the player nothing.
+  const FRAME_GRACE = 1_800;
+  const frameCap = Math.min(MAX_FRAMES, traceFrames + FRAME_GRACE);
+
+  const seed = typeof input.seed === "string" && input.seed.length > 0 ? input.seed : LEVEL_SEED;
+  const run = simulate(seed, submission.inputs, frameCap);
+  if (!run) {
+    return { valid: false, reason: "That run could not be verified — please try again." };
   }
 
   return { valid: true, score: run.score, movesCount: submission.inputs.length };

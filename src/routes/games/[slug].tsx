@@ -18,6 +18,7 @@ import { ShoutBurst } from "~/components/art/Burst";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { LoadingScreen } from "~/components/LoadingScreen";
 import { HowToPlayModal } from "~/components/games/HowToPlay";
+import { PookalamNudgeModal } from "~/components/games/PookalamNudgeModal";
 import type { JigsawProgress, JigsawViewData } from "~/components/games/JigsawGame";
 import type { JumpViewData } from "~/components/games/JumpGame";
 import type { TinderCardView, TinderProgress } from "~/components/games/TinderGame";
@@ -178,6 +179,7 @@ export default function GameArenaPage() {
   const [result, setResult] = createSignal<FinishPayload | null>(null);
   const [celebrating, setCelebrating] = createSignal(false);
   const [showHowTo, setShowHowTo] = createSignal(false);
+  const [showNudge, setShowNudge] = createSignal(false);
   const [view, setView] = createSignal<GameView | null>(null);
   const [restored, setRestored] = createSignal<unknown>(null);
   const [jumpScore, setJumpScore] = createSignal(0);
@@ -210,6 +212,7 @@ export default function GameArenaPage() {
       setFinishedBoard(null);
       setCelebrating(false);
       setShowHowTo(false);
+      setShowNudge(false);
       setStanding(null);
 
       const done = getFinished(currentSlug);
@@ -398,10 +401,20 @@ export default function GameArenaPage() {
     setBusy(true);
     setError("");
     try {
+      // For jump (score-metric, unlimited retries): include the client's local
+      // simulation score so the server can skip the expensive replay when this
+      // run can't beat the player's existing best. The server ignores this value
+      // for all other games and always re-derives the score from the simulation
+      // when verification does run.
+      const g = game();
+      const body: Record<string, unknown> = { attemptToken: token, submittedState };
+      if (g?.gameType === "jump") {
+        body.claimedScore = jumpScore();
+      }
       const res = await fetch(`/api/game/${slug()}/finish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ attemptToken: token, submittedState }),
+        body: JSON.stringify(body),
       });
       const data = (await res.json()) as Partial<FinishPayload> & { error?: string };
       if (!res.ok) {
@@ -449,7 +462,9 @@ export default function GameArenaPage() {
   };
 
   // Jump is unlimited — let players immediately start another climb from the end card.
-  const playAgain = async () => {
+  // Wrapped with Code-a-Pookalam nudge: the in-game Try Again now shows the same
+  // popup that the Hub shows before Start, so every new run gets the ₹3,000 nudge.
+  const doPlayAgain = async () => {
     if (busy()) return;
     setBusy(true);
     setError("");
@@ -485,6 +500,11 @@ export default function GameArenaPage() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const playAgain = () => {
+    if (busy() || showNudge()) return;
+    setShowNudge(true);
   };
 
   const isHunt = () => game()?.gameType === "hunt";
@@ -1093,7 +1113,7 @@ export default function GameArenaPage() {
                           type="button"
                           class="btn-brand px-5 py-2.5 text-sm font-black cursor-pointer"
                           disabled={busy()}
-                          onClick={() => void playAgain()}
+                          onClick={() => playAgain()}
                         >
                           {busy() ? "Starting…" : "Play Again →"}
                         </button>
@@ -1143,6 +1163,20 @@ export default function GameArenaPage() {
           title={game()!.title}
           steps={game()!.howTo}
           onClose={() => setShowHowTo(false)}
+        />
+      </Show>
+
+      <Show when={showNudge() && game()}>
+        <PookalamNudgeModal
+          gameTitle={game()!.title}
+          onContinue={() => {
+            setShowNudge(false);
+            void doPlayAgain();
+          }}
+          onClose={() => {
+            setShowNudge(false);
+            void doPlayAgain();
+          }}
         />
       </Show>
 

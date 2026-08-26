@@ -17,7 +17,7 @@ const SECTIONS = [
   },
   {
     title: "Your account",
-    body: "You sign in with Google; we never see your password. You are responsible for the activity on your account. One account per person, and - under the event's device rule - one account per device. Accounts created to bypass limits, abuse, or farm prizes may be restricted or removed.",
+    body: "You sign in with Google; we never see your password. You are responsible for the activity on your account. One account per person. Accounts created to bypass limits, abuse, or farm prizes may be restricted or removed.",
   },
   {
     title: "Fair play & anti-cheat",

@@ -16,6 +16,19 @@ import { getRequestMeta } from "~/server/request";
 const finishSchema = z.object({
   attemptToken: z.uuid(),
   submittedState: z.unknown(),
+  /**
+   * Client-reported score hint — used only for the non-PB early-exit path.
+   *
+   * This is the ONE place a client-supplied number is accepted, and it is
+   * accepted only as a pessimistic signal: if claimedScore ≤ currentBest,
+   * the server skips the expensive simulation and records the attempt without
+   * updating the leaderboard. The stored score in that case is the claimed
+   * value (harmless — it cannot improve the player's standing).
+   *
+   * If the player omits it, or claims a score that would beat their best, the
+   * server runs the full simulation as always and the claimed value is ignored.
+   */
+  claimedScore: z.number().int().nonnegative().optional(),
 });
 
 /** Fallback cap for an unknown slug; real limits come from the registry. */
@@ -66,6 +79,7 @@ export async function POST({ params, request }: APIEvent) {
       role: user.role,
       attemptToken: body.data.attemptToken,
       submittedState: body.data.submittedState,
+      claimedScore: body.data.claimedScore,
     });
     return Response.json(result);
   } catch (error) {

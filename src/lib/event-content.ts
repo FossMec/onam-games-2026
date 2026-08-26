@@ -163,7 +163,7 @@ export const EVENT = {
   ],
 
   rules: [
-    "One account per person, one account per device.",
+    "One account per person.",
     "Play it yourself. Don't automate it.",
     "Sharing answers ruins the day for everyone, including you, because it's ranked.",
     "Breaking these means a warning, then a bench, then you're out.",

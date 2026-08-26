@@ -508,7 +508,28 @@ export function step(state: SimState, dir: number): void {
   state.frame += 1;
 }
 
-export function simulate(seed: string, packed: unknown): SimResult | null {
+/**
+ * Replay a packed input trace and return the score the server derives.
+ *
+ * @param frameCap  Optional upper bound on frames to simulate.
+ *
+ * The server passes `ceil(durationMs * FPS / 1000)` here so replay cost is
+ * proportional to how long the player actually played:
+ *
+ *   ~2 min session  →  ~7 200 frames  (vs 21 600 uncapped) — 3× faster
+ *   ~4 min session  →  ~14 400 frames (vs 21 600 uncapped) — 1.5× faster
+ *
+ * The cap never makes a legitimate run invalid: the player cannot have reached
+ * frame N+1 if their wall-clock session ended before frame N, so capping the
+ * replay at the session length produces the same score as running to MAX_FRAMES.
+ *
+ * The browser never passes a cap — client-side preview scoring is unchanged.
+ */
+export function simulate(
+  seed: string,
+  packed: unknown,
+  frameCap: number = MAX_FRAMES,
+): SimResult | null {
   const inputs = unpackInputs(packed);
   if (!inputs) return null;
   for (const input of inputs) {
@@ -522,11 +543,12 @@ export function simulate(seed: string, packed: unknown): SimResult | null {
     }
   }
 
+  const cap = Math.min(MAX_FRAMES, Math.max(0, Math.ceil(frameCap)));
   const state = initialState(seed);
   let cursor = 0;
   let dir = 0;
 
-  while (state.alive && state.frame < MAX_FRAMES) {
+  while (state.alive && state.frame < cap) {
     while (cursor < inputs.length && inputs[cursor].f === state.frame) {
       dir = inputs[cursor].d;
       cursor += 1;

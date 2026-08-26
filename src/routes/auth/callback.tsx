@@ -58,9 +58,8 @@ function explain(error: unknown): Explained {
   if (/already linked to another account|device.*taken/i.test(raw)) {
     return {
       title: "This device is already taken",
-      message:
-        "Somebody has already signed in on this phone or laptop with a different account. It's one account per device - that's how the leaderboard stays honest.",
-      hint: "Sign in with that first account, or use your own device. If you think this is a mistake, talk to the organisers.",
+      message: "Somebody has already signed in on this phone or laptop with a different account.",
+      hint: "Sign in with that first account on this device to continue. If you think this is a mistake, talk to the organisers.",
       technical: false,
       sprite: "muthukuda",
     };

@@ -219,6 +219,14 @@ export interface FinishInput {
   role: ViewerRole;
   attemptToken: string;
   submittedState: unknown;
+  /**
+   * Client-reported score hint for jump (score-metric) games.
+   *
+   * Used only by the non-PB early-exit: if this is ≤ the player's current
+   * verified best, the simulation is skipped entirely. The server ignores it
+   * for every other game and every path that runs the full verifier.
+   */
+  claimedScore?: number;
 }
 
 export interface FinishResult {
@@ -539,6 +547,66 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
       reason: "This attempt was open too long and expired.",
     };
   }
+
+  // ── Non-PB fast path (Maveli Jump / any score-metric game) ───────────────
+  //
+  // Maveli Jump allows unlimited retries.  On a busy day most finish calls are
+  // for runs that do not beat the player's current best — the server would
+  // spend 10-30 ms replaying up to 21 600 physics frames just to learn the
+  // result will never reach the leaderboard.
+  //
+  // Instead:
+  //   1. For score-metric games, fetch the current verified personal best in
+  //      one cheap DB read (indexed on game_id + user_id).
+  //   2. If the client's claimedScore ≤ that best, write the attempt as
+  //      submitted and return immediately — no simulation, no leaderboard
+  //      update.  The stored score is the claimed value; it is harmless because
+  //      it is below the existing best and daily_leaderboard is never touched.
+  //   3. If the client omits claimedScore, or claims a value that would beat
+  //      the current best (including when there is no best yet), fall through
+  //      to the full verifier.
+  //
+  // Security: a cheater who wants a high rank must claim a high score, which
+  // triggers the full simulation.  Claiming a low score buys nothing.
+  if (def.metric === "score" && typeof input.claimedScore === "number") {
+    const bestRows = await db<{ score: number | null }[]>`
+      SELECT score
+      FROM daily_leaderboard
+      WHERE game_id = ${attempt.game_id} AND user_id = ${input.userId}
+      LIMIT 1
+    `;
+    const currentBest = bestRows[0]?.score != null ? Number(bestRows[0].score) : null;
+
+    if (currentBest !== null && input.claimedScore <= currentBest) {
+      // Fast exit — record the attempt, skip simulation and leaderboard update.
+      await db`
+        UPDATE game_attempts
+        SET
+          submitted_at  = ${now},
+          duration_ms   = ${rawDurationMs},
+          score         = ${input.claimedScore},
+          submitted_state_hash = ${sha256(JSON.stringify(input.submittedState ?? {}))},
+          server_valid  = false,
+          is_anomalous  = false,
+          after_deadline = ${afterDeadline},
+          status        = 'submitted'
+        WHERE id = ${attempt.id} AND status = 'in_progress'
+      `;
+      return {
+        valid: true,
+        durationMs: rawDurationMs,
+        rawDurationMs,
+        penaltyMs: 0,
+        score: input.claimedScore,
+        metric: def.metric,
+        afterDeadline,
+        attemptsRemaining,
+        unlimited,
+        isPersonalBest: false,
+      };
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   const result = await def.verify({
     seed: attempt.seed,

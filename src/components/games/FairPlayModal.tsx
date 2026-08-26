@@ -134,10 +134,9 @@ export function FairPlayModal(props: FairPlayModalProps) {
           >
             <Smartphone size={20} class="text-[var(--pop-purple-deep)] shrink-0 mt-0.5" />
             <div class="space-y-0.5 text-xs">
-              <p class="font-extrabold text-[var(--ink)] m-0">One Person, One Device</p>
+              <p class="font-extrabold text-[var(--ink)] m-0">One Person, One Account</p>
               <p class="font-semibold text-[var(--ink-soft)] m-0 leading-normal">
-                Do not attempt to bypass attempt limits using multiple phones/browsers for the same
-                player.
+                Creating extra Google accounts to get more tries or scout puzzles is not allowed.
               </p>
             </div>
           </div>

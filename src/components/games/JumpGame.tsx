@@ -34,7 +34,7 @@ export interface JumpViewData {
 
 export interface JumpGameProps {
   view: JumpViewData;
-  onFinish: (submission: { inputs: number[] }) => void;
+  onFinish: (submission: { inputs: number[]; traceFrames: number }) => void;
   onScore?: (score: number) => void;
   bestScore?: number | null;
   disabled?: boolean;
@@ -136,7 +136,13 @@ export function JumpGame(props: JumpGameProps) {
   const finish = () => {
     if (finished) return;
     finished = true;
-    props.onFinish({ inputs: [...inputs] });
+    // Include the total frame count so the server can do an O(1) clock check.
+    // state.frame is the frame at which the run ended (death or MAX_FRAMES cap).
+    // The server uses this to skip scanning the entire input array — it trusts
+    // the value only as a hint: understating it shrinks the replay and lowers
+    // the server-derived score (self-punishing), overstating it fails the clock
+    // check.
+    props.onFinish({ inputs: [...inputs], traceFrames: state.frame });
   };
 
   const enableTilt = async () => {
