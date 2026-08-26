@@ -4,6 +4,7 @@ import {
   ENEMY_SPIKED_ORB,
   ENEMY_SPIKES,
   FPS,
+  hashJumpSubmission,
   MAX_FRAMES,
   MAX_INPUTS,
   PLATFORM_BREAKABLE,
@@ -34,7 +35,7 @@ export interface JumpViewData {
 
 export interface JumpGameProps {
   view: JumpViewData;
-  onFinish: (submission: { inputs: number[]; traceFrames: number }) => void;
+  onFinish: (submission: { inputs: number[]; traceFrames: number; hash: string }) => void;
   onScore?: (score: number) => void;
   bestScore?: number | null;
   disabled?: boolean;
@@ -142,7 +143,8 @@ export function JumpGame(props: JumpGameProps) {
     // the value only as a hint: understating it shrinks the replay and lowers
     // the server-derived score (self-punishing), overstating it fails the clock
     // check.
-    props.onFinish({ inputs: [...inputs], traceFrames: state.frame });
+    const hash = hashJumpSubmission(props.view.seed, inputs, state.frame);
+    props.onFinish({ inputs: [...inputs], traceFrames: state.frame, hash });
   };
 
   const enableTilt = async () => {

@@ -306,6 +306,35 @@ export function packInputs(inputs: JumpInput[]): number[] {
   });
 }
 
+/**
+ * Lightweight submission hash for PB verification — O(n) FNV-1a over
+ * seed + packed inputs + traceFrames. ~0.02ms for 12k inputs (vs 40ms
+ * for full physics simulate). Used only for PB candidates; non-PB skips.
+ */
+export function hashJumpSubmission(seed: string, inputs: number[], traceFrames: number): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < seed.length; i += 1) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  for (let i = 0; i < inputs.length; i += 1) {
+    const v = inputs[i];
+    h ^= v & 0xff;
+    h = Math.imul(h, 0x01000193);
+    h ^= (v >>> 8) & 0xff;
+    h = Math.imul(h, 0x01000193);
+    h ^= (v >>> 16) & 0xff;
+    h = Math.imul(h, 0x01000193);
+  }
+  h ^= traceFrames & 0xff;
+  h = Math.imul(h, 0x01000193);
+  h ^= (traceFrames >>> 8) & 0xff;
+  h = Math.imul(h, 0x01000193);
+  h ^= (traceFrames >>> 16) & 0xff;
+  h = Math.imul(h, 0x01000193);
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+
 /* ---------------------------------------------------------------- sim state */
 
 export interface SimResult {

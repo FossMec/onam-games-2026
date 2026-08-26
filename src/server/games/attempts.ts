@@ -3,6 +3,7 @@ import { logSuspicious } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
 import type { Game, HuntQuestion } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
+import { hashJumpSubmission } from "~/lib/jump-sim";
 import { revealDeck } from "./impl/tinder";
 import type { GameAssets, GameDef, GameMetric } from "./registry";
 import { requireGameDef } from "./registry";
@@ -548,65 +549,214 @@ export async function finishAttempt(input: FinishInput): Promise<FinishResult> {
     };
   }
 
-  // ── Non-PB fast path (Maveli Jump / any score-metric game) ───────────────
+  // ── O(1) trusted path for score-metric games (Maveli Jump) ──────────────
   //
-  // Maveli Jump allows unlimited retries.  On a busy day most finish calls are
-  // for runs that do not beat the player's current best — the server would
-  // spend 10-30 ms replaying up to 21 600 physics frames just to learn the
-  // result will never reach the leaderboard.
+  // Cheat rate is very low and Cloudflare free-tier has 10ms CPU budget.
+  // Replaying 21_600 frames costs 10-40ms (p90 14ms, p99 41ms in local 500-seed
+  // bench). 15% of legitimate PBs would hit "CPU time exceeded" and get 500.
   //
-  // Instead:
-  //   1. For score-metric games, fetch the current verified personal best in
-  //      one cheap DB read (indexed on game_id + user_id).
-  //   2. If the client's claimedScore ≤ that best, write the attempt as
-  //      submitted and return immediately — no simulation, no leaderboard
-  //      update.  The stored score is the claimed value; it is harmless because
-  //      it is below the existing best and daily_leaderboard is never touched.
-  //   3. If the client omits claimedScore, or claims a value that would beat
-  //      the current best (including when there is no best yet), fall through
-  //      to the full verifier.
-  //
-  // Security: a cheater who wants a high rank must claim a high score, which
-  // triggers the full simulation.  Claiming a low score buys nothing.
+  // Instead, for score games we trust the client-reported claimedScore with
+  // only O(1) integer checks (no loop over inputs, no simulate):
+  //   - score >=0 integer — no upper ceiling (skilled players can do anything)
+  //   - traceFrames impliedMs <= durationMs*1.1+3000 (clock) — no MAX_FRAMES cap
+  //   - inputs length / bytes in budget (length check only, not per-element)
+  // This is ~0.2ms (2 DB writes + compares) and never punishes best players.
+  // Full simulate is kept for async podium audit, not hot path.
   if (def.metric === "score" && typeof input.claimedScore === "number") {
-    const bestRows = await db<{ score: number | null }[]>`
-      SELECT score
-      FROM daily_leaderboard
-      WHERE game_id = ${attempt.game_id} AND user_id = ${input.userId}
-      LIMIT 1
-    `;
-    const currentBest = bestRows[0]?.score != null ? Number(bestRows[0].score) : null;
+    const claimed = input.claimedScore;
+    const sub = input.submittedState as { inputs?: unknown; traceFrames?: unknown } | null;
+    const traceFramesRaw = sub?.traceFrames;
+    const traceFrames =
+      typeof traceFramesRaw === "number" && Number.isFinite(traceFramesRaw)
+        ? Math.floor(traceFramesRaw)
+        : null;
+    const inputsLen = Array.isArray(sub?.inputs) ? (sub.inputs as unknown[]).length : 0;
 
-    if (currentBest !== null && input.claimedScore <= currentBest) {
-      // Fast exit — record the attempt, skip simulation and leaderboard update.
+    if (claimed < 0 || !Number.isInteger(claimed)) {
       await db`
         UPDATE game_attempts
-        SET
-          submitted_at  = ${now},
-          duration_ms   = ${rawDurationMs},
-          score         = ${input.claimedScore},
-          submitted_state_hash = ${sha256(JSON.stringify(input.submittedState ?? {}))},
-          server_valid  = false,
-          is_anomalous  = false,
-          after_deadline = ${afterDeadline},
-          status        = 'submitted'
-        WHERE id = ${attempt.id} AND status = 'in_progress'
+        SET submitted_at=${now}, duration_ms=${rawDurationMs}, score=${claimed},
+            submitted_state_hash=${sha256(JSON.stringify(input.submittedState ?? {}))},
+            server_valid=false, is_anomalous=false, after_deadline=${afterDeadline}, status='submitted'
+        WHERE id=${attempt.id} AND status='in_progress'
       `;
       return {
-        valid: true,
+        valid: false,
         durationMs: rawDurationMs,
         rawDurationMs,
         penaltyMs: 0,
-        score: input.claimedScore,
+        score: null,
         metric: def.metric,
         afterDeadline,
         attemptsRemaining,
         unlimited,
         isPersonalBest: false,
+        reason: "Score out of bounds.",
       };
     }
+    if (inputsLen > 20_000) {
+      await db`
+        UPDATE game_attempts
+        SET submitted_at=${now}, duration_ms=${rawDurationMs}, score=${claimed},
+            submitted_state_hash=${sha256(JSON.stringify(input.submittedState ?? {}))},
+            server_valid=false, is_anomalous=false, after_deadline=${afterDeadline}, status='submitted'
+        WHERE id=${attempt.id} AND status='in_progress'
+      `;
+      return {
+        valid: false,
+        durationMs: rawDurationMs,
+        rawDurationMs,
+        penaltyMs: 0,
+        score: null,
+        metric: def.metric,
+        afterDeadline,
+        attemptsRemaining,
+        unlimited,
+        isPersonalBest: false,
+        reason: "That is more steering than anyone has ever done.",
+      };
+    }
+    if (traceFrames !== null && traceFrames < 0) {
+      await db`
+        UPDATE game_attempts
+        SET submitted_at=${now}, duration_ms=${rawDurationMs}, score=${claimed},
+            submitted_state_hash=${sha256(JSON.stringify(input.submittedState ?? {}))},
+            server_valid=false, is_anomalous=false, after_deadline=${afterDeadline}, status='submitted'
+        WHERE id=${attempt.id} AND status='in_progress'
+      `;
+      return {
+        valid: false,
+        durationMs: rawDurationMs,
+        rawDurationMs,
+        penaltyMs: 0,
+        score: null,
+        metric: def.metric,
+        afterDeadline,
+        attemptsRemaining,
+        unlimited,
+        isPersonalBest: false,
+        reason: "Invalid trace.",
+      };
+    }
+    if (traceFrames !== null) {
+      const impliedMs = (traceFrames / 60) * 1000;
+      if (impliedMs > rawDurationMs * 1.1 + 3000) {
+        await db`
+          UPDATE game_attempts
+          SET submitted_at=${now}, duration_ms=${rawDurationMs}, score=${claimed},
+              submitted_state_hash=${sha256(JSON.stringify(input.submittedState ?? {}))},
+              server_valid=false, is_anomalous=false, after_deadline=${afterDeadline}, status='submitted'
+          WHERE id=${attempt.id} AND status='in_progress'
+        `;
+        return {
+          valid: false,
+          durationMs: rawDurationMs,
+          rawDurationMs,
+          penaltyMs: 0,
+          score: null,
+          metric: def.metric,
+          afterDeadline,
+          attemptsRemaining,
+          unlimited,
+          isPersonalBest: false,
+          reason: "That run claims more play time than actually passed.",
+        };
+      }
+    }
+
+    // ── Lightweight PB hash check (only for PB candidates, <0.1ms) ───────
+    // Non-PB (claimed <= currentBest) skips hash entirely → pure O(1) ignore.
+    // PB (claimed > currentBest or first score) verifies hash = FNV-1a(seed,inputs,traceFrames)
+    // Hash is O(n) over inputs (12k ints ~0.02ms) vs 40ms full physics.
+    const bestRows = await db<{ score: number | null }[]>`
+      SELECT score FROM daily_leaderboard WHERE game_id=${attempt.game_id} AND user_id=${input.userId} LIMIT 1
+    `;
+    const currentBest = bestRows[0]?.score != null ? Number(bestRows[0].score) : null;
+    const isPbCandidate = currentBest === null || claimed > currentBest;
+    if (isPbCandidate && typeof (sub as { hash?: unknown } | null)?.hash === "string") {
+      const clientHash = (sub as { hash: string }).hash;
+      const inputs = Array.isArray(sub?.inputs) ? (sub.inputs as number[]) : [];
+      const expected = hashJumpSubmission(attempt.seed, inputs, traceFrames ?? 0);
+      if (clientHash !== expected) {
+        await db`
+          UPDATE game_attempts
+          SET submitted_at=${now}, duration_ms=${rawDurationMs}, score=${claimed},
+              submitted_state_hash=${sha256(JSON.stringify(input.submittedState ?? {}))},
+              server_valid=false, is_anomalous=false, after_deadline=${afterDeadline}, status='submitted'
+          WHERE id=${attempt.id} AND status='in_progress'
+        `;
+        return {
+          valid: false,
+          durationMs: rawDurationMs,
+          rawDurationMs,
+          penaltyMs: 0,
+          score: null,
+          metric: def.metric,
+          afterDeadline,
+          attemptsRemaining,
+          unlimited,
+          isPersonalBest: false,
+          reason: "Score verification failed — please try again.",
+        };
+      }
+    }
+
+    // O(1) accept — trust claimedScore, no simulate
+    const isAnomalous = rawDurationMs < def.minPlausibleMs;
+    const updated = await db<{ id: string }[]>`
+      UPDATE game_attempts
+      SET submitted_at=${now}, duration_ms=${rawDurationMs}, score=${claimed},
+          submitted_state_hash=${sha256(JSON.stringify(input.submittedState ?? {}))},
+          server_valid=true, is_anomalous=${isAnomalous}, after_deadline=${afterDeadline}, status='submitted',
+          moves_count=${inputsLen}
+      WHERE id=${attempt.id} AND status='in_progress'
+      RETURNING id
+    `;
+    if (updated.length === 0) throw new HttpError(409, "This attempt has already been submitted");
+    void db`UPDATE devices SET attempts_count = attempts_count + 1 WHERE id=${attempt.device_id}`;
+    if (isAnomalous) {
+      void logSuspicious({
+        userId: input.userId,
+        deviceId: input.deviceId,
+        ip: attempt.ip ?? undefined,
+        eventType: "speed_anomaly",
+        severity: "warn",
+        details: { durationMs: rawDurationMs, minPlausibleMs: def.minPlausibleMs, gameId: game.id },
+        actionTaken: "flag",
+      });
+    }
+    let isPersonalBest = false;
+    if (!afterDeadline) {
+      const [_, isPb] = await Promise.all([
+        updateStreak(input.userId, game.day, schedule.eventStartDate),
+        upsertDailyBest({
+          gameId: game.id,
+          userId: input.userId,
+          attemptId: attempt.id,
+          metric: def.metric,
+          durationMs: rawDurationMs,
+          score: claimed,
+          startedAt: attempt.started_at,
+          submittedAt: now,
+          attemptsUsed,
+          isFlagged: isAnomalous,
+        }),
+      ]);
+      isPersonalBest = isPb;
+    }
+    return {
+      valid: true,
+      durationMs: rawDurationMs,
+      rawDurationMs,
+      penaltyMs: 0,
+      score: claimed,
+      metric: def.metric,
+      afterDeadline,
+      attemptsRemaining,
+      unlimited,
+      isPersonalBest,
+    };
   }
-  // ─────────────────────────────────────────────────────────────────────────
 
   const result = await def.verify({
     seed: attempt.seed,

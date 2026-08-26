@@ -66,6 +66,8 @@ export interface JumpSubmission {
    * with any in-flight requests from old client builds.
    */
   traceFrames?: number;
+  /** Lightweight FNV-1a hash of seed+inputs+traceFrames — O(n) hash, <0.1ms, PB-only check */
+  hash?: string;
 }
 
 export function generate(seed: string = LEVEL_SEED): GeneratedInstance {
