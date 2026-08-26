@@ -77,7 +77,7 @@ async function loadShellBase(): Promise<ShellBase> {
 export async function getShellData(): Promise<ShellData> {
   const [user, base] = await Promise.all([
     getCurrentUser().catch(() => null),
-    sharedRead("shell:base", loadShellBase, 15_000),
+    sharedRead("shell:base", loadShellBase, 60_000),
   ]);
 
   if (!user) {

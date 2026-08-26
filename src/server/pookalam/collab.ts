@@ -76,7 +76,7 @@ async function computeCollabConfig(): Promise<{
 }
 
 function getConfig() {
-  return sharedRead("collab:config", computeCollabConfig, 5_000);
+  return sharedRead("collab:config", computeCollabConfig, 30_000);
 }
 
 interface CollabGridRow {
@@ -115,7 +115,7 @@ async function loadCommunityGrid(): Promise<CollabGridRow> {
 }
 
 function ensureCommunityGrid() {
-  return sharedRead("collab:grid", loadCommunityGrid, 2_000);
+  return sharedRead("collab:grid", loadCommunityGrid, 30_000);
 }
 
 let diffsTableInitPromise: Promise<void> | null = null;

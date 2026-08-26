@@ -81,7 +81,7 @@ async function computeConfig(): Promise<PookalamConfig> {
 }
 
 export function getConfig(): Promise<PookalamConfig> {
-  return sharedRead("pookalam:config", computeConfig, 5_000);
+  return sharedRead("pookalam:config", computeConfig, 30_000);
 }
 
 export async function getGates(): Promise<PookalamGates> {
@@ -282,7 +282,7 @@ async function loadPool(): Promise<PoolEntry[]> {
         ORDER BY matches ASC, id ASC
       `;
     },
-    10_000,
+    60_000,
   );
 }
 
@@ -303,7 +303,7 @@ export async function nextPairs(voterId: string, count = 25): Promise<VotingPair
           GROUP BY pair_key
         `;
       },
-      5_000,
+      30_000,
     ),
     getConfig(),
     db<{ id: string }[]>`
@@ -447,14 +447,111 @@ export async function batchVote(
   voterId: string,
   votes: Array<{ winnerId: string; loserId: string }>,
 ): Promise<{ ok: number; errors: string[] }> {
+  const batch = votes.slice(0, 50);
+  if (batch.length === 0) return { ok: 0, errors: [] };
+  const config = await getConfig();
+  if (!config.voting.open) return { ok: 0, errors: batch.map(() => "Voting is not open.") };
+  const db = getDb();
+  const allIds = [...new Set(batch.flatMap((v) => [v.winnerId, v.loserId]))];
+  const rows = await db<
+    {
+      id: string;
+      userId: string;
+      rating: number;
+      matches: number;
+      status: string;
+      shortlisted: boolean;
+    }[]
+  >`
+    SELECT id, user_id AS "userId", rating, matches, status, shortlisted
+    FROM pookalam_submissions WHERE id = ANY(${allIds})
+  `;
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const valid: typeof batch = [];
   const errors: string[] = [];
-  let ok = 0;
-  for (const v of votes.slice(0, 50)) {
-    const r = await castVote(voterId, v.winnerId, v.loserId, { skipNextPair: true });
-    if (r.ok) ok++;
-    else errors.push(r.reason);
+  for (const v of batch) {
+    if (v.winnerId === v.loserId) {
+      errors.push("Those are the same entry.");
+      continue;
+    }
+    const w = byId.get(v.winnerId);
+    const l = byId.get(v.loserId);
+    if (!w || !l) {
+      errors.push("That entry no longer exists.");
+      continue;
+    }
+    if (!w.shortlisted || !l.shortlisted || w.status !== "approved" || l.status !== "approved") {
+      errors.push("One of those entries is not in the running.");
+      continue;
+    }
+    if (w.userId === voterId || l.userId === voterId) {
+      errors.push("You cannot vote on your own pookalam. Nice try.");
+      continue;
+    }
+    valid.push(v);
   }
-  return { ok, errors };
+  if (valid.length === 0) return { ok: 0, errors };
+
+  // Bulk insert — one round-trip (was N)
+  const pairKeys = valid.map((v) => pairKey(v.winnerId, v.loserId));
+  const inserted = await db<{ pair_key: string }[]>`
+    INSERT INTO pookalam_votes (voter_id, winner_id, loser_id, pair_key)
+    VALUES ${db(valid.map((v, i) => [voterId, v.winnerId, v.loserId, pairKeys[i]] as const))}
+    ON CONFLICT (voter_id, pair_key) DO NOTHING
+    RETURNING pair_key
+  `;
+  const insertedSet = new Set(inserted.map((r) => r.pair_key));
+  // Count duplicates as errors
+  for (const v of valid) {
+    const k = pairKey(v.winnerId, v.loserId);
+    if (!insertedSet.has(k)) errors.push("You have already judged this pair.");
+  }
+  if (insertedSet.size === 0) return { ok: 0, errors };
+
+  // Compute Elo sequentially in memory to keep ratings consistent within batch
+  const ratingById = new Map<string, number>();
+  const matchesById = new Map<string, number>();
+  for (const r of rows) {
+    ratingById.set(r.id, Number(r.rating));
+    matchesById.set(r.id, Number(r.matches));
+  }
+  const winsById = new Map<string, number>();
+  const countsById = new Map<string, number>();
+  for (const v of valid) {
+    const k = pairKey(v.winnerId, v.loserId);
+    if (!insertedSet.has(k)) continue;
+    const wRating = ratingById.get(v.winnerId)!;
+    const lRating = ratingById.get(v.loserId)!;
+    const wMatches = matchesById.get(v.winnerId)!;
+    const lMatches = matchesById.get(v.loserId)!;
+    const next = applyResult(wRating, wMatches, lRating, lMatches);
+    ratingById.set(v.winnerId, next.winner);
+    ratingById.set(v.loserId, next.loser);
+    matchesById.set(v.winnerId, wMatches + 1);
+    matchesById.set(v.loserId, lMatches + 1);
+    winsById.set(v.winnerId, (winsById.get(v.winnerId) ?? 0) + 1);
+    countsById.set(v.winnerId, (countsById.get(v.winnerId) ?? 0) + 1);
+    countsById.set(v.loserId, (countsById.get(v.loserId) ?? 0) + 1);
+  }
+  const ids = [...countsById.keys()];
+  if (ids.length > 0) {
+    // Single bulk UPDATE — one more round-trip (was N)
+    const ratingCases = ids
+      .map((id) => db`WHEN id = ${id} THEN ${ratingById.get(id)!}::double precision`)
+      .reduce((a, b) => db`${a} ${b}`);
+    const winCases = ids
+      .map((id) => db`WHEN id = ${id} THEN ${winsById.get(id) ?? 0}`)
+      .reduce((a, b) => db`${a} ${b}`);
+    await db`
+      UPDATE pookalam_submissions SET
+        rating = CASE ${ratingCases} END,
+        matches = matches + CASE ${ids.map((id) => db`WHEN id = ${id} THEN ${countsById.get(id)!}`).reduce((a, b) => db`${a} ${b}`)} END,
+        wins = wins + CASE ${winCases} ELSE 0 END,
+        updated_at = NOW()
+      WHERE id = ANY(${ids})
+    `;
+  }
+  return { ok: insertedSet.size, errors };
 }
 
 export async function countMyVotes(voterId: string): Promise<number> {

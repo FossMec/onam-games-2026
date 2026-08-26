@@ -34,7 +34,7 @@ import type { DailyBoard, DailyEntry } from "~/server/leaderboard/service";
 import { memeImage } from "~/lib/img";
 import { formatAdaptiveDuration } from "~/lib/time";
 
-const POLL_MS = 120_000;
+const POLL_MS = 300_000;
 const REFRESH_COOLDOWN_MS = 10_000;
 
 function formatDuration(ms: number): string {

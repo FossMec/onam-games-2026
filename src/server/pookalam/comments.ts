@@ -89,7 +89,7 @@ export async function getCollabMessages(dayKey: string = istDayKey()): Promise<{
 }> {
   const [user, allRows] = await Promise.all([
     getCurrentUser().catch(() => null),
-    sharedRead(`collab:messages:${dayKey}`, () => loadCollabMessageRows(dayKey), 3_000),
+    sharedRead(`collab:messages:${dayKey}`, () => loadCollabMessageRows(dayKey), 30_000),
   ]);
   const db = getDb();
   const isAdmin = user?.role === "admin";
