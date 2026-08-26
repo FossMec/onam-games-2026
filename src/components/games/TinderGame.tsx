@@ -227,8 +227,10 @@ export function TinderGame(props: TinderGameProps) {
           });
         }
       }
-      setError("");
-      return { wrongIds, wrong };
+      if (wrongIds.length === 0) {
+        setError("");
+        return { wrongIds, wrong };
+      }
     }
     try {
       const res = await fetch(`/api/game/${props.slug}/check`, {
@@ -715,7 +717,7 @@ function CardFace(props: { card: TinderCardView | undefined; id: string }) {
 function PenaltyScreen(props: { verdict: Verdict; card: TinderCardView | undefined }) {
   return (
     <div
-      class="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 overflow-y-auto rounded-lg px-5 py-6 text-center"
+      class="absolute inset-0 z-30 flex flex-col items-center justify-start gap-3 overflow-y-auto rounded-lg px-5 py-6 text-center"
       style={{
         background: "var(--ink)",
         border: "var(--ink-w-bold) solid var(--ink)",

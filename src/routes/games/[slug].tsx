@@ -368,18 +368,17 @@ export default function GameArenaPage() {
 
   createEffect(() => {
     if (startedAt() === null) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
+    const timer = setInterval(() => setNow(Date.now()), 100);
     onCleanup(() => clearInterval(timer));
   });
 
-  const elapsed = () =>
-    startedAt() === null ? 0 : Math.max(0, Math.floor((now() - startedAt()!) / 1000));
+  const elapsed = () => (startedAt() === null ? 0 : Math.max(0, now() - startedAt()!));
 
   // Hunt is FCFS — rank by wall-clock since release, not since click. Show time since releaseAt.
   const huntElapsed = () => {
     const r = game()?.releaseAt;
     if (!r) return elapsed();
-    return Math.max(0, Math.floor((now() - new Date(r).getTime()) / 1000));
+    return Math.max(0, now() - new Date(r).getTime());
   };
 
   const traceWord = async (cells: WendCell[]): Promise<string | null> => {
@@ -756,9 +755,9 @@ export default function GameArenaPage() {
                     ? huntElapsed()
                     : elapsed()
                   : settledResult()?.durationMs != null
-                    ? Math.floor(settledResult()!.durationMs / 1000)
+                    ? settledResult()!.durationMs
                     : myAttempt()?.durationMs != null
-                      ? Math.floor(myAttempt()!.durationMs! / 1000)
+                      ? myAttempt()!.durationMs!
                       : null
               }
               liveScore={game()!.gameType === "jump" ? jumpScore() : null}
@@ -769,13 +768,13 @@ export default function GameArenaPage() {
         </header>
 
         <main
-          class={`flex-1 min-h-0 w-full px-2 py-2 sm:px-4 flex flex-col items-center justify-center ${
+          class={`flex-1 min-h-0 w-full px-2 py-2 sm:px-4 flex flex-col items-center ${hasFinishedRun() ? "justify-start" : "justify-center"} ${
             isHunt() ? "overflow-hidden" : "overflow-y-auto overflow-x-hidden scrollbar-none"
           }`}
           style={{ "scrollbar-width": "none", "-ms-overflow-style": "none" }}
         >
           <div
-            class={`my-auto w-full flex flex-col items-center justify-center gap-4 text-center ${
+            class={`w-full flex flex-col items-center gap-4 text-center ${hasFinishedRun() ? "justify-start py-4" : "my-auto justify-center"} ${
               isHunt() ? "max-w-5xl h-full flex-1 min-h-0" : "max-w-xl"
             }`}
           >
@@ -907,7 +906,7 @@ export default function GameArenaPage() {
             </Show>
 
             <Show when={!banState()?.blocksPlay && hasFinishedRun()}>
-              <div class="w-full max-w-md mx-auto space-y-4 flex flex-col items-center justify-center">
+              <div class="w-full max-w-md mx-auto space-y-4 flex flex-col items-center justify-start py-4">
                 <div class="flex items-center justify-between w-full gap-2 px-1">
                   <span class="text-xs font-extrabold uppercase tracking-wider text-muted">
                     {hasFinishedBoard() && (game()?.status === "closed" || isTester())
@@ -1350,7 +1349,7 @@ function GameBar(props: {
               }}
             >
               <span class="inline-block h-2 w-2 rounded-full bg-[var(--pop-teal)] animate-pulse" />
-              <span>{formatAdaptiveClock(props.elapsed!)}</span>
+              <span>{formatAdaptiveClock(Math.floor(props.elapsed! / 1000))}</span>
             </div>
           }
         >
