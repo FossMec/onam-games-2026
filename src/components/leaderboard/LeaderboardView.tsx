@@ -327,7 +327,7 @@ export function LeaderboardView() {
             decoding="async"
           />
           <p class="text-xs font-black text-center mt-2 text-[var(--ink)] uppercase tracking-wider">
-            ₹250 Daily Prize · FOSS Onam
+            {isDay7() ? "₹200 Voter Prize · FOSS Onam" : "₹250 Daily Prize · FOSS Onam"}
           </p>
         </div>
 
@@ -362,13 +362,20 @@ export function LeaderboardView() {
         <div class="relative z-10 flex items-start sm:items-center justify-between gap-2.5">
           <div class="min-w-0 flex-1 space-y-0.5">
             <div class="flex items-center gap-2">
-              <SpriteIcon name="tux-king" size={26} animate="float" interactive />
+              <SpriteIcon
+                name={isDay7() ? "concentric-pookalam" : "tux-king"}
+                size={26}
+                animate="float"
+                interactive
+              />
               <h1 class="text-xl sm:text-2xl md:text-3xl font-extrabold m-0 text-[var(--ink)] leading-tight">
-                Daily Leaderboard
+                {isDay7() ? "Pookalam Arena" : "Daily Leaderboard"}
               </h1>
             </div>
             <p class="text-xs sm:text-sm font-semibold text-[var(--ink-soft)] leading-snug">
-              Daily mini-game results & rankings · Top 1 wins ₹250 daily prize
+              {isDay7()
+                ? "Community vote · Pookalams ₹3,000 · Best judges ₹200"
+                : "Daily mini-game results & rankings · Top 1 wins ₹250 daily prize"}
             </p>
           </div>
 
@@ -499,9 +506,14 @@ export function LeaderboardView() {
           </div>
         </Show>
 
-        {/* Top #1 Winner Callout */}
+        {/* Top #1 Winner Callout — not for Day 7 pookalam (has its own ₹3k podium) */}
         <Show
-          when={!isLockedForPlayer() && topDailyWinner() && selectedGame()?.status === "closed"}
+          when={
+            !isDay7() &&
+            !isLockedForPlayer() &&
+            topDailyWinner() &&
+            selectedGame()?.status === "closed"
+          }
         >
           {(() => {
             const top = topDailyWinner()!;

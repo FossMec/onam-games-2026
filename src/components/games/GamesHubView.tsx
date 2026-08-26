@@ -438,7 +438,7 @@ export function GamesHubView() {
                         style={{ "--pop": "var(--pop-yellow)" }}
                       >
                         <Trophy size={18} strokeWidth={2.5} />
-                        <span>Win {current.gameType === "hunt" ? "₹500" : "₹250"} Cash</span>
+                        <span>Win ₹250 Cash</span>
                       </span>
                       <div
                         class="relative overflow-hidden rounded-lg aspect-square w-full sm:w-64 md:w-72 bg-[var(--paper-3)] flex items-center justify-center"
@@ -890,7 +890,7 @@ export function GamesHubView() {
             </div>
             <p class="text-xs font-semibold leading-relaxed text-muted m-0">
               A new puzzle unlocks at 1 PM everyday. Complete the challenge fast to take home daily{" "}
-              {activeGame()?.gameType === "hunt" ? "₹500" : "₹250"} cash bounties.
+              ₹250 cash bounties.
             </p>
           </div>
 

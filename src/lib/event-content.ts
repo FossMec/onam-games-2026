@@ -153,9 +153,9 @@ export const EVENT = {
       badge: "Podium Runners-up",
     },
     {
-      amount: "₹500",
+      amount: "₹250",
       rank: "Treasure Hunt Champion",
-      detail: "Day 6 special bounty — first to uncover all 10 hidden relics wins the ₹500 prize.",
+      detail: "Day 6 special bounty — first to uncover all 10 hidden relics wins the ₹250 prize.",
       pop: "pop-purple",
       icon: "gopher-king" as SpriteName,
       badge: "Day 6",
