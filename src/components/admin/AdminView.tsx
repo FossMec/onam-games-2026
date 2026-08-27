@@ -5,6 +5,7 @@ import { AdminTabs, type AdminTabId } from "~/components/admin/AdminTabs";
 import { PookalamGallery } from "~/components/admin/PookalamGallery";
 import { PookalamReview } from "~/components/admin/PookalamReview";
 import { PookalamAnimationExport } from "~/components/admin/PookalamAnimationExport";
+import { FeedbackTab } from "~/components/admin/tabs/FeedbackTab";
 import { AttemptsTab } from "~/components/admin/tabs/AttemptsTab";
 import { CollabWishesTab } from "~/components/admin/tabs/CollabWishesTab";
 import { GamesTab } from "~/components/admin/tabs/GamesTab";
@@ -268,6 +269,11 @@ export function AdminView() {
                     games={d.games}
                     onNavigateTab={(t) => setActiveTab(t)}
                   />
+                </Show>
+
+                {/* Feedback Tab */}
+                <Show when={activeTab() === "feedback"}>
+                  <FeedbackTab />
                 </Show>
 
                 {/* 2. Games & Schedule Tab */}

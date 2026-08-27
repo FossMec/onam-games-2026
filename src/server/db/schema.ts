@@ -301,3 +301,27 @@ export interface BlockedIp {
   blockedBy: string | null;
   createdAt: Date;
 }
+
+export interface UserFeedback {
+  id: string;
+  userId: string | null;
+  deviceId: string | null;
+  enjoyedGames: string | null;
+  favoriteThing: string | null;
+  changesNextYear: string | null;
+  codePookalamExperience: string | null;
+  codePookalamRoadmap: string | null;
+  openSourceLearning: string | null;
+  wantMoreFossEvents: string | null;
+  nextEventSuggestions: string | null;
+  learnTopics: string | null;
+  communityPookalamExperience: string | null;
+  batch: string | null;
+  college: string | null;
+  additionalNotes: string | null;
+  answersJson: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type NewUserFeedback = Partial<UserFeedback>;

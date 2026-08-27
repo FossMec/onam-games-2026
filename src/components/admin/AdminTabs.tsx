@@ -5,6 +5,7 @@ import {
   Gamepad2,
   Image as ImageIcon,
   LayoutDashboard,
+  MessageSquareHeart,
   Settings,
   ShieldAlert,
   Users,
@@ -13,6 +14,7 @@ import { For } from "solid-js";
 
 export type AdminTabId =
   | "overview"
+  | "feedback"
   | "games"
   | "users"
   | "attempts"
@@ -40,12 +42,19 @@ interface AdminTabsProps {
     suspicious?: number;
     testers?: number;
     pookalam?: number;
+    feedback?: number;
   };
 }
 
 export function AdminTabs(props: AdminTabsProps) {
   const tabs = (): AdminTabItem[] => [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
+    {
+      id: "feedback",
+      label: "Community Feedback",
+      icon: MessageSquareHeart,
+      badge: props.counts?.feedback,
+    },
     { id: "games", label: "Games & Schedule", icon: Gamepad2, badge: props.counts?.games },
     { id: "hunt", label: "Treasure Hunt", icon: Compass, badge: props.counts?.hunt },
     { id: "users", label: "Users & Bans", icon: Users, badge: props.counts?.users },

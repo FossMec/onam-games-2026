@@ -20,6 +20,11 @@ const ShortlistNotice = clientOnly(() =>
 const PookalamBalloons = clientOnly(() =>
   import("./components/PookalamBalloons").then((m) => ({ default: m.PookalamBalloons })),
 );
+const FloatingFeedbackButton = clientOnly(() =>
+  import("./components/feedback/FloatingFeedbackButton").then((m) => ({
+    default: m.FloatingFeedbackButton,
+  })),
+);
 
 export default function App() {
   return (
@@ -110,6 +115,11 @@ export default function App() {
               </ErrorBoundary>
             </div>
             <Footer />
+            <ErrorBoundary fallback={null}>
+              <Suspense>
+                <FloatingFeedbackButton />
+              </Suspense>
+            </ErrorBoundary>
           </div>
         </MetaProvider>
       )}

@@ -8,6 +8,7 @@ import { Countdown } from "~/components/Countdown";
 import { POOKALAM } from "~/lib/event-content";
 import { SHOUT_COLOR, shout } from "~/lib/shouts";
 import { PookalamVoteMath } from "~/components/pookalam/PookalamVoteMath";
+import { FeedbackForm } from "~/components/feedback/FeedbackForm";
 import { getNextPairs } from "~/server/pookalam/actions";
 import { pookalamState } from "~/lib/queries";
 
@@ -61,6 +62,7 @@ export function PookalamVoteView() {
   const [done, setDone] = createSignal(false);
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [error, setError] = createSignal("");
+  const [showFeedbackPrompt, setShowFeedbackPrompt] = createSignal(false);
 
   const [leftLoaded, setLeftLoaded] = createSignal(false);
   const [rightLoaded, setRightLoaded] = createSignal(false);
@@ -123,6 +125,13 @@ export function PookalamVoteView() {
   };
 
   onMount(async () => {
+    if (typeof window !== "undefined") {
+      const dismissed = sessionStorage.getItem("onam_feedback_dismissed_voting");
+      const completed = localStorage.getItem("onam_feedback_completed");
+      if (!dismissed && !completed) {
+        setShowFeedbackPrompt(true);
+      }
+    }
     const state = await pookalamState();
     setSignedIn(state.signedIn);
     setGateOpen(state.phases.voting.open);
@@ -325,82 +334,107 @@ export function PookalamVoteView() {
               </Show>
             }
           >
-            <HowToVote />
-
             <Show
-              when={pair()}
+              when={showFeedbackPrompt()}
               fallback={
-                <Show
-                  when={isSubmitting() || pendingCount() > 0}
-                  fallback={
-                    <Show
-                      when={done()}
-                      fallback={
-                        <Show when={fetching()} fallback={<VoteSkeleton />}>
-                          <VoteSkeleton />
-                        </Show>
-                      }
-                    >
-                      <div class="card pop-teal space-y-3 text-center">
-                        <ShoutBurst
-                          text={shout("triumph", "pookalam-done")}
-                          color={SHOUT_COLOR.triumph}
-                          seed="pookalam-done"
-                        />
-                        <p class="font-extrabold">
-                          That's every pair you can judge. {count()} votes in.
-                        </p>
-                        <p class="comment">
-                          results go up once voting closes. no, we won't tell you who's winning.
-                        </p>
-                        <A href="/leaderboard" class="btn-brand">
-                          See the standings
-                        </A>
-                      </div>
-                    </Show>
-                  }
-                >
-                  <div class="card pop-yellow space-y-3 text-center p-6">
-                    <div class="flex justify-center">
-                      <span class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-[var(--ink)] border-t-transparent" />
+                <>
+                  <HowToVote />
+
+                  <Show
+                    when={pair()}
+                    fallback={
+                      <Show
+                        when={isSubmitting() || pendingCount() > 0}
+                        fallback={
+                          <Show
+                            when={done()}
+                            fallback={
+                              <Show when={fetching()} fallback={<VoteSkeleton />}>
+                                <VoteSkeleton />
+                              </Show>
+                            }
+                          >
+                            <div class="card pop-teal space-y-3 text-center">
+                              <ShoutBurst
+                                text={shout("triumph", "pookalam-done")}
+                                color={SHOUT_COLOR.triumph}
+                                seed="pookalam-done"
+                              />
+                              <p class="font-extrabold">
+                                That's every pair you can judge. {count()} votes in.
+                              </p>
+                              <p class="comment">
+                                results go up once voting closes. no, we won't tell you who's
+                                winning.
+                              </p>
+                              <A href="/leaderboard" class="btn-brand">
+                                See the standings
+                              </A>
+                            </div>
+                          </Show>
+                        }
+                      >
+                        <div class="card pop-yellow space-y-3 text-center p-6">
+                          <div class="flex justify-center">
+                            <span class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-[var(--ink)] border-t-transparent" />
+                          </div>
+                          <p class="font-extrabold">Verifying your votes…</p>
+                          <p class="comment text-sm">
+                            {pendingCount() > 0
+                              ? `${pendingCount()} vote${pendingCount() === 1 ? "" : "s"} still sending — please wait`
+                              : "Finishing up — checking what's left"}
+                          </p>
+                        </div>
+                      </Show>
+                    }
+                  >
+                    {/*
+                      Stacked on phones and side by side from `sm` up. Stacking is not
+                      a compromise: on a narrow screen two half-width images are too
+                      small to judge, and judging is the entire task.
+                    */}
+                    <div class="grid gap-3 sm:grid-cols-2">
+                      <Choice
+                        entry={pair()!.left}
+                        other={pair()!.right}
+                        label="Left pookalam"
+                        pop="var(--pop-blue)"
+                        loaded={leftLoaded()}
+                        bothLoaded={bothLoaded()}
+                        onLoaded={() => setLeftLoaded(true)}
+                        onPick={pick}
+                        disabled={!bothLoaded()}
+                      />
+                      <Choice
+                        entry={pair()!.right}
+                        other={pair()!.left}
+                        label="Right pookalam"
+                        pop="var(--pop-pink)"
+                        loaded={rightLoaded()}
+                        bothLoaded={bothLoaded()}
+                        onLoaded={() => setRightLoaded(true)}
+                        onPick={pick}
+                        disabled={!bothLoaded()}
+                      />
                     </div>
-                    <p class="font-extrabold">Verifying your votes…</p>
-                    <p class="comment text-sm">
-                      {pendingCount() > 0
-                        ? `${pendingCount()} vote${pendingCount() === 1 ? "" : "s"} still sending — please wait`
-                        : "Finishing up — checking what's left"}
-                    </p>
-                  </div>
-                </Show>
+                  </Show>
+                </>
               }
             >
-              {/*
-                Stacked on phones and side by side from `sm` up. Stacking is not
-                a compromise: on a narrow screen two half-width images are too
-                small to judge, and judging is the entire task.
-              */}
-              <div class="grid gap-3 sm:grid-cols-2">
-                <Choice
-                  entry={pair()!.left}
-                  other={pair()!.right}
-                  label="Left pookalam"
-                  pop="var(--pop-blue)"
-                  loaded={leftLoaded()}
-                  bothLoaded={bothLoaded()}
-                  onLoaded={() => setLeftLoaded(true)}
-                  onPick={pick}
-                  disabled={!bothLoaded()}
-                />
-                <Choice
-                  entry={pair()!.right}
-                  other={pair()!.left}
-                  label="Right pookalam"
-                  pop="var(--pop-pink)"
-                  loaded={rightLoaded()}
-                  bothLoaded={bothLoaded()}
-                  onLoaded={() => setRightLoaded(true)}
-                  onPick={pick}
-                  disabled={!bothLoaded()}
+              <div class="space-y-4">
+                <FeedbackForm
+                  onSaved={() => {
+                    setShowFeedbackPrompt(false);
+                    try {
+                      sessionStorage.setItem("onam_feedback_dismissed_voting", "true");
+                    } catch {}
+                  }}
+                  onDismiss={() => {
+                    setShowFeedbackPrompt(false);
+                    try {
+                      sessionStorage.setItem("onam_feedback_dismissed_voting", "true");
+                    } catch {}
+                  }}
                 />
               </div>
             </Show>
