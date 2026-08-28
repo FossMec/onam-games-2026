@@ -233,15 +233,35 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
   };
 
   const handleTokenKeyDown = (idx: number, e: KeyboardEvent) => {
-    if (e.key === "Backspace" && !tokenDigits()[idx] && idx > 0) {
-      const prev = document.getElementById(`hunt-otp-${idx - 1}`) as HTMLInputElement | null;
-      prev?.focus();
+    if (e.key === "Backspace") {
+      if (!tokenDigits()[idx] && idx > 0) {
+        e.preventDefault();
+        const next = [...tokenDigits()];
+        next[idx - 1] = "";
+        setTokenDigits(next);
+        setAnswerInput(next.join(""));
+        const prev = document.getElementById(`hunt-otp-${idx - 1}`) as HTMLInputElement | null;
+        prev?.focus();
+        prev?.select();
+        return;
+      }
+      if (tokenDigits()[idx] && idx >= 0) {
+        // Let the input event clear the filled field, but keep focus here
+        // and ensure caret is selected so the next Backspace correctly moves left.
+        // No navigation needed on this press.
+      }
     }
     if (e.key === "ArrowLeft" && idx > 0) {
-      (document.getElementById(`hunt-otp-${idx - 1}`) as HTMLInputElement | null)?.focus();
+      e.preventDefault();
+      const prev = document.getElementById(`hunt-otp-${idx - 1}`) as HTMLInputElement | null;
+      prev?.focus();
+      prev?.select();
     }
     if (e.key === "ArrowRight" && idx < 5) {
-      (document.getElementById(`hunt-otp-${idx + 1}`) as HTMLInputElement | null)?.focus();
+      e.preventDefault();
+      const nextEl = document.getElementById(`hunt-otp-${idx + 1}`) as HTMLInputElement | null;
+      nextEl?.focus();
+      nextEl?.select();
     }
   };
 
