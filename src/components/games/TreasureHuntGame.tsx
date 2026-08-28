@@ -9,8 +9,8 @@ import { getDistroForQuestionIndex } from "~/lib/treasure-distros";
 import type { HuntPublicState, HuntSubmitResult } from "~/server/games/hunt/service";
 
 export interface TreasureHuntGameProps {
-  onFinish?: (submission: unknown) => void;
   disabled?: boolean;
+  onComplete?: (stats: { score: number; durationMs?: number }) => void;
 }
 
 // FOSS MEC socials — icon-only row shown below the clue + answer (Image 1)
@@ -72,6 +72,10 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
   const [cooldownSeconds, setCooldownSeconds] = createSignal(0);
   const [selectedQuestionId, setSelectedQuestionId] = createSignal<string | null>(null);
   const [justSolved, setJustSolved] = createSignal<string | null>(null);
+  const [completionStats, setCompletionStats] = createSignal<{
+    score: number;
+    durationMs?: number;
+  } | null>(null);
   const [expandedDistro, setExpandedDistro] = createSignal(false);
   const [flyingDiscovery, setFlyingDiscovery] = createSignal<{
     qId: string;
@@ -274,6 +278,16 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
       }
 
       if (data.valid) {
+        if (data.isComplete) {
+          const stats = {
+            score: data.score ?? data.state.solvedCount,
+            durationMs: data.durationMs,
+          };
+          setCompletionStats(stats);
+          // The server has already closed the attempt. Stop the local display
+          // clock without making a second network request.
+          props.onComplete?.(stats);
+        }
         setAnswerInput("");
         setTokenDigits(["", "", "", "", "", ""]);
         startCooldownTimer(0);
@@ -304,14 +318,6 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
 
         setTimeout(() => {
           setFlyingDiscovery(null);
-          if (
-            data.isComplete ||
-            data.state?.completed ||
-            (data.state?.solvedCount &&
-              data.state.solvedCount >= (data.state.totalQuestionsCount ?? 10))
-          ) {
-            props.onFinish?.({ token: "TREASURE_HUNT_ALL_COMPLETED" });
-          }
         }, 2200);
       } else {
         setErrorMsg(data.reason ?? "Incorrect answer. Keep searching!");
@@ -349,12 +355,25 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
           </h2>
           <div class="flex items-center gap-2 shrink-0">
             <Show when={isAllCompleted()}>
-              <a
-                href="/leaderboard"
-                class="btn-brand text-xs font-black uppercase px-3 py-1 rounded border-2 border-[var(--ink)] cursor-pointer inline-flex items-center gap-1"
-              >
-                <span>Leaderboard →</span>
-              </a>
+              <div class="flex items-center gap-2">
+                <Show when={completionStats()}>
+                  {(stats) => (
+                    <span class="text-[10px] sm:text-xs font-black uppercase text-[var(--ink-soft)]">
+                      Complete · {stats().score}/10
+                      <Show when={stats().durationMs !== undefined}>
+                        {" · "}
+                        {Math.round((stats().durationMs ?? 0) / 1000)}s
+                      </Show>
+                    </span>
+                  )}
+                </Show>
+                <a
+                  href="/leaderboard"
+                  class="btn-brand text-xs font-black uppercase px-3 py-1 rounded border-2 border-[var(--ink)] cursor-pointer inline-flex items-center gap-1"
+                >
+                  <span>Leaderboard →</span>
+                </a>
+              </div>
             </Show>
             <span
               class={`text-[10px] sm:text-xs font-mono font-black uppercase px-2 py-0.5 rounded border border-[var(--ink)]/30 ${
@@ -688,7 +707,7 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
                         >
                           <div class="space-y-2">
                             <p class="text-[11px] font-black uppercase tracking-widest text-[var(--ink-soft)]">
-                              6-character token
+                              6-character code (letters and numbers only)
                             </p>
                             <div
                               class="grid grid-cols-6 gap-1.5 sm:gap-2"

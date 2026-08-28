@@ -811,10 +811,7 @@ export default function GameArenaPage() {
             <Show when={!banState()?.blocksPlay && attemptToken()}>
               <Show when={isHunt()}>
                 <Suspense fallback={<p class="font-semibold">Unrolling treasure hunt maps…</p>}>
-                  <TreasureHuntGame
-                    disabled={busy()}
-                    onFinish={(submission) => finish(submission)}
-                  />
+                  <TreasureHuntGame disabled={busy()} onComplete={() => setStartedAt(null)} />
                 </Suspense>
               </Show>
 

@@ -84,7 +84,7 @@ async function loadUserHuntProgress(userId: string, allActive: HuntQuestion[]) {
   return progress;
 }
 
-/** True for 6-char alphanumeric token (e.g. 3X91A4). No dashes/specials. */
+/** True only for a six-character code made from ASCII letters and digits. */
 export function isTokenAnswer(answer: string): boolean {
   return /^[A-Za-z0-9]{6}$/.test(answer.trim());
 }
@@ -258,6 +258,9 @@ export interface HuntSubmitResult {
   cooldownRemainingSec: number;
   solvedQuestionId?: string;
   isComplete?: boolean;
+  score?: number;
+  durationMs?: number;
+  submittedAt?: string;
   state: HuntPublicState;
 }
 
@@ -400,6 +403,8 @@ export async function submitHuntAnswer(
 
   const nextQ = pickNextQuestion(allActive, solvedSet);
   const isComplete = !nextQ;
+  let completionDurationMs: number | undefined;
+  let completionSubmittedAt: Date | undefined;
 
   await db`
     UPDATE user_hunt_progress
@@ -414,46 +419,76 @@ export async function submitHuntAnswer(
   `;
   invalidateShared(`hunt:progress:${userId}`);
 
-  try {
-    const huntGameRows = await db<{ id: string }[]>`
-      SELECT id FROM games WHERE game_type = 'hunt' LIMIT 1
-    `;
-    const huntGame = huntGameRows[0];
-
-    if (huntGame) {
-      const attemptRows = await db<{ id: string; started_at: Date }[]>`
-        SELECT id, started_at FROM game_attempts
-        WHERE user_id = ${userId}
-        ORDER BY started_at DESC
-        LIMIT 1
+  // The hunt has one authoritative submission endpoint: this one. Intermediate
+  // answers only advance hunt progress. Once the last answer is accepted, close
+  // the in-progress game attempt here so the generic finish endpoint is never
+  // called with a half-updated hunt snapshot.
+  if (isComplete) {
+    try {
+      const huntGameRows = await db<{ id: string; end_at: Date | null }[]>`
+        SELECT id, end_at FROM games WHERE game_type = 'hunt' LIMIT 1
       `;
-      const attempt = attemptRows[0];
+      const huntGame = huntGameRows[0];
 
-      if (attempt) {
-        await db`
-          INSERT INTO daily_leaderboard (
-            game_id, user_id, attempt_id, metric, score, duration_ms, attempts_used, started_at, submitted_at
-          )
-          VALUES (
-            ${huntGame.id},
-            ${userId},
-            ${attempt.id},
-            'score',
-            ${updatedSolvedList.length},
-            NULL,
-            1,
-            ${attempt.started_at},
-            NOW()
-          )
-          ON CONFLICT (game_id, user_id) DO UPDATE
-          SET
-            score = GREATEST(daily_leaderboard.score, ${updatedSolvedList.length}),
-            submitted_at = NOW()
+      if (huntGame) {
+        const attemptRows = await db<{ id: string; started_at: Date; attempt_number: number }[]>`
+          SELECT id, started_at, attempt_number FROM game_attempts
+          WHERE user_id = ${userId} AND game_id = ${huntGame.id} AND status = 'in_progress'
+          ORDER BY started_at DESC
+          LIMIT 1
         `;
+        const attempt = attemptRows[0];
+
+        if (attempt) {
+          const submittedAt = new Date();
+          const durationMs = Math.max(0, submittedAt.getTime() - attempt.started_at.getTime());
+          const afterDeadline = !!huntGame.end_at && submittedAt > new Date(huntGame.end_at);
+          completionDurationMs = durationMs;
+          completionSubmittedAt = submittedAt;
+
+          await db`
+            UPDATE game_attempts
+            SET submitted_at = ${submittedAt},
+                duration_ms = ${durationMs},
+                score = ${updatedSolvedList.length},
+                server_valid = true,
+                after_deadline = ${afterDeadline},
+                status = 'submitted'
+            WHERE id = ${attempt.id} AND status = 'in_progress'
+          `;
+
+          if (!afterDeadline) {
+            await db`
+              INSERT INTO daily_leaderboard (
+                game_id, user_id, attempt_id, metric, score, duration_ms, attempts_used, started_at, submitted_at
+              )
+              VALUES (
+                ${huntGame.id},
+                ${userId},
+                ${attempt.id},
+                'score',
+                ${updatedSolvedList.length},
+                ${durationMs},
+                ${attempt.attempt_number},
+                ${attempt.started_at},
+                ${submittedAt}
+              )
+              ON CONFLICT (game_id, user_id) DO UPDATE
+              SET score = GREATEST(daily_leaderboard.score, ${updatedSolvedList.length}),
+                  duration_ms = EXCLUDED.duration_ms,
+                  attempt_id = EXCLUDED.attempt_id,
+                  started_at = EXCLUDED.started_at,
+                  submitted_at = EXCLUDED.submitted_at,
+                  attempts_used = EXCLUDED.attempts_used
+            `;
+          }
+          invalidateShared("leaderboard:");
+          invalidateShared("userboard:");
+        }
       }
+    } catch {
+      /* Hunt progress is already complete; leaderboard sync is best effort. */
     }
-  } catch {
-    /* ignore leaderboard sync errors */
   }
 
   await logActivity({
@@ -475,6 +510,13 @@ export async function submitHuntAnswer(
     valid: true,
     solvedQuestionId: currentQ!.id,
     isComplete,
+    ...(isComplete
+      ? {
+          score: updatedSolvedList.length,
+          ...(completionDurationMs !== undefined ? { durationMs: completionDurationMs } : {}),
+          ...(completionSubmittedAt ? { submittedAt: completionSubmittedAt.toISOString() } : {}),
+        }
+      : {}),
     cooldownRemainingSec: 0,
     state: nextState,
   };
