@@ -4,15 +4,7 @@ import { A, createAsync, useNavigate, useParams, revalidate } from "@solidjs/rou
 import { ChevronLeft } from "lucide-solid";
 import { SITE_URL } from "~/lib/site";
 import { formatAdaptiveClock, formatAdaptiveDuration } from "~/lib/time";
-import {
-  Show,
-  Suspense,
-  createEffect,
-  createMemo,
-  createSignal,
-  onCleanup,
-  onMount,
-} from "solid-js";
+import { Show, Suspense, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 
 import { ShoutBurst } from "~/components/art/Burst";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
@@ -68,7 +60,6 @@ import {
   saveFinished,
   saveProgress,
   storeAttempt,
-  enteredArenaFromHub,
   type StoredAttempt,
 } from "~/lib/game-session";
 import { SHOUT_COLOR, moodForResult, shout } from "~/lib/shouts";
@@ -167,18 +158,14 @@ export default function GameArenaPage() {
   const myAttempt = createAsync(() => myAttemptQuery(slug()), { initialValue: undefined as any });
   const banState = createAsync(() => banStateQuery(), { initialValue: null as any });
 
-  // The arena is entered through the hub. Direct links and refreshes return to
-  // the hub, which owns the start flow and supplies the cached game view.
-  // Defer the check by a tick so the initial game/me fetch can settle and
-  // we don't navigate before the loading UI has a chance to render.
-  onMount(() => {
-    // Use queueMicrotask to ensure this runs after the initial render
-    queueMicrotask(() => {
-      if (!enteredArenaFromHub()) {
-        navigate(`/games?game=${slug()}`, { replace: true });
-      }
-    });
-  });
+  // Direct access to /games/[slug] is now allowed. The previous
+  // auto-redirect to /games?game=slug on every non-hub entry made
+  // hard reloads on /games/treasure-hunt bounce to the hub and, combined
+  // with the outer Suspense, left the page stuck at “Compiling festival
+  // shaders…”. The hub still sets enteredArenaFromHub for the happy path,
+  // but the arena no longer forces a redirect — it self-starts via
+  // fetchAttemptView if no stored attempt exists.
+  // (No navigation here; see GamesHubView for the hub-owned start flow.)
 
   const [attemptToken, setAttemptToken] = createSignal<string | null>(null);
   const [startedAt, setStartedAt] = createSignal<number | null>(null);
