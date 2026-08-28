@@ -235,7 +235,16 @@ export function LeaderboardView() {
     void startTransition(() => setVersion((v) => v + 1));
   };
 
-  const topDailyWinner = () => (activeBoard()?.entries.length ? activeBoard()!.entries[0] : null);
+  // Pin the true #1 winner when we see it so pagination doesn't promote page-local #51 to winner.
+  const [pinnedWinner, setPinnedWinner] = createSignal<DailyEntry | null>(null);
+  createEffect(() => {
+    const board = activeBoard();
+    if (!board) return;
+    const w = board.entries.find((e) => e.rank === 1) ?? null;
+    if (w) setPinnedWinner(w);
+    else if (board.page === 1) setPinnedWinner(null);
+  });
+  const topDailyWinner = () => activeBoard()?.entries.find((e) => e.rank === 1) ?? pinnedWinner();
 
   const prevDay = () => {
     void startTransition(() => {
