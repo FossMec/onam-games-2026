@@ -436,8 +436,10 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
           {/* 10 Island Landmark Pins */}
           <For each={state()?.allQuestions}>
             {(q, idx) => {
-              const landmark = () => LANDMARKS[idx()] ?? { x: 50, y: 50, name: "Isle" };
-              const distro = () => getDistroForQuestionIndex(idx());
+              const landmark = () =>
+                LANDMARKS[(q.orderIndex ?? idx()) % LANDMARKS.length] ??
+                LANDMARKS[idx()] ?? { x: 50, y: 50, name: "Isle" };
+              const distro = () => getDistroForQuestionIndex(q.orderIndex ?? idx());
               const isSolved = () =>
                 (state()?.solvedQuestionIds.includes(q.id) ?? false) &&
                 flyingDiscovery()?.qId !== q.id;
@@ -560,7 +562,8 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
         <Show when={selectedQuestionId() && selectedQuestion()}>
           {(() => {
             const q = selectedQuestion()!;
-            const overallIdx = () => state()!.allQuestions.findIndex((item) => item.id === q.id);
+            const overallIdx = () =>
+              q.orderIndex ?? state()!.allQuestions.findIndex((item) => item.id === q.id);
             const distro = () => getDistroForQuestionIndex(overallIdx());
             const isSolved = () => isSelectedSolved();
             const isActive = () => isSelectedActive();

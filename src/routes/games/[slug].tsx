@@ -229,7 +229,7 @@ export default function GameArenaPage() {
       // be resurrected by stale localStorage.
       const serverAttempt = currentSlug === "treasure-hunt" ? myAttempt() : null;
       if (currentSlug === "treasure-hunt" && serverAttempt === undefined) {
-        return currentSlug;
+        return prevSlug;
       }
       if (
         currentSlug === "treasure-hunt" &&

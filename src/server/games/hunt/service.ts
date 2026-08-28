@@ -45,12 +45,41 @@ interface UserHuntProgressRow {
   updated_at: Date;
 }
 
+function asSolvedIds(value: unknown): string[] {
+  if (Array.isArray(value)) return value as string[];
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed as string[];
+      // Double-encoded case: string contains JSON array string
+      if (typeof parsed === "string") {
+        const inner = JSON.parse(parsed);
+        if (Array.isArray(inner)) return inner as string[];
+      }
+    } catch {
+      // Fall through to empty
+    }
+    // If string looks like '["a","b"]' but JSON.parse above failed, return empty
+    return [];
+  }
+  return [];
+}
+
 async function loadUserHuntProgress(userId: string, allActive: HuntQuestion[]) {
   const db = getDb();
   const rows = await db<UserHuntProgressRow[]>`
     SELECT * FROM user_hunt_progress WHERE user_id = ${userId} LIMIT 1
   `;
   let progress = rows[0];
+  if (progress) {
+    // Fix double-encoded jsonb string case (see scripts/seed.mjs comment)
+    progress = {
+      ...progress,
+      solved_question_ids: asSolvedIds(
+        (progress as unknown as { solved_question_ids: unknown }).solved_question_ids,
+      ) as unknown as string[],
+    } as UserHuntProgressRow;
+  }
 
   if (!progress) {
     const nextQ = pickNextQuestion(allActive, new Set());
@@ -276,7 +305,12 @@ export async function submitHuntAnswer(
   const progressRows = await db<UserHuntProgressRow[]>`
     SELECT * FROM user_hunt_progress WHERE user_id = ${userId} LIMIT 1
   `;
-  const progress = progressRows[0];
+  let progress = progressRows[0] as UserHuntProgressRow & { solved_question_ids: unknown };
+  if (progress) {
+    (progress as unknown as { solved_question_ids: string[] }).solved_question_ids = asSolvedIds(
+      (progress as unknown as { solved_question_ids: unknown }).solved_question_ids,
+    );
+  }
 
   if (!progress) {
     throw new HttpError(400, "Hunt progress not initialized");
@@ -301,7 +335,7 @@ export async function submitHuntAnswer(
   }
 
   if (progress.completed_at || !progress.current_question_id) {
-    const solvedSetEarly = new Set(progress.solved_question_ids ?? []);
+    const solvedSetEarly = new Set(asSolvedIds(progress.solved_question_ids ?? []));
     const hasUnsolved = allActive.some((q) => !solvedSetEarly.has(q.id));
     if (!hasUnsolved) {
       return {
@@ -323,7 +357,7 @@ export async function submitHuntAnswer(
 
   let currentQ: HuntQuestion | undefined;
   if (isTesterMode) {
-    const solvedSet = new Set(progress.solved_question_ids ?? []);
+    const solvedSet = new Set(asSolvedIds(progress.solved_question_ids ?? []));
     const unsolved = allActive.filter((q) => !solvedSet.has(q.id));
     currentQ = unsolved.find((q) => checkAnswerMatch(rawAnswer, q.answer));
     if (!currentQ) {
@@ -397,7 +431,7 @@ export async function submitHuntAnswer(
   }
 
   if (!currentQ) throw new HttpError(404, "Active question not found");
-  const solvedSet = new Set(progress.solved_question_ids ?? []);
+  const solvedSet = new Set(asSolvedIds(progress.solved_question_ids ?? []));
   solvedSet.add(currentQ!.id);
   const updatedSolvedList = Array.from(solvedSet);
 
@@ -409,7 +443,7 @@ export async function submitHuntAnswer(
   await db`
     UPDATE user_hunt_progress
     SET
-      solved_question_ids = ${JSON.stringify(updatedSolvedList)}::jsonb,
+      solved_question_ids = ${db.json(updatedSolvedList)},
       solved_count = ${updatedSolvedList.length},
       current_question_id = ${nextQ?.id ?? null},
       last_submitted_at = NULL,

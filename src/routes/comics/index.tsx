@@ -174,7 +174,7 @@ interface RelativeStrip {
   v1: number;
 }
 const GLOBAL_PEELED_STRIPS: RelativeStrip[] = [];
-let PRELOADED_COMIC_3_IMG: HTMLImageElement | null = null;
+const PRELOADED_IMAGES = new Map<string, HTMLImageElement>();
 
 function PeelableComicPanel(props: { src: string; alt: string }) {
   let canvasRef: HTMLCanvasElement | undefined;
@@ -277,9 +277,20 @@ function PeelableComicPanel(props: { src: string; alt: string }) {
       peeledSpots.push({ x: cx, y: cy });
     };
 
+    let loadedImg: HTMLImageElement | null = null;
+
     const paint = (img: HTMLImageElement) => {
-      W = Math.min(container.clientWidth || 400, 800);
-      H = Math.min(container.clientHeight || 400, 800);
+      loadedImg = img;
+      // Use the container's actual laid-out size so the image stretches to
+      // the full page. Capping at 1200 avoids huge backing store but still
+      // fills the page — the old 800 cap left a gap on large screens.
+      W = Math.min(container.clientWidth || 400, 1200);
+      H = Math.min(container.clientHeight || 400, 1200);
+      if (W < 10 || H < 10) {
+        // Layout not settled yet (flex aspect-square) — retry next frame
+        requestAnimationFrame(() => paint(img));
+        return;
+      }
       // Cap DPR size to avoid huge backing store on large screens
       const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       canvas.width = Math.floor(W * dpr);
@@ -287,12 +298,18 @@ function PeelableComicPanel(props: { src: string; alt: string }) {
       canvas.style.width = `${W}px`;
       canvas.style.height = `${H}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // Stretch image to the full page (cover the whole canvas) — this is
+      // what was missing: previously the canvas was painted once at mount
+      // with a smaller W/H and never resized, leaving the yellow secret
+      // card exposed at the bottom.
+      ctx.clearRect(0, 0, W, H);
       ctx.drawImage(img, 0, 0, W, H);
 
       // Always draw the initial default peeled nick
+      peeledSpots.length = 0;
       drawDefaultNick(W, H);
 
-      // Replay peeled strips synchronously
+      // Replay peeled strips synchronously (relative coords scale to new W/H)
       for (const s of GLOBAL_PEELED_STRIPS) {
         const fromX = s.u0 * W;
         const fromY = s.v0 * H;
@@ -303,16 +320,31 @@ function PeelableComicPanel(props: { src: string; alt: string }) {
       }
     };
 
-    if (PRELOADED_COMIC_3_IMG && PRELOADED_COMIC_3_IMG.complete) {
-      paint(PRELOADED_COMIC_3_IMG);
+    const cached = PRELOADED_IMAGES.get(props.src);
+    if (cached && cached.complete && cached.naturalWidth > 0) {
+      paint(cached);
     } else {
       const img = new Image();
       img.src = props.src;
-      PRELOADED_COMIC_3_IMG = img;
-      img.onload = () => {
+      PRELOADED_IMAGES.set(props.src, img);
+      if (img.complete && img.naturalWidth > 0) {
         paint(img);
-      };
+      } else {
+        img.onload = () => {
+          paint(img);
+        };
+      }
     }
+
+    // Keep canvas stretched when the book resizes (aspect-square flex,
+    // window resize, orientation change). Without this the canvas stays at
+    // its mount size and the bottom of the page shows the yellow card as a
+    // solid block — the bug in the screenshot.
+    const ro = new ResizeObserver(() => {
+      if (loadedImg) paint(loadedImg);
+    });
+    ro.observe(container);
+    onCleanup(() => ro.disconnect());
 
     // Check if a point is near an exposed peelable edge (default nick or already peeled spot)
     const isNearPeeledEdge = (x: number, y: number): boolean => {
