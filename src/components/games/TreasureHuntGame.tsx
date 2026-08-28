@@ -449,7 +449,6 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
 
               return (
                 <div
-                  ref={(element) => landmarkElements.set(q.id, element)}
                   class="absolute -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center cursor-pointer transition-transform duration-150"
                   style={{
                     left: `${landmark().x}%`,
@@ -461,8 +460,11 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
                     }
                   }}
                 >
-                  {/* Pin Circle / Logo Emblem */}
+                  {/* Pin Circle / Logo Emblem — this is the anchor for the fly-in animation */}
                   <div
+                    ref={(element) => {
+                      if (element) landmarkElements.set(q.id, element);
+                    }}
                     class={`relative rounded-full grid place-items-center transition-transform duration-150 ${
                       isSolved()
                         ? "w-9 h-9 sm:w-11 sm:h-11 bg-surface-2 border-[2.5px] border-[var(--ink)] "

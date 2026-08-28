@@ -157,19 +157,28 @@ export default function GameArenaPage() {
   const params = useParams();
   const navigate = useNavigate();
   const slug = () => params.slug ?? "";
-  const game = createAsync(() => gameBySlug(slug()));
+  // Use initialValue to avoid suspending the outer <Suspense> (app.tsx) on
+  // reload — the page was stuck at "Compiling festival shaders…" because
+  // createAsync without initialValue suspends the FileRoutes boundary until
+  // game/me/attempt resolve. With initialValue the page renders immediately
+  // with its own inner loading UI (Inking daily challenge…).
+  const game = createAsync(() => gameBySlug(slug()), { initialValue: undefined as any });
+  const me = createAsync(() => viewer(), { initialValue: null as any });
+  const myAttempt = createAsync(() => myAttemptQuery(slug()), { initialValue: undefined as any });
+  const banState = createAsync(() => banStateQuery(), { initialValue: null as any });
 
   // The arena is entered through the hub. Direct links and refreshes return to
   // the hub, which owns the start flow and supplies the cached game view.
+  // Defer the check by a tick so the initial game/me fetch can settle and
+  // we don't navigate before the loading UI has a chance to render.
   onMount(() => {
-    if (!enteredArenaFromHub()) {
-      navigate(`/games?game=${slug()}`, { replace: true });
-    }
+    // Use queueMicrotask to ensure this runs after the initial render
+    queueMicrotask(() => {
+      if (!enteredArenaFromHub()) {
+        navigate(`/games?game=${slug()}`, { replace: true });
+      }
+    });
   });
-
-  const me = createAsync(() => viewer());
-  const myAttempt = createAsync(() => myAttemptQuery(slug()));
-  const banState = createAsync(() => banStateQuery());
 
   const [attemptToken, setAttemptToken] = createSignal<string | null>(null);
   const [startedAt, setStartedAt] = createSignal<number | null>(null);

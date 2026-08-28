@@ -25,7 +25,7 @@ import { CommunityGroupCard } from "~/components/CommunityGroupCard";
 import { EVENT, POOKALAM } from "~/lib/event-content";
 import { SITE_URL } from "~/lib/site";
 
-import { gamesList, shell } from "~/lib/queries";
+import { gamesList, pookalamState, shell } from "~/lib/queries";
 import { teaserIcon } from "~/lib/game-teasers";
 import { comicImage, gameImage, gameImageForType, memeImage } from "~/lib/img";
 import gameHypeCard from "~/assets/images/game-hype-card.webp";
@@ -157,6 +157,7 @@ export const route = {
   preload() {
     void shell();
     void gamesList();
+    void pookalamState();
   },
 } satisfies RouteDefinition;
 
@@ -167,6 +168,7 @@ export default function Home() {
   // during client navigation and looks like a second page reload.
   const games = createAsync(() => gamesList(), { initialValue: null });
   const shellData = createAsync(() => shell(), { initialValue: null });
+  const pookalam = createAsync(() => pookalamState(), { initialValue: null });
   const me = () => shellData()?.me ?? undefined;
 
   /*
@@ -238,22 +240,20 @@ export default function Home() {
     return sched.find((g) => g.day === selectedDay()) ?? sched[0];
   };
 
-  /*
-   * Null when the schedule has not arrived. The old fallback - "six days from
-   * whenever you loaded the page" - was a countdown to a date nobody had set,
-   * and it differed between the server render and the browser. Better to admit
-   * the deadline is unknown than to invent one that ticks wrong.
-   */
+  // Use the same source as the pookalam page (pookalam:config) — the home
+  // page previously derived the deadline from the games schedule (day6.endAt
+  // / day1.releaseAt + 6 days) which is 5.5h off due to IST handling and
+  // drifts when the schedule is missing. The pookalam page reads
+  // phases.submissions.closesAt from app_settings, so we do the same.
   const pookalamDeadline = (): Date | null => {
-    const list = games();
-    if (!list || list.length === 0) return null;
-    const day6 = list.find((g) => g.day === 6);
-    if (day6?.endAt) return new Date(day6.endAt);
-    const day1 = list.find((g) => g.day === 1);
-    if (day1?.releaseAt) {
-      return new Date(new Date(day1.releaseAt).getTime() + 6 * 24 * 3600 * 1000);
-    }
-    return null;
+    const raw = pookalam()?.phases.submissions.closesAt as unknown as
+      | string
+      | Date
+      | null
+      | undefined;
+    if (!raw) return null;
+    const d = raw instanceof Date ? raw : new Date(raw as string);
+    return Number.isNaN(d.getTime()) ? null : d;
   };
 
   return (
