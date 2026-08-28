@@ -159,14 +159,14 @@ export default function GameArenaPage() {
   const slug = () => params.slug ?? "";
   const game = createAsync(() => gameBySlug(slug()));
 
-  // The arena is only meant to be reached by clicking through the games hub.
-  // Any direct hit (deep link, refresh, shared URL) bounces back to the hub so
-  // a completed/locked board is never the first thing someone lands on.
+  // The arena is entered through the hub. Direct links and refreshes return to
+  // the hub, which owns the start flow and supplies the cached game view.
   onMount(() => {
     if (!enteredArenaFromHub()) {
       navigate(`/games?game=${slug()}`, { replace: true });
     }
   });
+
   const me = createAsync(() => viewer());
   const myAttempt = createAsync(() => myAttemptQuery(slug()));
   const banState = createAsync(() => banStateQuery());
@@ -224,26 +224,44 @@ export default function GameArenaPage() {
       }
 
       const stored = getStoredAttempt(currentSlug) as (StoredAttempt & { view?: GameView }) | null;
+      // Hunt progress is server-owned. Wait for the server attempt summary
+      // before hydrating a cached token, otherwise a reset/submitted hunt can
+      // be resurrected by stale localStorage.
+      const serverAttempt = currentSlug === "treasure-hunt" ? myAttempt() : null;
+      if (currentSlug === "treasure-hunt" && serverAttempt === undefined) {
+        return currentSlug;
+      }
+      if (
+        currentSlug === "treasure-hunt" &&
+        stored?.attemptToken &&
+        serverAttempt &&
+        serverAttempt.status !== "in_progress"
+      ) {
+        clearProgress(stored.attemptToken);
+        clearAttempt(currentSlug);
+      }
+      const usableStored =
+        currentSlug === "treasure-hunt" && serverAttempt?.status !== "in_progress" ? null : stored;
       // Fast path: Hub already stored the view with the token — hydrate instantly, zero extra POST.
       // This is the 2-request path (Hub POST start + eventual finish). Arena does NOT re-POST.
-      if (stored?.attemptToken) {
-        if (stored.view) {
-          setView(stored.view as GameView);
-          setAttemptToken(stored.attemptToken);
-          setStartedAt(new Date(stored.startedAt).getTime());
+      if (usableStored?.attemptToken) {
+        if (usableStored.view) {
+          setView(usableStored.view as GameView);
+          setAttemptToken(usableStored.attemptToken);
+          setStartedAt(new Date(usableStored.startedAt).getTime());
           setNow(Date.now());
-          setRestored(getProgress(stored.attemptToken));
+          setRestored(getProgress(usableStored.attemptToken));
           const g = game();
           if (g?.gameType) void warmChunkForGameType(g.gameType);
-          else if ((stored.view as { kind?: string })?.kind)
-            void warmChunkForGameType((stored.view as { kind?: string }).kind ?? "");
+          else if ((usableStored.view as { kind?: string })?.kind)
+            void warmChunkForGameType((usableStored.view as { kind?: string }).kind ?? "");
           return currentSlug;
         }
         // Stored token but no view (legacy or cleared) — fall through to fetch via game() gate below
-        setAttemptToken(stored.attemptToken);
-        setStartedAt(new Date(stored.startedAt).getTime());
+        setAttemptToken(usableStored.attemptToken);
+        setStartedAt(new Date(usableStored.startedAt).getTime());
         setNow(Date.now());
-        setRestored(getProgress(stored.attemptToken));
+        setRestored(getProgress(usableStored.attemptToken));
         const g = game();
         if (g?.gameType) void warmChunkForGameType(g.gameType);
         // Trigger fetch reactively once game() is defined (see gate below)

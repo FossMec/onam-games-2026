@@ -85,6 +85,8 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
   } | null>(null);
 
   let cooldownInterval: ReturnType<typeof setInterval> | undefined;
+  let mapElement: HTMLDivElement | undefined;
+  const landmarkElements = new Map<string, HTMLDivElement>();
 
   const startCooldownTimer = (seconds: number) => {
     if (cooldownInterval) clearInterval(cooldownInterval);
@@ -202,6 +204,18 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
   const tokenValue = () => tokenDigits().join("");
   const isTokenComplete = () => tokenDigits().every((c) => /^[A-Z0-9]$/.test(c));
 
+  const getLandmarkTarget = (questionId: string, fallbackIndex: number) => {
+    const mapRect = mapElement?.getBoundingClientRect();
+    const pinRect = landmarkElements.get(questionId)?.getBoundingClientRect();
+    if (mapRect && pinRect && mapRect.width > 0 && mapRect.height > 0) {
+      return {
+        x: ((pinRect.left + pinRect.width / 2 - mapRect.left) / mapRect.width) * 100,
+        y: ((pinRect.top + pinRect.height / 2 - mapRect.top) / mapRect.height) * 100,
+      };
+    }
+    return LANDMARKS[fallbackIndex] ?? { x: 50, y: 50 };
+  };
+
   const handleTokenInput = (idx: number, raw: string) => {
     const char = raw
       .toUpperCase()
@@ -299,7 +313,7 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
           state()?.allQuestions.findIndex((item) => item.id === solvedId) ??
           0;
         const distro = getDistroForQuestionIndex(Math.max(0, qIdx));
-        const targetLandmark = LANDMARKS[Math.max(0, qIdx)] ?? { x: 50, y: 50 };
+        const targetLandmark = getLandmarkTarget(solvedId ?? "", Math.max(0, qIdx));
 
         setJustSolved(solvedId ?? "solved");
         setTimeout(() => setJustSolved(null), 3000);
@@ -388,7 +402,10 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
         </div>
 
         {/* -------------------- 1:1 SQUARE TREASURE MAP -------------------- */}
-        <div class="relative aspect-square w-full max-w-[min(94vw,calc(100dvh-8.5rem))] mx-auto rounded-2xl border-2 border-[var(--ink)] overflow-hidden bg-surface ">
+        <div
+          ref={(element) => (mapElement = element)}
+          class="relative aspect-square w-full max-w-[min(94vw,calc(100dvh-8.5rem))] mx-auto rounded-2xl border-2 border-[var(--ink)] overflow-hidden bg-surface "
+        >
           {/* Authentic Map Background Art (Transparent Ocean, Hand-drawn Islands) */}
           <img
             src={mapBgUrl()}
@@ -410,6 +427,7 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
 
               return (
                 <div
+                  ref={(element) => landmarkElements.set(q.id, element)}
                   class="absolute -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center cursor-pointer transition-transform duration-150"
                   style={{
                     left: `${landmark().x}%`,
