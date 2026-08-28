@@ -583,18 +583,25 @@ export default function GameArenaPage() {
 
   const settledResult = () => result() ?? historyResult();
 
-  const recap = createAsync(async () => {
-    if (!isTinder()) return null;
-    if (myAttempt()?.status !== "submitted") return null;
-    return getMyRecap(slug());
-  });
+  const recap = createAsync(
+    async () => {
+      if (!isTinder()) return null;
+      if (myAttempt()?.status !== "submitted") return null;
+      return getMyRecap(slug());
+    },
+    { initialValue: null as any },
+  );
 
   const tinderFinishedCards = (): TinderCardView[] | null => {
     const board = finishedBoard()?.view as { kind?: string; cards?: TinderCardView[] } | undefined;
     if (board?.kind === "tinder" && board.cards) return board.cards;
     const revealed = recap()?.cards;
     return revealed
-      ? revealed.map((c) => ({ id: c.id, name: c.name, category: c.category }))
+      ? revealed.map((c: { id: string; name: string; category: string }) => ({
+          id: c.id,
+          name: c.name,
+          category: c.category,
+        }))
       : null;
   };
 
