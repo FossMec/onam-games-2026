@@ -126,7 +126,7 @@ export function normalizeAnswer(val: string): string {
     .replace(/[^A-Z0-9@._-]/gi, "");
 }
 
-function checkAnswerMatch(submitted: string, expected: string): boolean {
+export function checkAnswerMatch(submitted: string, expected: string): boolean {
   const normSub = normalizeAnswer(submitted);
   const normExp = normalizeAnswer(expected);
   if (normSub === normExp) return true;
@@ -137,43 +137,15 @@ function checkAnswerMatch(submitted: string, expected: string): boolean {
 }
 
 /**
- * Picks the next question according to difficulty hierarchy:
- * 1. Unsolved "first" questions (fixed introductory challenge)
- * 2. Random unsolved "easy" questions until exhausted
- * 3. Random unsolved "medium" questions until exhausted
- * 4. Random unsolved "hard" questions until exhausted
+ * Picks the next question in exact sequential order (1 -> 2 -> 3 -> ... -> 10).
+ * All players follow the exact same path based on order_index.
  */
-function pickNextQuestion(
+export function pickNextQuestion(
   allQuestions: HuntQuestion[],
   solvedIds: Set<string>,
 ): HuntQuestion | null {
   const unsolved = allQuestions.filter((q) => !solvedIds.has(q.id));
   if (unsolved.length === 0) return null;
-
-  // 1. First priority
-  const firsts = unsolved.filter((q) => q.difficulty === "first");
-  if (firsts.length > 0) {
-    return firsts[0];
-  }
-
-  // 2. Easy priority (pick random)
-  const easies = unsolved.filter((q) => q.difficulty === "easy");
-  if (easies.length > 0) {
-    return easies[Math.floor(Math.random() * easies.length)];
-  }
-
-  // 3. Medium priority (pick random)
-  const mediums = unsolved.filter((q) => q.difficulty === "medium");
-  if (mediums.length > 0) {
-    return mediums[Math.floor(Math.random() * mediums.length)];
-  }
-
-  // 4. Hard priority (pick random)
-  const hards = unsolved.filter((q) => q.difficulty === "hard");
-  if (hards.length > 0) {
-    return hards[Math.floor(Math.random() * hards.length)];
-  }
-
   return unsolved[0];
 }
 

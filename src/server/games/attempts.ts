@@ -126,7 +126,7 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
       const allActive = await db<HuntQuestion[]>`
         SELECT * FROM hunt_questions WHERE active = true ORDER BY order_index ASC
       `;
-      const firstQ = allActive.find((q) => q.difficulty === "first") || allActive[0];
+      const firstQ = allActive[0];
 
       await db`
         UPDATE user_hunt_progress
