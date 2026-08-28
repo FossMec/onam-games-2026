@@ -75,7 +75,7 @@
     "slug": "hunt-0e9f7a3b",
     "title": "Our CS faculties won't like this post 😭",
     "difficulty": "hard",
-    "hintHtml": "<div class=\"p-3 rounded-lg bg-[var(--pop-yellow)] border-2 border-[var(--ink)] text-center font-mono text-xs\"><p class=\"m-0 font-bold text-[var(--ink)]\">twitter.fossmec.mentaldisorders.firstletter</p></div>",
+    "hintHtml": "<div class=\"p-3 rounded-lg bg-[var(--pop-yellow)] border-2 border-[var(--ink)] text-center font-mono text-xs break-all [overflow-wrap:anywhere] max-w-full overflow-hidden\"><p class=\"m-0 font-bold text-[var(--ink)] break-all [overflow-wrap:anywhere] whitespace-normal\">twitter.fossmec.mentaldisorders.firstletter</p></div>",
     "answer": "GWHHRL",
     "orderIndex": 10
   }
