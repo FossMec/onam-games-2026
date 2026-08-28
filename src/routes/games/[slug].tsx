@@ -637,20 +637,31 @@ export default function GameArenaPage() {
     !hasFinishedRun();
 
   createEffect(() => {
+    const currentSlug = slug();
     const g = game();
     const user = me();
     const attempt = myAttempt();
+
+    if (g === null) {
+      if (currentSlug === "treasure") {
+        navigate("/games?day=6&game=treasure-hunt", { replace: true });
+      } else {
+        navigate("/games", { replace: true });
+      }
+      return;
+    }
+
     if (g === undefined || user === undefined || attempt === undefined) return;
 
     if (!user || !user.onboardingCompleted) {
-      navigate(`/games?day=${g?.day ?? 1}&game=${slug()}`, { replace: true });
+      navigate(`/games?day=${g?.day ?? 1}&game=${currentSlug}`, { replace: true });
       return;
     }
 
     if (hasNoAttempt()) return;
 
     if (!attemptToken() && !hasFinishedRun() && attempt?.status !== "in_progress" && !busy()) {
-      navigate(`/games?day=${g?.day ?? 1}&game=${slug()}`, { replace: true });
+      navigate(`/games?day=${g?.day ?? 1}&game=${currentSlug}`, { replace: true });
     }
   });
 
@@ -755,6 +766,12 @@ export default function GameArenaPage() {
       <Show when={game() === undefined}>
         <div class="m-auto text-center">
           <LoadingScreen compact message="Inking daily challenge…" />
+        </div>
+      </Show>
+
+      <Show when={game() === null}>
+        <div class="m-auto text-center">
+          <LoadingScreen compact message="Returning to games hub…" />
         </div>
       </Show>
 
