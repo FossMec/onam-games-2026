@@ -843,6 +843,20 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
 
                     {/* Community Group Link Card */}
                     <CommunityGroupCard compact class="w-full mt-2.5" />
+
+                    {/* Stuck hint - Instagram Stories nudge */}
+                    <p class="text-center text-[10px] sm:text-[11px] font-bold text-[var(--ink-soft)] mt-2">
+                      Stuck on this clue? Look at our{" "}
+                      <a
+                        href="https://www.instagram.com/stories/foss_mec/3974241852395728186?utm_source=foss_onam_games&&igsi=Z2Y1a24xejc4Y2p2"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-[var(--ink)] underline hover:text-[var(--pop-pink)] font-black"
+                      >
+                        Instagram stories
+                      </a>{" "}
+                      for hints!
+                    </p>
                   </Show>
                 </div>
               </div>
