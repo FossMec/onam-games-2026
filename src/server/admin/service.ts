@@ -240,7 +240,7 @@ export async function adminListSuspicious(limit = 100, offset = 0) {
 export async function adminListActivity(limit = 100, offset = 0) {
   await requireAdmin();
   const db = getDb();
-  return db<
+  const rows = await db<
     {
       id: string;
       eventType: string;
@@ -262,6 +262,28 @@ export async function adminListActivity(limit = 100, offset = 0) {
     ORDER BY a.created_at DESC
     LIMIT ${limit} OFFSET ${offset}
   `;
+
+  return rows.map((r) => {
+    let parsedMeta = r.meta;
+    if (typeof parsedMeta === "string") {
+      try {
+        parsedMeta = JSON.parse(parsedMeta);
+      } catch {
+        parsedMeta = { raw: parsedMeta };
+      }
+    }
+    if (typeof parsedMeta === "string") {
+      try {
+        parsedMeta = JSON.parse(parsedMeta);
+      } catch {
+        parsedMeta = { raw: parsedMeta };
+      }
+    }
+    return {
+      ...r,
+      meta: parsedMeta ?? {},
+    };
+  });
 }
 
 export async function adminPurgeThreatLogs() {

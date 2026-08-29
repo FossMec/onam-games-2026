@@ -214,37 +214,80 @@ export function LogsTab(props: LogsTabProps) {
 }
 
 function MetadataPreview(props: { meta: unknown; onExpand: () => void }) {
-  if (!props.meta || typeof props.meta !== "object") {
-    return <span class="opacity-60 text-xs">-</span>;
-  }
+  const resolved = () => {
+    if (!props.meta) return null;
+    let val = props.meta;
+    if (typeof val === "string") {
+      try {
+        val = JSON.parse(val);
+      } catch {
+        val = { raw: val };
+      }
+    }
+    if (typeof val === "string") {
+      try {
+        val = JSON.parse(val);
+      } catch {
+        val = { raw: val };
+      }
+    }
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      return val as Record<string, unknown>;
+    }
+    return null;
+  };
 
-  const entries = Object.entries(props.meta as Record<string, unknown>);
-  if (entries.length === 0) return <span class="opacity-60 text-xs">-</span>;
+  const entries = () => {
+    const r = resolved();
+    return r ? Object.entries(r) : [];
+  };
 
   return (
-    <div class="flex items-center gap-1.5 flex-wrap">
-      <For each={entries.slice(0, 3)}>
-        {([key, val]) => (
-          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--paper-2)] border border-[var(--ink-soft)]/40 text-[11px] font-mono">
-            <span class="opacity-60">{key}:</span>
+    <Show when={entries().length > 0} fallback={<span class="opacity-60 text-xs">-</span>}>
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <Show when={resolved()?.submitted !== undefined}>
+          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--pop-pink)]/20 border border-[var(--pop-pink)] text-[11px] font-mono text-[var(--ink)]">
+            <span class="opacity-70 font-bold">guess:</span>
+            <span class="font-black truncate max-w-[160px]">"{String(resolved()!.submitted)}"</span>
+          </span>
+        </Show>
+
+        <Show when={resolved()?.questionSlug !== undefined || resolved()?.questionId !== undefined}>
+          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--paper-3)] border border-[var(--ink-soft)]/40 text-[11px] font-mono">
+            <span class="opacity-60">clue:</span>
             <span class="font-bold truncate max-w-[120px]">
-              {typeof val === "string" || typeof val === "number" || typeof val === "boolean"
-                ? String(val)
-                : JSON.stringify(val)}
+              {String(resolved()!.questionSlug ?? resolved()!.questionId)}
             </span>
           </span>
-        )}
-      </For>
+        </Show>
 
-      <button
-        type="button"
-        onClick={props.onExpand}
-        class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--paper-3)] border border-[var(--ink-soft)]/50 hover:bg-[var(--pop-yellow)] hover:border-[var(--ink)] cursor-pointer transition-all inline-flex items-center gap-0.5"
-        title="View Full JSON"
-      >
-        <Eye size={10} />
-        <span>{entries.length > 3 ? `+${entries.length - 3} more` : "raw"}</span>
-      </button>
-    </div>
+        <For
+          each={entries()
+            .filter(([k]) => k !== "submitted" && k !== "questionSlug" && k !== "questionId")
+            .slice(0, 2)}
+        >
+          {([key, val]) => (
+            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--paper-2)] border border-[var(--ink-soft)]/40 text-[11px] font-mono">
+              <span class="opacity-60">{key}:</span>
+              <span class="font-bold truncate max-w-[120px]">
+                {typeof val === "string" || typeof val === "number" || typeof val === "boolean"
+                  ? String(val)
+                  : JSON.stringify(val)}
+              </span>
+            </span>
+          )}
+        </For>
+
+        <button
+          type="button"
+          onClick={props.onExpand}
+          class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--paper-3)] border border-[var(--ink-soft)]/50 hover:bg-[var(--pop-yellow)] hover:border-[var(--ink)] cursor-pointer transition-all inline-flex items-center gap-0.5"
+          title="View Full Details"
+        >
+          <Eye size={10} />
+          <span>{entries().length > 2 ? `+${entries().length - 2} more` : "raw"}</span>
+        </button>
+      </div>
+    </Show>
   );
 }

@@ -65,10 +65,18 @@ describe("copy", () => {
 });
 
 describe("figureFor", () => {
-  it("reports height for score games and seconds for timed ones", () => {
-    expect(figureFor({ metric: "score", score: 1482, durationMs: null })).toEqual({
-      value: "1,482",
-      label: "M ABOVE PAATHALAM",
+  it("reports height for jump game and time/relics for hunt and timed games", () => {
+    expect(figureFor({ metric: "score", score: 1482, durationMs: null, gameType: "jump" })).toEqual(
+      {
+        value: "1,482",
+        label: "M ABOVE PAATHALAM",
+      },
+    );
+    expect(
+      figureFor({ metric: "score", score: 10, durationMs: 185_000, gameType: "hunt" }),
+    ).toEqual({
+      value: "3m 5s",
+      label: "10/10 RELICS DISCOVERED",
     });
     expect(figureFor({ metric: "time", score: null, durationMs: 12_400 }).value).toBe("12.40s");
     expect(figureFor({ metric: "fcfs", score: null, durationMs: 9_000 }).value).toBe("9.00s");

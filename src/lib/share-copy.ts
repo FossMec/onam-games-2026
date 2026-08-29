@@ -189,6 +189,8 @@ export interface FigureInput {
   metric: "time" | "score" | "fcfs";
   durationMs: number | null;
   score: number | null;
+  gameType?: string | null;
+  gameSlug?: string | null;
 }
 
 /**
@@ -200,12 +202,39 @@ export function figureFor(input: FigureInput): {
   value: string;
   label: string;
 } {
-  if (input.metric === "score") {
+  if (input.gameType === "hunt" || input.gameSlug === "treasure-hunt") {
+    const timeVal =
+      input.durationMs != null && input.durationMs > 0
+        ? formatAdaptiveDuration(input.durationMs)
+        : null;
+    if (timeVal) {
+      return {
+        value: timeVal,
+        label:
+          (input.score ?? 0) >= 10
+            ? "10/10 RELICS DISCOVERED"
+            : `${input.score ?? 0}/10 RELICS FOUND`,
+      };
+    }
     return {
-      value: (input.score ?? 0).toLocaleString("en-IN"),
-      label: "M ABOVE PAATHALAM",
+      value: `${Math.min(10, input.score ?? 0)}/10`,
+      label: "RELICS DISCOVERED",
     };
   }
+
+  if (input.metric === "score") {
+    if (input.gameType === "jump" || input.gameSlug === "maveli-jump") {
+      return {
+        value: (input.score ?? 0).toLocaleString("en-IN"),
+        label: "M ABOVE PAATHALAM",
+      };
+    }
+    return {
+      value: (input.score ?? 0).toLocaleString("en-IN"),
+      label: "POINTS SCORED",
+    };
+  }
+
   const value = formatAdaptiveDuration(input.durationMs);
   return {
     value,
