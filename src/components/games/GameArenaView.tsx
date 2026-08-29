@@ -1226,47 +1226,49 @@ function GameBar(props: {
         </p>
       </div>
 
-      <Show
-        when={playing()}
-        fallback={
-          <span
-            class="hidden text-xs font-black uppercase tracking-wider px-2 py-1 rounded sm:inline-block"
-            style={{
-              background: chip().pop,
-              border: "1px solid var(--ink)",
-            }}
-          >
-            {chip().label}
-          </span>
-        }
-      >
+      <Show when={props.gameType !== "hunt"}>
         <Show
-          when={props.gameType === "jump"}
+          when={playing()}
           fallback={
+            <span
+              class="hidden text-xs font-black uppercase tracking-wider px-2 py-1 rounded sm:inline-block"
+              style={{
+                background: chip().pop,
+                border: "1px solid var(--ink)",
+              }}
+            >
+              {chip().label}
+            </span>
+          }
+        >
+          <Show
+            when={props.gameType === "jump"}
+            fallback={
+              <div
+                class="flex items-center gap-1.5 px-3 py-1 rounded-full font-mono text-sm font-black tabular-nums"
+                style={{
+                  background: "var(--paper-2)",
+                  border: "var(--ink-w) solid var(--ink)",
+                }}
+              >
+                <span class="inline-block h-2 w-2 rounded-full bg-[var(--pop-teal)] animate-pulse" />
+                <span>{formatAdaptiveClock(Math.floor(props.elapsed! / 1000))}</span>
+              </div>
+            }
+          >
             <div
               class="flex items-center gap-1.5 px-3 py-1 rounded-full font-mono text-sm font-black tabular-nums"
               style={{
-                background: "var(--paper-2)",
+                background: "var(--pop-yellow)",
                 border: "var(--ink-w) solid var(--ink)",
               }}
             >
-              <span class="inline-block h-2 w-2 rounded-full bg-[var(--pop-teal)] animate-pulse" />
-              <span>{formatAdaptiveClock(Math.floor(props.elapsed! / 1000))}</span>
+              <span
+                class={`inline-block h-2 w-2 rounded-full bg-[var(--pop-yellow)] ${props.scoreIsLive ? "animate-pulse" : "opacity-60"}`}
+              />
+              <span>{(props.liveScore ?? 0).toLocaleString("en-IN")} m</span>
             </div>
-          }
-        >
-          <div
-            class="flex items-center gap-1.5 px-3 py-1 rounded-full font-mono text-sm font-black tabular-nums"
-            style={{
-              background: "var(--pop-yellow)",
-              border: "var(--ink-w) solid var(--ink)",
-            }}
-          >
-            <span
-              class={`inline-block h-2 w-2 rounded-full bg-[var(--pop-yellow)] ${props.scoreIsLive ? "animate-pulse" : "opacity-60"}`}
-            />
-            <span>{(props.liveScore ?? 0).toLocaleString("en-IN")} m</span>
-          </div>
+          </Show>
         </Show>
       </Show>
 

@@ -56,7 +56,7 @@ function formatMetric(entry: DailyEntry): string {
     (entry.metric === "score" && entry.durationMs == null && (entry.score ?? 0) <= 20)
   ) {
     const s = Math.min(10, Math.max(0, entry.score ?? 0));
-    return s === 10 ? "10/10 Relics 👑" : `${s}/10 Relics`;
+    return `${s}/10 Relics`;
   }
   switch (entry.metric) {
     case "score":
@@ -521,7 +521,8 @@ export function LeaderboardView() {
             !isDay7() &&
             !isLockedForPlayer() &&
             topDailyWinner() &&
-            selectedGame()?.status === "closed"
+            (selectedGame()?.status === "closed" ||
+              (selectedGame()?.gameType === "hunt" && (topDailyWinner()?.score ?? 0) >= 10))
           }
         >
           {(() => {
