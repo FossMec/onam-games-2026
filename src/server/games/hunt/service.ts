@@ -289,8 +289,6 @@ export async function submitHuntAnswer(
   }
 
   const now = Date.now();
-  const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
-  const isTesterMode = (role === "tester" || role === "admin") && isTesterModeEnabled;
 
   // 30-second rate limit
   if (progress.last_submitted_at) {
@@ -307,108 +305,53 @@ export async function submitHuntAnswer(
   }
 
   if (progress.completed_at || !progress.current_question_id) {
-    const solvedSetEarly = new Set(asSolvedIds(progress.solved_question_ids ?? []));
-    const hasUnsolved = allActive.some((q) => !solvedSetEarly.has(q.id));
-    if (!hasUnsolved) {
-      return {
-        valid: false,
-        reason: "You have already completed all available treasures in the hunt!",
-        cooldownRemainingSec: 0,
-        state: await getUserHuntState(userId, role),
-      };
-    }
-    if (!isTesterMode) {
-      return {
-        valid: false,
-        reason: "You have already completed all available treasures in the hunt!",
-        cooldownRemainingSec: 0,
-        state: await getUserHuntState(userId, role),
-      };
-    }
+    return {
+      valid: false,
+      reason: "You have already completed all available treasures in the hunt!",
+      cooldownRemainingSec: 0,
+      state: await getUserHuntState(userId, role),
+    };
   }
 
-  let currentQ: HuntQuestion | undefined;
-  if (isTesterMode) {
-    const solvedSet = new Set(asSolvedIds(progress.solved_question_ids ?? []));
-    const unsolved = allActive.filter((q) => !solvedSet.has(q.id));
-    currentQ = unsolved.find((q) => checkAnswerMatch(rawAnswer, q.answer));
-    if (!currentQ) {
-      currentQ = allActive.find((q) => q.id === progress.current_question_id);
-      if (currentQ && !checkAnswerMatch(rawAnswer, currentQ.answer)) {
-        currentQ = undefined;
-      }
-    }
-    if (!currentQ) {
-      const fallbackQ = allActive.find((q) => q.id === progress.current_question_id) ?? unsolved[0];
-      if (!fallbackQ) throw new HttpError(404, "Active question not found");
-      await db`
-        UPDATE user_hunt_progress
-        SET last_submitted_at = NOW(), updated_at = NOW()
-        WHERE id = ${progress.id}
-      `;
-      invalidateShared(`hunt:progress:${userId}`);
+  const currentQ = allActive.find((q) => q.id === progress.current_question_id);
+  if (!currentQ) {
+    throw new HttpError(404, "Active question not found");
+  }
+  if (!checkAnswerMatch(rawAnswer, currentQ.answer)) {
+    await db`
+      UPDATE user_hunt_progress
+      SET last_submitted_at = NOW(), updated_at = NOW()
+      WHERE id = ${progress.id}
+    `;
+    invalidateShared(`hunt:progress:${userId}`);
 
-      await logActivity({
-        userId,
-        deviceId: meta.deviceId,
-        ip: meta.ip,
-        eventType: "hunt_answer_wrong",
-        meta: {
-          questionId: fallbackQ.id,
-          questionSlug: fallbackQ.slug,
-          submitted: rawAnswer.slice(0, 100),
-          testerMode: true,
-        },
-      });
+    await logActivity({
+      userId,
+      deviceId: meta.deviceId,
+      ip: meta.ip,
+      eventType: "hunt_answer_wrong",
+      meta: {
+        questionId: currentQ.id,
+        questionSlug: currentQ.slug,
+        submitted: rawAnswer.slice(0, 100),
+      },
+    });
 
-      return {
-        valid: false,
-        reason: "That is not the right token. Look closely at the hint!",
-        cooldownRemainingSec: Math.ceil(RATE_LIMIT_MS / 1000),
-        state: await getUserHuntState(userId, role),
-      };
-    }
-  } else {
-    currentQ = allActive.find((q) => q.id === progress.current_question_id);
-    if (!currentQ) {
-      throw new HttpError(404, "Active question not found");
-    }
-    if (!checkAnswerMatch(rawAnswer, currentQ.answer)) {
-      await db`
-        UPDATE user_hunt_progress
-        SET last_submitted_at = NOW(), updated_at = NOW()
-        WHERE id = ${progress.id}
-      `;
-      invalidateShared(`hunt:progress:${userId}`);
-
-      await logActivity({
-        userId,
-        deviceId: meta.deviceId,
-        ip: meta.ip,
-        eventType: "hunt_answer_wrong",
-        meta: {
-          questionId: currentQ.id,
-          questionSlug: currentQ.slug,
-          submitted: rawAnswer.slice(0, 100),
-        },
-      });
-
-      return {
-        valid: false,
-        reason: "That is not the right token. Look closely at the hint!",
-        cooldownRemainingSec: Math.ceil(RATE_LIMIT_MS / 1000),
-        state: await getUserHuntState(userId, role),
-      };
-    }
+    return {
+      valid: false,
+      reason: "That is not the right token. Look closely at the hint!",
+      cooldownRemainingSec: Math.ceil(RATE_LIMIT_MS / 1000),
+      state: await getUserHuntState(userId, role),
+    };
   }
 
-  if (!currentQ) throw new HttpError(404, "Active question not found");
   const solvedSet = new Set(asSolvedIds(progress.solved_question_ids ?? []));
-  solvedSet.add(currentQ!.id);
+  solvedSet.add(currentQ.id);
   const updatedSolvedList = Array.from(solvedSet);
 
   const nextQ = pickNextQuestion(allActive, solvedSet);
-  const isComplete = !nextQ;
+  const isComplete = !nextQ || updatedSolvedList.length >= allActive.length;
+  const finalScore = Math.min(allActive.length, updatedSolvedList.length);
   let completionDurationMs: number | undefined;
   let completionSubmittedAt: Date | undefined;
 
@@ -416,7 +359,7 @@ export async function submitHuntAnswer(
     UPDATE user_hunt_progress
     SET
       solved_question_ids = ${db.json(updatedSolvedList)},
-      solved_count = ${updatedSolvedList.length},
+      solved_count = ${finalScore},
       current_question_id = ${nextQ?.id ?? null},
       last_submitted_at = NULL,
       completed_at = ${isComplete ? new Date() : null},
@@ -456,7 +399,7 @@ export async function submitHuntAnswer(
             UPDATE game_attempts
             SET submitted_at = ${submittedAt},
                 duration_ms = ${durationMs},
-                score = ${updatedSolvedList.length},
+                score = ${finalScore},
                 server_valid = true,
                 after_deadline = ${afterDeadline},
                 status = 'submitted'
@@ -473,14 +416,14 @@ export async function submitHuntAnswer(
                 ${userId},
                 ${attempt.id},
                 'score',
-                ${updatedSolvedList.length},
+                ${finalScore},
                 ${durationMs},
                 ${attempt.attempt_number},
                 ${attempt.started_at},
                 ${submittedAt}
               )
               ON CONFLICT (game_id, user_id) DO UPDATE
-              SET score = GREATEST(daily_leaderboard.score, ${updatedSolvedList.length}),
+              SET score = ${finalScore},
                   duration_ms = EXCLUDED.duration_ms,
                   attempt_id = EXCLUDED.attempt_id,
                   started_at = EXCLUDED.started_at,

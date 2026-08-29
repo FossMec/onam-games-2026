@@ -55,7 +55,7 @@ function formatMetric(entry: DailyEntry): string {
     entry.gameType === "hunt" ||
     (entry.metric === "score" && entry.durationMs == null && (entry.score ?? 0) <= 20)
   ) {
-    const s = entry.score ?? 0;
+    const s = Math.min(10, Math.max(0, entry.score ?? 0));
     return s === 10 ? "10/10 Relics 👑" : `${s}/10 Relics`;
   }
   switch (entry.metric) {

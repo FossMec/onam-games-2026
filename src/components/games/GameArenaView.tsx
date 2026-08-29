@@ -1092,7 +1092,7 @@ export function GameArenaView() {
                       </div>
                     </Show>
 
-                    <Show when={isHunt() && !isAllHuntTreasuresFound()}>
+                    <Show when={isHunt() && !isAllHuntTreasuresFound(settledResult()?.score)}>
                       <div class="pt-2">
                         <CommunityGroupCard />
                       </div>
@@ -1166,8 +1166,8 @@ export function GameArenaView() {
   );
 }
 
-function isAllHuntTreasuresFound(): boolean {
-  return false;
+function isAllHuntTreasuresFound(score?: number | null): boolean {
+  return (score ?? 0) >= 10;
 }
 
 function GameBar(props: {

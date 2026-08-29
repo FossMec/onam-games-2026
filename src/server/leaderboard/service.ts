@@ -60,7 +60,10 @@ async function getGameType(gameId: string, db: Db): Promise<string | undefined> 
   });
 }
 
-function getRankingOrderSql(metric: GameMetric): string {
+function getRankingOrderSql(metric: GameMetric, gameType?: string): string {
+  if (gameType === "hunt") {
+    return "score DESC, COALESCE(submitted_at, started_at) ASC, duration_ms ASC";
+  }
   if (metric === "score") {
     return "score DESC, COALESCE(submitted_at, started_at) ASC";
   }
@@ -111,7 +114,7 @@ export async function getDailyLeaderboard(
     true,
   );
 
-  const orderSql = getRankingOrderSql(metric);
+  const orderSql = getRankingOrderSql(metric, gameType);
   const roleClause =
     viewMode === "tester"
       ? db`AND (u.role = 'tester' OR u.role = 'admin')`

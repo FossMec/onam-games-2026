@@ -81,8 +81,9 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
   `;
 
   const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
+  const isHunt = game.gameType === "hunt";
   const isTester = (input.role === "tester" || input.role === "admin") && isTesterModeEnabled;
-  const effectiveUnlimitedRole = isTester;
+  const effectiveUnlimitedRole = isTester && !isHunt;
 
   const open = prior.find((a) => a.status === "in_progress");
   if (open && !(await expireIfStale({ id: open.id, startedAt: open.started_at }, def))) {
@@ -106,7 +107,7 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
   if (isClosed && !isTester) {
     throw new HttpError(403, "This daily game has ended");
   }
-  const unlimited = isTester;
+  const unlimited = isTester && !isHunt;
   const used = prior.length;
   if (!unlimited && used >= def.maxAttempts) {
     throw new HttpError(
@@ -159,7 +160,11 @@ export async function startAttempt(input: StartInput): Promise<StartResult> {
   const now = new Date();
   const releaseAtDate = game.releaseAt ? new Date(game.releaseAt) : null;
   const startedAt =
-    def.metric === "fcfs" && releaseAtDate && releaseAtDate <= now ? releaseAtDate : now;
+    (isHunt || def.metric === "fcfs") && releaseAtDate && releaseAtDate <= now
+      ? releaseAtDate
+      : isHunt && releaseAtDate
+        ? releaseAtDate
+        : now;
 
   const createdAttempts = await db<
     {
@@ -319,7 +324,7 @@ export async function getMyAttemptBySlug(
   const latest = latestRows[0];
 
   const isTesterModeEnabled = await getSetting<boolean>("access.tester_mode", true);
-  const unlimited = isTesterModeEnabled && role !== "player";
+  const unlimited = isTesterModeEnabled && role !== "player" && game.game_type !== "hunt";
   const base = {
     metric: def.metric,
     maxAttempts: def.maxAttempts,
