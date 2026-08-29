@@ -327,17 +327,34 @@ export function GameArenaView() {
   });
 
   createEffect(() => {
-    if (startedAt() === null) return;
+    if (hasFinishedRun()) return;
     const timer = setInterval(() => setNow(Date.now()), 100);
     onCleanup(() => clearInterval(timer));
   });
 
-  const elapsed = () => (startedAt() === null ? 0 : Math.max(0, now() - startedAt()!));
+  const currentElapsed = () => {
+    if (hasFinishedRun()) {
+      const landed = settledResult()?.durationMs ?? myAttempt()?.durationMs;
+      if (landed != null && landed > 0) return landed;
+      return null;
+    }
 
-  const huntElapsed = () => {
-    const r = game()?.releaseAt;
-    if (!r) return elapsed();
-    return Math.max(0, now() - new Date(r).getTime());
+    if (isHunt()) {
+      const r = game()?.releaseAt;
+      if (r) {
+        return Math.max(0, now() - new Date(r).getTime());
+      }
+      if (startedAt() !== null) {
+        return Math.max(0, now() - startedAt()!);
+      }
+      return 0;
+    }
+
+    if (startedAt() !== null) {
+      return Math.max(0, now() - startedAt()!);
+    }
+
+    return null;
   };
 
   const traceWord = async (cells: WendCell[]): Promise<string | null> => {
@@ -717,19 +734,9 @@ export function GameArenaView() {
               status={game()!.status}
               isTester={isTester()}
               gameType={game()!.gameType}
-              elapsed={
-                attemptToken()
-                  ? game()!.gameType === "hunt"
-                    ? huntElapsed()
-                    : elapsed()
-                  : settledResult()?.durationMs != null
-                    ? settledResult()!.durationMs
-                    : myAttempt()?.durationMs != null
-                      ? myAttempt()!.durationMs!
-                      : null
-              }
+              elapsed={currentElapsed()}
               liveScore={game()!.gameType === "jump" ? jumpScore() : null}
-              scoreIsLive={game()!.gameType === "jump" && !!attemptToken()}
+              scoreIsLive={game()!.gameType === "jump" && !hasFinishedRun()}
               onHowTo={(game()!.howTo?.length ?? 0) > 0 ? () => setShowHowTo(true) : undefined}
             />
           </div>

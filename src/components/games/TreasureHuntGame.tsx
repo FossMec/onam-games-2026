@@ -6,6 +6,7 @@ import { LoadingScreen } from "~/components/LoadingScreen";
 import { CommunityGroupCard } from "~/components/CommunityGroupCard";
 import { treasureMapImage } from "~/lib/img";
 import { getDistroForQuestionIndex } from "~/lib/treasure-distros";
+import { formatAdaptiveClock } from "~/lib/time";
 import type { HuntPublicState, HuntSubmitResult } from "~/server/games/hunt/service";
 
 export interface TreasureHuntGameProps {
@@ -394,9 +395,9 @@ export function TreasureHuntGame(props: TreasureHuntGameProps) {
                   {(stats) => (
                     <span class="text-[10px] sm:text-xs font-black uppercase text-[var(--ink-soft)]">
                       Complete · {stats().score}/10
-                      <Show when={stats().durationMs !== undefined}>
+                      <Show when={stats().durationMs !== undefined && stats().durationMs! > 0}>
                         {" · "}
-                        {Math.round((stats().durationMs ?? 0) / 1000)}s
+                        {formatAdaptiveClock(Math.floor(stats().durationMs! / 1000))}
                       </Show>
                     </span>
                   )}
