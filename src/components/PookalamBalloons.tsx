@@ -49,7 +49,11 @@ export function PookalamBalloons() {
   const scheduleTreasure = () => {
     if (!huntBalloonActive()) return;
     if (treasureTimer) clearTimeout(treasureTimer);
-    const delay = randomBetween(20_000, 45_000);
+    if (spawnTimer) {
+      clearTimeout(spawnTimer);
+      spawnTimer = undefined;
+    }
+    const delay = randomBetween(1_500, 4_000);
     treasureTimer = setTimeout(() => {
       treasureTimer = undefined;
       if (!huntBalloonActive()) return;
@@ -157,7 +161,9 @@ export function PookalamBalloons() {
             ));
         if (hasBalloon) {
           setHuntBalloonActive(true);
-          scheduleTreasure();
+          if (!balloon()?.isTreasure) {
+            scheduleTreasure();
+          }
         } else {
           setHuntBalloonActive(false);
         }
@@ -176,6 +182,8 @@ export function PookalamBalloons() {
       stop();
       return;
     }
+
+    checkHuntQuestionState();
 
     if (huntBalloonActive()) {
       if (!balloon() && !treasureTimer) scheduleTreasure();
