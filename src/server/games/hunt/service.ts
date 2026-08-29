@@ -3,7 +3,7 @@ import type { HuntQuestion } from "~/server/db/schema";
 import { HttpError } from "~/server/errors";
 import { logActivity } from "~/server/anti-cheat/log";
 import { getSetting } from "~/server/settings/service";
-import { getGameBySlug, type ViewerRole } from "~/server/games/service";
+import { getGameByType, type ViewerRole } from "~/server/games/service";
 import { invalidateShared, sharedRead } from "~/server/cache";
 
 const RATE_LIMIT_MS = 30_000;
@@ -187,14 +187,15 @@ export async function getUserHuntState(
   const [allActive, isTesterModeEnabled, huntGame] = await Promise.all([
     getActiveHuntQuestions(),
     getSetting<boolean>("access.tester_mode", true),
-    getGameBySlug("treasure-hunt", role),
+    getGameByType("hunt", role),
   ]);
 
   const isTesterMode = (role === "tester" || role === "admin") && isTesterModeEnabled;
   const isGameActive =
     huntGame?.status === "live" ||
     huntGame?.status === "closed" ||
-    (isTesterMode && huntGame?.status === "tester");
+    huntGame?.status === "tester" ||
+    isTesterMode;
 
   const progress = await sharedRead(
     `hunt:progress:${userId}`,
@@ -215,7 +216,7 @@ export async function getUserHuntState(
     ? allActive.find((q) => q.id === progress.current_question_id)
     : null;
 
-  const isBalloonQuestion = (q: HuntQuestion) => isGameActive && q.slug === "hunt-c2d5a7f9";
+  const isBalloonQuestion = (q: HuntQuestion) => q.slug === "hunt-c2d5a7f9";
 
   return {
     isGameActive,

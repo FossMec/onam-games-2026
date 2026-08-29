@@ -405,3 +405,18 @@ export async function getGameBySlug(
    */
   return card.status === "upcoming" ? { ...maskCard(card), slug: card.slug } : card;
 }
+
+export async function getGameByType(
+  gameType: string,
+  viewerRole: ViewerRole,
+): Promise<GameCard | null> {
+  const [rows, settings] = await Promise.all([publishedGameRows(), getScheduleSettings()]);
+  const game = rows.find((row) => row.gameType === gameType);
+  if (!game) return null;
+  const card = toCard(
+    game,
+    await resolveSchedule(game, viewerRole, settings),
+    settings.testerMode !== false,
+  );
+  return card.status === "upcoming" ? { ...maskCard(card), slug: card.slug } : card;
+}

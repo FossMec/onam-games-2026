@@ -148,17 +148,12 @@ export function PookalamBalloons() {
     fetch("/api/hunt/state")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (!data?.isGameActive) {
-          setHuntBalloonActive(false);
-          return;
-        }
         const hasBalloon =
-          data?.currentQuestion?.isBalloon ||
-          (data?.isTesterMode &&
-            data?.allQuestions?.some(
-              (q: { id: string; isBalloon?: boolean }) =>
-                q.isBalloon && !data?.solvedQuestionIds?.includes(q.id),
-            ));
+          !!data?.currentQuestion?.isBalloon ||
+          data?.allQuestions?.some(
+            (q: { id: string; isBalloon?: boolean }) =>
+              q.isBalloon && !data?.solvedQuestionIds?.includes(q.id),
+          );
         if (hasBalloon) {
           setHuntBalloonActive(true);
           if (!balloon()?.isTreasure) {
