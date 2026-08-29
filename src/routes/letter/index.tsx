@@ -213,23 +213,17 @@ export default function LetterPage() {
   const [copied, setCopied] = createSignal(false);
   const [createMode, setCreateMode] = createSignal(false);
   const [origin, setOrigin] = createSignal("");
+  const [decodedMsg, setDecodedMsg] = createSignal<string | null>(null);
 
   onMount(() => {
     setOrigin(window.location.origin);
-  });
-
-  const queryMsg = () => {
     const raw = searchParams.msg || searchParams.g;
-    return typeof raw === "string" ? raw : "";
-  };
-
-  const decodedMessage = createMemo(() => {
-    const q = queryMsg();
-    if (!q) return null;
-    return decodeGiftMessage(q);
+    if (typeof raw === "string" && raw) {
+      setDecodedMsg(decodeGiftMessage(raw));
+    }
   });
 
-  const hasReceivedGift = () => !createMode() && !!decodedMessage();
+  const hasReceivedGift = () => !createMode() && !!decodedMsg();
 
   const generatedUrl = createMemo(() => {
     const text = inputMsg().trim();
@@ -308,7 +302,7 @@ export default function LetterPage() {
           </div>
 
           {/* Interactive Folding Onam Card */}
-          <FoldingOnamCard message={decodedMessage()!} />
+          <FoldingOnamCard message={decodedMsg()!} />
 
           <div class="pt-2">
             <button
