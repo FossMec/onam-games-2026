@@ -850,15 +850,15 @@ export async function adminGetHuntOverview(): Promise<AdminHuntOverview> {
         role: string;
       }[]
     >`
-      SELECT
-        uhp.id AS "progressId",
-        uhp.user_id AS "userId",
+      SELECT DISTINCT ON (u.id)
+        COALESCE(uhp.id, ga.id, dl.id::text) AS "progressId",
+        u.id AS "userId",
         uhp.current_question_id AS "currentQuestionId",
-        uhp.solved_question_ids AS "solvedQuestionIds",
-        uhp.solved_count AS "solvedCount",
+        COALESCE(uhp.solved_question_ids, '[]'::jsonb) AS "solvedQuestionIds",
+        COALESCE(uhp.solved_count, dl.score, ga.score, 0) AS "solvedCount",
         uhp.last_submitted_at AS "lastSubmittedAt",
-        uhp.completed_at AS "completedAt",
-        uhp.updated_at AS "updatedAt",
+        COALESCE(uhp.completed_at, (CASE WHEN ga.status = 'submitted' THEN ga.submitted_at ELSE NULL END)) AS "completedAt",
+        COALESCE(uhp.updated_at, ga.submitted_at, dl.submitted_at, u.created_at) AS "updatedAt",
         u.name,
         u.email,
         u.avatar_url AS "avatarUrl",
@@ -866,11 +866,25 @@ export async function adminGetHuntOverview(): Promise<AdminHuntOverview> {
         u.branch,
         u.batch,
         u.role
-      FROM user_hunt_progress uhp
-      INNER JOIN users u ON u.id = uhp.user_id
-      ORDER BY uhp.solved_count DESC, uhp.completed_at ASC NULLS LAST, uhp.updated_at DESC
+      FROM users u
+      LEFT JOIN user_hunt_progress uhp ON uhp.user_id = u.id
+      LEFT JOIN games g ON g.game_type = 'hunt'
+      LEFT JOIN daily_leaderboard dl ON dl.game_id = g.id AND dl.user_id = u.id
+      LEFT JOIN game_attempts ga ON ga.game_id = g.id AND ga.user_id = u.id
+      WHERE (uhp.solved_count > 0 OR uhp.last_submitted_at IS NOT NULL OR uhp.completed_at IS NOT NULL OR dl.id IS NOT NULL OR ga.id IS NOT NULL)
+      ORDER BY u.id, "solvedCount" DESC, "completedAt" ASC NULLS LAST, "updatedAt" DESC
     `,
   ]);
+
+  progressRows.sort((a, b) => {
+    if (b.solvedCount !== a.solvedCount) return b.solvedCount - a.solvedCount;
+    if (a.completedAt && b.completedAt) {
+      return new Date(a.completedAt).getTime() - new Date(b.completedAt).getTime();
+    }
+    if (a.completedAt) return -1;
+    if (b.completedAt) return 1;
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
 
   const questionsMap = new Map(questions.map((q) => [q.id, q]));
 

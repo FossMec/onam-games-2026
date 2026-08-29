@@ -1,4 +1,16 @@
-import { Compass, CheckCircle2, HelpCircle, Trophy, User, Search, Key, Clock } from "lucide-solid";
+import {
+  Compass,
+  CheckCircle2,
+  HelpCircle,
+  Trophy,
+  User,
+  Search,
+  Key,
+  Clock,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-solid";
 import { For, Show, createSignal, createMemo } from "solid-js";
 import type { AdminHuntOverview } from "~/server/admin/service";
 
@@ -10,6 +22,9 @@ export function HuntTab(props: HuntTabProps) {
   const [search, setSearch] = createSignal("");
   const [filterQuestion, setFilterQuestion] = createSignal<string>("all");
   const [filterStatus, setFilterStatus] = createSignal<"all" | "in-progress" | "completed">("all");
+  const [filterRole, setFilterRole] = createSignal<"all" | "player" | "tester">("all");
+  const [page, setPage] = createSignal(1);
+  const [pageSize, setPageSize] = createSignal<number | "all">(50);
 
   const questions = () => props.data?.questions ?? [];
   const players = () => props.data?.players ?? [];
@@ -18,6 +33,7 @@ export function HuntTab(props: HuntTabProps) {
     const q = search().toLowerCase().trim();
     const fQ = filterQuestion();
     const fS = filterStatus();
+    const fR = filterRole();
 
     return players().filter((p) => {
       // Search filter
@@ -25,12 +41,17 @@ export function HuntTab(props: HuntTabProps) {
         const matchesName = p.name?.toLowerCase().includes(q);
         const matchesEmail = p.email?.toLowerCase().includes(q);
         const matchesCollege = p.college?.toLowerCase().includes(q);
-        if (!matchesName && !matchesEmail && !matchesCollege) return false;
+        const matchesBranch = p.branch?.toLowerCase().includes(q);
+        if (!matchesName && !matchesEmail && !matchesCollege && !matchesBranch) return false;
       }
 
       // Status filter
       if (fS === "completed" && !p.completed) return false;
       if (fS === "in-progress" && p.completed) return false;
+
+      // Role filter
+      if (fR === "player" && (p.role === "tester" || p.role === "admin")) return false;
+      if (fR === "tester" && p.role !== "tester" && p.role !== "admin") return false;
 
       // Question filter
       if (fQ !== "all") {
@@ -44,6 +65,68 @@ export function HuntTab(props: HuntTabProps) {
       return true;
     });
   });
+
+  const totalPages = createMemo(() => {
+    const ps = pageSize();
+    if (ps === "all") return 1;
+    return Math.max(1, Math.ceil(filteredPlayers().length / ps));
+  });
+
+  const paginatedPlayers = createMemo(() => {
+    const ps = pageSize();
+    if (ps === "all") return filteredPlayers();
+    const curPage = Math.min(page(), totalPages());
+    const start = (curPage - 1) * ps;
+    return filteredPlayers().slice(start, start + ps);
+  });
+
+  const exportCsv = () => {
+    const all = filteredPlayers();
+    const headers = [
+      "Name",
+      "Email",
+      "Role",
+      "College",
+      "Branch",
+      "Batch",
+      "Relics Found",
+      "Total Relics",
+      "Current Clue",
+      "Status",
+      "Completed At",
+      "Last Submitted At",
+      "Last Updated",
+    ];
+
+    const rows = all.map((p) => [
+      `"${(p.name || "").replace(/"/g, '""')}"`,
+      `"${(p.email || "").replace(/"/g, '""')}"`,
+      `"${p.role || "player"}"`,
+      `"${(p.college || "").replace(/"/g, '""')}"`,
+      `"${(p.branch || "").replace(/"/g, '""')}"`,
+      `"${p.batch || ""}"`,
+      p.solvedCount,
+      questions().length,
+      `"${(p.currentQuestionTitle || "").replace(/"/g, '""')}"`,
+      p.completed ? "Completed" : "In Progress",
+      p.completedAt ? `"${p.completedAt}"` : "",
+      p.lastSubmittedAt ? `"${p.lastSubmittedAt}"` : "",
+      `"${p.updatedAt}"`,
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `treasure-hunt-players-${new Date().toISOString().slice(0, 10)}.csv`,
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const difficultyColor = (diff: string) => {
     switch (diff) {
@@ -98,55 +181,52 @@ export function HuntTab(props: HuntTabProps) {
         <div class="card p-4 bg-[var(--paper-2)] border-2 border-[var(--ink)] flex items-center justify-between">
           <div>
             <span class="text-[10px] font-black uppercase text-[var(--ink-soft)] tracking-wider block">
-              Completed 10/10
+              Completed Hunt
             </span>
             <span class="text-2xl font-black text-[var(--pop-teal)] tabular-nums">
               {props.data?.completedCount ?? 0}
             </span>
           </div>
-          <div class="w-10 h-10 rounded-lg bg-[var(--pop-teal)] border-2 border-[var(--ink)] grid place-items-center">
-            <Trophy size={20} class="text-[var(--ink)]" />
+          <div class="w-10 h-10 rounded-lg bg-[var(--pop-teal)]/20 border-2 border-[var(--ink)] grid place-items-center">
+            <Trophy size={20} class="text-[var(--pop-teal)]" />
           </div>
         </div>
 
-        {/* Total Questions */}
+        {/* Total Clues Active */}
         <div class="card p-4 bg-[var(--paper-2)] border-2 border-[var(--ink)] flex items-center justify-between">
           <div>
             <span class="text-[10px] font-black uppercase text-[var(--ink-soft)] tracking-wider block">
-              Active Questions
+              Total Clue Relics
             </span>
             <span class="text-2xl font-black text-[var(--ink)] tabular-nums">
               {questions().length}
             </span>
           </div>
-          <div class="w-10 h-10 rounded-lg bg-[var(--pop-pink)] border-2 border-[var(--ink)] grid place-items-center">
+          <div class="w-10 h-10 rounded-lg bg-[var(--paper-3)] border-2 border-[var(--ink)] grid place-items-center">
             <Key size={20} class="text-[var(--ink)]" />
           </div>
         </div>
       </div>
 
-      {/* ---------------------------------------------------- QUESTION DIVISION & BOTTLENECK ANALYSIS */}
+      {/* ---------------------------------------------------- QUESTIONS BREAKDOWN & BOTTLENECK ANALYSIS */}
       <div class="card p-5 bg-[var(--paper-2)] border-2 border-[var(--ink)] space-y-4">
-        <div class="flex items-center justify-between gap-3 flex-wrap">
+        <div class="flex items-center justify-between">
           <div>
             <h2 class="text-base sm:text-lg font-black text-[var(--ink)] m-0 flex items-center gap-2">
-              <Compass size={18} strokeWidth={2.5} class="text-[var(--pop-pink)]" />
+              <Key size={18} strokeWidth={2.5} class="text-[var(--pop-pink)]" />
               <span>Treasure Hunt Clues & Player Bottlenecks</span>
             </h2>
             <p class="text-xs font-semibold text-[var(--ink-soft)] mt-0.5">
-              Live distribution of players stuck on each question. Use this to gauge difficulty and
-              post timely community hints.
+              Live clue tracking showing how many players are currently stuck at each island
+              landmark.
             </p>
           </div>
-          <span class="badge text-xs px-2.5 py-1 bg-[var(--pop-yellow)] font-black uppercase">
-            {questions().length} Relic Nodes
-          </span>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <For each={questions()}>
             {(q, idx) => {
-              const total = props.data?.totalParticipants || 1;
+              const total = Math.max(1, props.data?.totalParticipants ?? 1);
               const stuckPct = Math.round((q.stuckPlayersCount / total) * 100);
               const isBottleneck =
                 q.stuckPlayersCount > 0 && q.stuckPlayersCount >= Math.ceil(total * 0.2);
@@ -219,21 +299,21 @@ export function HuntTab(props: HuntTabProps) {
 
       {/* ---------------------------------------------------- LIVE PLAYERS LIST */}
       <div class="card p-5 bg-[var(--paper-2)] border-2 border-[var(--ink)] space-y-4">
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 flex-wrap">
+        <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 class="text-base sm:text-lg font-black text-[var(--ink)] m-0 flex items-center gap-2">
               <User size={18} strokeWidth={2.5} class="text-[var(--pop-teal)]" />
-              <span>Explorer Division & Live Positions</span>
+              <span>Explorer Division & Live Positions ({filteredPlayers().length} matching)</span>
             </h2>
             <p class="text-xs font-semibold text-[var(--ink-soft)] mt-0.5">
               Individual player tracker showing each user's current clue position and progress.
             </p>
           </div>
 
-          {/* Search and Filters */}
-          <div class="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+          {/* Search, Filters and Export */}
+          <div class="flex items-center gap-2 w-full lg:w-auto flex-wrap">
             {/* Search Input */}
-            <div class="relative flex-1 sm:w-56">
+            <div class="relative flex-1 sm:w-48">
               <Search
                 size={14}
                 class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--ink-soft)]"
@@ -241,16 +321,36 @@ export function HuntTab(props: HuntTabProps) {
               <input
                 type="text"
                 value={search()}
-                onInput={(e) => setSearch(e.currentTarget.value)}
-                placeholder="Search player, email..."
+                onInput={(e) => {
+                  setSearch(e.currentTarget.value);
+                  setPage(1);
+                }}
+                placeholder="Search player, college..."
                 class="w-full pl-8 pr-3 py-1.5 text-xs bg-[var(--paper)] border-2 border-[var(--ink)] rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--pop-yellow)]"
               />
             </div>
 
+            {/* Filter by Role */}
+            <select
+              value={filterRole()}
+              onChange={(e) => {
+                setFilterRole(e.currentTarget.value as any);
+                setPage(1);
+              }}
+              class="px-2.5 py-1.5 text-xs bg-[var(--paper)] border-2 border-[var(--ink)] rounded-md font-bold text-[var(--ink)] cursor-pointer"
+            >
+              <option value="all">All Roles</option>
+              <option value="player">Players Only</option>
+              <option value="tester">Testers & Admins</option>
+            </select>
+
             {/* Filter by Question */}
             <select
               value={filterQuestion()}
-              onChange={(e) => setFilterQuestion(e.currentTarget.value)}
+              onChange={(e) => {
+                setFilterQuestion(e.currentTarget.value);
+                setPage(1);
+              }}
               class="px-2.5 py-1.5 text-xs bg-[var(--paper)] border-2 border-[var(--ink)] rounded-md font-bold text-[var(--ink)] cursor-pointer"
             >
               <option value="all">All Questions</option>
@@ -258,7 +358,7 @@ export function HuntTab(props: HuntTabProps) {
               <For each={questions()}>
                 {(q, i) => (
                   <option value={q.id}>
-                    Q{i() + 1}: {q.title.slice(0, 20)} ({q.stuckPlayersCount} stuck)
+                    Q{i() + 1}: {q.title.slice(0, 18)} ({q.stuckPlayersCount} stuck)
                   </option>
                 )}
               </For>
@@ -267,13 +367,27 @@ export function HuntTab(props: HuntTabProps) {
             {/* Status Filter */}
             <select
               value={filterStatus()}
-              onChange={(e) => setFilterStatus(e.currentTarget.value as any)}
+              onChange={(e) => {
+                setFilterStatus(e.currentTarget.value as any);
+                setPage(1);
+              }}
               class="px-2.5 py-1.5 text-xs bg-[var(--paper)] border-2 border-[var(--ink)] rounded-md font-bold text-[var(--ink)] cursor-pointer"
             >
               <option value="all">All Statuses</option>
               <option value="in-progress">In Progress</option>
               <option value="completed">Completed</option>
             </select>
+
+            {/* Export CSV */}
+            <button
+              type="button"
+              onClick={exportCsv}
+              class="px-3 py-1.5 text-xs font-black bg-[var(--pop-yellow)] border-2 border-[var(--ink)] rounded-md cursor-pointer hover:bg-[var(--pop-yellow)]/90 inline-flex items-center gap-1.5 text-[var(--ink)]"
+              title="Download full CSV report"
+            >
+              <Download size={14} />
+              <span>Export CSV</span>
+            </button>
           </div>
         </div>
 
@@ -283,7 +397,7 @@ export function HuntTab(props: HuntTabProps) {
             <thead>
               <tr class="bg-[var(--paper-3)] border-b-2 border-[var(--ink)] text-[10px] font-black uppercase text-[var(--ink-soft)]">
                 <th class="p-3">Player</th>
-                <th class="p-3">College / Batch</th>
+                <th class="p-3">College / Branch</th>
                 <th class="p-3 text-center">Relics Found</th>
                 <th class="p-3">Current Clue Node</th>
                 <th class="p-3 text-right">Status / Completed</th>
@@ -291,7 +405,7 @@ export function HuntTab(props: HuntTabProps) {
             </thead>
             <tbody class="divide-y divide-[var(--ink-soft)]/20 bg-[var(--paper)]">
               <Show
-                when={filteredPlayers().length > 0}
+                when={paginatedPlayers().length > 0}
                 fallback={
                   <tr>
                     <td
@@ -303,7 +417,7 @@ export function HuntTab(props: HuntTabProps) {
                   </tr>
                 }
               >
-                <For each={filteredPlayers()}>
+                <For each={paginatedPlayers()}>
                   {(player) => (
                     <tr class="hover:bg-[var(--paper-2)] transition-colors">
                       {/* Player Info */}
@@ -374,7 +488,7 @@ export function HuntTab(props: HuntTabProps) {
                           when={!player.completed}
                           fallback={
                             <span class="badge text-[10px] px-2 py-0.5 bg-[var(--pop-teal)] text-[var(--ink)] font-black uppercase">
-                              All 10 Discovered 👑
+                              All 10 Discovered
                             </span>
                           }
                         >
@@ -430,6 +544,53 @@ export function HuntTab(props: HuntTabProps) {
               </Show>
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Bar */}
+        <div class="flex items-center justify-between gap-3 flex-wrap pt-2 text-xs">
+          <div class="flex items-center gap-2 text-[var(--ink-soft)] font-semibold">
+            <span>Show:</span>
+            <select
+              value={pageSize()}
+              onChange={(e) => {
+                const val = e.currentTarget.value;
+                setPageSize(val === "all" ? "all" : Number(val));
+                setPage(1);
+              }}
+              class="px-2 py-1 bg-[var(--paper)] border border-[var(--ink)] rounded text-xs font-bold text-[var(--ink)] cursor-pointer"
+            >
+              <option value="50">50 per page</option>
+              <option value="100">100 per page</option>
+              <option value="250">250 per page</option>
+              <option value="all">Show all ({filteredPlayers().length})</option>
+            </select>
+          </div>
+
+          <Show when={pageSize() !== "all" && totalPages() > 1}>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page() <= 1}
+                class="px-2.5 py-1 bg-[var(--paper)] border border-[var(--ink)] rounded font-bold disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed inline-flex items-center gap-1"
+              >
+                <ChevronLeft size={14} />
+                <span>Prev</span>
+              </button>
+              <span class="font-bold text-xs text-[var(--ink)]">
+                Page {page()} of {totalPages()}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages(), p + 1))}
+                disabled={page() >= totalPages()}
+                class="px-2.5 py-1 bg-[var(--paper)] border border-[var(--ink)] rounded font-bold disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed inline-flex items-center gap-1"
+              >
+                <span>Next</span>
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </Show>
         </div>
       </div>
     </div>
