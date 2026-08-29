@@ -851,11 +851,11 @@ export async function adminGetHuntOverview(): Promise<AdminHuntOverview> {
       }[]
     >`
       SELECT DISTINCT ON (u.id)
-        COALESCE(uhp.id, ga.id, dl.id::text) AS "progressId",
-        u.id AS "userId",
+        COALESCE(uhp.id::text, ga.id::text, dl.id::text, u.id::text) AS "progressId",
+        u.id::text AS "userId",
         uhp.current_question_id AS "currentQuestionId",
         COALESCE(uhp.solved_question_ids, '[]'::jsonb) AS "solvedQuestionIds",
-        COALESCE(uhp.solved_count, dl.score, ga.score, 0) AS "solvedCount",
+        COALESCE(uhp.solved_count, dl.score, ga.score, 0)::integer AS "solvedCount",
         uhp.last_submitted_at AS "lastSubmittedAt",
         COALESCE(uhp.completed_at, (CASE WHEN ga.status = 'submitted' THEN ga.submitted_at ELSE NULL END)) AS "completedAt",
         COALESCE(uhp.updated_at, ga.submitted_at, dl.submitted_at, u.created_at) AS "updatedAt",
@@ -871,7 +871,7 @@ export async function adminGetHuntOverview(): Promise<AdminHuntOverview> {
       LEFT JOIN games g ON g.game_type = 'hunt'
       LEFT JOIN daily_leaderboard dl ON dl.game_id = g.id AND dl.user_id = u.id
       LEFT JOIN game_attempts ga ON ga.game_id = g.id AND ga.user_id = u.id
-      WHERE (uhp.solved_count > 0 OR uhp.last_submitted_at IS NOT NULL OR uhp.completed_at IS NOT NULL OR dl.id IS NOT NULL OR ga.id IS NOT NULL)
+      WHERE (COALESCE(uhp.solved_count, 0) > 0 OR uhp.last_submitted_at IS NOT NULL OR uhp.completed_at IS NOT NULL OR dl.id IS NOT NULL OR ga.id IS NOT NULL)
       ORDER BY u.id, "solvedCount" DESC, "completedAt" ASC NULLS LAST, "updatedAt" DESC
     `,
   ]);
