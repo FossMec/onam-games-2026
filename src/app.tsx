@@ -17,6 +17,11 @@ const BanNotice = clientOnly(() =>
 const ShortlistNotice = clientOnly(() =>
   import("./components/pookalam/ShortlistNotice").then((m) => ({ default: m.ShortlistNotice })),
 );
+const DeadlineExtendedNotice = clientOnly(() =>
+  import("./components/DeadlineExtendedNotice").then((m) => ({
+    default: m.DeadlineExtendedNotice,
+  })),
+);
 const PookalamBalloons = clientOnly(() =>
   import("./components/PookalamBalloons").then((m) => ({ default: m.PookalamBalloons })),
 );
@@ -99,6 +104,11 @@ export default function App() {
             <ErrorBoundary fallback={null}>
               <Suspense>
                 <ShortlistNotice />
+              </Suspense>
+            </ErrorBoundary>
+            <ErrorBoundary fallback={null}>
+              <Suspense>
+                <DeadlineExtendedNotice />
               </Suspense>
             </ErrorBoundary>
             <ErrorBoundary fallback={null}>
