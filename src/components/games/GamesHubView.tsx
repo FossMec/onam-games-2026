@@ -22,7 +22,6 @@ import { teaserIcon } from "~/lib/game-teasers";
 import { gameImageForType } from "~/lib/img";
 import { CommunityGroupCard } from "~/components/CommunityGroupCard";
 import { InviteFriendsCard } from "~/components/games/InviteFriendsCard";
-import { PookalamVoteMath } from "~/components/pookalam/PookalamVoteMath";
 import type { GameCard } from "~/server/games/service";
 
 const DAY_POPS = [
@@ -56,12 +55,6 @@ export function GamesHubView() {
   const [activeModalGame, setActiveModalGame] = createSignal<GameCard | null>(null);
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal("");
-  const [showVoteMathHub, setShowVoteMathHub] = createSignal(false);
-
-  createEffect(() => {
-    void activeGame()?.slug;
-    setShowVoteMathHub(false);
-  });
 
   const fullSchedule = () => games() ?? [];
 
@@ -947,16 +940,27 @@ export function GamesHubView() {
               </For>
             </ol>
             <Show when={activeGame()!.gameType === "vote"}>
-              <button
-                type="button"
-                class="text-xs font-black underline decoration-2 underline-offset-4 text-left"
-                onClick={() => setShowVoteMathHub((v) => !v)}
-              >
-                {showVoteMathHub() ? "Hide math ↑" : "Show me the math →"}
-              </button>
-              <Show when={showVoteMathHub()}>
-                <PookalamVoteMath />
-              </Show>
+              <div class="p-3 bg-[var(--paper-3)] border-2 border-[var(--ink)] rounded-[var(--radius)] space-y-1.5 text-xs">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="badge text-[10px] py-0.5 px-2 font-mono font-bold bg-[var(--pop-yellow)] border border-[var(--ink)]">
+                    CHANGELOG • 8:00 PM IST, AUGUST 30
+                  </span>
+                  <span class="font-extrabold text-[var(--ink)]">
+                    Scoring Formula & Fair Play Update
+                  </span>
+                </div>
+                <p class="text-xs font-semibold leading-relaxed m-0 text-[var(--ink)]">
+                  We detected that some players attempted to manipulate the leaderboard by
+                  artificially boosting one participant and downvoting other best performers. Those
+                  who manipulated have been banned and their vote impact neutralized.
+                </p>
+                <p class="text-xs leading-relaxed m-0 text-muted">
+                  We have updated the scoring formula to Bradley-Terry Elo to prevent manipulation
+                  and protect fair play. The complete formulation will be published and open-sourced
+                  after the event concludes. Repeated attempts to manipulate the scores will result
+                  in immediate disqualification from the competition.
+                </p>
+              </div>
             </Show>
             <Show when={activeGame()!.status === "live" || activeGame()!.status === "tester"}>
               <button

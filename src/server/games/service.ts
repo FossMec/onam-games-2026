@@ -366,7 +366,7 @@ function day7Card(
       "Pick the one you think is better. There is no draw and no skip; a considered guess beats a blank.",
       "Fair head-to-head pairing ensures every artwork and matchup gets balanced attention across the community.",
       "Finish your shift to land on the voters' board. It ranks how well you called it, not how fast you tapped.",
-      "Entries are ranked by Elo (K=32) — everyone starts at 1200, winners climb, losers drop. Highest Elo when voting closes wins.",
+      "Entries are ranked using Bradley-Terry Maximum Likelihood Elo — all artworks start at 1200, and final standings reflect global head-to-head community preferences.",
       "Voters are ranked by agreement with the final consensus ranking (need about 21 votes for 10 entries to qualify).",
     ],
     gameType: "vote",

@@ -24,6 +24,9 @@
     "sprites:vallam": "python3 scripts/process-vallam-sprites.py",
     "verify:anticheat": "tsx scripts/verify-anticheat.ts",
     "analyze:cheaters": "tsx scripts/analyze-cheaters.ts",
+    "dump:pookalam": "tsx scripts/dump-pookalam-full-raw.ts",
+    "analyze:votes": "tsx scripts/analyze-voting-anomalies.ts",
+    "pookalam:recalc": "tsx scripts/recalc-pookalam-ratings.ts",
     "preview:cf": "wrangler pages dev dist",
     "deploy": "wrangler pages deploy dist",
     "profile": "node scripts/profile-cpu.mjs"

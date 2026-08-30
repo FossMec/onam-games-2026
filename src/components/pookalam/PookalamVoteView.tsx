@@ -7,7 +7,6 @@ import { ShoutBurst } from "~/components/art/Burst";
 import { Countdown } from "~/components/Countdown";
 import { POOKALAM } from "~/lib/event-content";
 import { SHOUT_COLOR, shout } from "~/lib/shouts";
-import { PookalamVoteMath } from "~/components/pookalam/PookalamVoteMath";
 import { FeedbackForm } from "~/components/feedback/FeedbackForm";
 import { getNextPairs } from "~/server/pookalam/actions";
 import { pookalamState } from "~/lib/queries";
@@ -47,7 +46,7 @@ const HOW_TO = [
   "Pick the one you think is better. There is no draw and no skip; a considered guess beats a blank.",
   "Fair head-to-head pairing ensures every artwork and matchup gets balanced attention across the community.",
   "Finish your shift to land on the voters' board. It ranks how well you called it, not how fast you tapped.",
-  "Entries are ranked by Elo (K=32) — everyone starts at 1200, winners climb, losers drop. Highest Elo when voting closes wins.",
+  "Entries are ranked using Bradley-Terry Maximum Likelihood Elo — all artworks start at 1200, and final standings reflect global head-to-head community preferences.",
   "Voters are ranked by agreement with the final consensus ranking (need about 21 votes for 10 entries to qualify).",
 ];
 
@@ -460,7 +459,6 @@ export function PookalamVoteView() {
  */
 function HowToVote() {
   const [open, setOpen] = createSignal(false);
-  const [showMath, setShowMath] = createSignal(false);
 
   return (
     <section class="card card-plain space-y-2 p-3">
@@ -474,6 +472,27 @@ function HowToVote() {
       </button>
 
       <Show when={open()}>
+        {/* Scoring Formula Update Changelog */}
+        <div class="p-3 bg-[var(--paper-3)] border-2 border-[var(--ink)] rounded-[var(--radius)] space-y-1.5 text-xs">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="badge text-[10px] py-0.5 px-2 font-mono font-bold bg-[var(--pop-yellow)] border border-[var(--ink)]">
+              CHANGELOG • 8:00 PM IST, AUGUST 30
+            </span>
+            <span class="font-extrabold text-[var(--ink)]">Scoring Formula & Fair Play Update</span>
+          </div>
+          <p class="text-xs font-semibold leading-relaxed m-0 text-[var(--ink)]">
+            We detected that some players attempted to manipulate the leaderboard by artificially
+            boosting one participant and downvoting other best performers. Those who manipulated
+            have been banned and their vote impact neutralized.
+          </p>
+          <p class="text-xs leading-relaxed m-0 text-muted">
+            We have updated the scoring formula to Bradley-Terry Elo to prevent manipulation and
+            protect fair play. The complete formulation will be published and open-sourced after the
+            event concludes. Repeated attempts to manipulate the scores will result in immediate
+            disqualification from the competition.
+          </p>
+        </div>
+
         <ol class="space-y-2.5">
           <For each={HOW_TO}>
             {(step, i) => (
@@ -494,16 +513,6 @@ function HowToVote() {
             )}
           </For>
         </ol>
-        <button
-          type="button"
-          class="text-xs font-black underline decoration-2 underline-offset-4"
-          onClick={() => setShowMath((v) => !v)}
-        >
-          {showMath() ? "Hide math ↑" : "Show me the math →"}
-        </button>
-        <Show when={showMath()}>
-          <PookalamVoteMath />
-        </Show>
       </Show>
     </section>
   );

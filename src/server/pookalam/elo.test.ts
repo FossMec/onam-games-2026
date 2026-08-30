@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vite-plus/test";
-import { START_RATING, applyResult, expectedScore, kFactor, pairKey } from "./elo";
+import {
+  START_RATING,
+  applyResult,
+  computeBradleyTerryRatings,
+  expectedScore,
+  kFactor,
+  pairKey,
+} from "./elo";
 
 describe("expectedScore", () => {
   it("is even between equals", () => {
@@ -76,10 +83,40 @@ describe("applyResult", () => {
   });
 });
 
+describe("computeBradleyTerryRatings", () => {
+  it("computes accurate rankings for transitive preferences", () => {
+    const itemIds = ["pookalam-a", "pookalam-b", "pookalam-c"];
+    const votes = [
+      // A beats B 10 times, B beats C 10 times, A beats C 10 times
+      ...Array(10).fill({ winnerId: "pookalam-a", loserId: "pookalam-b" }),
+      ...Array(10).fill({ winnerId: "pookalam-b", loserId: "pookalam-c" }),
+      ...Array(10).fill({ winnerId: "pookalam-a", loserId: "pookalam-c" }),
+    ];
+
+    const ratings = computeBradleyTerryRatings(itemIds, votes);
+    const rA = ratings.get("pookalam-a")!.rating;
+    const rB = ratings.get("pookalam-b")!.rating;
+    const rC = ratings.get("pookalam-c")!.rating;
+
+    expect(rA).toBeGreaterThan(rB);
+    expect(rB).toBeGreaterThan(rC);
+  });
+
+  it("handles equal win distribution symmetrically around 1200", () => {
+    const itemIds = ["pookalam-x", "pookalam-y"];
+    const votes = [
+      ...Array(5).fill({ winnerId: "pookalam-x", loserId: "pookalam-y" }),
+      ...Array(5).fill({ winnerId: "pookalam-y", loserId: "pookalam-x" }),
+    ];
+
+    const ratings = computeBradleyTerryRatings(itemIds, votes);
+    expect(ratings.get("pookalam-x")!.rating).toBeCloseTo(1200, 1);
+    expect(ratings.get("pookalam-y")!.rating).toBeCloseTo(1200, 1);
+  });
+});
+
 describe("pairKey", () => {
   it("is the same whichever way round the pair is given", () => {
-    // This is what the unique index relies on to stop a voter judging the same
-    // matchup twice by getting it served in the other order.
     expect(pairKey("aaa", "bbb")).toBe(pairKey("bbb", "aaa"));
   });
 
