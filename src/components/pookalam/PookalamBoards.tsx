@@ -1,56 +1,20 @@
-import { A } from "@solidjs/router";
-import { Gavel, RefreshCw, Timer, Trophy } from "lucide-solid";
-import { For, Show, createEffect, createSignal } from "solid-js";
+import { A, createAsync } from "@solidjs/router";
+import { ChevronLeft, ChevronRight, Gavel, RefreshCw, Timer, Trophy } from "lucide-solid";
+import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
+import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { LoadingScreen } from "~/components/LoadingScreen";
 import { POOKALAM } from "~/lib/event-content";
+import { branchShort } from "~/lib/profile";
+import { shell } from "~/lib/queries";
 import { getArenaBoards } from "~/server/pookalam/actions";
-
-/**
- * Day 7's boards, rendered inside the normal leaderboard.
- *
- *   in the running   who entered - names only, no ratings, no order
- *   the voters       who judged well, which is not who judged most
- *
- * This lives in the day-7 slot of `/leaderboard` rather than on a page of its
- * own. Day 7 is a day of the festival like any other, and a separate URL split
- * "the leaderboard" into two things a player had to know to go and look for.
- *
- * THE RANKING IS LIVE; THE ARTWORK IS NOT
- *
- * Ranks, Elo and names are all public during voting. The artwork is not, and
- * that single omission is what keeps the round honest: the bandwagon to avoid
- * is a voter recognising one of the two pictures in front of them as the
- * current leader, and that needs a rank-to-image mapping. Without the images
- * there is nothing to match against, so "someone leads on 1340" is interesting
- * to read and useless to vote on.
- *
- * The trade, stated plainly: rank is tied to a person, so anyone who already
- * knows whose pookalam is whose can vote them up. Narrower than publishing the
- * images, and the price of having a live board at all.
- *
- * The voters' board is safe to show live - it says nothing about which pookalam
- * is winning - but it is still served from the lagged cache because it is an
- * aggregate over every vote ever cast and day 7 is the day everyone refreshes.
- *
- * REFRESHED BY HAND, NOT ON A TIMER
- *
- * This is a leaderboard, not a ticker. A background poll on day 7 means every
- * open tab hammers an aggregate query all day for numbers nobody is watching
- * change second to second - so the button is the refresh, and the timestamp
- * says plainly how old what you are reading is.
- */
+import type { VoterStanding } from "~/server/pookalam/service";
 
 type Boards = NonNullable<Awaited<ReturnType<typeof getArenaBoards>>>;
 
 const MEDAL = ["var(--pop-yellow)", "var(--paper-3)", "var(--pop-red)"];
+const PAGE_SIZE = 20;
 
-/**
- * Absolute clock time, not "3m ago".
- *
- * Nothing re-renders this between refreshes, and a frozen "12s ago" would be a
- * lie the moment you looked away. "computed 19:04" stays true forever.
- */
 function clockTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
@@ -60,10 +24,14 @@ export interface PookalamBoardsProps {
 }
 
 export function PookalamBoards(props: PookalamBoardsProps = {}) {
+  const s = createAsync(() => shell());
+  const me = () => s()?.me ?? null;
+
   const [boards, setBoards] = createSignal<Boards | null>(null);
   const [loaded, setLoaded] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
   const [tab, setTab] = createSignal<"pookalams" | "judges">("pookalams");
+  const [judgePage, setJudgePage] = createSignal(1);
 
   const load = async () => {
     setBusy(true);
@@ -73,8 +41,7 @@ export function PookalamBoards(props: PookalamBoardsProps = {}) {
         setBoards(res);
       }
     } catch {
-      // A failed refresh keeps the last good board on screen. Blanking a
-      // leaderboard because one fetch timed out is worse than showing it stale.
+      // Keep stale on failure
     } finally {
       setBusy(false);
       setLoaded(true);
@@ -82,9 +49,33 @@ export function PookalamBoards(props: PookalamBoardsProps = {}) {
   };
 
   createEffect(() => {
-    // Re-fetch when viewMode prop changes
     const _mode = props.viewMode ?? "main";
     void load();
+  });
+
+  // Voters calculations
+  const allVoters = createMemo(() => boards()?.voters.rows ?? []);
+  const topJudgeWinner = createMemo(() => {
+    const list = allVoters();
+    return list.find((v) => v.qualified) ?? list[0] ?? null;
+  });
+
+  const totalJudgePages = createMemo(() => Math.max(1, Math.ceil(allVoters().length / PAGE_SIZE)));
+  const paginatedVoters = createMemo(() => {
+    const start = (judgePage() - 1) * PAGE_SIZE;
+    return allVoters().slice(start, start + PAGE_SIZE);
+  });
+
+  const myJudgeStanding = createMemo(() => {
+    const myId = me()?.id;
+    if (!myId) return null;
+    return allVoters().find((v) => v.userId === myId) ?? null;
+  });
+
+  const isMyJudgeOnCurrentPage = createMemo(() => {
+    const myId = me()?.id;
+    if (!myId) return false;
+    return paginatedVoters().some((v) => v.userId === myId);
   });
 
   return (
@@ -99,19 +90,17 @@ export function PookalamBoards(props: PookalamBoardsProps = {}) {
           </div>
         }
       >
-        <div class="space-y-5">
+        <div class="space-y-4">
           <Show when={boards()!.votingOpen}>
             <div class="card card-plain pop-teal flex flex-wrap items-center justify-between gap-3 p-3">
-              <p class="font-black text-sm m-0">The arena is live - every vote counts.</p>
+              <p class="font-black text-sm m-0">The arena is live — every vote counts.</p>
               <A href="/code-a-pookalam/vote" class="btn-brand text-xs px-4 py-2">
                 Go vote
               </A>
             </div>
           </Show>
 
-          {/* The two boards as tabs - a page already full of numbers reads
-              calmer with one board at a time, and the voters' board matters a
-              lot less than the ranking. */}
+          {/* Navigation Tabs + Refresh Button */}
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="inline-flex rounded-md border-2 border-[var(--ink)] p-0.5 bg-[var(--paper)]">
               <button
@@ -144,107 +133,113 @@ export function PookalamBoards(props: PookalamBoardsProps = {}) {
               disabled={busy()}
               onClick={() => void load()}
             >
-              <RefreshCw size={13} strokeWidth={2.5} />
+              <RefreshCw size={13} strokeWidth={2.5} class={busy() ? "animate-spin" : ""} />
               <span>{busy() ? "Refreshing…" : "Refresh"}</span>
             </button>
           </div>
 
-          {/* ------------------------------- in the running / final ranking */}
+          {/* ========================================================================= */}
+          {/* TAB 1: POOKALAMS STANDINGS */}
+          {/* ========================================================================= */}
           <Show when={tab() === "pookalams"}>
-            <section class="space-y-2.5">
-              <div class="flex items-center gap-2">
-                <Trophy size={18} />
-                <h2 class="rule m-0">
-                  {boards()!.resultsPublic ? "Final standings" : "The pookalams"}
-                </h2>
+            <section class="space-y-3">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <Trophy size={18} />
+                  <h2 class="rule m-0">
+                    {boards()!.resultsPublic ? "Final standings" : "The pookalams"}
+                  </h2>
+                </div>
+                <span class="badge text-[10px]" style={{ "--pop": "var(--paper-3)" }}>
+                  <Timer size={11} class="inline mr-1" />
+                  computed {clockTime(boards()!.entrants.computedAt)}
+                </span>
               </div>
 
               <Show
                 when={boards()!.resultsPublic && boards()!.results}
                 fallback={
-                  /*
-                  Ranked, with Elo - but no artwork. Reading "#1, 1340" tells
-                  you nothing about which of the two pookalams on the voting
-                  page is theirs, which is the mapping the bandwagon needs.
-                */
                   <Show
                     when={boards()!.entrants.rows.length > 0}
                     fallback={<p class="font-semibold text-sm">No entries shortlisted yet.</p>}
                   >
-                    <div class="flex flex-wrap items-center justify-between gap-2">
-                      <p class="comment text-xs m-0">
-                        live ranking. the pookalams stay hidden until voting closes - so you can see
-                        who leads, not which one to vote for.
-                      </p>
-                      <span class="badge text-[10px]" style={{ "--pop": "var(--paper-3)" }}>
-                        <Timer size={11} class="inline mr-1" />
-                        computed {clockTime(boards()!.entrants.computedAt)}
-                      </span>
-                    </div>
+                    <p class="comment text-xs m-0">
+                      live ranking. artworks stay hidden until voting closes — so you can see who
+                      leads, not which one to vote for.
+                    </p>
 
-                    <div class="space-y-2">
-                      <For each={boards()!.entrants.rows}>
-                        {(entrant) => (
-                          <article
-                            class="card flex items-center gap-3 p-2.5"
-                            style={{ "--pop": MEDAL[entrant.rank - 1] ?? "var(--pop-blue)" }}
-                          >
-                            <span
-                              class="badge shrink-0"
-                              style={{ "--pop": MEDAL[entrant.rank - 1] ?? "var(--paper-3)" }}
-                            >
-                              #{entrant.rank}
-                            </span>
+                    <div class="card card-plain p-0 overflow-hidden">
+                      <div
+                        class="bg-[var(--paper-2)] px-4 py-2.5 border-b-2 border-[var(--ink)] flex items-center justify-between text-xs font-extrabold uppercase tracking-wider"
+                        style={{ color: "var(--ink-soft)" }}
+                      >
+                        <span>Rank & Entrant</span>
+                        <span class="text-right">Bradley-Terry Elo</span>
+                      </div>
 
-                            <Show
-                              when={entrant.avatarUrl}
-                              fallback={
-                                <SpriteIcon name="tux-king" size={36} class="shrink-0" alt="" />
-                              }
-                            >
-                              <img
-                                src={entrant.avatarUrl!}
-                                alt=""
-                                class="w-9 h-9 rounded-full object-cover shrink-0"
-                                style={{ border: "2px solid var(--ink)" }}
-                              />
-                            </Show>
+                      <div class="divide-y divide-[var(--ink-soft)]/20">
+                        <For each={boards()!.entrants.rows}>
+                          {(entrant) => (
+                            <div class="p-3 sm:p-3.5 flex items-center justify-between gap-3 hover:bg-[var(--paper-2)] transition-colors">
+                              <div class="flex items-center gap-3 min-w-0">
+                                <span
+                                  class="w-7 h-7 sm:w-8 sm:h-8 rounded-full grid place-items-center font-black text-xs shrink-0 select-none border-2 border-[var(--ink)]"
+                                  style={{
+                                    background: MEDAL[entrant.rank - 1] ?? "var(--paper-3)",
+                                  }}
+                                >
+                                  #{entrant.rank}
+                                </span>
 
-                            <div class="min-w-0 flex-1">
-                              <p class="font-black truncate m-0 text-sm">{entrant.name}</p>
-                              <p
-                                class="text-[11px] font-semibold m-0 truncate"
-                                style={{ color: "var(--ink-soft)" }}
-                              >
-                                “{entrant.title}”
-                              </p>
+                                <Show
+                                  when={entrant.avatarUrl}
+                                  fallback={
+                                    <SpriteIcon
+                                      name="tux-king"
+                                      size={36}
+                                      class="shrink-0 select-none block"
+                                      alt=""
+                                    />
+                                  }
+                                >
+                                  <img
+                                    src={entrant.avatarUrl!}
+                                    alt={entrant.name}
+                                    class="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover shrink-0 select-none block"
+                                    style={{ border: "2px solid var(--ink)" }}
+                                  />
+                                </Show>
+
+                                <div class="min-w-0">
+                                  <p class="font-black text-sm sm:text-base truncate m-0">
+                                    {entrant.name}
+                                  </p>
+                                  <p
+                                    class="text-xs font-semibold m-0 truncate"
+                                    style={{ color: "var(--ink-soft)" }}
+                                  >
+                                    “{entrant.title}”
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div class="shrink-0 text-right">
+                                <p class="font-mono font-black tabular-nums m-0 text-base sm:text-lg">
+                                  {entrant.rating}
+                                </p>
+                                <p class="text-[10px] font-extrabold uppercase tracking-wider m-0 text-muted">
+                                  elo
+                                </p>
+                              </div>
                             </div>
-
-                            {/*
-                            The rating and nothing else. A win count next to it
-                            invites arithmetic about who has been shown more,
-                            which is noise - the pairing deliberately gives
-                            under-exposed entries more matches, so a low total
-                            means "seen less", not "doing worse".
-                          */}
-                            <div class="shrink-0 text-right">
-                              <p class="font-mono font-black tabular-nums m-0 text-base">
-                                {entrant.rating}
-                              </p>
-                              <p
-                                class="text-[10px] font-extrabold uppercase tracking-wider m-0"
-                                style={{ color: "var(--ink-soft)" }}
-                              >
-                                elo
-                              </p>
-                            </div>
-                          </article>
-                        )}
-                      </For>
+                          )}
+                        </For>
+                      </div>
                     </div>
                   </Show>
                 }
               >
+                {/* Final Revealed Podium & Results */}
                 <div class="grid gap-2.5 sm:grid-cols-2">
                   <For each={boards()!.results!}>
                     {(row) => (
@@ -289,10 +284,12 @@ export function PookalamBoards(props: PookalamBoardsProps = {}) {
             </section>
           </Show>
 
-          {/* ------------------------------------------------------- voters */}
+          {/* ========================================================================= */}
+          {/* TAB 2: BEST JUDGES (VOTERS BOARD) */}
+          {/* ========================================================================= */}
           <Show when={tab() === "judges"}>
-            <section class="space-y-2.5">
-              <div class="flex flex-wrap items-center justify-between gap-2">
+            <section class="space-y-3">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
                 <div class="flex items-center gap-2">
                   <Gavel size={18} />
                   <h2 class="rule m-0">Best judges</h2>
@@ -303,75 +300,210 @@ export function PookalamBoards(props: PookalamBoardsProps = {}) {
                 </span>
               </div>
 
-              <p class="comment text-xs">
-                ranked by how well you called it, not how much you tapped. a vote on a close pair
-                barely counts either way; missing an obvious one costs you.
+              <p class="comment text-xs m-0">
+                ranked by agreement with the final community consensus. A vote on a close pair
+                barely moves your score; picking the consensus favorite earns accuracy points.
               </p>
 
+              {/* Top #1 Judge Callout Winner Banner */}
+              <Show when={topJudgeWinner()}>
+                {(() => {
+                  const winner = topJudgeWinner()!;
+                  return (
+                    <div class="relative overflow-hidden card card-plain p-4 bg-[var(--pop-yellow)] flex items-center justify-between gap-4">
+                      <Confetti seed="judge-winner-callout" count={6} animate />
+                      <div class="art-over flex items-center gap-3 min-w-0">
+                        <Show
+                          when={winner.avatarUrl}
+                          fallback={
+                            <SpriteIcon
+                              name="tux-king"
+                              size={36}
+                              animate="wobble"
+                              class="shrink-0 select-none block"
+                            />
+                          }
+                        >
+                          <img
+                            src={winner.avatarUrl!}
+                            alt={winner.name}
+                            class="w-10 h-10 rounded-full object-cover shrink-0 select-none block"
+                            style={{ border: "2px solid var(--ink)" }}
+                          />
+                        </Show>
+                        <div class="min-w-0">
+                          <div class="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase px-2 py-0.5 rounded bg-[var(--paper-2)] border border-[var(--ink)]">
+                            <Trophy size={12} strokeWidth={3} />
+                            <span>Top Judge Leader · ₹200 Cash Prize</span>
+                          </div>
+                          <p class="font-black text-base sm:text-lg mt-1 truncate">{winner.name}</p>
+                        </div>
+                      </div>
+                      <div class="art-over text-right font-mono font-black text-sm sm:text-base shrink-0">
+                        <p class="m-0 text-base">{winner.accuracy}%</p>
+                        <p class="m-0 text-[10px] text-muted uppercase tracking-wider">
+                          {winner.votes} votes
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </Show>
+
+              {/* JUDGES TABLE (CARD LIST MATCHING DAILY LEADERBOARD) */}
               <Show
-                when={boards()!.voters.rows.length > 0}
+                when={allVoters().length > 0}
                 fallback={<p class="font-semibold text-sm">Nobody has voted yet.</p>}
               >
-                <div class="card card-plain overflow-x-auto p-0">
-                  <table class="w-full text-sm" style={{ "border-collapse": "collapse" }}>
-                    <thead>
-                      <tr class="text-left">
-                        <th class="p-2 font-black">#</th>
-                        <th class="p-2 font-black">Voter</th>
-                        <th class="p-2 font-black text-right">Called right</th>
-                        <th class="p-2 font-black text-right">Votes</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <For each={boards()!.voters.rows}>
-                        {(row) => (
-                          <tr
-                            style={{
-                              "border-top": "2px solid var(--ink)",
-                              opacity: row.qualified ? 1 : 0.55,
-                            }}
+                <div class="card card-plain p-0 overflow-hidden">
+                  <div
+                    class="bg-[var(--paper-2)] px-4 py-2.5 border-b-2 border-[var(--ink)] flex items-center justify-between text-xs font-extrabold uppercase tracking-wider"
+                    style={{ color: "var(--ink-soft)" }}
+                  >
+                    <span>Rank & Judge</span>
+                    <span class="text-right">Accuracy & Votes</span>
+                  </div>
+
+                  <div class="divide-y divide-[var(--ink-soft)]/20">
+                    <For each={paginatedVoters()}>
+                      {(entry: VoterStanding) => {
+                        const isMe = () => entry.userId === me()?.id;
+                        return (
+                          <div
+                            class={`p-3 sm:p-3.5 flex items-center justify-between gap-3 transition-colors ${
+                              isMe() ? "bg-[var(--pop-yellow)]/60" : "hover:bg-[var(--paper-2)]"
+                            }`}
+                            style={{ opacity: entry.qualified ? 1 : 0.65 }}
                           >
-                            <td class="p-2 font-extrabold tabular-nums">{row.rank}</td>
-                            <td class="p-2">
-                              <span class="inline-flex items-center gap-2">
-                                <Show when={row.avatarUrl}>
-                                  <img
-                                    src={row.avatarUrl!}
-                                    alt=""
-                                    class="w-6 h-6 rounded-full object-cover"
-                                    style={{ border: "2px solid var(--ink)" }}
-                                  />
-                                </Show>
-                                <span class="font-bold">{row.name}</span>
-                                <Show when={row.isTester}>
-                                  <span
-                                    class="badge text-[9px] py-0 px-1 bg-[var(--pop-teal)] uppercase"
-                                    title="Tester / Admin"
-                                  >
-                                    Tester
-                                  </span>
-                                </Show>
-                                <Show when={!row.qualified}>
-                                  <span
-                                    class="badge text-[10px]"
-                                    style={{ "--pop": "var(--paper-3)" }}
-                                    title="Hasn't judged enough pairs to qualify yet"
-                                  >
-                                    in progress
-                                  </span>
-                                </Show>
+                            <div class="flex items-center gap-3 min-w-0">
+                              <span
+                                class="w-7 h-7 sm:w-8 sm:h-8 rounded-full grid place-items-center font-black text-xs shrink-0 select-none border-2 border-[var(--ink)]"
+                                style={{
+                                  background: MEDAL[entry.rank - 1] ?? "var(--paper-3)",
+                                }}
+                              >
+                                #{entry.rank}
                               </span>
-                            </td>
-                            <td class="p-2 text-right font-extrabold tabular-nums">
-                              {row.accuracy}%
-                            </td>
-                            <td class="p-2 text-right tabular-nums">{row.votes}</td>
-                          </tr>
-                        )}
-                      </For>
-                    </tbody>
-                  </table>
+
+                              <Show
+                                when={entry.avatarUrl}
+                                fallback={
+                                  <SpriteIcon
+                                    name="tux-king"
+                                    size={36}
+                                    class="shrink-0 select-none block"
+                                    alt=""
+                                  />
+                                }
+                              >
+                                <img
+                                  src={entry.avatarUrl!}
+                                  alt={entry.name}
+                                  class="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover shrink-0 select-none block"
+                                  style={{ border: "2px solid var(--ink)" }}
+                                />
+                              </Show>
+
+                              <div class="min-w-0">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                  <span class="font-black text-sm sm:text-base truncate">
+                                    {entry.name}
+                                  </span>
+                                  <Show when={isMe()}>
+                                    <span class="badge text-[9px] py-0 px-1 font-bold bg-[var(--ink)] text-[var(--paper)]">
+                                      YOU
+                                    </span>
+                                  </Show>
+                                  <Show when={entry.isTester}>
+                                    <span class="badge text-[9px] py-0 px-1 bg-[var(--pop-teal)] uppercase">
+                                      Tester
+                                    </span>
+                                  </Show>
+                                  <Show when={!entry.qualified}>
+                                    <span
+                                      class="badge text-[10px]"
+                                      style={{ "--pop": "var(--paper-3)" }}
+                                      title="Needs ~21 votes to qualify"
+                                    >
+                                      in progress
+                                    </span>
+                                  </Show>
+                                </div>
+                                <p
+                                  class="text-xs font-semibold m-0 truncate"
+                                  style={{ color: "var(--ink-soft)" }}
+                                >
+                                  {entry.college === "mec" ? "MEC" : entry.college || "Participant"}
+                                  {entry.branch ? ` · ${branchShort(entry.branch)}` : ""}
+                                  {entry.batch && entry.batch !== "na" ? ` '${entry.batch}` : ""}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div class="shrink-0 text-right">
+                              <p class="font-mono font-black tabular-nums m-0 text-sm sm:text-base">
+                                {entry.accuracy}%
+                              </p>
+                              <p class="text-[10px] font-extrabold uppercase tracking-wider m-0 text-muted">
+                                {entry.votes} {entry.votes === 1 ? "vote" : "votes"}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }}
+                    </For>
+                  </div>
+
+                  {/* Pagination Controls Footer */}
+                  <div class="p-3 bg-[var(--paper-2)] border-t-2 border-[var(--ink)] flex items-center justify-between gap-2 text-xs font-bold">
+                    <span class="text-muted text-[11px]">
+                      Showing {(judgePage() - 1) * PAGE_SIZE + 1}–
+                      {Math.min(judgePage() * PAGE_SIZE, allVoters().length)} of{" "}
+                      {allVoters().length} judges
+                    </span>
+
+                    <div class="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        class="btn-ghost text-xs px-2.5 py-1 disabled:opacity-35 cursor-pointer flex items-center gap-0.5"
+                        disabled={judgePage() <= 1}
+                        onClick={() => setJudgePage((p) => Math.max(1, p - 1))}
+                      >
+                        <ChevronLeft size={13} strokeWidth={2.5} />
+                        <span>Prev</span>
+                      </button>
+
+                      <span class="px-2 py-0.5 rounded bg-[var(--paper)] border border-[var(--ink)] text-[11px] font-mono">
+                        {judgePage()} / {totalJudgePages()}
+                      </span>
+
+                      <button
+                        type="button"
+                        class="btn-ghost text-xs px-2.5 py-1 disabled:opacity-35 cursor-pointer flex items-center gap-0.5"
+                        disabled={judgePage() >= totalJudgePages()}
+                        onClick={() => setJudgePage((p) => Math.min(totalJudgePages(), p + 1))}
+                      >
+                        <span>Next</span>
+                        <ChevronRight size={13} strokeWidth={2.5} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Pinned User Standing Bar if user is not on current page */}
+                <Show when={myJudgeStanding() && !isMyJudgeOnCurrentPage()}>
+                  <div class="card pop-yellow p-3.5 flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                      <SpriteIcon name="foss-mec-badge" size={24} />
+                      <p class="font-extrabold text-sm m-0">
+                        Your Rank: #{myJudgeStanding()!.rank} of {allVoters().length} judges
+                      </p>
+                    </div>
+                    <p class="font-mono font-black text-sm m-0">
+                      {myJudgeStanding()!.accuracy}% ({myJudgeStanding()!.votes} votes)
+                    </p>
+                  </div>
+                </Show>
               </Show>
             </section>
           </Show>

@@ -593,6 +593,7 @@ export async function getMyVotingProgress(
 
 export interface VoterStanding {
   rank: number;
+  userId: string;
   name: string;
   avatarUrl: string | null;
   votes: number;
@@ -600,6 +601,9 @@ export interface VoterStanding {
   coveragePct: number;
   qualified: boolean;
   isTester?: boolean;
+  college?: string | null;
+  branch?: string | null;
+  batch?: string | null;
 }
 
 export interface Standings<T> {
@@ -650,15 +654,17 @@ async function readCached<T>(
   const computedAt = new Date();
   await db`
     INSERT INTO pookalam_standings (key, payload, computed_at)
-    VALUES (${key}, ${db.json(rows as any)}, ${computedAt})
+    VALUES (${key}, ${JSON.stringify(rows)}, ${computedAt})
     ON CONFLICT (key) DO UPDATE
-    SET payload = EXCLUDED.payload, computed_at = EXCLUDED.computed_at
+    SET
+      payload = EXCLUDED.payload,
+      computed_at = EXCLUDED.computed_at
   `;
   return { rows, computedAt: computedAt.toISOString(), nextUpdateInMs: delayMs };
 }
 
 export async function getVoterStandings(
-  limit = 50,
+  limit = 250,
   viewMode: "main" | "tester" = "main",
 ): Promise<Standings<VoterStanding>> {
   const config = await getConfig();
@@ -688,9 +694,17 @@ export async function getVoterStandings(
 
     const voterIds = scored.map((row) => row.voterId);
     const profiles = await db<
-      { id: string; name: string; avatarUrl: string | null; role: string }[]
+      {
+        id: string;
+        name: string;
+        avatarUrl: string | null;
+        role: string;
+        college: string | null;
+        branch: string | null;
+        batch: string | null;
+      }[]
     >`
-      SELECT id, name, avatar_url AS "avatarUrl", role
+      SELECT id, name, avatar_url AS "avatarUrl", role, college, branch, batch
       FROM users
       WHERE id = ANY(${voterIds})
     `;
@@ -704,16 +718,23 @@ export async function getVoterStandings(
             return role !== "tester" && role !== "admin";
           });
 
-    return filtered.slice(0, limit).map((row, index) => ({
-      rank: index + 1,
-      name: byId.get(row.voterId)?.name ?? "Someone",
-      avatarUrl: byId.get(row.voterId)?.avatarUrl ?? null,
-      votes: row.votes,
-      accuracy: Math.round(row.accuracy * 10) / 10,
-      coveragePct: Math.round(row.coveragePct),
-      qualified: row.qualified,
-      isTester: byId.get(row.voterId)?.role === "tester" || byId.get(row.voterId)?.role === "admin",
-    }));
+    return filtered.slice(0, limit).map((row, index) => {
+      const u = byId.get(row.voterId);
+      return {
+        rank: index + 1,
+        userId: row.voterId,
+        name: u?.name ?? "Someone",
+        avatarUrl: u?.avatarUrl ?? null,
+        college: u?.college ?? null,
+        branch: u?.branch ?? null,
+        batch: u?.batch ?? null,
+        votes: row.votes,
+        accuracy: Math.round(row.accuracy * 10) / 10,
+        coveragePct: Math.round(row.coveragePct),
+        qualified: row.qualified,
+        isTester: u?.role === "tester" || u?.role === "admin",
+      };
+    });
   });
 }
 
