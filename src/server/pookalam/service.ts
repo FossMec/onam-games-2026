@@ -664,11 +664,11 @@ async function readCached<T>(
 }
 
 export async function getVoterStandings(
-  limit = 250,
+  limit = 1000,
   viewMode: "main" | "tester" = "main",
 ): Promise<Standings<VoterStanding>> {
   const config = await getConfig();
-  const cacheKey = `voters:${viewMode}`;
+  const cacheKey = `voters:${viewMode}:v3`;
   return readCached<VoterStanding>(cacheKey, config.leaderboardDelayMs, async () => {
     const db = getDb();
     const [pool, votes] = await Promise.all([

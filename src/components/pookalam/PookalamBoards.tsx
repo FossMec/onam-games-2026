@@ -60,6 +60,15 @@ export function PookalamBoards(props: PookalamBoardsProps = {}) {
     return list.find((v) => v.qualified) ?? list[0] ?? null;
   });
 
+  const isGameEnded = createMemo(() => {
+    const b = boards();
+    if (!b) return false;
+    if (b.resultsPublic) return true;
+    if (b.votingReason === "over") return true;
+    if (b.votingClosesAt && Date.now() >= new Date(b.votingClosesAt).getTime()) return true;
+    return false;
+  });
+
   const totalJudgePages = createMemo(() => Math.max(1, Math.ceil(allVoters().length / PAGE_SIZE)));
   const paginatedVoters = createMemo(() => {
     const start = (judgePage() - 1) * PAGE_SIZE;
@@ -305,8 +314,8 @@ export function PookalamBoards(props: PookalamBoardsProps = {}) {
                 barely moves your score; picking the consensus favorite earns accuracy points.
               </p>
 
-              {/* Top #1 Judge Callout Winner Banner */}
-              <Show when={topJudgeWinner()}>
+              {/* Top #1 Judge Callout Winner Banner — Only shown when the game/voting has concluded */}
+              <Show when={isGameEnded() && topJudgeWinner()}>
                 {(() => {
                   const winner = topJudgeWinner()!;
                   return (

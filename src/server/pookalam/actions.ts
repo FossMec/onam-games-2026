@@ -180,10 +180,13 @@ export async function getArenaBoards(viewMode: "main" | "tester" = "main") {
   }
   const [entrants, voters] = await Promise.all([
     getEntrantStandings(),
-    getVoterStandings(50, viewMode),
+    getVoterStandings(250, viewMode),
   ]);
   return {
     votingOpen: config.voting.open,
+    votingOpensAt: config.voting.opensAt?.toISOString() ?? null,
+    votingClosesAt: config.voting.closesAt?.toISOString() ?? null,
+    votingReason: config.voting.reason,
     resultsPublic: config.results.open,
     entrants,
     voters,
