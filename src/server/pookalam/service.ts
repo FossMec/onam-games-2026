@@ -599,6 +599,7 @@ export interface VoterStanding {
   accuracy: number;
   coveragePct: number;
   qualified: boolean;
+  isTester?: boolean;
 }
 
 export interface Standings<T> {
@@ -608,7 +609,7 @@ export interface Standings<T> {
 }
 
 async function readCached<T>(
-  key: "entries" | "voters",
+  key: string,
   delayMs: number,
   compute: () => Promise<T[]>,
 ): Promise<Standings<T>> {
@@ -656,9 +657,13 @@ async function readCached<T>(
   return { rows, computedAt: computedAt.toISOString(), nextUpdateInMs: delayMs };
 }
 
-export async function getVoterStandings(limit = 50): Promise<Standings<VoterStanding>> {
+export async function getVoterStandings(
+  limit = 50,
+  viewMode: "main" | "tester" = "main",
+): Promise<Standings<VoterStanding>> {
   const config = await getConfig();
-  return readCached<VoterStanding>("voters", config.leaderboardDelayMs, async () => {
+  const cacheKey = `voters:${viewMode}`;
+  return readCached<VoterStanding>(cacheKey, config.leaderboardDelayMs, async () => {
     const db = getDb();
     const [pool, votes] = await Promise.all([
       db<{ id: string; userId: string; rating: number }[]>`
@@ -678,25 +683,36 @@ export async function getVoterStandings(limit = 50): Promise<Standings<VoterStan
       ratings,
       voteTarget: (voterId) =>
         voteTarget(pool.length, entrants.has(voterId), config.voterTargetPct),
-    }).slice(0, limit);
+    });
     if (scored.length === 0) return [];
 
     const voterIds = scored.map((row) => row.voterId);
-    const profiles = await db<{ id: string; name: string; avatarUrl: string | null }[]>`
-      SELECT id, name, avatar_url AS "avatarUrl"
+    const profiles = await db<
+      { id: string; name: string; avatarUrl: string | null; role: string }[]
+    >`
+      SELECT id, name, avatar_url AS "avatarUrl", role
       FROM users
       WHERE id = ANY(${voterIds})
     `;
     const byId = new Map(profiles.map((row) => [row.id, row]));
 
-    return scored.map((row) => ({
-      rank: row.rank,
+    const filtered =
+      viewMode === "tester"
+        ? scored
+        : scored.filter((row) => {
+            const role = byId.get(row.voterId)?.role;
+            return role !== "tester" && role !== "admin";
+          });
+
+    return filtered.slice(0, limit).map((row, index) => ({
+      rank: index + 1,
       name: byId.get(row.voterId)?.name ?? "Someone",
       avatarUrl: byId.get(row.voterId)?.avatarUrl ?? null,
       votes: row.votes,
       accuracy: Math.round(row.accuracy * 10) / 10,
       coveragePct: Math.round(row.coveragePct),
       qualified: row.qualified,
+      isTester: byId.get(row.voterId)?.role === "tester" || byId.get(row.voterId)?.role === "admin",
     }));
   });
 }

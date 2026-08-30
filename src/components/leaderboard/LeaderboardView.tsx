@@ -495,7 +495,7 @@ export function LeaderboardView() {
 
       {/* Day 7: the pookalam arena */}
       <Show when={isDay7()}>
-        <PookalamBoards />
+        <PookalamBoards viewMode={viewMode()} />
       </Show>
 
       <Show when={!isDay7()}>

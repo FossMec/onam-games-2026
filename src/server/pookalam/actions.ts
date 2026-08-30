@@ -173,12 +173,15 @@ export async function getMyProgress() {
  * Artwork joins the ranking only once results are public, at which point there
  * is no vote left to influence.
  */
-export async function getArenaBoards() {
+export async function getArenaBoards(viewMode: "main" | "tester" = "main") {
   const config = await getConfig();
   if (!config.voting.open && !config.results.open) {
     return null;
   }
-  const [entrants, voters] = await Promise.all([getEntrantStandings(), getVoterStandings()]);
+  const [entrants, voters] = await Promise.all([
+    getEntrantStandings(),
+    getVoterStandings(50, viewMode),
+  ]);
   return {
     votingOpen: config.voting.open,
     resultsPublic: config.results.open,

@@ -1,6 +1,6 @@
 import { A } from "@solidjs/router";
 import { Gavel, RefreshCw, Timer, Trophy } from "lucide-solid";
-import { For, Show, createSignal, onMount } from "solid-js";
+import { For, Show, createEffect, createSignal } from "solid-js";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { LoadingScreen } from "~/components/LoadingScreen";
 import { POOKALAM } from "~/lib/event-content";
@@ -55,20 +55,21 @@ function clockTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
-let _cachedPookalamBoards: Boards | null = null;
+export interface PookalamBoardsProps {
+  viewMode?: "main" | "tester";
+}
 
-export function PookalamBoards() {
-  const [boards, setBoards] = createSignal<Boards | null>(_cachedPookalamBoards);
-  const [loaded, setLoaded] = createSignal(!!_cachedPookalamBoards);
+export function PookalamBoards(props: PookalamBoardsProps = {}) {
+  const [boards, setBoards] = createSignal<Boards | null>(null);
+  const [loaded, setLoaded] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
   const [tab, setTab] = createSignal<"pookalams" | "judges">("pookalams");
 
   const load = async () => {
     setBusy(true);
     try {
-      const res = await getArenaBoards();
+      const res = await getArenaBoards(props.viewMode ?? "main");
       if (res) {
-        _cachedPookalamBoards = res;
         setBoards(res);
       }
     } catch {
@@ -80,7 +81,11 @@ export function PookalamBoards() {
     }
   };
 
-  onMount(() => void load());
+  createEffect(() => {
+    // Re-fetch when viewMode prop changes
+    const _mode = props.viewMode ?? "main";
+    void load();
+  });
 
   return (
     <Show when={loaded()} fallback={<LoadingScreen compact message="Inking pookalam standings…" />}>
@@ -338,6 +343,14 @@ export function PookalamBoards() {
                                   />
                                 </Show>
                                 <span class="font-bold">{row.name}</span>
+                                <Show when={row.isTester}>
+                                  <span
+                                    class="badge text-[9px] py-0 px-1 bg-[var(--pop-teal)] uppercase"
+                                    title="Tester / Admin"
+                                  >
+                                    Tester
+                                  </span>
+                                </Show>
                                 <Show when={!row.qualified}>
                                   <span
                                     class="badge text-[10px]"
