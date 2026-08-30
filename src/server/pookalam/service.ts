@@ -367,8 +367,14 @@ export async function syncBradleyTerryRatings(): Promise<void> {
     db<{ id: string }[]>`
       SELECT id FROM pookalam_submissions WHERE status = 'approved' AND shortlisted = true
     `,
-    db<{ winnerId: string; loserId: string }[]>`
-      SELECT v.winner_id AS "winnerId", v.loser_id AS "loserId"
+    db<{ winnerId: string; loserId: string; weight: number }[]>`
+      SELECT
+        v.winner_id AS "winnerId",
+        v.loser_id AS "loserId",
+        CASE
+          WHEN u.created_at >= '2026-08-30T00:00:00.000Z' THEN 0.05
+          ELSE 1.0
+        END::double precision AS weight
       FROM pookalam_votes v
       INNER JOIN users u ON u.id = v.voter_id
       WHERE u.ban_level = 0
@@ -676,7 +682,7 @@ export async function getVoterStandings(
   viewMode: "main" | "tester" = "main",
 ): Promise<Standings<VoterStanding>> {
   const config = await getConfig();
-  const cacheKey = `voters:${viewMode}:v4`;
+  const cacheKey = `voters:${viewMode}:v5`;
   return readCached<VoterStanding>(cacheKey, config.leaderboardDelayMs, async () => {
     const db = getDb();
     const [pool, votes] = await Promise.all([
@@ -685,8 +691,15 @@ export async function getVoterStandings(
         FROM pookalam_submissions
         WHERE status = 'approved' AND shortlisted = true
       `,
-      db<{ voterId: string; winnerId: string; loserId: string }[]>`
-        SELECT v.voter_id AS "voterId", v.winner_id AS "winnerId", v.loser_id AS "loserId"
+      db<{ voterId: string; winnerId: string; loserId: string; weight: number }[]>`
+        SELECT
+          v.voter_id AS "voterId",
+          v.winner_id AS "winnerId",
+          v.loser_id AS "loserId",
+          CASE
+            WHEN u.created_at >= '2026-08-30T00:00:00.000Z' THEN 0.05
+            ELSE 1.0
+          END::double precision AS weight
         FROM pookalam_votes v
         INNER JOIN users u ON u.id = v.voter_id
         WHERE u.ban_level = 0
@@ -762,7 +775,7 @@ export interface Entrant {
 
 export async function getEntrantStandings(): Promise<Standings<Entrant>> {
   const config = await getConfig();
-  const cacheKey = "entries:v4";
+  const cacheKey = "entries:v5";
   return readCached<Entrant>(cacheKey, config.leaderboardDelayMs, async () => {
     const db = getDb();
     const [submissions, votes] = await Promise.all([
@@ -785,8 +798,14 @@ export async function getEntrantStandings(): Promise<Standings<Entrant>> {
         INNER JOIN users u ON u.id = s.user_id
         WHERE s.status = 'approved' AND s.shortlisted = true
       `,
-      db<{ winnerId: string; loserId: string }[]>`
-        SELECT v.winner_id AS "winnerId", v.loser_id AS "loserId"
+      db<{ winnerId: string; loserId: string; weight: number }[]>`
+        SELECT
+          v.winner_id AS "winnerId",
+          v.loser_id AS "loserId",
+          CASE
+            WHEN u.created_at >= '2026-08-30T00:00:00.000Z' THEN 0.05
+            ELSE 1.0
+          END::double precision AS weight
         FROM pookalam_votes v
         INNER JOIN users u ON u.id = v.voter_id
         WHERE u.ban_level = 0
@@ -866,8 +885,14 @@ export async function getResults(isAdmin: boolean): Promise<ResultRow[] | null> 
       INNER JOIN users u ON u.id = s.user_id
       WHERE s.status = 'approved' AND s.shortlisted = true
     `,
-    db<{ winnerId: string; loserId: string }[]>`
-      SELECT v.winner_id AS "winnerId", v.loser_id AS "loserId"
+    db<{ winnerId: string; loserId: string; weight: number }[]>`
+      SELECT
+        v.winner_id AS "winnerId",
+        v.loser_id AS "loserId",
+        CASE
+          WHEN u.created_at >= '2026-08-30T00:00:00.000Z' THEN 0.05
+          ELSE 1.0
+        END::double precision AS weight
       FROM pookalam_votes v
       INNER JOIN users u ON u.id = v.voter_id
       WHERE u.ban_level = 0
