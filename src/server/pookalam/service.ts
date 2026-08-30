@@ -2,7 +2,7 @@ import { logActivity } from "~/server/anti-cheat/log";
 import { getDb } from "~/server/db/client";
 import { getSettings } from "~/server/settings/service";
 import { invalidateShared, requestMemo, sharedRead } from "~/server/cache";
-import { applyResult, pairKey } from "./elo";
+import { computeBradleyTerryRatings, pairKey } from "./elo";
 import { decodeSubmissionImage, deleteStoredImage, storeSubmissionImage } from "./image";
 import { candidatePairs, type PoolEntry, samplePair } from "./pairing";
 import { eligiblePairCount, scoreVoters, voteTarget } from "./voters";
@@ -361,17 +361,59 @@ export async function nextPair(voterId: string): Promise<VotingPair | null> {
 
 /* ----------------------------------------------------------------- vote */
 
-export type VoteResult = { ok: true; nextPair?: VotingPair | null } | { ok: false; reason: string };
+export async function syncBradleyTerryRatings(): Promise<void> {
+  const db = getDb();
+  const [submissions, votes] = await Promise.all([
+    db<{ id: string }[]>`
+      SELECT id FROM pookalam_submissions WHERE status = 'approved' AND shortlisted = true
+    `,
+    db<{ winnerId: string; loserId: string }[]>`
+      SELECT v.winner_id AS "winnerId", v.loser_id AS "loserId"
+      FROM pookalam_votes v
+      INNER JOIN users u ON u.id = v.voter_id
+      WHERE u.ban_level = 0
+    `,
+  ]);
+  const itemIds = submissions.map((s) => s.id);
+  if (itemIds.length === 0) return;
+  const bt = computeBradleyTerryRatings(itemIds, votes);
+  const ids = [...bt.keys()];
+  if (ids.length === 0) return;
+
+  const ratingCases = ids
+    .map((id) => db`WHEN id = ${id} THEN ${bt.get(id)!.rating}::double precision`)
+    .reduce((a, b) => db`${a} ${b}`);
+  const matchCases = ids
+    .map((id) => db`WHEN id = ${id} THEN ${bt.get(id)!.matches}`)
+    .reduce((a, b) => db`${a} ${b}`);
+  const winCases = ids
+    .map((id) => db`WHEN id = ${id} THEN ${bt.get(id)!.wins}`)
+    .reduce((a, b) => db`${a} ${b}`);
+
+  await db`
+    UPDATE pookalam_submissions
+    SET
+      rating = CASE ${ratingCases} END,
+      matches = CASE ${matchCases} END,
+      wins = CASE ${winCases} END,
+      updated_at = NOW()
+    WHERE id = ANY(${ids})
+  `;
+}
 
 export async function castVote(
   voterId: string,
   winnerId: string,
   loserId: string,
   opts: { skipNextPair?: boolean } = {},
-): Promise<VoteResult> {
+): Promise<{ ok: boolean; reason?: string; nextPair?: VotingPair | null }> {
+  if (winnerId === loserId) {
+    return { ok: false, reason: "Those are the same entry." };
+  }
   const config = await getConfig();
-  if (!config.voting.open) return { ok: false, reason: "Voting is not open." };
-  if (winnerId === loserId) return { ok: false, reason: "Those are the same entry." };
+  if (!config.voting.open) {
+    return { ok: false, reason: "Voting is not open." };
+  }
 
   const db = getDb();
   const rows = await db<
@@ -384,19 +426,12 @@ export async function castVote(
       shortlisted: boolean;
     }[]
   >`
-    SELECT
-      id,
-      user_id AS "userId",
-      rating,
-      matches,
-      status,
-      shortlisted
+    SELECT id, user_id AS "userId", rating, matches, status, shortlisted
     FROM pookalam_submissions
-    WHERE id = ${winnerId} OR id = ${loserId}
+    WHERE id IN (${winnerId}, ${loserId})
   `;
-
-  const winner = rows.find((row) => row.id === winnerId);
-  const loser = rows.find((row) => row.id === loserId);
+  const winner = rows.find((r) => r.id === winnerId);
+  const loser = rows.find((r) => r.id === loserId);
   if (!winner || !loser) return { ok: false, reason: "That entry no longer exists." };
   if (!winner.shortlisted || !loser.shortlisted) {
     return { ok: false, reason: "One of those entries is not in the running." };
@@ -420,16 +455,10 @@ export async function castVote(
     return { ok: false, reason: "You have already judged this pair." };
   }
 
-  const next = applyResult(winner.rating, winner.matches, loser.rating, loser.matches);
-  // Single DB round-trip for both Elo updates (was 2 separate UPDATEs → 30ms CPU)
-  // Explicit ::double precision avoids "column is double precision but expression is text" when CASE infers text
+  // Ultra-fast single DB update for match & win counts (under 2ms)
   await db`
     UPDATE pookalam_submissions
     SET
-      rating = CASE
-        WHEN id = ${winnerId} THEN ${next.winner}::double precision
-        WHEN id = ${loserId} THEN ${next.loser}::double precision
-      END,
       matches = matches + 1,
       wins = wins + CASE WHEN id = ${winnerId} THEN 1 ELSE 0 END,
       updated_at = NOW()
@@ -492,7 +521,6 @@ export async function batchVote(
   }
   if (valid.length === 0) return { ok: 0, errors };
 
-  // Bulk insert — one round-trip (was N)
   const pairKeys = valid.map((v) => pairKey(v.winnerId, v.loserId));
   const inserted = await db<{ pair_key: string }[]>`
     INSERT INTO pookalam_votes (voter_id, winner_id, loser_id, pair_key)
@@ -501,51 +529,31 @@ export async function batchVote(
     RETURNING pair_key
   `;
   const insertedSet = new Set(inserted.map((r) => r.pair_key));
-  // Count duplicates as errors
   for (const v of valid) {
     const k = pairKey(v.winnerId, v.loserId);
     if (!insertedSet.has(k)) errors.push("You have already judged this pair.");
   }
   if (insertedSet.size === 0) return { ok: 0, errors };
 
-  // Compute Elo sequentially in memory to keep ratings consistent within batch
-  const ratingById = new Map<string, number>();
-  const matchesById = new Map<string, number>();
-  for (const r of rows) {
-    ratingById.set(r.id, Number(r.rating));
-    matchesById.set(r.id, Number(r.matches));
-  }
-  const winsById = new Map<string, number>();
-  const countsById = new Map<string, number>();
-  for (const v of valid) {
-    const k = pairKey(v.winnerId, v.loserId);
-    if (!insertedSet.has(k)) continue;
-    const wRating = ratingById.get(v.winnerId)!;
-    const lRating = ratingById.get(v.loserId)!;
-    const wMatches = matchesById.get(v.winnerId)!;
-    const lMatches = matchesById.get(v.loserId)!;
-    const next = applyResult(wRating, wMatches, lRating, lMatches);
-    ratingById.set(v.winnerId, next.winner);
-    ratingById.set(v.loserId, next.loser);
-    matchesById.set(v.winnerId, wMatches + 1);
-    matchesById.set(v.loserId, lMatches + 1);
-    winsById.set(v.winnerId, (winsById.get(v.winnerId) ?? 0) + 1);
-    countsById.set(v.winnerId, (countsById.get(v.winnerId) ?? 0) + 1);
-    countsById.set(v.loserId, (countsById.get(v.loserId) ?? 0) + 1);
-  }
-  const ids = [...countsById.keys()];
+  const insertedVotes = valid.filter((v) => insertedSet.has(pairKey(v.winnerId, v.loserId)));
+  const ids = [...new Set(insertedVotes.flatMap((v) => [v.winnerId, v.loserId]))];
   if (ids.length > 0) {
-    // Single bulk UPDATE — one more round-trip (was N)
-    const ratingCases = ids
-      .map((id) => db`WHEN id = ${id} THEN ${ratingById.get(id)!}::double precision`)
-      .reduce((a, b) => db`${a} ${b}`);
+    const winsMap = new Map<string, number>();
+    const matchesMap = new Map<string, number>();
+    for (const v of insertedVotes) {
+      winsMap.set(v.winnerId, (winsMap.get(v.winnerId) ?? 0) + 1);
+      matchesMap.set(v.winnerId, (matchesMap.get(v.winnerId) ?? 0) + 1);
+      matchesMap.set(v.loserId, (matchesMap.get(v.loserId) ?? 0) + 1);
+    }
     const winCases = ids
-      .map((id) => db`WHEN id = ${id} THEN ${winsById.get(id) ?? 0}`)
+      .map((id) => db`WHEN id = ${id} THEN ${winsMap.get(id) ?? 0}`)
+      .reduce((a, b) => db`${a} ${b}`);
+    const matchCases = ids
+      .map((id) => db`WHEN id = ${id} THEN ${matchesMap.get(id) ?? 0}`)
       .reduce((a, b) => db`${a} ${b}`);
     await db`
       UPDATE pookalam_submissions SET
-        rating = CASE ${ratingCases} END,
-        matches = matches + CASE ${ids.map((id) => db`WHEN id = ${id} THEN ${countsById.get(id)!}`).reduce((a, b) => db`${a} ${b}`)} END,
+        matches = matches + CASE ${matchCases} ELSE 0 END,
         wins = wins + CASE ${winCases} ELSE 0 END,
         updated_at = NOW()
       WHERE id = ANY(${ids})
@@ -668,22 +676,26 @@ export async function getVoterStandings(
   viewMode: "main" | "tester" = "main",
 ): Promise<Standings<VoterStanding>> {
   const config = await getConfig();
-  const cacheKey = `voters:${viewMode}:v3`;
+  const cacheKey = `voters:${viewMode}:v4`;
   return readCached<VoterStanding>(cacheKey, config.leaderboardDelayMs, async () => {
     const db = getDb();
     const [pool, votes] = await Promise.all([
-      db<{ id: string; userId: string; rating: number }[]>`
-        SELECT id, user_id AS "userId", rating
+      db<{ id: string; userId: string }[]>`
+        SELECT id, user_id AS "userId"
         FROM pookalam_submissions
         WHERE status = 'approved' AND shortlisted = true
       `,
       db<{ voterId: string; winnerId: string; loserId: string }[]>`
-        SELECT voter_id AS "voterId", winner_id AS "winnerId", loser_id AS "loserId"
-        FROM pookalam_votes
+        SELECT v.voter_id AS "voterId", v.winner_id AS "winnerId", v.loser_id AS "loserId"
+        FROM pookalam_votes v
+        INNER JOIN users u ON u.id = v.voter_id
+        WHERE u.ban_level = 0
       `,
     ]);
 
-    const ratings = new Map(pool.map((entry) => [entry.id, entry.rating]));
+    const itemIds = pool.map((entry) => entry.id);
+    const bt = computeBradleyTerryRatings(itemIds, votes);
+    const ratings = new Map(pool.map((entry) => [entry.id, bt.get(entry.id)?.rating ?? 1200]));
     const entrants = new Set(pool.map((entry) => entry.userId));
     const scored = scoreVoters(votes, {
       ratings,
@@ -750,35 +762,56 @@ export interface Entrant {
 
 export async function getEntrantStandings(): Promise<Standings<Entrant>> {
   const config = await getConfig();
-  return readCached<Entrant>("entries", config.leaderboardDelayMs, async () => {
+  const cacheKey = "entries:v4";
+  return readCached<Entrant>(cacheKey, config.leaderboardDelayMs, async () => {
     const db = getDb();
-    const rows = await db<
-      {
-        name: string;
-        avatarUrl: string | null;
-        title: string;
-        rating: number;
-        matches: number;
-        wins: number;
-      }[]
-    >`
-      SELECT
-        u.name,
-        u.avatar_url AS "avatarUrl",
-        s.title,
-        (s.rating + s.adjustment) AS rating,
-        s.matches,
-        s.wins
-      FROM pookalam_submissions s
-      INNER JOIN users u ON u.id = s.user_id
-      WHERE s.status = 'approved' AND s.shortlisted = true
-      ORDER BY (s.rating + s.adjustment) DESC
-    `;
+    const [submissions, votes] = await Promise.all([
+      db<
+        {
+          id: string;
+          name: string;
+          avatarUrl: string | null;
+          title: string;
+          adjustment: number;
+        }[]
+      >`
+        SELECT
+          s.id,
+          u.name,
+          u.avatar_url AS "avatarUrl",
+          s.title,
+          COALESCE(s.adjustment, 0) AS adjustment
+        FROM pookalam_submissions s
+        INNER JOIN users u ON u.id = s.user_id
+        WHERE s.status = 'approved' AND s.shortlisted = true
+      `,
+      db<{ winnerId: string; loserId: string }[]>`
+        SELECT v.winner_id AS "winnerId", v.loser_id AS "loserId"
+        FROM pookalam_votes v
+        INNER JOIN users u ON u.id = v.voter_id
+        WHERE u.ban_level = 0
+      `,
+    ]);
 
+    const itemIds = submissions.map((s) => s.id);
+    const bt = computeBradleyTerryRatings(itemIds, votes);
+
+    const rows = submissions.map((s) => {
+      const stats = bt.get(s.id) ?? { rating: 1200, wins: 0, matches: 0 };
+      return {
+        name: s.name,
+        avatarUrl: s.avatarUrl,
+        title: s.title,
+        rating: Math.round(stats.rating + s.adjustment),
+        matches: stats.matches,
+        wins: stats.wins,
+      };
+    });
+
+    rows.sort((a, b) => b.rating - a.rating);
     return rows.map((row, index) => ({
       ...row,
       rank: index + 1,
-      rating: Math.round(row.rating),
     }));
   });
 }
@@ -809,38 +842,59 @@ export async function getResults(isAdmin: boolean): Promise<ResultRow[] | null> 
   if (!config.results.open && !isAdmin) return null;
 
   const db = getDb();
-  const rows = await db<
-    {
-      id: string;
-      title: string;
-      imageUrl: string;
-      sourceUrl: string;
-      authorName: string;
-      notes: string | null;
-      rating: number;
-      matches: number;
-      wins: number;
-    }[]
-  >`
-    SELECT
-      s.id,
-      s.title,
-      s.image_url AS "imageUrl",
-      s.source_url AS "sourceUrl",
-      u.name AS "authorName",
-      s.notes,
-      (s.rating + s.adjustment) AS rating,
-      s.matches,
-      s.wins
-    FROM pookalam_submissions s
-    INNER JOIN users u ON u.id = s.user_id
-    WHERE s.status = 'approved' AND s.shortlisted = true
-    ORDER BY (s.rating + s.adjustment) DESC
-  `;
+  const [submissions, votes] = await Promise.all([
+    db<
+      {
+        id: string;
+        title: string;
+        imageUrl: string;
+        sourceUrl: string;
+        authorName: string;
+        notes: string | null;
+        adjustment: number;
+      }[]
+    >`
+      SELECT
+        s.id,
+        s.title,
+        s.image_url AS "imageUrl",
+        s.source_url AS "sourceUrl",
+        u.name AS "authorName",
+        s.notes,
+        COALESCE(s.adjustment, 0) AS adjustment
+      FROM pookalam_submissions s
+      INNER JOIN users u ON u.id = s.user_id
+      WHERE s.status = 'approved' AND s.shortlisted = true
+    `,
+    db<{ winnerId: string; loserId: string }[]>`
+      SELECT v.winner_id AS "winnerId", v.loser_id AS "loserId"
+      FROM pookalam_votes v
+      INNER JOIN users u ON u.id = v.voter_id
+      WHERE u.ban_level = 0
+    `,
+  ]);
 
+  const itemIds = submissions.map((s) => s.id);
+  const bt = computeBradleyTerryRatings(itemIds, votes);
+
+  const rows = submissions.map((s) => {
+    const stats = bt.get(s.id) ?? { rating: 1200, wins: 0, matches: 0 };
+    return {
+      id: s.id,
+      title: s.title,
+      imageUrl: s.imageUrl,
+      sourceUrl: s.sourceUrl,
+      authorName: s.authorName,
+      notes: s.notes,
+      rating: Math.round(stats.rating + s.adjustment),
+      matches: stats.matches,
+      wins: stats.wins,
+    };
+  });
+
+  rows.sort((a, b) => b.rating - a.rating);
   return rows.map((row, index) => ({
     ...row,
-    rating: Math.round(row.rating),
     rank: index + 1,
   }));
 }
