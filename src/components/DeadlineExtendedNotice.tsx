@@ -66,14 +66,15 @@ export function DeadlineExtendedNotice() {
 
   onMount(() => {
     if (!isDev() && readCount() >= MAX_SHOWS) return;
-    if (isExpired()) return;
     setVisible(true);
   });
+
+  const show = () => visible() && !dismissed() && deadline() !== null && !isExpired();
 
   // ESC closes
   onMount(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && visible() && !dismissed()) close();
+      if (e.key === "Escape" && show()) close();
     };
     window.addEventListener("keydown", onKey);
     onCleanup(() => window.removeEventListener("keydown", onKey));
@@ -81,7 +82,7 @@ export function DeadlineExtendedNotice() {
 
   // Lock scroll only while dialog is on screen
   createEffect(() => {
-    if (!visible() || dismissed()) return;
+    if (!show()) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     onCleanup(() => {
@@ -95,8 +96,6 @@ export function DeadlineExtendedNotice() {
     if (!isDev()) bumpCount();
     setTimeout(() => setVisible(false), 120);
   };
-
-  const show = () => visible() && !dismissed() && !isExpired();
 
   return (
     <Show when={show()}>

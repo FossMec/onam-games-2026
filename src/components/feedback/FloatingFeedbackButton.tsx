@@ -29,26 +29,26 @@ export function FloatingFeedbackButton() {
 
   return (
     <Show when={isDay7OrLater()}>
-      <div class="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40">
+      <div class="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 max-w-[calc(100vw-2rem)] pointer-events-none">
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          class="group flex items-center gap-2 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-full font-black text-xs sm:text-sm bg-[var(--pop-yellow)] hover:bg-[var(--pop-teal)] text-[var(--ink)] cursor-pointer transition-all duration-150 active:scale-95 select-none"
+          class="pointer-events-auto group inline-flex items-center justify-center gap-2 px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-full font-black text-xs sm:text-sm bg-[var(--pop-yellow)] hover:bg-[var(--pop-teal)] text-[var(--ink)] cursor-pointer transition-all duration-150 active:scale-95 select-none whitespace-nowrap shadow-sm"
           style={{
             border: "var(--ink-w-bold) solid var(--ink)",
-            "box-shadow": "none",
             transform: "rotate(-1.5deg)",
+            "transform-origin": "center",
           }}
           aria-label="Open feedback form"
         >
           <SpriteIcon name="terminal-star" size={18} animate="wobble" interactive />
           <span
-            class="tracking-wide uppercase text-[11px] sm:text-xs"
+            class="tracking-wide uppercase text-[11px] sm:text-xs shrink-0"
             style={{ "font-family": "var(--font-stack-display)" }}
           >
             Feedback
           </span>
-          <MessageSquarePlus size={15} strokeWidth={2.5} class="opacity-85" />
+          <MessageSquarePlus size={15} strokeWidth={2.5} class="opacity-85 shrink-0" />
         </button>
       </div>
 
