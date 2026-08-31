@@ -1,6 +1,15 @@
 import { A, createAsync } from "@solidjs/router";
-import { ChevronLeft, ChevronRight, Gavel, RefreshCw, Timer, Trophy } from "lucide-solid";
-import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Gavel,
+  Maximize2,
+  RefreshCw,
+  Timer,
+  Trophy,
+  X,
+} from "lucide-solid";
+import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { LoadingScreen } from "~/components/LoadingScreen";
@@ -11,9 +20,14 @@ import { getArenaBoards } from "~/server/pookalam/actions";
 import type { VoterStanding } from "~/server/pookalam/service";
 
 type Boards = NonNullable<Awaited<ReturnType<typeof getArenaBoards>>>;
+type FinalResult = NonNullable<Boards["results"]>[number];
 
 const MEDAL = ["var(--pop-yellow)", "var(--paper-3)", "var(--pop-red)"];
 const PAGE_SIZE = 20;
+
+function hasSubmissionTitle(title: string): boolean {
+  return title.trim().toLowerCase() !== "untitled pookalam";
+}
 
 function clockTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
@@ -32,6 +46,15 @@ export function PookalamBoards(props: PookalamBoardsProps = {}) {
   const [busy, setBusy] = createSignal(false);
   const [tab, setTab] = createSignal<"pookalams" | "judges">("pookalams");
   const [judgePage, setJudgePage] = createSignal(1);
+  const [selectedPookalam, setSelectedPookalam] = createSignal<FinalResult | null>(null);
+
+  onMount(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelectedPookalam(null);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    onCleanup(() => document.removeEventListener("keydown", handleKeyDown));
+  });
 
   const load = async () => {
     setBusy(true);
@@ -262,27 +285,38 @@ export function PookalamBoards(props: PookalamBoardsProps = {}) {
                         >
                           #{row.rank}
                         </span>
-                        <img
-                          src={row.imageUrl}
-                          alt=""
-                          loading="lazy"
-                          class="w-14 shrink-0"
+                        <button
+                          type="button"
+                          class="group relative w-14 shrink-0 cursor-pointer overflow-hidden rounded-[var(--radius)] p-0"
+                          onClick={() => setSelectedPookalam(row)}
+                          aria-label={`View pookalam by ${row.authorName} fullscreen`}
+                          title="View pookalam fullscreen"
                           style={{
                             "aspect-ratio": "1 / 1",
-                            "object-fit": "contain",
                             background: "var(--paper-2)",
                             border: "var(--ink-w) solid var(--ink)",
-                            "border-radius": "var(--radius)",
                           }}
-                        />
+                        >
+                          <img
+                            src={row.imageUrl}
+                            alt={`Pookalam by ${row.authorName}`}
+                            loading="lazy"
+                            class="h-full w-full object-contain"
+                          />
+                          <span class="absolute inset-0 grid place-items-center bg-[var(--ink)]/55 text-[var(--paper)] opacity-80 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                            <Maximize2 size={18} strokeWidth={2.5} />
+                          </span>
+                        </button>
                         <div class="min-w-0">
-                          <p class="font-extrabold truncate m-0 text-sm">{row.title}</p>
+                          <Show when={hasSubmissionTitle(row.title)}>
+                            <p class="font-extrabold truncate m-0 text-sm">{row.title}</p>
+                          </Show>
                           <p class="text-[11px] font-bold m-0 truncate">{row.authorName}</p>
                           <p
                             class="text-[11px] font-semibold m-0 tabular-nums"
                             style={{ color: "var(--ink-soft)" }}
                           >
-                            won {row.wins} of {row.matches}
+                            {row.rating} Elo · won {row.wins} of {row.matches}
                           </p>
                         </div>
                       </article>
@@ -517,6 +551,55 @@ export function PookalamBoards(props: PookalamBoardsProps = {}) {
             </section>
           </Show>
         </div>
+      </Show>
+
+      <Show when={selectedPookalam()}>
+        {(entry) => (
+          <div
+            class="fixed inset-0 z-50 flex min-h-screen items-center justify-center bg-[var(--ink)]/85 p-3 backdrop-blur-sm sm:p-6"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Pookalam by ${entry().authorName}`}
+            onClick={() => setSelectedPookalam(null)}
+          >
+            <div
+              class="relative flex max-h-full w-full max-w-5xl flex-col gap-3 rounded-[var(--radius)] bg-[var(--paper)] p-3 shadow-2xl sm:gap-4 sm:p-5"
+              style={{ border: "var(--ink-w-bold) solid var(--paper)" }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div class="flex items-start justify-between gap-3 border-b-2 border-[var(--ink)] pb-3">
+                <div class="min-w-0">
+                  <Show when={hasSubmissionTitle(entry().title)}>
+                    <p class="truncate text-lg font-black sm:text-xl">{entry().title}</p>
+                  </Show>
+                  <p class="m-0 text-sm font-extrabold">
+                    {entry().authorName} · #{entry().rank} · {entry().rating} Elo
+                  </p>
+                  <p class="m-0 text-xs font-semibold text-muted">
+                    won {entry().wins} of {entry().matches} head-to-heads
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="btn-ghost shrink-0 p-1.5"
+                  onClick={() => setSelectedPookalam(null)}
+                  aria-label="Close fullscreen pookalam"
+                  title="Close"
+                >
+                  <X size={20} strokeWidth={2.5} />
+                </button>
+              </div>
+
+              <div class="flex min-h-0 flex-1 items-center justify-center overflow-auto rounded-[var(--radius)] bg-[var(--ink)] p-2 sm:p-4">
+                <img
+                  src={entry().imageUrl}
+                  alt={`Pookalam by ${entry().authorName}`}
+                  class="max-h-[calc(100vh-12rem)] max-w-full object-contain"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </Show>
     </Show>
   );
