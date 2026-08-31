@@ -5,9 +5,10 @@ import { For, Show, createEffect, createSignal, onCleanup, onMount } from "solid
 import { Bubble } from "~/components/art/Burst";
 import { ShoutBurst } from "~/components/art/Burst";
 import { Countdown } from "~/components/Countdown";
+import { FeedbackForm } from "~/components/feedback/FeedbackForm";
+import { PookalamVoteMath } from "~/components/pookalam/PookalamVoteMath";
 import { POOKALAM } from "~/lib/event-content";
 import { SHOUT_COLOR, shout } from "~/lib/shouts";
-import { FeedbackForm } from "~/components/feedback/FeedbackForm";
 import { getNextPairs } from "~/server/pookalam/actions";
 import { pookalamState } from "~/lib/queries";
 
@@ -52,6 +53,7 @@ const HOW_TO = [
 
 export function PookalamVoteView() {
   const [gateOpen, setGateOpen] = createSignal<boolean | null>(null);
+  const [resultsOpen, setResultsOpen] = createSignal(false);
   const [opensAt, setOpensAt] = createSignal<Date | null>(null);
   const [signedIn, setSignedIn] = createSignal(true);
   const [queue, setQueue] = createSignal<Pair[]>([]);
@@ -134,6 +136,7 @@ export function PookalamVoteView() {
     const state = await pookalamState();
     setSignedIn(state.signedIn);
     setGateOpen(state.phases.voting.open);
+    setResultsOpen(state.phases.results.open);
     setOpensAt(state.phases.voting.opensAt ? new Date(state.phases.voting.opensAt) : null);
     setCount(state.votesCast);
     if (state.phases.voting.open && state.signedIn) {
@@ -303,6 +306,10 @@ export function PookalamVoteView() {
         </div>
       </Show>
 
+      <Show when={resultsOpen()}>
+        <PookalamVoteMath />
+      </Show>
+
       <Show when={gateOpen() !== null} fallback={<p class="font-semibold">Loading…</p>}>
         <Show
           when={signedIn()}
@@ -319,17 +326,31 @@ export function PookalamVoteView() {
             when={gateOpen()}
             fallback={
               <Show
-                when={opensAt() && opensAt()!.getTime() > Date.now()}
+                when={resultsOpen()}
                 fallback={
-                  <Bubble color="var(--paper-3)">
-                    <p class="font-semibold">Voting isn't open. It runs on {POOKALAM.votingOn}.</p>
-                  </Bubble>
+                  <Show
+                    when={opensAt() && opensAt()!.getTime() > Date.now()}
+                    fallback={
+                      <Bubble color="var(--paper-3)">
+                        <p class="font-semibold">
+                          Voting isn't open. It runs on {POOKALAM.votingOn}.
+                        </p>
+                      </Bubble>
+                    }
+                  >
+                    <div class="card pop-yellow space-y-3 text-center">
+                      <p class="font-extrabold m-0">The arena opens in</p>
+                      <Countdown target={opensAt()!} doneLabel="Voting is open - refresh!" />
+                    </div>
+                  </Show>
                 }
               >
-                <div class="card pop-yellow space-y-3 text-center">
-                  <p class="font-extrabold m-0">The arena opens in</p>
-                  <Countdown target={opensAt()!} doneLabel="Voting is open - refresh!" />
-                </div>
+                <Bubble color="var(--pop-teal)">
+                  <p class="font-semibold">
+                    Day 7 voting has ended. The final standings use the scoring algorithm shown
+                    above.
+                  </p>
+                </Bubble>
               </Show>
             }
           >
@@ -486,10 +507,9 @@ function HowToVote() {
             have been banned and their vote impact neutralized.
           </p>
           <p class="text-xs leading-relaxed m-0 text-muted">
-            We have updated the scoring formula to Bradley-Terry Elo to prevent manipulation and
-            protect fair play. The complete formulation will be published and open-sourced after the
-            event concludes. Repeated attempts to manipulate the scores will result in immediate
-            disqualification from the competition.
+            The final calculation used the weighted Bradley-Terry maximum-likelihood fit shown in
+            the final scoring panel: all shortlisted entries start at 1200 Elo, pairwise votes are
+            combined globally, and the fitted strength values are converted back to the Elo scale.
           </p>
         </div>
 

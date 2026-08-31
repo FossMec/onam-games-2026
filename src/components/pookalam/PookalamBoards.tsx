@@ -13,6 +13,7 @@ import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount }
 import { Confetti } from "~/components/art/Confetti";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { LoadingScreen } from "~/components/LoadingScreen";
+import { PookalamVoteMath } from "~/components/pookalam/PookalamVoteMath";
 import { POOKALAM } from "~/lib/event-content";
 import { branchShort } from "~/lib/profile";
 import { shell } from "~/lib/queries";
@@ -323,6 +324,10 @@ export function PookalamBoards(props: PookalamBoardsProps = {}) {
                     )}
                   </For>
                 </div>
+              </Show>
+
+              <Show when={boards()!.resultsPublic}>
+                <PookalamVoteMath />
               </Show>
             </section>
           </Show>
