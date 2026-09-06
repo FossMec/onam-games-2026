@@ -3,6 +3,7 @@ import {
   Compass,
   Flame,
   Gamepad2,
+  GraduationCap,
   Image as ImageIcon,
   LayoutDashboard,
   MessageSquareHeart,
@@ -19,6 +20,7 @@ export type AdminTabId =
   | "users"
   | "attempts"
   | "hunt"
+  | "orientation"
   | "settings"
   | "security"
   | "pookalam"
@@ -57,6 +59,7 @@ export function AdminTabs(props: AdminTabsProps) {
     },
     { id: "games", label: "Games & Schedule", icon: Gamepad2, badge: props.counts?.games },
     { id: "hunt", label: "Treasure Hunt", icon: Compass, badge: props.counts?.hunt },
+    { id: "orientation", label: "Orientation", icon: GraduationCap },
     { id: "users", label: "Users & Bans", icon: Users, badge: props.counts?.users },
     { id: "attempts", label: "Game Attempts", icon: Flame, badge: props.counts?.attempts },
     { id: "settings", label: "App Settings", icon: Settings },

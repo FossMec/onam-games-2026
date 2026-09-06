@@ -1,0 +1,107 @@
+import { deleteCookie, getCookie, setCookie } from "@solidjs/start/http";
+import { getServerEnv } from "~/server/env";
+import { requestMemo } from "~/server/cache";
+
+const COOKIE_NAME = "og_orientation";
+const MAX_AGE_S = 60 * 60 * 24 * 7; // 7 days
+
+export interface OrientationCookieData {
+  pid: string;
+}
+
+let _cachedKeyPromise: Promise<CryptoKey> | null = null;
+
+function getSecret(): string {
+  const secret = getServerEnv("SESSION_SECRET");
+  if (!secret || secret.length < 32) {
+    throw new Error("SESSION_SECRET must be set and at least 32 characters");
+  }
+  return secret;
+}
+
+function getCryptoKey(): Promise<CryptoKey> {
+  if (!_cachedKeyPromise) {
+    const rawKey = new TextEncoder().encode(getSecret().slice(0, 32));
+    _cachedKeyPromise = crypto.subtle.importKey("raw", rawKey, { name: "AES-GCM" }, false, [
+      "encrypt",
+      "decrypt",
+    ]);
+  }
+  return _cachedKeyPromise;
+}
+
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlToBytes(base64url: string): Uint8Array {
+  let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+  while (base64.length % 4 !== 0) base64 += "=";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function seal(data: OrientationCookieData): Promise<string> {
+  const key = await getCryptoKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(JSON.stringify(data));
+  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
+  const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(ciphertext), iv.length);
+  return bytesToBase64Url(combined);
+}
+
+async function unseal(raw: string): Promise<OrientationCookieData | null> {
+  try {
+    const key = await getCryptoKey();
+    const combined = base64UrlToBytes(raw);
+    if (combined.length <= 12) return null;
+    const iv = combined.slice(0, 12);
+    const ciphertext = combined.slice(12);
+    const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
+    const json = new TextDecoder().decode(decrypted);
+    const data = JSON.parse(json) as OrientationCookieData;
+    return data?.pid ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function readOrientationCookie(): Promise<OrientationCookieData | null> {
+  return requestMemo("orientation:cookie", async () => {
+    try {
+      const raw = getCookie(COOKIE_NAME);
+      if (!raw) return null;
+      return await unseal(raw);
+    } catch {
+      return null;
+    }
+  });
+}
+
+export async function writeOrientationCookie(data: OrientationCookieData): Promise<void> {
+  const isLocal = getServerEnv("NODE_ENV") === "development" && !getServerEnv("CF_PAGES");
+  const sealed = await seal(data);
+  setCookie(COOKIE_NAME, sealed, {
+    httpOnly: true,
+    secure: !isLocal,
+    sameSite: "lax",
+    path: "/",
+    maxAge: MAX_AGE_S,
+  });
+}
+
+export async function clearOrientationCookie(): Promise<void> {
+  const isLocal = getServerEnv("NODE_ENV") === "development" && !getServerEnv("CF_PAGES");
+  deleteCookie(COOKIE_NAME, {
+    httpOnly: true,
+    secure: !isLocal,
+    sameSite: "lax",
+    path: "/",
+  });
+}

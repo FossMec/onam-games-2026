@@ -1,9 +1,19 @@
 import { A, createAsync, useLocation } from "@solidjs/router";
-import { ChevronDown, GraduationCap, Home, LogOut, Mail, Send, User } from "lucide-solid";
+import {
+  ChevronDown,
+  Gamepad2,
+  GraduationCap,
+  Home,
+  LogOut,
+  Mail,
+  Send,
+  Trophy,
+  User,
+} from "lucide-solid";
 import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
 import { signOutAndReload } from "~/lib/sign-out";
 import type { getMe } from "~/server/auth/actions";
-import { shell } from "~/lib/queries";
+import { orientationConfig, shell } from "~/lib/queries";
 import { SpriteIcon } from "./art/SpriteIcon";
 
 /**
@@ -184,10 +194,94 @@ function ProfileMenu(props: {
   );
 }
 
+function OrientationHeader() {
+  const loc = useLocation();
+  const config = createAsync(() => orientationConfig(), { initialValue: null });
+  const participant = () => config()?.participant;
+
+  return (
+    <div class="flex items-center justify-between gap-1.5 sm:gap-3 w-full min-w-0">
+      <A
+        href="/orientation"
+        class="flex items-center gap-1.5 sm:gap-2.5 transition-transform select-none shrink-0"
+      >
+        <SpriteIcon
+          name="foss-mec-badge"
+          size={26}
+          animate="wobble"
+          interactive
+          class="shrink-0 sm:w-8 sm:h-8"
+        />
+        <div class="flex items-baseline gap-1 sm:gap-1.5">
+          <span class="wordmark text-base sm:text-2xl whitespace-nowrap" data-text="FOSS MEC">
+            FOSS MEC
+          </span>
+          <span
+            class="hidden sm:inline-block badge text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-[var(--pop-yellow)] border border-[var(--ink)]"
+            style={{ "font-family": "var(--font-stack-display)" }}
+          >
+            Orientation
+          </span>
+        </div>
+      </A>
+
+      <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
+        <nav class="flex items-center gap-1 sm:gap-2">
+          <A
+            href="/orientation"
+            class="whitespace-nowrap text-center inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-full px-2.5 py-1 text-xs sm:px-3.5 sm:py-1.5 sm:text-sm transition-transform cursor-pointer"
+            style={{
+              "font-family": "var(--font-stack-display)",
+              "font-weight": 800,
+              border: "2px solid var(--ink)",
+              background: loc.pathname === "/orientation" ? "var(--pop-teal)" : "var(--paper-2)",
+            }}
+          >
+            <Gamepad2 size={13} strokeWidth={2.5} />
+            <span>Play</span>
+          </A>
+          <A
+            href="/orientation/leaderboard"
+            class="whitespace-nowrap text-center inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-full px-2.5 py-1 text-xs sm:px-3.5 sm:py-1.5 sm:text-sm transition-transform cursor-pointer"
+            style={{
+              "font-family": "var(--font-stack-display)",
+              "font-weight": 800,
+              border: "2px solid var(--ink)",
+              background: loc.pathname.startsWith("/orientation/leaderboard")
+                ? "var(--pop-teal)"
+                : "var(--paper-2)",
+            }}
+          >
+            <Trophy size={13} strokeWidth={2.5} />
+            <span class="hidden xs:inline">Leaderboard</span>
+            <span class="xs:hidden">Scores</span>
+          </A>
+        </nav>
+
+        <Show when={participant()}>
+          {(p) => (
+            <div
+              class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full border-2 border-[var(--ink)] bg-[var(--paper-2)] text-xs font-black select-none"
+              style={{ "font-family": "var(--font-stack-display)" }}
+            >
+              <User size={12} strokeWidth={2.5} />
+              <span class="truncate max-w-[120px]">{p().name}</span>
+              <span class="opacity-40">·</span>
+              <span class="text-[var(--pop-pink)]">{p().batch}</span>
+            </div>
+          )}
+        </Show>
+      </div>
+    </div>
+  );
+}
+
 export function Nav() {
   const loc = useLocation();
   const data = createAsync(() => shell(), { initialValue: null });
   const me = () => data()?.me ?? undefined;
+
+  const isOrientationRoute = () => loc.pathname.startsWith("/orientation");
 
   const isActive = (href: string) => {
     if (href === "/") return loc.pathname === "/";
@@ -206,125 +300,131 @@ export function Nav() {
         }}
       >
         <div class="container py-2 sm:py-2.5">
-          <div class="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4">
-            {/* Top row on mobile: Logo + Auth */}
-            <div class="flex items-center justify-between w-full sm:w-auto">
-              <A href="/" class="flex items-center gap-2.5 transition-transform  select-none">
-                <SpriteIcon
-                  name="foss-mec-badge"
-                  size={32}
-                  animate="wobble"
-                  interactive
-                  class="shrink-0"
-                />
-                <div class="flex items-baseline gap-1.5">
-                  <span class="wordmark text-lg sm:text-2xl" data-text="ONAM GAMES">
-                    ONAM GAMES
-                  </span>
-                  <span
-                    class="text-[11px] sm:text-xs font-extrabold tracking-tight uppercase"
-                    style={{
-                      "font-family": "var(--font-stack-display)",
-                      color: "var(--ink)",
-                      opacity: "0.85",
-                    }}
-                  >
-                    by fossmec
-                  </span>
-                </div>
-              </A>
-
-              {/* Mobile-only User Profile */}
-              <div class="sm:hidden flex items-center gap-2 shrink-0">
-                <Show
-                  when={me()}
-                  fallback={
-                    <A
-                      href="/auth/signin"
-                      class="btn-brand py-1 px-3 text-xs rounded-full font-extrabold cursor-pointer inline-flex items-center gap-1"
+          <Show when={!isOrientationRoute()} fallback={<OrientationHeader />}>
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4">
+              {/* Top row on mobile: Logo + Auth */}
+              <div class="flex items-center justify-between w-full sm:w-auto">
+                <A href="/" class="flex items-center gap-2.5 transition-transform  select-none">
+                  <SpriteIcon
+                    name="foss-mec-badge"
+                    size={32}
+                    animate="wobble"
+                    interactive
+                    class="shrink-0"
+                  />
+                  <div class="flex items-baseline gap-1.5">
+                    <span class="wordmark text-lg sm:text-2xl" data-text="ONAM GAMES">
+                      ONAM GAMES
+                    </span>
+                    <span
+                      class="text-[11px] sm:text-xs font-extrabold tracking-tight uppercase"
+                      style={{
+                        "font-family": "var(--font-stack-display)",
+                        color: "var(--ink)",
+                        opacity: "0.85",
+                      }}
                     >
-                      <User size={12} strokeWidth={2.5} />
-                      <span>Sign In</span>
-                    </A>
-                  }
-                >
-                  {(user) => <ProfileMenu me={user()} compact />}
+                      by fossmec
+                    </span>
+                  </div>
+                </A>
+
+                {/* Mobile-only User Profile — hidden on /orientation (no sign-up flow there) */}
+                <Show when={!isOrientationRoute()}>
+                  <div class="sm:hidden flex items-center gap-2 shrink-0">
+                    <Show
+                      when={me()}
+                      fallback={
+                        <A
+                          href="/auth/signin"
+                          class="btn-brand py-1 px-3 text-xs rounded-full font-extrabold cursor-pointer inline-flex items-center gap-1"
+                        >
+                          <User size={12} strokeWidth={2.5} />
+                          <span>Sign In</span>
+                        </A>
+                      }
+                    >
+                      {(user) => <ProfileMenu me={user()} compact />}
+                    </Show>
+                  </div>
                 </Show>
               </div>
-            </div>
 
-            {/* Nav Links + Desktop User Profile */}
-            <div class="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full sm:w-auto">
-              <nav class="min-w-0 max-w-full h-full flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 w-full sm:w-auto  scrollbar-none ">
-                <A
-                  href="/"
-                  class="flex-none grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-full shrink-0"
-                  style={{
-                    border: "2px solid var(--ink)",
-                    background: isActive("/") ? "var(--pop-teal)" : "var(--paper-2)",
-                  }}
-                  aria-label="Home"
-                >
-                  <Home size={16} strokeWidth={2.5} />
-                </A>
-                <For each={LINKS}>
-                  {(link) => (
+              {/* Nav Links + Desktop User Profile */}
+              <div class="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full sm:w-auto">
+                <nav class="min-w-0 max-w-full h-full flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 w-full sm:w-auto  scrollbar-none ">
+                  <A
+                    href="/"
+                    class="flex-none grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-full shrink-0"
+                    style={{
+                      border: "2px solid var(--ink)",
+                      background: isActive("/") ? "var(--pop-teal)" : "var(--paper-2)",
+                    }}
+                    aria-label="Home"
+                  >
+                    <Home size={16} strokeWidth={2.5} />
+                  </A>
+                  <For each={LINKS}>
+                    {(link) => (
+                      <A
+                        href={link.href}
+                        class="flex-none   whitespace-nowrap text-center inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 text-xs sm:px-3.5 sm:py-2 sm:text-sm transition-transform "
+                        style={{
+                          "font-family": "var(--font-stack-display)",
+                          "font-weight": 800,
+                          border: "2px solid var(--ink)",
+                          background: isActive(link.href) ? "var(--pop-teal)" : "var(--paper-2)",
+                        }}
+                      >
+                        <span>{link.label}</span>
+                      </A>
+                    )}
+                  </For>
+
+                  {/* Submit button when on code-a-pookalam section */}
+                  <Show when={isPookalamSection()}>
                     <A
-                      href={link.href}
-                      class="flex-none   whitespace-nowrap text-center inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 text-xs sm:px-3.5 sm:py-2 sm:text-sm transition-transform "
+                      href="/code-a-pookalam/submit"
+                      class="flex-none whitespace-nowrap text-center inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 text-xs sm:px-3.5 sm:py-2 sm:text-sm cursor-pointer"
                       style={{
                         "font-family": "var(--font-stack-display)",
                         "font-weight": 800,
                         border: "2px solid var(--ink)",
-                        background: isActive(link.href) ? "var(--pop-teal)" : "var(--paper-2)",
+                        background:
+                          loc.pathname === "/code-a-pookalam/submit"
+                            ? "var(--pop-pink)"
+                            : "var(--pop-yellow)",
+                        color: loc.pathname === "/code-a-pookalam/submit" ? "white" : "var(--ink)",
                       }}
                     >
-                      <span>{link.label}</span>
+                      <Send size={12} strokeWidth={2.5} />
+                      <span>Submit</span>
                     </A>
-                  )}
-                </For>
+                  </Show>
+                </nav>
 
-                {/* Submit button when on code-a-pookalam section */}
-                <Show when={isPookalamSection()}>
-                  <A
-                    href="/code-a-pookalam/submit"
-                    class="flex-none whitespace-nowrap text-center inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 text-xs sm:px-3.5 sm:py-2 sm:text-sm cursor-pointer"
-                    style={{
-                      "font-family": "var(--font-stack-display)",
-                      "font-weight": 800,
-                      border: "2px solid var(--ink)",
-                      background:
-                        loc.pathname === "/code-a-pookalam/submit"
-                          ? "var(--pop-pink)"
-                          : "var(--pop-yellow)",
-                      color: loc.pathname === "/code-a-pookalam/submit" ? "white" : "var(--ink)",
-                    }}
-                  >
-                    <Send size={12} strokeWidth={2.5} />
-                    <span>Submit</span>
-                  </A>
-                </Show>
-              </nav>
-
-              {/* Desktop User Profile */}
-              <div class="hidden sm:block shrink-0">
-                <Show
-                  when={me()}
-                  fallback={
-                    <A
-                      href="/auth/signin"
-                      class="btn-brand py-1.5 px-3.5 text-sm rounded-full font-extrabold cursor-pointer inline-flex items-center gap-1.5"
+                {/* Desktop User Profile — hidden on /orientation */}
+                <Show when={!isOrientationRoute()}>
+                  <div class="hidden sm:block shrink-0">
+                    <Show
+                      when={me()}
+                      fallback={
+                        <A
+                          href="/auth/signin"
+                          class="btn-brand py-1.5 px-3.5 text-sm rounded-full font-extrabold cursor-pointer inline-flex items-center gap-1.5"
+                        >
+                          <User size={14} strokeWidth={2.5} />
+                          <span>Sign In</span>
+                        </A>
+                      }
                     >
-                      <User size={14} strokeWidth={2.5} />
-                      <span>Sign In</span>
-                    </A>
-                  }
-                >
-                  {(user) => <ProfileMenu me={user()} />}
+                      {(user) => <ProfileMenu me={user()} />}
+                    </Show>
+                  </div>
                 </Show>
               </div>
             </div>
-          </div>
+          </Show>
         </div>
       </header>
     </>

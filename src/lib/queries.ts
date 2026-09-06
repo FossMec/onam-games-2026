@@ -124,6 +124,15 @@ export const adminBlockedIps = query(listBlockedIpsAction, "admin-blocked-ips");
 export const adminActivity = query(listActivity, "admin-activity");
 export const adminCollabMessages = query(listCollabMessagesAction, "admin-collab-messages");
 export const adminHunt = query(getAdminHuntOverviewAction, "admin-hunt");
+export const orientationConfig = query(
+  () => import("~/server/orientation/actions").then((m) => m.getOrientationConfig()),
+  "orientation-config",
+);
+export const orientationBoard = query(
+  (batch: string) =>
+    import("~/server/orientation/actions").then((m) => m.getOrientationLeaderboardAction(batch)),
+  "orientation-board",
+);
 
 /**
  * The keys a console write should drop. `revalidate` matches by prefix, so

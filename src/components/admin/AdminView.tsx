@@ -11,6 +11,7 @@ import { CollabWishesTab } from "~/components/admin/tabs/CollabWishesTab";
 import { GamesTab } from "~/components/admin/tabs/GamesTab";
 import { HuntTab } from "~/components/admin/tabs/HuntTab";
 import { LogsTab } from "~/components/admin/tabs/LogsTab";
+import { OrientationTab } from "~/components/admin/tabs/OrientationTab";
 import { OverviewTab } from "~/components/admin/tabs/OverviewTab";
 import { SecurityTab } from "~/components/admin/tabs/SecurityTab";
 import { SettingsTab } from "~/components/admin/tabs/SettingsTab";
@@ -35,7 +36,7 @@ import {
 export function AdminView() {
   const shellData = createAsync(() => shell());
   const me = () => shellData()?.me ?? undefined;
-  const [activeTab, setActiveTab] = createSignal<AdminTabId>("overview");
+  const [activeTab, setActiveTab] = createSignal<AdminTabId>("orientation");
   const [page, setPage] = createSignal(0);
   const [pookalamSub, setPookalamSub] = createSignal<"review" | "gallery" | "wishes" | "animation">(
     "review",
@@ -320,6 +321,11 @@ export function AdminView() {
                   <Show when={hunt()} fallback={<TabLoading />}>
                     <HuntTab data={hunt()!} />
                   </Show>
+                </Show>
+
+                {/* Orientation Tab */}
+                <Show when={activeTab() === "orientation"}>
+                  <OrientationTab onNotify={showNotification} />
                 </Show>
 
                 {/* 6. Settings Tab */}

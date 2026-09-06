@@ -64,11 +64,14 @@ export function ShortlistNotice() {
   const [dismissed, setDismissed] = createSignal(false);
 
   const notice = (): Notice | null => data() ?? null;
+  const isOrientation = () =>
+    typeof window !== "undefined" && window.location.pathname.startsWith("/orientation");
 
-  const show = () => notice()?.shortlisted && notice()!.status === "approved" && !dismissed();
+  const show = () =>
+    !isOrientation() && notice()?.shortlisted && notice()!.status === "approved" && !dismissed();
 
   onMount(() => {
-    if (!hasSeen()) setWanted(true);
+    if (!isOrientation() && !hasSeen()) setWanted(true);
   });
 
   onMount(() => {

@@ -50,6 +50,18 @@ export const WORDS = [
   "POOKALAM",
 ] as const;
 
+/** Dedicated words for first-year orientation puzzle. */
+export const ORIENTATION_WORDS = [
+  "GNU",
+  "FOSS",
+  "LINUX",
+  "MAVELI",
+  "KERNEL",
+  "DEBIAN",
+  "PAYASAM",
+  "POOKALAM",
+] as const;
+
 /**
  * THE canonical board. Empty string is a wall.
  *
@@ -66,6 +78,25 @@ export const BOARD: readonly (readonly string[])[] = [
   ["N", "B", "S", "A", "O", "M", "E"],
   ["", "E", "D", "M", "N", "G", ""],
 ];
+
+/** Dedicated board for first-year orientation puzzle. Verified uniquely solvable. */
+export const ORIENTATION_BOARD: readonly (readonly string[])[] = [
+  ["N", "I", "", "K", "E", "R", "L"],
+  ["U", "L", "M", "A", "S", "N", "E"],
+  ["X", "V", "E", "", "A", "Y", ""],
+  ["M", "A", "L", "I", "P", "A", "N"],
+  ["F", "O", "P", "O", "", "I", "A"],
+  ["M", "S", "S", "O", "U", "B", "E"],
+  ["A", "L", "A", "K", "N", "G", "D"],
+];
+
+export function getBoardForSeed(seed: string): readonly (readonly string[])[] {
+  return seed.startsWith("ori_") ? ORIENTATION_BOARD : BOARD;
+}
+
+export function getWordsForSeed(seed: string): readonly string[] {
+  return seed.startsWith("ori_") ? ORIENTATION_WORDS : WORDS;
+}
 
 export interface Cell {
   r: number;
@@ -138,13 +169,14 @@ export interface WendSubmission {
 /** The player's grid: the canonical board pushed through their transform. */
 function displayGrid(seed: string): string[][] {
   const t = transformFor(seed);
+  const board = getBoardForSeed(seed);
   const grid: string[][] = Array.from({ length: GRID_SIZE }, () =>
     Array.from<string>({ length: GRID_SIZE }).fill(""),
   );
   for (let r = 0; r < GRID_SIZE; r += 1) {
     for (let c = 0; c < GRID_SIZE; c += 1) {
       const to = applyTransform({ r, c }, t);
-      grid[to.r][to.c] = BOARD[r][c];
+      grid[to.r][to.c] = board[r][c];
     }
   }
   return grid;
@@ -155,13 +187,14 @@ const countOpen = (grid: string[][]): number =>
 
 export function generate(seed: string): GeneratedInstance {
   const grid = displayGrid(seed);
+  const words = getWordsForSeed(seed);
   return {
     view: {
       kind: "wend",
       size: GRID_SIZE,
       grid,
-      wordLengths: [...WORDS].map((w) => w.length).sort((a, b) => a - b),
-      wordHashes: WORDS.map((w) => hashWendWord(w)),
+      wordLengths: [...words].map((w) => w.length).sort((a, b) => a - b),
+      wordHashes: words.map((w) => hashWendWord(w)),
       openCells: countOpen(grid),
     } satisfies WendView,
     /*
@@ -192,6 +225,7 @@ const adjacent = (a: Cell, b: Cell): boolean => Math.abs(a.r - b.r) + Math.abs(a
 export function matchTrace(seed: string, cells: Cell[]): string | null {
   if (!Array.isArray(cells) || cells.length < 3) return null;
   const grid = displayGrid(seed);
+  const words = getWordsForSeed(seed);
   let word = "";
   for (let i = 0; i < cells.length; i += 1) {
     const cell = cells[i];
@@ -211,7 +245,7 @@ export function matchTrace(seed: string, cells: Cell[]): string | null {
     if (i > 0 && !adjacent(cells[i - 1], cell)) return null;
     word += grid[cell.r][cell.c];
   }
-  return (WORDS as readonly string[]).includes(word) ? word : null;
+  return (words as readonly string[]).includes(word) ? word : null;
 }
 
 export function verify(input: VerifyInput): VerifyResult {
@@ -219,14 +253,15 @@ export function verify(input: VerifyInput): VerifyResult {
   if (!submission || !Array.isArray(submission.found)) {
     return { valid: false, reason: "Nothing submitted." };
   }
-  if (submission.found.length !== WORDS.length) {
+  const words = getWordsForSeed(input.seed);
+  if (submission.found.length !== words.length) {
     return { valid: false, reason: "Some words are still hiding." };
   }
 
   // Rebuilt from the player's own seed, so a path copied from someone else's
   // board lands on the wrong letters and fails on its own merits.
   const grid = displayGrid(input.seed);
-  const remaining = new Set<string>(WORDS);
+  const remaining = new Set<string>(words);
   const claimed = new Set<string>();
 
   for (const entry of submission.found) {

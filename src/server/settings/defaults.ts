@@ -255,6 +255,27 @@ export const settingsRegistry: SettingDef[] = [
     description: "Hide community Onam wishes and the wish composer box",
     defaultValue: false,
   },
+  {
+    key: "orientation.game_type",
+    group: "orientation",
+    description:
+      "Game type for orientation play (tinder, jigsaw, wend, unblock, jump, hunt). Only this game is shown and playable on /orientation",
+    defaultValue: "",
+  },
+  {
+    key: "orientation.current_batch",
+    group: "orientation",
+    description:
+      "Batch that is currently allowed to play on /orientation (1-10). Only this batch can start the game",
+    defaultValue: "1",
+  },
+  {
+    key: "orientation.enabled",
+    group: "orientation",
+    description:
+      "Master switch for /orientation play. When OFF, start requests are rejected even if batch matches. Toggle ON to open play for the selected batch.",
+    defaultValue: false,
+  },
 ];
 
 /** Inserts any missing default settings so the app always has sane config. */

@@ -63,13 +63,17 @@ export function DeadlineExtendedNotice() {
     return d ? Date.now() > d.getTime() : false;
   };
   const isDev = () => import.meta.env.DEV;
+  const isOrientation = () =>
+    typeof window !== "undefined" && window.location.pathname.startsWith("/orientation");
 
   onMount(() => {
+    if (isOrientation()) return;
     if (!isDev() && readCount() >= MAX_SHOWS) return;
     setVisible(true);
   });
 
-  const show = () => visible() && !dismissed() && deadline() !== null && !isExpired();
+  const show = () =>
+    !isOrientation() && visible() && !dismissed() && deadline() !== null && !isExpired();
 
   // ESC closes
   onMount(() => {

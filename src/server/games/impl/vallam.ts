@@ -327,16 +327,56 @@ export const CUSTOM_LEVELS: {
       { r: 0, c: 2, len: 2, horizontal: true },
     ],
   },
+  {
+    id: "orientation-ashtamudi-7x7",
+    name: "Ashtamudi Orientation Lock",
+    difficulty: "hard",
+    par: 15,
+    boats: [
+      { r: 3, c: 0, len: 2, horizontal: true },
+      { r: 3, c: 2, len: 2, horizontal: false },
+      { r: 1, c: 2, len: 2, horizontal: false },
+      { r: 4, c: 0, len: 2, horizontal: false },
+      { r: 5, c: 4, len: 2, horizontal: false },
+      { r: 4, c: 4, len: 3, horizontal: true },
+      { r: 1, c: 3, len: 2, horizontal: false },
+      { r: 1, c: 0, len: 2, horizontal: false },
+      { r: 1, c: 4, len: 3, horizontal: false },
+      { r: 5, c: 5, len: 2, horizontal: false },
+      { r: 5, c: 1, len: 2, horizontal: true },
+      { r: 5, c: 3, len: 2, horizontal: false },
+      { r: 0, c: 1, len: 2, horizontal: true },
+    ],
+  },
 ];
 
 function generateUncached(seed: string, difficulty: string): GeneratedInstance {
+  if (seed.startsWith("ori_") || difficulty === "orientation") {
+    const oriLevel = CUSTOM_LEVELS.find((lvl) => lvl.id === "orientation-ashtamudi-7x7")!;
+    const boats: Boat[] = oriLevel.boats.map((b, idx) => ({
+      ...b,
+      id: idx,
+    }));
+    return {
+      view: {
+        kind: "vallam",
+        size: BOARD,
+        exitRow: EXIT_ROW,
+        boats,
+        par: oriLevel.par,
+      } satisfies VallamView,
+      solution: { par: oriLevel.par },
+    };
+  }
+
   const rng = createRng(`${seed}:vallam:level-pick`);
 
   const matchingLevels = CUSTOM_LEVELS.filter(
     (lvl) =>
-      difficulty === "all" ||
-      lvl.difficulty === difficulty ||
-      (difficulty === "hard" && lvl.difficulty === "master"),
+      lvl.id !== "orientation-ashtamudi-7x7" &&
+      (difficulty === "all" ||
+        lvl.difficulty === difficulty ||
+        (difficulty === "hard" && lvl.difficulty === "master")),
   );
 
   const levelPool = matchingLevels.length > 0 ? matchingLevels : CUSTOM_LEVELS;

@@ -248,3 +248,10 @@ export async function adminDeleteCollabMessageAction(messageId: string) {
 export async function getAdminHuntOverviewAction() {
   return adminGetHuntOverview();
 }
+
+export async function clearOrientationBatchAction(batch: string) {
+  const { clearOrientationBatch } = await import("~/server/orientation/service");
+  const { requireAdmin } = await import("~/server/auth/service");
+  await requireAdmin();
+  return clearOrientationBatch(batch);
+}

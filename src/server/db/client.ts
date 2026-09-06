@@ -78,24 +78,32 @@ function getDatabaseUrl(): string {
 
 function createPostgresForUrl(url: string): Sql {
   const isDev = process.env.NODE_ENV !== "production";
+  const isCloudflare = Boolean(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).WebSocketPair || process.env.CF_PAGES || process.env.WORKERS_ENV,
+  );
   const isHyperdrive =
     url.includes("hyperdrive") ||
     url.includes("cloudflare") ||
-    url.includes("127.0.0.1:54322") ||
     Boolean(getServerEnv("HYPERDRIVE", "SUPABASE_SG"));
 
   // Crucial: Hyperdrive terminates SSL at the edge proxy, so worker -> Hyperdrive MUST be plaintext (ssl: false).
   // If ssl is not false, postgres.js sends an SSLRequest (0x04D2162F) packet which workerd's Cap'n Proto RPC layer
   // misinterprets as a massive message length header (e.g. 62949523777 words), causing traversalLimitInWords crash.
-  const ssl = isHyperdrive ? false : url.includes("sslmode=require") ? "require" : false;
+  const ssl =
+    isHyperdrive || url.includes("127.0.0.1")
+      ? false
+      : url.includes("sslmode=require")
+        ? "require"
+        : false;
 
   return postgres(url, {
-    max: 1, // Edge isolates / Hyperdrive require 1 connection per request
+    max: isCloudflare ? 1 : 10,
     prepare: false, // Hyperdrive does not support server-side prepared statements
     ssl,
     connect_timeout: 10,
-    idle_timeout: 0, // Disable background timers on edge isolates
-    max_lifetime: 0,
+    idle_timeout: isCloudflare ? 0 : 20,
+    max_lifetime: isCloudflare ? 0 : 3600,
     onnotice: (notice) => {
       if (isDev) console.log("[DB NOTICE]", notice.message);
     },
@@ -113,13 +121,20 @@ function createPostgresForUrl(url: string): Sql {
 }
 
 export function getDb(): Sql {
-  const event = getRequestEvent();
-  if (event) {
-    if (!event.locals._db) {
-      const url = getDatabaseUrl();
-      event.locals._db = createPostgresForUrl(url);
+  const isCloudflare = Boolean(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).WebSocketPair || process.env.CF_PAGES || process.env.WORKERS_ENV,
+  );
+
+  if (isCloudflare) {
+    const event = getRequestEvent();
+    if (event) {
+      if (!event.locals._db) {
+        const url = getDatabaseUrl();
+        event.locals._db = createPostgresForUrl(url);
+      }
+      return event.locals._db as Sql;
     }
-    return event.locals._db as Sql;
   }
 
   if (!_cachedDb) {

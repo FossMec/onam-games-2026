@@ -145,6 +145,18 @@ export default defineConfig({
             vary: "Cookie",
           },
         },
+        "/orientation/**": {
+          headers: {
+            "cache-control": "private, no-cache, no-store, must-revalidate",
+            vary: "Cookie",
+          },
+        },
+        "/orientation": {
+          headers: {
+            "cache-control": "private, no-cache, no-store, must-revalidate",
+            vary: "Cookie",
+          },
+        },
         "/onboarding": {
           headers: {
             "cache-control": "private, no-cache, no-store, must-revalidate",

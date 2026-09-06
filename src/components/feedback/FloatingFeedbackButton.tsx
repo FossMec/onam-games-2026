@@ -27,8 +27,11 @@ export function FloatingFeedbackButton() {
     }
   });
 
+  const isOrientation = () =>
+    typeof window !== "undefined" && window.location.pathname.startsWith("/orientation");
+
   return (
-    <Show when={isDay7OrLater()}>
+    <Show when={isDay7OrLater() && !isOrientation()}>
       <div class="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 max-w-[calc(100vw-2rem)] pointer-events-none">
         <button
           type="button"

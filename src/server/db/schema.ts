@@ -325,3 +325,43 @@ export interface UserFeedback {
 }
 
 export type NewUserFeedback = Partial<UserFeedback>;
+
+export interface OrientationParticipant {
+  id: string;
+  name: string;
+  batch: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface OrientationAttempt {
+  id: string;
+  participantId: string;
+  gameId: string;
+  attemptToken: string;
+  attemptNumber: number;
+  seed: string;
+  status: "in_progress" | "submitted" | "expired" | "void";
+  durationMs: number | null;
+  score: number | null;
+  movesCount: number | null;
+  startedAt: Date;
+  submittedAt: Date | null;
+  ip: string | null;
+  userAgent: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface OrientationLeaderboard {
+  id: string;
+  gameId: string;
+  participantId: string;
+  batch: string;
+  metric: string;
+  durationMs: number | null;
+  score: number | null;
+  startedAt: Date;
+  submittedAt: Date;
+  createdAt: Date;
+}
