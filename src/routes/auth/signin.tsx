@@ -252,6 +252,24 @@ export default function SignIn() {
               </button>
             </form>
             <p class="comment text-lg">no sign-in. just a name.</p>
+
+            {/*
+              The staff door.
+              Open mode hides Google sign-in from players, but organisers and
+              testers still need their real account to reach /admin. Kept small,
+              underlined and below the name form so a player never taps it by
+              accident - but it is a real, working path, not a hidden URL.
+            */}
+            <div class="pt-1 border-t border-[var(--ink-soft)]/20">
+              <button
+                type="button"
+                onClick={signIn}
+                disabled={loading()}
+                class="comment text-xs underline decoration-2 underline-offset-2 cursor-pointer disabled:opacity-60"
+              >
+                {loading() ? "Redirecting to Google…" : "Organiser / tester? Sign in with Google"}
+              </button>
+            </div>
           </Show>
         </div>
       </div>

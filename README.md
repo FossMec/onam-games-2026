@@ -159,6 +159,10 @@ and the site becomes a public playground instead:
 - **Leaderboards show name-only players only.** A database carried over from the
   scheduled event still holds its finishers; they are filtered out so the public
   board is a clean scoreboard for the people playing now.
+- **Organisers can still sign in.** A small "Organiser / tester? Sign in with
+  Google" link under the name form runs the normal Google flow, so an `admin` or
+  `tester` account keeps its role and its `/admin` panel. Players will not
+  notice it; staff will.
 
 It is a server-side variable on purpose: the client learns the mode from the
 server, so a stale build can never disagree with the code that enforces it.
