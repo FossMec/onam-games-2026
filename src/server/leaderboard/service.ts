@@ -93,6 +93,17 @@ interface RankedLeaderboardRow {
 }
 
 /**
+ * Which population a public board is drawn from, once open-to-all is on.
+ *
+ *   open   the name-only players who walked in today (the default in open mode)
+ *   event  the real accounts that took part in the scheduled event, winners and all
+ *
+ * Outside open mode there are no guests, so the two are the same board and the
+ * scope is ignored.
+ */
+export type LeaderboardScope = "open" | "event";
+
+/**
  * A day's board, ranked in the game's own units.
  */
 export async function getDailyLeaderboard(
@@ -102,6 +113,7 @@ export async function getDailyLeaderboard(
   viewMode: "main" | "tester" = "main",
   page = 1,
   pageSize = 50,
+  board: LeaderboardScope = "open",
 ): Promise<DailyBoard> {
   const db = getDb();
   const gameType = (await getGameType(gameId, db)) ?? "time";
@@ -123,17 +135,27 @@ export async function getDailyLeaderboard(
         ? db`AND (u.role != 'tester' AND u.role != 'admin')`
         : db``;
   /*
-   * Open-to-all mode: the public board is a fresh scoreboard for the people who
-   * walked in today. A database inherited from the scheduled event still holds
-   * last year's finishers, and they are not playing - so the main board is
-   * narrowed to `is_guest` accounts. The tester view is untouched: it is an
-   * internal tool, not the public standings.
+   * Open-to-all mode keeps two publics apart.
+   *
+   * The default board is the name-only players who walked in today; a database
+   * inherited from the scheduled event still holds its finishers, and they are
+   * not playing, so leaving them in would bury the live board under history.
+   * But history is still worth seeing - `event` flips the filter to show only
+   * the real accounts from the scheduled event, winners and all.
+   *
+   * The tester view is untouched either way: it is an internal tool, not the
+   * public standings.
    */
-  const guestClause = viewMode === "main" && isOpenToAll() ? db`AND u.is_guest = true` : db``;
+  const guestClause =
+    viewMode === "main" && isOpenToAll()
+      ? board === "event"
+        ? db`AND u.is_guest = false`
+        : db`AND u.is_guest = true`
+      : db``;
 
   // Cached public page read (60s TTL)
   const cached = await sharedRead(
-    `leaderboard:${gameId}:${viewMode}:${safePage}:${safePageSize}`,
+    `leaderboard:${gameId}:${viewMode}:${board}:${safePage}:${safePageSize}`,
     async () => {
       const resultRows = await db<RankedLeaderboardRow[]>`
         WITH ranked AS (
@@ -184,7 +206,7 @@ export async function getDailyLeaderboard(
       myRow = existing;
     } else {
       myRow = await sharedRead(
-        `userboard:${gameId}:${viewMode}:${viewerUserId}`,
+        `userboard:${gameId}:${viewMode}:${board}:${viewerUserId}`,
         async () => {
           const res = await db<RankedLeaderboardRow[]>`
             WITH ranked AS (
@@ -269,6 +291,7 @@ export async function getMyStanding(
   gameId: string,
   viewerRole: ViewerRole,
   viewerUserId: string,
+  board: LeaderboardScope = "open",
 ): Promise<{ rank: number; fieldSize: number } | null> {
   const db = getDb();
   const gameType = (await getGameType(gameId, db)) ?? "time";
@@ -287,7 +310,12 @@ export async function getMyStanding(
         : db``;
   // Same open-to-all narrowing as `getDailyLeaderboard`, so a share card cannot
   // quote a rank from a board the player is not actually on.
-  const guestClause = viewMode === "main" && isOpenToAll() ? db`AND u.is_guest = true` : db``;
+  const guestClause =
+    viewMode === "main" && isOpenToAll()
+      ? board === "event"
+        ? db`AND u.is_guest = false`
+        : db`AND u.is_guest = true`
+      : db``;
 
   const rows = await db<{ rank: number | string; fieldSize: number | string }[]>`
     WITH ranked AS (

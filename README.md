@@ -156,9 +156,12 @@ and the site becomes a public playground instead:
 - **Sign-up is just a name.** `/auth/signin` shows a single name field; there is
   no Google account, no profile form and no onboarding. The name lives in a
   cookie on that device, so returning players keep their runs.
-- **Leaderboards show name-only players only.** A database carried over from the
-  scheduled event still holds its finishers; they are filtered out so the public
-  board is a clean scoreboard for the people playing now.
+- **Two leaderboards, one toggle.** The default board shows only the name-only
+  players from today, so a database carried over from the scheduled event does
+  not bury the live standings under history. The **Event** toggle beside it
+  switches to the real accounts from the scheduled event instead — the actual
+  participants and winners. The toggle only appears in open mode; outside it,
+  the two are the same board.
 - **Organisers can still sign in.** A small "Organiser / tester? Sign in with
   Google" link under the name form runs the normal Google flow, so an `admin` or
   `tester` account keeps its role and its `/admin` panel. Players will not

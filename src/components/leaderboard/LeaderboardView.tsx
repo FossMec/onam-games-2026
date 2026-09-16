@@ -89,12 +89,21 @@ export function LeaderboardView() {
   const [viewMode, setViewMode] = createSignal<"main" | "tester">(
     searchParams.view === "tester" ? "tester" : "main",
   );
+  /*
+   * Open-to-all mode has two publics: the name-only players from today and the
+   * real accounts from the scheduled event. "open" is the live board; "event"
+   * is the archive. Outside open mode they are the same board.
+   */
+  const [board, setBoard] = createSignal<"open" | "event">(
+    searchParams.board === "event" ? "event" : "open",
+  );
   const [expandedId, setExpandedId] = createSignal<string | null>(null);
   const [version, setVersion] = createSignal(0);
   const [lastRefresh, setLastRefresh] = createSignal(Date.now());
   const [now, setNow] = createSignal(Date.now());
 
   const isTesterOrAdmin = () => me()?.role === "tester" || me()?.role === "admin";
+  const openToAll = () => s()?.access?.openToAll ?? false;
 
   const currentActiveDay = () => {
     const list = games();
@@ -161,8 +170,10 @@ export function LeaderboardView() {
     const g = selectedGame();
     const mode = isTesterOrAdmin() ? viewMode() : "main";
     if (!g || g.gameType === "vote") return null;
+    // Tester runs are their own population, so the scope only applies to "main".
+    const scope = openToAll() && mode === "main" ? board() : "open";
 
-    const cacheKey = `${g.id}:${mode}:${page()}:${v}`;
+    const cacheKey = `${g.id}:${mode}:${scope}:${page()}:${v}`;
     const nowTime = Date.now();
     const cached = clientBoardCache.get(cacheKey);
     if (cached && nowTime - cached.timestamp < 60_000) {
@@ -170,7 +181,7 @@ export function LeaderboardView() {
       return cached.data;
     }
 
-    const res = await dailyBoard(g.id, mode, page(), 50);
+    const res = await dailyBoard(g.id, mode, page(), 50, scope);
     clientBoardCache.set(cacheKey, { data: res, timestamp: nowTime });
     setLastKnownBoard(res);
     return res;
@@ -440,45 +451,90 @@ export function LeaderboardView() {
             </Show>
           </div>
 
-          {/* Right: Tester Toggle */}
-          <Show when={isTesterOrAdmin()}>
-            <div class="inline-flex rounded-md border-2 border-[var(--ink)] p-0.5 bg-[var(--paper)] self-start sm:self-auto shrink-0">
-              <button
-                type="button"
-                onClick={() =>
-                  startTransition(() => {
-                    setPage(1);
-                    setViewMode("main");
-                    setSearchParams({ day: selectedDay(), view: undefined }, { replace: true });
-                  })
-                }
-                class={`px-2.5 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
-                  viewMode() === "main"
-                    ? "bg-[var(--pop-yellow)] text-[var(--ink)]"
-                    : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
-                }`}
-              >
-                Official
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  startTransition(() => {
-                    setPage(1);
-                    setViewMode("tester");
-                    setSearchParams({ day: selectedDay(), view: "tester" }, { replace: true });
-                  })
-                }
-                class={`px-2.5 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
-                  viewMode() === "tester"
-                    ? "bg-[var(--pop-teal)] text-[var(--ink)]"
-                    : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
-                }`}
-              >
-                Tester Runs
-              </button>
-            </div>
-          </Show>
+          {/* Right: Board scope (open mode) + Tester Toggle */}
+          <div class="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            {/*
+              Open-to-all keeps two publics apart: today's name-only players
+              ("Open play") and the real accounts from the scheduled event
+              ("Event"), winners and all. Hidden outside open mode, where the
+              two are the same board.
+            */}
+            <Show when={openToAll() && !isDay7() && viewMode() !== "tester"}>
+              <div class="inline-flex rounded-md border-2 border-[var(--ink)] p-0.5 bg-[var(--paper)] shrink-0">
+                <button
+                  type="button"
+                  onClick={() =>
+                    startTransition(() => {
+                      setPage(1);
+                      setBoard("open");
+                    })
+                  }
+                  class={`px-2.5 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
+                    board() === "open"
+                      ? "bg-[var(--pop-teal)] text-[var(--ink)]"
+                      : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                  }`}
+                >
+                  Open play
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    startTransition(() => {
+                      setPage(1);
+                      setBoard("event");
+                    })
+                  }
+                  class={`px-2.5 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
+                    board() === "event"
+                      ? "bg-[var(--pop-yellow)] text-[var(--ink)]"
+                      : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                  }`}
+                >
+                  Event
+                </button>
+              </div>
+            </Show>
+
+            <Show when={isTesterOrAdmin()}>
+              <div class="inline-flex rounded-md border-2 border-[var(--ink)] p-0.5 bg-[var(--paper)] self-start sm:self-auto shrink-0">
+                <button
+                  type="button"
+                  onClick={() =>
+                    startTransition(() => {
+                      setPage(1);
+                      setViewMode("main");
+                      setSearchParams({ day: selectedDay(), view: undefined }, { replace: true });
+                    })
+                  }
+                  class={`px-2.5 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
+                    viewMode() === "main"
+                      ? "bg-[var(--pop-yellow)] text-[var(--ink)]"
+                      : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                  }`}
+                >
+                  Official
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    startTransition(() => {
+                      setPage(1);
+                      setViewMode("tester");
+                      setSearchParams({ day: selectedDay(), view: "tester" }, { replace: true });
+                    })
+                  }
+                  class={`px-2.5 py-1 text-[11px] font-black rounded-[4px] cursor-pointer transition-colors ${
+                    viewMode() === "tester"
+                      ? "bg-[var(--pop-teal)] text-[var(--ink)]"
+                      : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                  }`}
+                >
+                  Tester Runs
+                </button>
+              </div>
+            </Show>
+          </div>
         </div>
 
         {/* Tester Mode notice */}
