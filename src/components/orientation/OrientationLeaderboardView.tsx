@@ -109,9 +109,15 @@ export function OrientationLeaderboardView() {
             Real-time rankings for the first-year orientation challenge. Every student gets one
             official attempt.
           </p>
+          {/*
+            The currently-active game, which is only the game of whichever class
+            is on stage right now. The per-class board below names its own game,
+            so label this one for what it is rather than letting it look like a
+            description of every class.
+          */}
           <Show when={gameCard()}>
             <div class="pt-1 flex items-center justify-center gap-2 text-xs font-black">
-              <span class="opacity-70">Active Challenge:</span>
+              <span class="opacity-70">Now playing:</span>
               <span class="underline decoration-2 underline-offset-2">{gameCard()!.title}</span>
             </div>
           </Show>
@@ -167,9 +173,20 @@ export function OrientationLeaderboardView() {
       {/* Leaderboard Table Card */}
       <div class="card card-plain p-4 sm:p-5 border-2 border-[var(--ink)] space-y-4">
         <div class="flex items-center justify-between gap-3 border-b-2 border-[var(--ink)] pb-3">
-          <div class="flex items-center gap-2">
-            <Users size={18} strokeWidth={2.5} />
-            <h2 class="text-base sm:text-lg font-black m-0">{selectedBatch()} Class Board</h2>
+          <div class="flex items-center gap-2 min-w-0">
+            <Users size={18} strokeWidth={2.5} class="shrink-0" />
+            <h2 class="text-base sm:text-lg font-black m-0 truncate">
+              {selectedBatch()} Class Board
+            </h2>
+            {/*
+              Each class played exactly one game. Show which one, so switching
+              classes does not silently swap the leaderboard's meaning.
+            */}
+            <Show when={board()?.gameTitle}>
+              <span class="badge text-[10px] font-black bg-[var(--pop-teal)] border border-[var(--ink)] shrink-0">
+                {board()!.gameTitle}
+              </span>
+            </Show>
           </div>
           <span class="badge text-[11px] font-black bg-[var(--paper-2)] border border-[var(--ink)]">
             {entries().length} {entries().length === 1 ? "player" : "players"}

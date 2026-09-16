@@ -577,6 +577,8 @@ export interface OrientationBoard {
   batch: string;
   metric: string;
   gameType: string;
+  /** Title of the game this class actually played (falls back to the active one). */
+  gameTitle: string;
 }
 
 export async function getOrientationLeaderboard(
@@ -584,18 +586,54 @@ export async function getOrientationLeaderboard(
   page = 1,
   pageSize = 50,
 ): Promise<OrientationBoard> {
-  const { gameType } = await getOrientationSettings();
-  if (!gameType)
-    return { entries: [], myEntry: null, total: 0, batch, metric: "time", gameType: "" };
-  const gameCard = await getOrientationGameCard();
-  if (!gameCard) return { entries: [], myEntry: null, total: 0, batch, metric: "time", gameType };
-  const def = getGameDefByType(gameCard.gameType);
-  const metric = def?.metric ?? "time";
   const db = getDb();
-  const participant = await getOrientationParticipant();
   const safePage = Math.max(1, page);
   const safeSize = Math.min(100, Math.max(1, pageSize));
   const offset = (safePage - 1) * safeSize;
+
+  /*
+   * Which game is this class playing?
+   *
+   * This board used to be pinned to whatever `orientation.game_type` is set to
+   * right now. But a class plays exactly one game, and the admin moves that
+   * setting on when the next class takes the stage - so the moment they did,
+   * every earlier class's board went blank. The game is a property of the
+   * class, not of the current setting: read it off the class's own results.
+   *
+   * Falls back to the currently-configured game when the class has no results
+   * yet, so the empty state still names something sensible.
+   */
+  const resolvedGame = await sharedRead(
+    `orientation_leaderboard:game:${batch}`,
+    async () => {
+      const rows = await db<{ gameId: string; gameType: string; title: string }[]>`
+        SELECT
+          ol.game_id AS "gameId",
+          g.game_type AS "gameType",
+          g.title AS "title"
+        FROM orientation_leaderboard ol
+        INNER JOIN games g ON g.id = ol.game_id
+        WHERE ol.batch = ${batch}
+        GROUP BY ol.game_id, g.game_type, g.title
+        ORDER BY MAX(ol.submitted_at) DESC
+        LIMIT 1
+      `;
+      return rows[0] ?? null;
+    },
+    30_000,
+  );
+
+  const fallbackCard = resolvedGame ? null : await getOrientationGameCard();
+  const gameId = resolvedGame?.gameId ?? fallbackCard?.id ?? null;
+  const gameType = resolvedGame?.gameType ?? fallbackCard?.gameType ?? "";
+  const gameTitle = resolvedGame?.title ?? fallbackCard?.title ?? "";
+  const metric = getGameDefByType(gameType)?.metric ?? "time";
+
+  if (!gameId) {
+    return { entries: [], myEntry: null, total: 0, batch, metric, gameType, gameTitle: "" };
+  }
+
+  const participant = await getOrientationParticipant();
 
   const orderSql = (() => {
     if (gameType === "hunt") return "score DESC, submitted_at ASC, duration_ms ASC";
@@ -606,7 +644,7 @@ export async function getOrientationLeaderboard(
 
   const batchFilter = batch ? db`AND ol.batch = ${batch}` : db``;
 
-  const cachedKey = `orientation_leaderboard:${gameCard.id}:${batch}:${safePage}:${safeSize}`;
+  const cachedKey = `orientation_leaderboard:${gameId}:${batch}:${safePage}:${safeSize}`;
   const result = await sharedRead(
     cachedKey,
     async () => {
@@ -636,7 +674,7 @@ export async function getOrientationLeaderboard(
             COUNT(*) OVER () AS "fieldSize"
           FROM orientation_leaderboard ol
           INNER JOIN orientation_participants op ON op.id = ol.participant_id
-          WHERE ol.game_id = ${gameCard.id} ${batchFilter}
+          WHERE ol.game_id = ${gameId} ${batchFilter}
         )
         SELECT * FROM ranked
         WHERE "rank" > ${offset} AND "rank" <= ${offset + safeSize}
@@ -648,7 +686,7 @@ export async function getOrientationLeaderboard(
       if (rows.length === 0) {
         const cnt = await db<
           { cnt: string }[]
-        >`SELECT COUNT(*)::text AS cnt FROM orientation_leaderboard ol WHERE ol.game_id=${gameCard.id} ${batchFilter}`;
+        >`SELECT COUNT(*)::text AS cnt FROM orientation_leaderboard ol WHERE ol.game_id=${gameId} ${batchFilter}`;
         fieldSize = Number(cnt[0]?.cnt ?? 0);
       }
       return { rows, fieldSize };
@@ -695,7 +733,7 @@ export async function getOrientationLeaderboard(
             ROW_NUMBER() OVER (ORDER BY ${db.unsafe(orderSql)}) AS "rank"
           FROM orientation_leaderboard ol
           INNER JOIN orientation_participants op ON op.id = ol.participant_id
-          WHERE ol.game_id = ${gameCard.id} ${batchFilter}
+          WHERE ol.game_id = ${gameId} ${batchFilter}
         )
         SELECT * FROM ranked WHERE "participantId" = ${participant.id} LIMIT 1
       `;
@@ -716,15 +754,13 @@ export async function getOrientationLeaderboard(
     }
   }
 
-  return { entries, myEntry, total: result.fieldSize, batch, metric, gameType };
+  return { entries, myEntry, total: result.fieldSize, batch, metric, gameType, gameTitle };
 }
 
 export async function clearOrientationBatch(batch: string): Promise<number> {
   if (!(ORIENTATION_BATCHES as readonly string[]).includes(batch)) {
     throw new HttpError(400, "Invalid batch");
   }
-  const gameCard = await getOrientationGameCard();
-  if (!gameCard) return 0;
   const db = getDb();
   // Find participant ids in batch
   const participants = await db<
@@ -732,12 +768,18 @@ export async function clearOrientationBatch(batch: string): Promise<number> {
   >`SELECT id FROM orientation_participants WHERE batch=${batch}`;
   if (participants.length === 0) return 0;
   const ids = participants.map((p) => p.id);
-  // Delete leaderboard entries
-  await db`DELETE FROM orientation_leaderboard WHERE game_id=${gameCard.id} AND batch=${batch}`;
+  /*
+   * Clear by batch, not by the currently-configured game.
+   *
+   * A class plays one game, but by the time an admin clears it the active
+   * `orientation.game_type` may have moved on to the next class - and the old
+   * filter would then silently delete nothing.
+   */
+  await db`DELETE FROM orientation_leaderboard WHERE batch=${batch}`;
   // Delete attempts
   const del = await db<
     { id: string }[]
-  >`DELETE FROM orientation_attempts WHERE game_id=${gameCard.id} AND participant_id = ANY(${ids}) RETURNING id`;
+  >`DELETE FROM orientation_attempts WHERE participant_id = ANY(${ids}) RETURNING id`;
   invalidateShared("orientation_leaderboard:");
   return del.length;
 }
