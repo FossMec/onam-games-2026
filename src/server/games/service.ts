@@ -6,6 +6,7 @@ import { getSettings } from "~/server/settings/service";
 import { sharedRead } from "~/server/cache";
 import { getConfig } from "~/server/pookalam/service";
 import type { PhaseState } from "~/server/pookalam/window";
+import { isOpenToAll } from "~/server/open-to-all";
 
 /**
  * Where a game sits in its day.
@@ -142,6 +143,27 @@ export async function resolveSchedule(
 }> {
   const scheduleSettings = settings ?? (await getScheduleSettings());
   const releaseAt = computeRelease(game, scheduleSettings);
+
+  /*
+   * Open-to-all mode switches the clock off entirely.
+   *
+   * Every published game reads as `live` with no end time. That last part is
+   * the load-bearing one: `startAttempt` refuses a game unless it is live, and
+   * `finishAttempt` files a result as `afterDeadline` (and therefore keeps it
+   * off the leaderboard) once `endAt` has passed. Nulling `endAt` here makes
+   * both ends agree that the game never closes.
+   */
+  if (isOpenToAll()) {
+    return {
+      releaseAt,
+      endAt: null,
+      previewAt: null,
+      testerReleaseAt: null,
+      status: "live",
+      eventStartDate: scheduleSettings.eventStartDate,
+    };
+  }
+
   if (!releaseAt) {
     return {
       releaseAt: null,
@@ -345,8 +367,12 @@ function day7Card(
 ): GameCard {
   const opensAt = voting.opensAt;
   const releaseAt = opensAt?.toISOString() ?? derivedReleaseAt;
+  const openToAll = isOpenToAll();
   let status: GameStatus = "upcoming";
-  if (voting.open) {
+  if (openToAll) {
+    // Open-to-all: the vote is treated like every other game - always live.
+    status = "live";
+  } else if (voting.open) {
     status = "live";
   } else if (voting.reason === "over") {
     status = "closed";
@@ -374,7 +400,7 @@ function day7Card(
     metric: "fcfs",
     maxAttempts: 1,
     releaseAt,
-    endAt: voting.closesAt?.toISOString() ?? null,
+    endAt: openToAll ? null : (voting.closesAt?.toISOString() ?? null),
     previewAt: null,
     testerReleaseAt: null,
     status,

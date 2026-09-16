@@ -4,6 +4,7 @@ import { getCurrentUser } from "~/server/auth/service";
 import { banMessage, describeBan } from "~/server/auth/bans";
 import { getSettings } from "~/server/settings/service";
 import { sharedRead } from "~/server/cache";
+import { isOpenToAll } from "~/server/open-to-all";
 import type { AccessState, BanNoticeState } from "~/server/auth/actions";
 
 /**
@@ -80,13 +81,19 @@ export async function getShellData(): Promise<ShellData> {
     sharedRead("shell:base", loadShellBase, 60_000),
   ]);
 
+  // Open mode is public by definition; the closed-beta setting is ignored so a
+  // database left in "testers only" cannot lock everyone out of a public demo.
+  const openToAll = isOpenToAll();
+  const closedBeta = openToAll ? false : base.closedBeta;
+
   if (!user) {
     return {
       me: null,
       access: {
-        closedBeta: base.closedBeta,
-        allowed: !base.closedBeta,
+        closedBeta,
+        allowed: !closedBeta,
         signedIn: false,
+        openToAll,
       },
       ban: null,
       communityLinks: base.communityLinks,
@@ -95,9 +102,10 @@ export async function getShellData(): Promise<ShellData> {
 
   const privileged = user.role === "tester" || user.role === "admin";
   const access: AccessState = {
-    closedBeta: base.closedBeta,
-    allowed: !base.closedBeta || privileged,
+    closedBeta,
+    allowed: !closedBeta || privileged,
     signedIn: true,
+    openToAll,
   };
 
   const ban = (() => {

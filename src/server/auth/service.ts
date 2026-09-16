@@ -39,6 +39,8 @@ export interface PublicUser {
   streakCount: number;
   bestStreak: number;
   onboardingCompleted: boolean;
+  /** Name-only account from open-to-all mode; no Supabase identity behind it. */
+  isGuest: boolean;
 }
 
 /**
@@ -258,6 +260,7 @@ async function getCurrentUserUncached(): Promise<PublicUser | null> {
         u.streak_count AS "streakCount",
         u.best_streak AS "bestStreak",
         u.onboarding_completed AS "onboardingCompleted",
+        u.is_guest AS "isGuest",
         s.expires_at AS "sessionExpiresAt"
       FROM auth_sessions s
       INNER JOIN users u ON u.id = s.user_id

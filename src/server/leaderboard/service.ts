@@ -4,6 +4,7 @@ import { getGameDefByType } from "~/server/games/registry";
 import type { ViewerRole } from "~/server/games/service";
 import { getSetting } from "~/server/settings/service";
 import { sharedRead } from "~/server/cache";
+import { isOpenToAll } from "~/server/open-to-all";
 
 export interface DailyEntry {
   rank: number;
@@ -121,6 +122,14 @@ export async function getDailyLeaderboard(
       : hideTestersFromPlayerBoard
         ? db`AND (u.role != 'tester' AND u.role != 'admin')`
         : db``;
+  /*
+   * Open-to-all mode: the public board is a fresh scoreboard for the people who
+   * walked in today. A database inherited from the scheduled event still holds
+   * last year's finishers, and they are not playing - so the main board is
+   * narrowed to `is_guest` accounts. The tester view is untouched: it is an
+   * internal tool, not the public standings.
+   */
+  const guestClause = viewMode === "main" && isOpenToAll() ? db`AND u.is_guest = true` : db``;
 
   // Cached public page read (60s TTL)
   const cached = await sharedRead(
@@ -150,6 +159,7 @@ export async function getDailyLeaderboard(
             AND dl.is_flagged = false
             AND u.ban_level < 4
             ${roleClause}
+            ${guestClause}
         )
         SELECT * FROM ranked
         WHERE "rank" > ${offset} AND "rank" <= ${offset + safePageSize}
@@ -200,6 +210,7 @@ export async function getDailyLeaderboard(
                 AND dl.is_flagged = false
                 AND u.ban_level < 4
                 ${roleClause}
+                ${guestClause}
             )
             SELECT * FROM ranked
             WHERE "userId" = ${viewerUserId}
@@ -274,6 +285,9 @@ export async function getMyStanding(
       : hideTestersFromPlayerBoard
         ? db`AND (u.role != 'tester' AND u.role != 'admin')`
         : db``;
+  // Same open-to-all narrowing as `getDailyLeaderboard`, so a share card cannot
+  // quote a rank from a board the player is not actually on.
+  const guestClause = viewMode === "main" && isOpenToAll() ? db`AND u.is_guest = true` : db``;
 
   const rows = await db<{ rank: number | string; fieldSize: number | string }[]>`
     WITH ranked AS (
@@ -287,6 +301,7 @@ export async function getMyStanding(
         AND dl.is_flagged = false
         AND u.ban_level < 4
         ${roleClause}
+        ${guestClause}
     )
     SELECT "rank", "fieldSize" FROM ranked
     WHERE "userId" = ${viewerUserId}

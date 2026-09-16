@@ -35,6 +35,8 @@ export interface User {
   bestStreak: number;
   lastStreakDay: string | null;
   onboardingCompleted: boolean;
+  /** Name-only account created by open-to-all mode, with no Supabase identity. */
+  isGuest: boolean;
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt: Date | null;

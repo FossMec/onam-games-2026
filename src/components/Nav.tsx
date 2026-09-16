@@ -122,14 +122,29 @@ function ProfileMenu(props: {
                       Tester
                     </span>
                   </Show>
+                  <Show when={props.me.isGuest}>
+                    <span
+                      class="badge text-[9px] py-0 px-1.5 uppercase font-black"
+                      style={{ "--pop": "var(--pop-pink)" }}
+                    >
+                      Guest
+                    </span>
+                  </Show>
                 </div>
-                <p
-                  class="text-xs truncate flex items-center gap-1 font-mono"
-                  style={{ color: "var(--ink-soft)" }}
-                >
-                  <Mail size={11} class="shrink-0" />
-                  <span class="truncate">{props.me.email}</span>
-                </p>
+                {/*
+                  Guests have a placeholder email (`guest-…@open.local`) that
+                  exists only to satisfy a NOT NULL column. Printing it would be
+                  a lie dressed as information, so it is simply not shown.
+                */}
+                <Show when={!props.me.isGuest}>
+                  <p
+                    class="text-xs truncate flex items-center gap-1 font-mono"
+                    style={{ color: "var(--ink-soft)" }}
+                  >
+                    <Mail size={11} class="shrink-0" />
+                    <span class="truncate">{props.me.email}</span>
+                  </p>
+                </Show>
               </div>
             </div>
 
@@ -154,13 +169,16 @@ function ProfileMenu(props: {
           </div>
 
           <div class="space-y-1 text-xs font-bold">
-            <A
-              href="/onboarding"
-              class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-[var(--pop-yellow)] transition-colors"
-            >
-              <User size={13} strokeWidth={2.5} />
-              <span>Edit Profile</span>
-            </A>
+            {/* Guests have no profile to edit - their name is their whole identity. */}
+            <Show when={!props.me.isGuest}>
+              <A
+                href="/onboarding"
+                class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-[var(--pop-yellow)] transition-colors"
+              >
+                <User size={13} strokeWidth={2.5} />
+                <span>Edit Profile</span>
+              </A>
+            </Show>
             <Show when={props.me.role === "admin"}>
               <A
                 href="/admin"
@@ -281,6 +299,10 @@ export function Nav() {
   const data = createAsync(() => shell(), { initialValue: null });
   const me = () => data()?.me ?? undefined;
 
+  // Open-to-all sign-in asks for a name, not a Google account - so the door is
+  // labelled for what it does.
+  const joinLabel = () => (data()?.access?.openToAll ? "Join" : "Sign In");
+
   const isOrientationRoute = () => loc.pathname.startsWith("/orientation");
 
   const isActive = (href: string) => {
@@ -340,7 +362,7 @@ export function Nav() {
                           class="btn-brand py-1 px-3 text-xs rounded-full font-extrabold cursor-pointer inline-flex items-center gap-1"
                         >
                           <User size={12} strokeWidth={2.5} />
-                          <span>Sign In</span>
+                          <span>{joinLabel()}</span>
                         </A>
                       }
                     >
@@ -414,7 +436,7 @@ export function Nav() {
                           class="btn-brand py-1.5 px-3.5 text-sm rounded-full font-extrabold cursor-pointer inline-flex items-center gap-1.5"
                         >
                           <User size={14} strokeWidth={2.5} />
-                          <span>Sign In</span>
+                          <span>{joinLabel()}</span>
                         </A>
                       }
                     >

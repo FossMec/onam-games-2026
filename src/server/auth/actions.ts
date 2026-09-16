@@ -6,8 +6,11 @@ import { completeOAuthSignIn, getCurrentUser, signOut, type OAuthSession } from 
 import { isDirectGoogleEnabled, takePendingSession } from "./google";
 import { completeOnboarding, uploadAvatar, type OnboardingInput } from "./onboarding";
 import { acknowledgeWarning, banMessage, describeBan } from "./bans";
+import { createGuestAccount } from "./guest";
 import { readSetting } from "~/server/settings/service";
 import { readOrDegrade } from "~/server/degrade";
+import { isOpenToAll } from "~/server/open-to-all";
+import { HttpError } from "~/server/errors";
 
 /**
  * The viewer, for rendering.
@@ -29,6 +32,8 @@ export interface AccessState {
   allowed: boolean;
   /** Signed in but not on the list - the case that needs an explanation. */
   signedIn: boolean;
+  /** Open-to-all playground: the door is open and sign-up is just a name. */
+  openToAll: boolean;
 }
 
 /**
@@ -53,9 +58,10 @@ export async function getAccessState(): Promise<AccessState> {
    * fallback: a read that never answers here hangs the entire site, not one
    * section of it.
    */
+  const openToAll = isOpenToAll();
   return readOrDegrade<AccessState>(
     "auth.access",
-    { closedBeta: false, allowed: true, signedIn: false },
+    { closedBeta: false, allowed: true, signedIn: false, openToAll },
     async () => {
       // Independent reads: the flag does not depend on who is asking. Awaiting
       // them one after the other cost two serial round trips on every page.
@@ -65,9 +71,12 @@ export async function getAccessState(): Promise<AccessState> {
       ]);
       const privileged = user?.role === "tester" || user?.role === "admin";
       return {
-        closedBeta,
-        allowed: !closedBeta || privileged,
+        // Open mode is public by definition, so the closed-beta door is off
+        // regardless of what the setting happens to say.
+        closedBeta: openToAll ? false : closedBeta,
+        allowed: openToAll || !closedBeta || privileged,
         signedIn: !!user,
+        openToAll,
       };
     },
   );
@@ -132,7 +141,31 @@ export async function completeSignIn(
  * degrades to the flow that has always worked.
  */
 export async function getAuthMode() {
-  return { direct: isDirectGoogleEnabled() };
+  return { direct: isDirectGoogleEnabled(), openToAll: isOpenToAll() };
+}
+
+/**
+ * Name-only sign-up for open-to-all mode.
+ *
+ * Refuses outright when the flag is off, so this can never become a quiet
+ * bypass of Google sign-in on the scheduled-event deployment. Errors are
+ * returned rather than thrown: a duplicate-looking name or an over-long one is
+ * a form message, not a crash.
+ */
+export async function joinAsGuestAction(
+  name: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isOpenToAll()) {
+    return { ok: false, error: "Open registration is not enabled on this site." };
+  }
+  try {
+    await createGuestAccount(name);
+    return { ok: true as const };
+  } catch (error) {
+    if (error instanceof HttpError) return { ok: false as const, error: error.message };
+    console.error("[server] joinAsGuestAction failed:", error);
+    return { ok: false as const, error: "Could not join just now. Please try again." };
+  }
 }
 
 /**

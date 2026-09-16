@@ -477,7 +477,11 @@ export default function Home() {
           </div>
 
           <Show when={!me()}>
-            <p class="comment">{EVENT.registerNote}</p>
+            <p class="comment">
+              {shellData()?.access?.openToAll
+                ? "Pick a name and play. No sign-in needed."
+                : EVENT.registerNote}
+            </p>
           </Show>
         </div>
       </section>

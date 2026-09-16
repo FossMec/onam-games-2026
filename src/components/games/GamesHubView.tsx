@@ -14,7 +14,6 @@ import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { Countdown } from "~/components/Countdown";
 import { LoadingScreen } from "~/components/LoadingScreen";
 import { FairPlayModal, hasAcknowledgedFairPlay } from "~/components/games/FairPlayModal";
-import { PookalamNudgeModal } from "~/components/games/PookalamNudgeModal";
 import { GameDemo, HowToPlayModal } from "~/components/games/HowToPlay";
 import { clearAttempt, getStoredAttempt, markArenaFromHub, storeAttempt } from "~/lib/game-session";
 import { gameBySlug, gamesList, myAttempt as myAttemptQuery, shell } from "~/lib/queries";
@@ -50,7 +49,6 @@ export function GamesHubView() {
   const me = () => shellData()?.me ?? null;
 
   const [showFairPlay, setShowFairPlay] = createSignal(false);
-  const [showNudge, setShowNudge] = createSignal(false);
   const [pendingGame, setPendingGame] = createSignal<GameCard | null>(null);
   const [activeModalGame, setActiveModalGame] = createSignal<GameCard | null>(null);
   const [busy, setBusy] = createSignal(false);
@@ -249,11 +247,13 @@ export function GamesHubView() {
     }
 
     setError("");
-    setPendingGame(game);
     if (!hasAcknowledgedFairPlay()) {
+      // Keep the game around so accepting fair play can open its rules.
+      setPendingGame(game);
       setShowFairPlay(true);
     } else {
-      setShowNudge(true);
+      // Straight to the rules and the start button - no interstitial.
+      setActiveModalGame(game);
     }
   };
 
@@ -978,12 +978,14 @@ export function GamesHubView() {
         </section>
       </Show>
 
-      {/* Fair Play Modal — first-time only, before the nudge */}
+      {/* Fair Play Modal — first-time only, before the rules */}
       <Show when={showFairPlay()}>
         <FairPlayModal
           onAccept={() => {
+            const g = pendingGame();
             setShowFairPlay(false);
-            setShowNudge(true);
+            setPendingGame(null);
+            if (g) setActiveModalGame(g);
           }}
           onClose={() => {
             setShowFairPlay(false);
@@ -993,27 +995,8 @@ export function GamesHubView() {
         />
       </Show>
 
-      {/* Code-a-Pookalam nudge — shown before every game start, before HowTo */}
-      <Show when={showNudge() && pendingGame()}>
-        <PookalamNudgeModal
-          gameTitle={pendingGame()!.title}
-          onContinue={() => {
-            const g = pendingGame();
-            setShowNudge(false);
-            setPendingGame(null);
-            if (g) setActiveModalGame(g);
-          }}
-          onClose={() => {
-            const g = pendingGame();
-            setShowNudge(false);
-            setPendingGame(null);
-            if (g) setActiveModalGame(g);
-          }}
-        />
-      </Show>
-
       {/* How to Play Modal with Start Button */}
-      <Show when={activeModalGame() && !showFairPlay() && !showNudge()}>
+      <Show when={activeModalGame() && !showFairPlay()}>
         <HowToPlayModal
           gameType={activeModalGame()!.gameType}
           title={activeModalGame()!.title}
@@ -1038,7 +1021,7 @@ export function GamesHubView() {
       </Show>
 
       {/* Error Toast - Top Right, Clean Border, No Shadows, No Emoji Face */}
-      <Show when={error() && !activeModalGame() && !showNudge() && !showFairPlay()}>
+      <Show when={error() && !activeModalGame() && !showFairPlay()}>
         <div class="fixed top-5 right-5 z-[100] max-w-sm card pop-red p-3.5 space-y-2.5 shadow-none border-2 border-[var(--ink)]">
           <div class="flex items-start gap-2.5">
             <AlertCircle size={18} class="shrink-0 text-white mt-0.5" />

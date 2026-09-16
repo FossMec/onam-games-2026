@@ -24,16 +24,26 @@
 
 Copy `.env.example` to `.env` and fill in:
 
-| Variable                    | Source                                                                 |
-| --------------------------- | ---------------------------------------------------------------------- |
-| `DATABASE_URL`              | Supabase → Project Settings → Database → pooled connection string      |
-| `SUPABASE_URL`              | Project Settings → API → Project URL                                   |
-| `SUPABASE_ANON_KEY`         | Project Settings → API → `anon` `public` key                           |
-| `SUPABASE_SERVICE_ROLE_KEY` | Project Settings → API → `service_role` key (server only, keep secret) |
-| `SESSION_SECRET`            | `openssl rand -base64 32`                                              |
-| `DEVICE_PEPPER`             | `openssl rand -base64 32`                                              |
+| Variable                    | Source                                                                            |
+| --------------------------- | --------------------------------------------------------------------------------- |
+| `DATABASE_URL`              | Supabase → Project Settings → Database → pooled connection string                 |
+| `SUPABASE_URL`              | Project Settings → API → Project URL                                              |
+| `SUPABASE_ANON_KEY`         | Project Settings → API → `anon` `public` key                                      |
+| `SUPABASE_SERVICE_ROLE_KEY` | Project Settings → API → `service_role` key (server only, keep secret)            |
+| `SESSION_SECRET`            | `openssl rand -base64 32`                                                         |
+| `DEVICE_PEPPER`             | `openssl rand -base64 32`                                                         |
+| `OPEN_TO_ALL`               | `true` to run the open playground; leave unset/`false` for the scheduled festival |
 
 `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` mirror the public Supabase values for the browser client.
+
+### Open-to-all mode
+
+With `OPEN_TO_ALL=true` the scheduled event becomes a public playground: every
+published game is live at all times, the closed-beta door is lifted, and
+sign-up asks for a name instead of a Google account. Only those name-only
+players appear on the leaderboards. The flag is server-side only; flip it and
+redeploy. Nothing else needs to change, and turning it back off restores the
+normal event.
 
 ## 3. Database
 

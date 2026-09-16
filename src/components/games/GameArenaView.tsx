@@ -10,7 +10,6 @@ import { ShoutBurst } from "~/components/art/Burst";
 import { SpriteIcon } from "~/components/art/SpriteIcon";
 import { LoadingScreen } from "~/components/LoadingScreen";
 import { HowToPlayModal } from "~/components/games/HowToPlay";
-import { PookalamNudgeModal } from "~/components/games/PookalamNudgeModal";
 import type { JigsawProgress, JigsawViewData } from "~/components/games/JigsawGame";
 import type { JumpViewData } from "~/components/games/JumpGame";
 import type { TinderCardView, TinderProgress } from "~/components/games/TinderGame";
@@ -144,7 +143,6 @@ export function GameArenaView() {
   const [result, setResult] = createSignal<FinishPayload | null>(null);
   const [celebrating, setCelebrating] = createSignal(false);
   const [showHowTo, setShowHowTo] = createSignal(false);
-  const [showNudge, setShowNudge] = createSignal(false);
   const [view, setView] = createSignal<GameView | null>(null);
   const [restored, setRestored] = createSignal<unknown>(null);
   const [jumpScore, setJumpScore] = createSignal(0);
@@ -176,7 +174,6 @@ export function GameArenaView() {
       setFinishedBoard(null);
       setCelebrating(false);
       setShowHowTo(false);
-      setShowNudge(false);
       setStanding(null);
 
       const done = getFinished(currentSlug);
@@ -467,9 +464,11 @@ export function GameArenaView() {
     }
   };
 
+  // Straight into a new run. There used to be a Code-a-Pookalam nudge here;
+  // the promo is gone from the play flow and this is just the button again.
   const playAgain = () => {
-    if (busy() || showNudge()) return;
-    setShowNudge(true);
+    if (busy()) return;
+    void doPlayAgain();
   };
 
   const isHunt = () => game()?.gameType === "hunt";
@@ -1137,17 +1136,6 @@ export function GameArenaView() {
           title={game()!.title}
           steps={game()!.howTo}
           onClose={() => setShowHowTo(false)}
-        />
-      </Show>
-
-      <Show when={showNudge()}>
-        <PookalamNudgeModal
-          gameTitle={game()?.title || "Game"}
-          onContinue={() => {
-            setShowNudge(false);
-            void doPlayAgain();
-          }}
-          onClose={() => setShowNudge(false)}
         />
       </Show>
 
